@@ -1,3 +1,4 @@
+import { UserData } from "./types/user";
 
 class ApiService {
   private baseUrl: string;
@@ -80,7 +81,6 @@ class ApiService {
     throw new Error("Unexpected fetch failure");
   }
 
-
   async createUser(
     userData: Partial<UserData>,
     token: string
@@ -94,5 +94,17 @@ class ApiService {
     });
   }
 
+  async searchUsers(searchQuery: string, token: string): Promise<UserData[]> {
+    const response = await this.makeRequest<{ users: UserData[] }>(
+      `/api/users/search?username=${encodeURIComponent(searchQuery)}`,
+      {
+        method: "GET",
+        token,
+      }
+    );
 
+    return response.users || [];
+  }
 }
+
+export const apiService = new ApiService();

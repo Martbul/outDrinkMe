@@ -1,17 +1,19 @@
+import { apiService } from "@/api";
+import { UserData, UserDataContextType } from "@/types/user";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import {
   createContext,
   ReactNode,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
+import { Alert } from "react-native";
 
-const UserDataContext = createContext<any | undefined>(
-  undefined
-);
+const UserDataContext = createContext<any | undefined>(undefined);
 
 export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   const { user, isSignedIn } = useUser();
@@ -79,7 +81,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
 
         try {
           fetchedUserData = await apiService.fetchUser(token);
-          console.log("User found:", fetchedUserData.id);
+          // console.log("User found:", fetchedUserData.id);
         } catch (error: any) {
           if (error.message === "USER_NOT_FOUND") {
             console.log("User not found, creating new user");
@@ -92,14 +94,6 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
               imageUrl:
                 user.imageUrl ||
                 "https://48htuluf59.ufs.sh/f/1NvBfFppWcZeWF2WCCi3zDay6IgjQLVNYHEhKiCJ8OeGwTon",
-              phoneNumber: user.phoneNumbers[0]?.phoneNumber || undefined,
-              role: Role.USER,
-              completedTutorial: false,
-              aboutMe: undefined,
-              disableAccount: false,
-              deleteAccount: false,
-              note: "",
-              status: Status.ACTIVE,
             };
 
             fetchedUserData = await apiService.createUser(newUserData, token);
@@ -132,6 +126,42 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
       setError(null);
     }
   }, [isSignedIn]);
+
+  const refreshUserData = useCallback(async (): Promise<void> => {
+    if (!user?.id) return;
+
+    const token = await getToken();
+    if (!token) return;
+
+    await withLoadingAndError(
+      () => apiService.fetchUser(token),
+      (data) => setUserData(data)
+    );
+  }, [user?.id, getToken, withLoadingAndError]);
+
+  
+  const searchUsers = useCallback(
+    async (searchQuery: string): Promise<void> => {
+      if (!searchQuery.trim()) {
+        Alert.alert("Error", "Please enter a username to search");
+        return;
+      }
+
+      if (!user?.id) return;
+
+      const token = await getToken();
+      if (!token) return;
+
+      // Clear previous results when starting a new search
+      setFoundUsers([]);
+
+      await withLoadingAndError(
+        () => apiService.searchUsers(searchQuery, token),
+        (foundUsers:UserData[]) => setFoundUsers(foundUsers)
+      );
+    },
+    [user?.id, getToken, withLoadingAndError]
+  );
 
   const contextValue: any = useMemo(
     () => ({
