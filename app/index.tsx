@@ -2,6 +2,7 @@ import { Redirect } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { useEffect, useState } from 'react';
 import { View, Text } from 'react-native';
+import Spinner from '@/components/spinner';
 
 export default function IndexScreen() {
   const { isSignedIn, isLoaded } = useAuth();
@@ -16,7 +17,7 @@ export default function IndexScreen() {
   if (!isLoaded || !isReady) {
     return (
       <View className="flex-1 justify-center items-center bg-white">
-        <Text className="text-lg">Loading...</Text>
+        <Spinner variant="orbital" size="lg" />
       </View>
     );
   }
@@ -25,5 +26,7 @@ export default function IndexScreen() {
   if (isSignedIn) {
     // User is signed in - go to main app
     return <Redirect href="/(tabs)" />;
-  } 
+  } else {
+    return <Redirect href="/(auth)/google-sign-in" />;
+  }
 }
