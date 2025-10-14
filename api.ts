@@ -5,7 +5,7 @@ class ApiService {
 
   constructor() {
     this.baseUrl =
-      process.env.EXPO_PUBLIC_CITYSTAT_API_URL || "http://localhost:3000/api";
+      process.env.EXPO_PUBLIC_OUTDRINKME_API_URL || "http://localhost:3000/api";
   }
 
   private async makeRequest<T>(
