@@ -7,6 +7,7 @@ import { UserDataProvider } from "@/providers/UserDataProvider";
 import { useFonts } from "expo-font";
 import { TailwindProvider } from "tailwindcss-react-native";
 import "../global.css";
+import { AppProvider } from "@/providers/AppProvider";
 
 export default function RootLayout() {
   const [loaded] = useFonts({
@@ -27,6 +28,7 @@ export default function RootLayout() {
         publishableKey={clerkPublishableKey}
       >
         <UserDataProvider>
+        <AppProvider>
           <TailwindProvider>
             <Stack>
               <Stack.Screen name="index" options={{ headerShown: false }} />
@@ -35,8 +37,9 @@ export default function RootLayout() {
               <Stack.Screen name="(auth)" options={{ headerShown: false }} />
               <Stack.Screen name="+not-found" />
             </Stack>
-            <StatusBar />
           </TailwindProvider>
+        </AppProvider>
+          
         </UserDataProvider>
       </ClerkProvider>
     </ErrorBoundary>

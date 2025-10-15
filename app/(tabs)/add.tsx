@@ -1,6 +1,3 @@
-// ============================================
-// FILE: app/(tabs)/add.tsx
-// ============================================
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, Alert } from "react-native";
 import { useRouter } from "expo-router";

@@ -1,5 +1,5 @@
 import { apiService } from "@/api";
-import { UserData, UserDataContextType } from "@/types/user";
+import { UserData } from "@/types/api.types";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import {
   createContext,
@@ -139,7 +139,6 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     );
   }, [user?.id, getToken, withLoadingAndError]);
 
-  
   const searchUsers = useCallback(
     async (searchQuery: string): Promise<void> => {
       if (!searchQuery.trim()) {
@@ -157,7 +156,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
 
       await withLoadingAndError(
         () => apiService.searchUsers(searchQuery, token),
-        (foundUsers:UserData[]) => setFoundUsers(foundUsers)
+        (foundUsers: UserData[]) => setFoundUsers(foundUsers)
       );
     },
     [user?.id, getToken, withLoadingAndError]
@@ -185,7 +184,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-export const useUserData = (): UserDataContextType => {
+export const useUserData = (): any => {
   const context = useContext(UserDataContext);
   if (context === undefined) {
     throw new Error("useUserData must be used within a UserDataProvider");
