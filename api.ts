@@ -1,4 +1,4 @@
-import { UserData } from "./types/user";
+import { Achievement, AddDrinkingRequest, CalendarResponse, DaysStat, FriendRequest, Friendship, Leaderboard, LeaderboardEntry, UserData, UserStats } from "./types/api.types";
 
 class ApiService {
   private baseUrl: string;
@@ -59,7 +59,7 @@ class ApiService {
       try {
         console.log(`Fetch user attempt ${attempt + 1}/${retries + 1}`);
 
-        return await this.makeRequest<UserData>("/api/user", {
+        return await this.makeRequest<UserData>("/api/v1/user", {
           method: "GET",
           token,
         });
@@ -85,18 +85,23 @@ class ApiService {
     userData: Partial<UserData>,
     token: string
   ): Promise<UserData> {
-    console.log("Creating user with data:", userData);
-
-    return this.makeRequest<UserData>("/api/user", {
+    return this.makeRequest<UserData>("/api/v1/user", {
       method: "POST",
       token,
       body: JSON.stringify(userData),
     });
   }
 
+  async deleteUser(token: string): Promise<void> {
+    return this.makeRequest<void>("/api/v1/user", {
+      method: "DELETE",
+      token,
+    });
+  }
+
   async searchUsers(searchQuery: string, token: string): Promise<UserData[]> {
     const response = await this.makeRequest<{ users: UserData[] }>(
-      `/api/users/search?username=${encodeURIComponent(searchQuery)}`,
+      `/api/v1/users/search?username=${encodeURIComponent(searchQuery)}`,
       {
         method: "GET",
         token,
@@ -104,6 +109,185 @@ class ApiService {
     );
 
     return response.users || [];
+  }
+  async getUserStats(token: string): Promise<UserStats> {
+    return this.makeRequest<UserStats>("/api/v1/user/stats", {
+      method: "GET",
+      token,
+    });
+  }
+
+  async addDrinking(
+    data: AddDrinkingRequest,
+    token: string
+  ): Promise<{ message: string }> {
+    return this.makeRequest<{ message: string }>("/api/v1/user/drink", {
+      method: "POST",
+      token,
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getFriendsLeaderboard(token: string): Promise<Leaderboard> {
+    return this.makeRequest<Leaderboard>("/api/v1/user/leaderboard/friends", {
+      method: "GET",
+      token,
+    });
+  }
+  async getGlobalLeaderboard(token: string): Promise<Leaderboard> {
+    return this.makeRequest<Leaderboard>("/api/v1/user/leaderboard/global", {
+      method: "GET",
+      token,
+    });
+  }
+  async getAchievements(token: string): Promise<Achievement[]> {
+    return this.makeRequest<Achievement[]>("/api/v1/user/achievements", {
+      method: "GET",
+      token,
+    });
+  }
+
+  async getWeeklyStats(token: string): Promise<DaysStat> {
+    return this.makeRequest<DaysStat>("/api/v1/user/stats/weekly", {
+      method: "GET",
+      token,
+    });
+  }
+
+  async getMonthlyStats(token: string): Promise<DaysStat> {
+    return this.makeRequest<DaysStat>("/api/v1/user/stats/monthly", {
+      method: "GET",
+      token,
+    });
+  }
+
+  async getYearlyStats(token: string): Promise<DaysStat> {
+    return this.makeRequest<DaysStat>("/api/v1/user/stats/yearly", {
+      method: "GET",
+      token,
+    });
+  }
+
+  async getAllTimeStats(token: string): Promise<DaysStat> {
+    return this.makeRequest<DaysStat>("/api/v1/user/stats/all-time", {
+      method: "GET",
+      token,
+    });
+  }
+  async getCalendar(
+    year: number,
+    month: number,
+    token: string
+  ): Promise<CalendarResponse> {
+    return this.makeRequest<CalendarResponse>(
+      `/api/v1/user/calendar?year=${year}&month=${month}`,
+      {
+        method: "GET",
+        token,
+      }
+    );
+  }
+  async getCurrentMonthCalendar(token: string): Promise<CalendarResponse> {
+    const now = new Date();
+    return this.getCalendar(now.getFullYear(), now.getMonth() + 1, token);
+  }
+  async getFriends(token: string): Promise<UserData[]> {
+    const response = await this.makeRequest<{ friends: UserData[] }>(
+      "/api/v1/user/friends",
+      {
+        method: "GET",
+        token,
+      }
+    );
+
+    return response.friends || [];
+  }
+
+  async sendFriendRequest(
+    friendUsername: string,
+    token: string
+  ): Promise<Friendship> {
+    return this.makeRequest<Friendship>("/api/v1/user/friends/request", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ username: friendUsername }),
+    });
+  }
+
+  async acceptFriendRequest(
+    friendshipId: string,
+    token: string
+  ): Promise<Friendship> {
+    return this.makeRequest<Friendship>(
+      `/api/v1/user/friends/request/${friendshipId}/accept`,
+      {
+        method: "POST",
+        token,
+      }
+    );
+  }
+
+  async rejectFriendRequest(
+    friendshipId: string,
+    token: string
+  ): Promise<void> {
+    return this.makeRequest<void>(
+      `/api/v1/user/friends/request/${friendshipId}/reject`,
+      {
+        method: "POST",
+        token,
+      }
+    );
+  }
+
+  async removeFriend(friendId: string, token: string): Promise<void> {
+    return this.makeRequest<void>(`/api/v1/user/friends/${friendId}`, {
+      method: "DELETE",
+      token,
+    });
+  }
+
+  async getPendingFriendRequests(token: string): Promise<FriendRequest[]> {
+    const response = await this.makeRequest<{ requests: FriendRequest[] }>(
+      "/api/v1/user/friends/requests/pending",
+      {
+        method: "GET",
+        token,
+      }
+    );
+
+    return response.requests || [];
+  }
+
+  async getStreak(token: string): Promise<{
+    current_streak: number;
+    longest_streak: number;
+  }> {
+    const stats = await this.getUserStats(token);
+    return {
+      current_streak: stats.current_streak,
+      longest_streak: stats.longest_streak,
+    };
+  }
+  async getBattleStatus(token: string): Promise<{
+    user: LeaderboardEntry;
+    leader: LeaderboardEntry;
+    difference: number;
+  }> {
+    const leaderboard = await this.getFriendsLeaderboard(token);
+
+    const user = leaderboard.user_position;
+    const leader = leaderboard.entries[0];
+
+    if (!user || !leader) {
+      throw new Error("Battle status not available");
+    }
+
+    return {
+      user,
+      leader,
+      difference: leader.days_this_week - user.days_this_week,
+    };
   }
 }
 

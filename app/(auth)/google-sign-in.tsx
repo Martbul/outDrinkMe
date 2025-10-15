@@ -41,7 +41,7 @@ export default function GoogleSignInScreen() {
         await setActive!({ session: createdSessionId });
 
         // Navigate to home or onboarding
-        router.replace("/(tabs)/home");
+        router.replace("/(tabs)/add");
       } else {
         // Handle user cancellation or incomplete OAuth
         console.log("OAuth flow not completed");
