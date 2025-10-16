@@ -20,7 +20,6 @@ export default function IndexScreen() {
     );
   }
 
-  // Redirect based on authentication status
   if (isSignedIn) {
     return <Redirect href="/(tabs)/add" />;
   } else {

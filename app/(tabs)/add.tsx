@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 
 export default function AddDrinksScreen() {
   const router = useRouter();
+ 
 
   const logToday = (status: boolean) => {
     const message = status
@@ -17,6 +18,7 @@ export default function AddDrinksScreen() {
 
   return (
     <View className="flex-1 bg-black px-5 pt-5 justify-center">
+
       <View className="bg-orange-600/10 rounded-3xl p-5 mb-10 border border-orange-600/30">
         <Text className="text-4xl font-black text-orange-500 mb-2">
           Log Today
