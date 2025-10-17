@@ -10,9 +10,10 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function HomeScreen() {
-  const [activeTab, setActiveTab] = useState("for-you");
+  const insets = useSafeAreaInsets();
   const {
     userData,
     userStats,
@@ -21,6 +22,7 @@ export default function HomeScreen() {
     addDrinking,
     isLoading,
   } = useApp();
+    console.log(userData)
 
   // Get rank badge info based on achievements
   const getRankInfo = () => {
@@ -120,11 +122,14 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <Header activeTab={activeTab} onTabChange={setActiveTab} />
+      <Header  />
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.contentContainer}
+        contentContainerStyle={[
+          styles.contentContainer,
+          { paddingBottom: 100 + insets.bottom }
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {/* Rank Badge */}
@@ -273,9 +278,6 @@ export default function HomeScreen() {
             </Text>
           )}
         </TouchableOpacity>
-
-        {/* Bottom Spacing */}
-        <View style={styles.bottomSpacer} />
       </ScrollView>
     </View>
   );
@@ -506,8 +508,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "900",
     letterSpacing: 1.5,
-  },
-  bottomSpacer: {
-    height: 100,
   },
 });

@@ -3,9 +3,9 @@ export interface UserData {
   clerk_id: string;
   username: string;
   email: string;
-  first_name?: string;
-  last_name?: string;
-  image_url?: string;
+  firstName?: string;
+  lastName?: string;
+  imageUrl?: string;
   created_at: string;
   updated_at: string;
 }
