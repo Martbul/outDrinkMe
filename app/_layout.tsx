@@ -1,15 +1,15 @@
 import { Stack } from "expo-router";
 import { ClerkProvider } from "@clerk/clerk-expo";
 import { tokenCache } from "@clerk/clerk-expo/token-cache";
-import { StatusBar } from "react-native";
-import ErrorBoundary from "@/components/errorBoundary";
-import { UserDataProvider } from "@/providers/UserDataProvider";
 import { useFonts } from "expo-font";
 import { TailwindProvider } from "tailwindcss-react-native";
-import "../global.css";
 import { AppProvider } from "@/providers/AppProvider";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import ErrorBoundary from "@/components/errorBoundary";
+import "../global.css";
 
 export default function RootLayout() {
+  // Load custom fonts
   const [loaded] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
@@ -17,7 +17,7 @@ export default function RootLayout() {
   const clerkPublishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
   if (!loaded) {
-    // Async font loading only occurs in development.
+    // Wait for fonts to load
     return null;
   }
 
@@ -27,20 +27,20 @@ export default function RootLayout() {
         tokenCache={tokenCache}
         publishableKey={clerkPublishableKey}
       >
-        <UserDataProvider>
         <AppProvider>
           <TailwindProvider>
-            <Stack>
-              <Stack.Screen name="index" options={{ headerShown: false }} />
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="(screens)" options={{ headerShown: false }} />
-              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-              <Stack.Screen name="+not-found" />
-            </Stack>
+            {/* SafeAreaProvider wraps the Stack so all screens can use safe area */}
+            <SafeAreaProvider>
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="index" />
+                <Stack.Screen name="(tabs)" />
+                <Stack.Screen name="(screens)" />
+                <Stack.Screen name="(auth)" />
+                <Stack.Screen name="+not-found" />
+              </Stack>
+            </SafeAreaProvider>
           </TailwindProvider>
         </AppProvider>
-          
-        </UserDataProvider>
       </ClerkProvider>
     </ErrorBoundary>
   );
