@@ -3,6 +3,8 @@ import React, {
   useContext,
   useState,
   useEffect,
+  useCallback,
+  useRef,
   ReactNode,
 } from "react";
 import { useAuth } from "@clerk/clerk-expo";
@@ -12,42 +14,32 @@ import {
   Achievement,
   CalendarResponse,
   DaysStat,
+  UserData,
 } from "../types/api.types";
 import { apiService } from "@/api";
 
 interface AppContextType {
-  // User Stats
+  userData: UserData | null;
+  // Data
   userStats: UserStats | null;
-  loadingStats: boolean;
-  refreshUserStats: () => Promise<void>;
-
-  // Leaderboard
   leaderboard: Leaderboard | null;
-  loadingLeaderboard: boolean;
-  refreshLeaderboard: () => Promise<void>;
-
-  // Achievements
   achievements: Achievement[] | null;
-  loadingAchievements: boolean;
-  refreshAchievements: () => Promise<void>;
-
-  // Calendar
   calendar: CalendarResponse | null;
-  loadingCalendar: boolean;
+  weeklyStats: DaysStat | null;
+
+  // Refresh Functions
+  refreshUserData: () => Promise<void>;
+  refreshUserStats: () => Promise<void>;
+  refreshLeaderboard: () => Promise<void>;
+  refreshAchievements: () => Promise<void>;
   refreshCalendar: (year?: number, month?: number) => Promise<void>;
+  refreshWeeklyStats: () => Promise<void>;
+  refreshAll: () => Promise<void>;
 
   // Actions
   addDrinking: (drankToday: boolean) => Promise<void>;
 
-  // Weekly Stats
-  weeklyStats: DaysStat | null;
-  loadingWeeklyStats: boolean;
-  refreshWeeklyStats: () => Promise<void>;
-
-  // Refresh All
-  refreshAll: () => Promise<void>;
-
-  // Global Loading
+  // Global State
   isLoading: boolean;
   error: string | null;
 }
@@ -62,232 +54,260 @@ export function AppProvider({ children }: AppProviderProps) {
   const { getToken, isSignedIn } = useAuth();
 
   // State
+  const [userData, setUserData] = useState<UserData | null>(null);
   const [userStats, setUserStats] = useState<UserStats | null>(null);
   const [leaderboard, setLeaderboard] = useState<Leaderboard | null>(null);
   const [achievements, setAchievements] = useState<Achievement[] | null>(null);
   const [calendar, setCalendar] = useState<CalendarResponse | null>(null);
   const [weeklyStats, setWeeklyStats] = useState<DaysStat | null>(null);
 
-  // Loading states
-  const [loadingStats, setLoadingStats] = useState(false);
-  const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
-  const [loadingAchievements, setLoadingAchievements] = useState(false);
-  const [loadingCalendar, setLoadingCalendar] = useState(false);
-  const [loadingWeeklyStats, setLoadingWeeklyStats] = useState(false);
-
-  // Error state
+  // Global loading and error
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Computed loading
-  const isLoading =
-    loadingStats ||
-    loadingLeaderboard ||
-    loadingAchievements ||
-    loadingCalendar ||
-    loadingWeeklyStats;
+  // Track if initial load has happened
+  const hasInitialized = useRef(false);
+
+  // ============================================
+  // Centralized Loading/Error Handler
+  // ============================================
+
+  const withLoadingAndError = useCallback(
+    async <T,>(
+      apiCall: () => Promise<T>,
+      onSuccess?: (data: T) => void
+    ): Promise<T | null> => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const result = await apiCall();
+
+        if (onSuccess) {
+          onSuccess(result);
+        }
+
+        return result;
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Unknown error";
+        setError(errorMessage);
+        console.error("API Error:", err);
+        return null;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
 
   // ============================================
   // Refresh Functions
   // ============================================
 
-  const refreshUserStats = async () => {
+  const refreshUserData = useCallback(async () => {
     if (!isSignedIn) return;
 
-    setLoadingStats(true);
-    setError(null);
-    try {
+    await withLoadingAndError(
+      async () => {
+        const token = await getToken();
+        if (!token) throw new Error("No auth token");
+        return await apiService.fetchUser(token);
+      },
+      (data) => setUserData(data)
+    );
+  }, [isSignedIn, getToken, withLoadingAndError]);
+
+  const refreshUserStats = useCallback(async () => {
+    if (!isSignedIn) return;
+
+    await withLoadingAndError(
+      async () => {
+        const token = await getToken();
+        if (!token) throw new Error("No auth token");
+        return await apiService.getUserStats(token);
+      },
+      (data) => setUserStats(data)
+    );
+  }, [isSignedIn, getToken, withLoadingAndError]);
+
+  const refreshLeaderboard = useCallback(async () => {
+    if (!isSignedIn) return;
+
+    await withLoadingAndError(
+      async () => {
+        const token = await getToken();
+        if (!token) throw new Error("No auth token");
+        return await apiService.getFriendsLeaderboard(token);
+      },
+      (data) => setLeaderboard(data)
+    );
+  }, [isSignedIn, getToken, withLoadingAndError]);
+
+  const refreshAchievements = useCallback(async () => {
+    if (!isSignedIn) return;
+
+    await withLoadingAndError(
+      async () => {
+        const token = await getToken();
+        if (!token) throw new Error("No auth token");
+        return await apiService.getAchievements(token);
+      },
+      (data) => setAchievements(data)
+    );
+  }, [isSignedIn, getToken, withLoadingAndError]);
+
+  const refreshCalendar = useCallback(
+    async (year?: number, month?: number) => {
+      if (!isSignedIn) return;
+
+      await withLoadingAndError(
+        async () => {
+          const token = await getToken();
+          if (!token) throw new Error("No auth token");
+
+          if (year && month) {
+            return await apiService.getCalendar(year, month, token);
+          } else {
+            return await apiService.getCurrentMonthCalendar(token);
+          }
+        },
+        (data) => setCalendar(data)
+      );
+    },
+    [isSignedIn, getToken, withLoadingAndError]
+  );
+
+  const refreshWeeklyStats = useCallback(async () => {
+    if (!isSignedIn) return;
+
+    await withLoadingAndError(
+      async () => {
+        const token = await getToken();
+        if (!token) throw new Error("No auth token");
+        return await apiService.getWeeklyStats(token);
+      },
+      (data) => setWeeklyStats(data)
+    );
+  }, [isSignedIn, getToken, withLoadingAndError]);
+
+  // ============================================
+  // Refresh All - Using Parallel Execution
+  // ============================================
+
+  const refreshAll = useCallback(async () => {
+    if (!isSignedIn) return;
+
+    await withLoadingAndError(async () => {
       const token = await getToken();
       if (!token) throw new Error("No auth token");
 
-      const stats = await apiService.getUserStats(token);
+      const [user, stats, board, achiev, cal, weekly] = await Promise.all([
+        apiService.fetchUser(token),
+        apiService.getUserStats(token),
+        apiService.getFriendsLeaderboard(token),
+        apiService.getAchievements(token),
+        apiService.getCurrentMonthCalendar(token),
+        apiService.getWeeklyStats(token),
+      ]);
+
+      // Update all state at once
+      setUserData(user);
       setUserStats(stats);
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to load stats";
-      setError(errorMessage);
-      console.error("Failed to load user stats:", err);
-    } finally {
-      setLoadingStats(false);
-    }
-  };
+      setLeaderboard(board);
+      setAchievements(achiev);
+      setCalendar(cal);
+      setWeeklyStats(weekly);
 
-  const refreshLeaderboard = async () => {
-    if (!isSignedIn) return;
-
-    setLoadingLeaderboard(true);
-    setError(null);
-    try {
-      const token = await getToken();
-      if (!token) throw new Error("No auth token");
-
-      const data = await apiService.getFriendsLeaderboard(token);
-      setLeaderboard(data);
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to load leaderboard";
-      setError(errorMessage);
-      console.error("Failed to load leaderboard:", err);
-    } finally {
-      setLoadingLeaderboard(false);
-    }
-  };
-
-  const refreshAchievements = async () => {
-    if (!isSignedIn) return;
-
-    setLoadingAchievements(true);
-    setError(null);
-    try {
-      const token = await getToken();
-      if (!token) throw new Error("No auth token");
-
-      const data = await apiService.getAchievements(token);
-      setAchievements(data);
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to load achievements";
-      setError(errorMessage);
-      console.error("Failed to load achievements:", err);
-    } finally {
-      setLoadingAchievements(false);
-    }
-  };
-
-  const refreshCalendar = async (year?: number, month?: number) => {
-    if (!isSignedIn) return;
-
-    setLoadingCalendar(true);
-    setError(null);
-    try {
-      const token = await getToken();
-      if (!token) throw new Error("No auth token");
-
-      let data: CalendarResponse;
-      if (year && month) {
-        data = await apiService.getCalendar(year, month, token);
-      } else {
-        data = await apiService.getCurrentMonthCalendar(token);
-      }
-      setCalendar(data);
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to load calendar";
-      setError(errorMessage);
-      console.error("Failed to load calendar:", err);
-    } finally {
-      setLoadingCalendar(false);
-    }
-  };
-
-  const refreshWeeklyStats = async () => {
-    if (!isSignedIn) return;
-
-    setLoadingWeeklyStats(true);
-    setError(null);
-    try {
-      const token = await getToken();
-      if (!token) throw new Error("No auth token");
-
-      const data = await apiService.getWeeklyStats(token);
-      setWeeklyStats(data);
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to load weekly stats";
-      setError(errorMessage);
-      console.error("Failed to load weekly stats:", err);
-    } finally {
-      setLoadingWeeklyStats(false);
-    }
-  };
-
-  const refreshAll = async () => {
-    await Promise.all([
-      refreshUserStats(),
-      refreshLeaderboard(),
-      refreshAchievements(),
-      refreshCalendar(),
-      refreshWeeklyStats(),
-    ]);
-  };
+      return true;
+    });
+  }, [isSignedIn, getToken, withLoadingAndError]);
 
   // ============================================
   // Actions
   // ============================================
 
-  const addDrinking = async (drankToday: boolean) => {
-    if (!isSignedIn) {
-      throw new Error("Must be signed in to log drinking");
-    }
+  const addDrinking = useCallback(
+    async (drankToday: boolean) => {
+      if (!isSignedIn) {
+        throw new Error("Must be signed in to log drinking");
+      }
 
-    try {
-      const token = await getToken();
-      if (!token) throw new Error("No auth token");
+      const result = await withLoadingAndError(async () => {
+        const token = await getToken();
+        if (!token) throw new Error("No auth token");
 
-      await apiService.addDrinking({ drank_today: drankToday }, token);
+        await apiService.addDrinking({ drank_today: drankToday }, token);
 
-      // Refresh relevant data after logging
-      await Promise.all([
-        refreshUserStats(),
-        refreshLeaderboard(),
-        refreshCalendar(),
-        refreshWeeklyStats(),
-      ]);
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to log drinking";
-      setError(errorMessage);
-      console.error("Failed to log drinking:", err);
-      throw err;
-    }
-  };
+        // Refresh relevant data after logging
+        const [stats, board, cal, weekly] = await Promise.all([
+          apiService.getUserStats(token),
+          apiService.getFriendsLeaderboard(token),
+          apiService.getCurrentMonthCalendar(token),
+          apiService.getWeeklyStats(token),
+        ]);
+
+        return { stats, board, cal, weekly };
+      });
+
+      if (result) {
+        setUserStats(result.stats);
+        setLeaderboard(result.board);
+        setCalendar(result.cal);
+        setWeeklyStats(result.weekly);
+      }
+    },
+    [isSignedIn, getToken, withLoadingAndError]
+  );
 
   // ============================================
-  // Initial Load
+  // Initial Load - FIXED to prevent infinite loop
   // ============================================
 
   useEffect(() => {
-    if (isSignedIn) {
+    if (isSignedIn && !hasInitialized.current) {
+      hasInitialized.current = true;
       refreshAll();
     }
-  }, [isSignedIn]);
+
+    // Reset initialization flag when user signs out
+    if (!isSignedIn) {
+      hasInitialized.current = false;
+      setUserData(null);
+      setUserStats(null);
+      setLeaderboard(null);
+      setAchievements(null);
+      setCalendar(null);
+      setWeeklyStats(null);
+    }
+  }, [isSignedIn]); // Only depend on isSignedIn, NOT refreshAll
 
   // ============================================
   // Context Value
   // ============================================
 
   const value: AppContextType = {
-    // User Stats
+    // Data
+    userData,
     userStats,
-    loadingStats,
-    refreshUserStats,
-
-    // Leaderboard
     leaderboard,
-    loadingLeaderboard,
-    refreshLeaderboard,
-
-    // Achievements
     achievements,
-    loadingAchievements,
-    refreshAchievements,
-
-    // Calendar
     calendar,
-    loadingCalendar,
-    refreshCalendar,
-
-    // Weekly Stats
     weeklyStats,
-    loadingWeeklyStats,
+
+    // Refresh Functions
+    refreshUserData,
+    refreshUserStats,
+    refreshLeaderboard,
+    refreshAchievements,
+    refreshCalendar,
     refreshWeeklyStats,
+    refreshAll,
 
     // Actions
     addDrinking,
 
-    // Refresh All
-    refreshAll,
-
-    // Global
+    // Global State
     isLoading,
     error,
   };

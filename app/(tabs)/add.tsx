@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, Alert } from "react-native";
 import { useRouter } from "expo-router";
+import { Header } from "@/components/header";
 
 export default function AddDrinksScreen() {
   const router = useRouter();

@@ -3,16 +3,11 @@ export interface UserData {
   clerk_id: string;
   username: string;
   email: string;
-  display_name?: string;
-  avatar_url?: string;
   first_name?: string;
   last_name?: string;
   image_url?: string;
-  email_verified: boolean;
   created_at: string;
   updated_at: string;
-  last_active: string;
-  is_active: boolean;
 }
 
 export interface LeaderboardEntry {
