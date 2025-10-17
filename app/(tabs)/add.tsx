@@ -1,78 +1,135 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, Alert } from "react-native";
+import { View, Text, TouchableOpacity, Alert, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
-import { Header } from "@/components/header";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useApp } from "@/providers/AppProvider";
 
-export default function AddDrinksScreen() {
+export default function AddDrinksScreenV3() {
   const router = useRouter();
- 
+  const insets = useSafeAreaInsets();
+  const { userStats, weeklyStats, addDrinking } = useApp();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [holdProgress, setHoldProgress] = useState(0);
+  const [isHolding, setIsHolding] = useState(false);
+  let holdTimer: NodeJS.Timeout;
+  let progressInterval: ReturnType<typeof setInterval>;
 
-  const logToday = (status: boolean) => {
-    const message = status
-      ? "✅ Logged for today! Keep the streak alive! 🔥"
-      : "❌ Marked as NO for today";
-
-    Alert.alert("Success", message, [
-      { text: "OK", onPress: () => router.push("/(tabs)/home") },
-    ]);
+  const logToday = async () => {
+    setIsSubmitting(true);
+    try {
+      await addDrinking(true);
+      Alert.alert("Success", "✅ Logged for today! Keep the streak alive! 🔥", [
+        { text: "OK", onPress: () => router.push("/(tabs)/home") },
+      ]);
+    } catch (error) {
+      Alert.alert("Error", "Failed to log. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  return (
-    <View className="flex-1 bg-black px-5 pt-5 justify-center">
+  const startHold = () => {
+    setIsHolding(true);
+    let progress = 0;
+    progressInterval = setInterval(() => {
+      progress += 2;
+      setHoldProgress(progress);
+      if (progress >= 100) {
+        clearInterval(progressInterval);
+        logToday();
+        setHoldProgress(0);
+        setIsHolding(false);
+      }
+    }, 30);
+  };
 
-      <View className="bg-orange-600/10 rounded-3xl p-5 mb-10 border border-orange-600/30">
-        <Text className="text-4xl font-black text-orange-500 mb-2">
-          Log Today
-        </Text>
-        <Text className="text-orange-400 text-xs font-semibold tracking-widest uppercase">
-          Did you drink today?
+  const cancelHold = () => {
+    clearInterval(progressInterval);
+    setHoldProgress(0);
+    setIsHolding(false);
+  };
+
+  const potentialStreak = (userStats?.current_streak || 0) + 1;
+
+  return (
+    <View
+      className="flex-1 bg-black px-4 justify-center"
+      style={{
+        paddingTop: insets.top,
+        paddingBottom: insets.bottom + 40,
+      }}
+    >
+      {/* Header */}
+      <View className="mb-12">
+        <View className="flex-row items-center justify-center mb-6">
+          <View className="w-2 h-2 bg-orange-600 rounded-full mr-3" />
+          <Text className="text-orange-600 text-xs font-black tracking-widest uppercase">
+            Quick Log
+          </Text>
+        </View>
+        <Text className="text-white text-5xl font-black text-center leading-tight">
+          Did you{"\n"}drink today?
         </Text>
       </View>
 
-      <Text className="text-gray-400 text-center text-lg mb-8 px-8">
-        Simple question: Did you have a drink today?
-      </Text>
+      {/* Current Streak Display */}
+      <View className="bg-white/[0.03] rounded-2xl p-6 mb-12 border border-white/[0.08]">
+        <View className="flex-row items-center justify-between">
+          <View>
+            <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-1">
+              CURRENT STREAK
+            </Text>
+            <Text className="text-white text-4xl font-black">
+              {userStats?.current_streak || 0} 🔥
+            </Text>
+          </View>
+          <View className="items-end">
+            <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">
+              NEXT
+            </Text>
+            <Text className="text-orange-600 text-3xl font-black">
+              {potentialStreak}
+            </Text>
+          </View>
+        </View>
+      </View>
 
-      {/* YES Button */}
-      <TouchableOpacity
-        onPress={() => logToday(true)}
-        className="bg-orange-600 rounded-3xl p-8 mb-6 shadow-lg shadow-orange-600/50"
-      >
-        <Text className="text-8xl text-center mb-4">✅</Text>
-        <Text className="text-black text-2xl font-black text-center uppercase tracking-widest">
-          YES
+      <View className="mb-6">
+        <TouchableOpacity
+          onPressIn={startHold}
+          onPressOut={cancelHold}
+          disabled={isSubmitting}
+          activeOpacity={0.9}
+          className="bg-orange-600 rounded-3xl overflow-hidden"
+          style={{ height: 140 }}
+        >
+          <View className="flex-1 items-center justify-center">
+            <Text className="text-black text-3xl font-black mb-2">
+              {isHolding ? "HOLD..." : "DRINK"}
+            </Text>
+            <Text className="text-black/60 text-sm font-bold">
+              Press and hold to confirm
+            </Text>
+          </View>
+          {holdProgress > 0 && (
+            <View
+              className="absolute bottom-0 left-0 right-0 bg-black/30"
+              style={{ height: `${holdProgress}%` }}
+            />
+          )}
+        </TouchableOpacity>
+
+        <Text className="text-white/50 text-xs text-center mt-3 font-semibold">
+          Hold the button for 2 seconds to log
         </Text>
-        <Text className="text-black/70 text-sm text-center mt-2">
-          I drank today
+      </View>
+
+      {/* Cancel */}
+      <TouchableOpacity onPress={() => router.back()} className="py-4 mb-8">
+        <Text className="text-white/40 text-sm font-bold text-center">
+          Now now
         </Text>
       </TouchableOpacity>
-
-      {/* NO Button */}
-      <TouchableOpacity
-        onPress={() => logToday(false)}
-        className="bg-gray-800 border-2 border-gray-700 rounded-3xl p-8 mb-6"
-      >
-        <Text className="text-8xl text-center mb-4">❌</Text>
-        <Text className="text-white text-2xl font-black text-center uppercase tracking-widest">
-          NO
-        </Text>
-        <Text className="text-gray-500 text-sm text-center mt-2">
-          I didn't drink today
-        </Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        onPress={() => router.back()}
-        className="bg-orange-600/10 rounded-2xl p-6 border border-orange-600/30"
-      >
-        <Text className="text-orange-400 text-lg font-black text-center uppercase tracking-widest">
-          Cancel
-        </Text>
-      </TouchableOpacity>
-
-      <Text className="text-gray-600 text-xs text-center mt-8 px-8">
-        Be honest! Your streak and stats depend on it 🔥
-      </Text>
     </View>
   );
 }

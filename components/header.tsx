@@ -1,16 +1,12 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Image } from "react-native";
+import { View, Text, TouchableOpacity, Image } from "react-native";
 import { useApp } from "@/providers/AppProvider";
-import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-interface HeaderProps {
-  activeTab?: string;
-  onTabChange?: (tab: string) => void;
-}
 
-export const Header = ({ activeTab = "forYou", onTabChange }: HeaderProps) => {
+export const Header = () => {
   const { userData, userStats } = useApp();
-  const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   // Calculate level and progress (every 20 days = 1 level)
   const totalDays = userStats?.total_days_drank || 0;
@@ -26,35 +22,34 @@ export const Header = ({ activeTab = "forYou", onTabChange }: HeaderProps) => {
     return (first + last).toUpperCase() || "??";
   };
 
-  const handleTabPress = (tab: string) => {
-    if (onTabChange) {
-      onTabChange(tab);
-    }
-  };
 
   return (
-    <View style={styles.container}>
-    
-      {/* Proile and Stats Bar */}
-      <View style={styles.profileBar}>
+    <View className="bg-black" style={{ paddingTop: insets.top }}>
+      {/* Profile and Stats Bar */}
+      <View className="flex-row justify-between items-center px-4 py-4">
         {/* Avatar and Level */}
-        <View style={styles.avatarSection}>
+        <View className="flex-row items-center flex-1">
           {userData?.imageUrl ? (
-            <Image source={{ uri: userData.imageUrl }} style={styles.avatar} />
+            <Image 
+              source={{ uri: userData.imageUrl }} 
+              className="w-14 h-14 rounded-full border-3 border-white"
+            />
           ) : (
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{getInitials()}</Text>
+            <View className="w-14 h-14 rounded-full bg-orange-600 justify-center items-center border-3 border-white">
+              <Text className="text-white text-xl font-black">
+                {getInitials()}
+              </Text>
             </View>
           )}
-          <View style={styles.levelSection}>
-            <Text style={styles.levelText}>Lv.{level}</Text>
-            <View style={styles.progressBarContainer}>
-              <View style={styles.progressBar}>
+          <View className="ml-3 flex-1">
+            <Text className="text-white text-base font-bold mb-1">
+              Lv.{level}
+            </Text>
+            <View className="max-w-[140px]">
+              <View className="h-2 bg-white/10 rounded border border-white/20 overflow-hidden">
                 <View
-                  style={[
-                    styles.progressFill,
-                    { width: `${progressPercentage}%` },
-                  ]}
+                  className="h-full bg-orange-600 rounded"
+                  style={{ width: `${progressPercentage}%` }}
                 />
               </View>
             </View>
@@ -62,261 +57,88 @@ export const Header = ({ activeTab = "forYou", onTabChange }: HeaderProps) => {
         </View>
 
         {/* Stats */}
-        <View style={styles.stats}>
+        <View className="flex-row items-center gap-4">
           {/* Streak */}
-          <View style={styles.statItem}>
-            <Text style={styles.statIcon}>🔥</Text>
-            <Text style={styles.statValue}>
+          <View className="flex-row items-center gap-1.5 bg-white/5 px-3 py-2 rounded-full">
+            <Text className="text-xl">🔥</Text>
+            <Text className="text-white text-base font-bold">
               {userStats?.current_streak || 0}
             </Text>
           </View>
 
           {/* Achievements */}
-          <View style={styles.statItem}>
-            <View style={styles.gemContainer}>
-              <Text style={styles.statIcon}>💎</Text>
+          <View className="flex-row items-center gap-1.5 bg-white/5 px-3 py-2 rounded-full">
+            <View className="relative">
+              <Text className="text-xl">💎</Text>
               {(userStats?.achievements_count || 0) > 0 && (
-                <View style={styles.plusBadge}>
-                  <Text style={styles.plusText}>+</Text>
+                <View className="absolute -bottom-0.5 -right-0.5 bg-orange-600 w-3 h-3 rounded-full justify-center items-center">
+                  <Text className="text-white text-[8px] font-black">+</Text>
                 </View>
               )}
             </View>
-            <Text style={styles.statValue}>
+            <Text className="text-white text-base font-bold">
               {userStats?.achievements_count || 0}
             </Text>
           </View>
 
           {/* Notifications */}
-          <TouchableOpacity style={styles.bellButton}>
-            <Text style={styles.statIcon}>🔔</Text>
+          <TouchableOpacity className="w-10 h-10 justify-center items-center rounded-full bg-white/5">
+            <Text className="text-xl">🔔</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Navigation Tabs */}
-      <View style={styles.tabBar}>
+      {/* <View className="flex-row px-4 border-b border-white/10 mt-2">
         <TouchableOpacity
-          style={styles.tab}
+          className="flex-1 py-3.5 items-center relative"
           onPress={() => handleTabPress("forYou")}
         >
           <Text
-            style={[
-              styles.tabText,
-              activeTab === "forYou" && styles.activeTabText,
-            ]}
+            className={`text-[15px] font-semibold ${
+              activeTab === "forYou" ? "text-orange-600" : "text-white/40"
+            }`}
           >
             For You
           </Text>
-          {activeTab === "forYou" && <View style={styles.tabIndicator} />}
+          {activeTab === "forYou" && (
+            <View className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-600 rounded-t" />
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.tab}
+          className="flex-1 py-3.5 items-center relative"
           onPress={() => handleTabPress("friends")}
         >
           <Text
-            style={[
-              styles.tabText,
-              activeTab === "friends" && styles.activeTabText,
-            ]}
+            className={`text-[15px] font-semibold ${
+              activeTab === "friends" ? "text-orange-600" : "text-white/40"
+            }`}
           >
             Friends
           </Text>
-          {activeTab === "friends" && <View style={styles.tabIndicator} />}
+          {activeTab === "friends" && (
+            <View className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-600 rounded-t" />
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.tab}
+          className="flex-1 py-3.5 items-center relative"
           onPress={() => handleTabPress("discovery")}
         >
           <Text
-            style={[
-              styles.tabText,
-              activeTab === "discovery" && styles.activeTabText,
-            ]}
+            className={`text-[15px] font-semibold ${
+              activeTab === "discovery" ? "text-orange-600" : "text-white/40"
+            }`}
           >
             Discovery
           </Text>
-          {activeTab === "discovery" && <View style={styles.tabIndicator} />}
+          {activeTab === "discovery" && (
+            <View className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-600 rounded-t" />
+          )}
         </TouchableOpacity>
-      </View>
+      </View> */}
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: "#000000",
-  },
-  topBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
-  },
-  menuButton: {
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  menuLine: {
-    width: 22,
-    height: 2,
-    backgroundColor: "#FFFFFF",
-    marginVertical: 3,
-    borderRadius: 1,
-  },
-  rightSection: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  iconButton: {
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
-  },
-  iconText: {
-    fontSize: 18,
-  },
-  profileBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-  },
-  avatarSection: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "#EA580C",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 3,
-    borderColor: "#FFFFFF",
-  },
-  avatarText: {
-    color: "#FFFFFF",
-    fontSize: 20,
-    fontWeight: "900",
-  },
-  levelSection: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  levelText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 4,
-  },
-  progressBarContainer: {
-    maxWidth: 140,
-  },
-  progressBar: {
-    height: 8,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    borderRadius: 4,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.2)",
-  },
-  progressFill: {
-    height: "100%",
-    backgroundColor: "#EA580C",
-    borderRadius: 3,
-  },
-  stats: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
-  },
-  statItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  statIcon: {
-    fontSize: 20,
-  },
-  statValue: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  gemContainer: {
-    position: "relative",
-  },
-  plusBadge: {
-    position: "absolute",
-    bottom: -2,
-    right: -2,
-    backgroundColor: "#EA580C",
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  plusText: {
-    color: "#FFFFFF",
-    fontSize: 8,
-    fontWeight: "900",
-  },
-  bellButton: {
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
-  },
-  tabBar: {
-    flexDirection: "row",
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255, 255, 255, 0.1)",
-    marginTop: 8,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 14,
-    alignItems: "center",
-    position: "relative",
-  },
-  tabText: {
-    color: "rgba(255, 255, 255, 0.4)",
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  activeTabText: {
-    color: "#EA580C",
-  },
-  tabIndicator: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 3,
-    backgroundColor: "#EA580C",
-    borderTopLeftRadius: 2,
-    borderTopRightRadius: 2,
-  },
-});
 
 export default Header;

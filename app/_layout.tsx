@@ -23,14 +23,13 @@ export default function RootLayout() {
 
   return (
     <ErrorBoundary>
-      <ClerkProvider
-        tokenCache={tokenCache}
-        publishableKey={clerkPublishableKey}
-      >
-        <AppProvider>
-          <TailwindProvider>
-            {/* SafeAreaProvider wraps the Stack so all screens can use safe area */}
-            <SafeAreaProvider>
+      <SafeAreaProvider>
+        <ClerkProvider
+          tokenCache={tokenCache}
+          publishableKey={clerkPublishableKey}
+        >
+          <AppProvider>
+            <TailwindProvider>
               <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="index" />
                 <Stack.Screen name="(tabs)" />
@@ -38,10 +37,10 @@ export default function RootLayout() {
                 <Stack.Screen name="(auth)" />
                 <Stack.Screen name="+not-found" />
               </Stack>
-            </SafeAreaProvider>
-          </TailwindProvider>
-        </AppProvider>
-      </ClerkProvider>
+            </TailwindProvider>
+          </AppProvider>
+        </ClerkProvider>
+      </SafeAreaProvider>
     </ErrorBoundary>
   );
 }
