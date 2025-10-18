@@ -80,11 +80,6 @@ export const Header = () => {
               {userStats?.achievements_count || 0}
             </Text>
           </View>
-
-          {/* Notifications */}
-          <TouchableOpacity className="w-10 h-10 justify-center items-center rounded-full bg-white/5">
-            <Text className="text-xl">🔔</Text>
-          </TouchableOpacity>
         </View>
       </View>
 

@@ -22,7 +22,7 @@ export default function HomeScreen() {
     addDrinking,
     isLoading,
   } = useApp();
-    console.log(userData)
+  console.log(userData);
 
   // Get rank badge info based on achievements
   const getRankInfo = () => {
@@ -122,13 +122,13 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <Header  />
+      <Header />
 
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
           styles.contentContainer,
-          { paddingBottom: 100 + insets.bottom }
+          { paddingBottom: 100 + insets.bottom },
         ]}
         showsVerticalScrollIndicator={false}
       >

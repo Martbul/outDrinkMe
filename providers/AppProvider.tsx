@@ -19,13 +19,14 @@ import {
 import { apiService } from "@/api";
 
 interface AppContextType {
-  userData: UserData | null;
   // Data
+  userData: UserData | null;
   userStats: UserStats | null;
   leaderboard: Leaderboard | null;
   achievements: Achievement[] | null;
   calendar: CalendarResponse | null;
   weeklyStats: DaysStat | null;
+  friends: UserData[] | [];
 
   // Refresh Functions
   refreshUserData: () => Promise<void>;
@@ -34,10 +35,12 @@ interface AppContextType {
   refreshAchievements: () => Promise<void>;
   refreshCalendar: (year?: number, month?: number) => Promise<void>;
   refreshWeeklyStats: () => Promise<void>;
+  refreshFriends: () => Promise<void>;
   refreshAll: () => Promise<void>;
 
   // Actions
   addDrinking: (drankToday: boolean) => Promise<void>;
+  addFriend: (friendId: string) => Promise<void>;
 
   // Global State
   isLoading: boolean;
@@ -60,6 +63,7 @@ export function AppProvider({ children }: AppProviderProps) {
   const [achievements, setAchievements] = useState<Achievement[] | null>(null);
   const [calendar, setCalendar] = useState<CalendarResponse | null>(null);
   const [weeklyStats, setWeeklyStats] = useState<DaysStat | null>(null);
+  const [friends, setFriends] = useState<UserData[] | []>([]);
 
   // Global loading and error
   const [isLoading, setIsLoading] = useState(false);
@@ -191,6 +195,19 @@ export function AppProvider({ children }: AppProviderProps) {
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
 
+  const refreshFriends = useCallback(async () => {
+    if (!isSignedIn) return;
+
+    await withLoadingAndError(
+      async () => {
+        const token = await getToken();
+        if (!token) throw new Error("No auth token");
+        return await apiService.getFriends(token);
+      },
+      (data) => setFriends(data)
+    );
+  }, [isSignedIn, getToken, withLoadingAndError]);
+
   // ============================================
   // Refresh All - Using Parallel Execution
   // ============================================
@@ -202,14 +219,16 @@ export function AppProvider({ children }: AppProviderProps) {
       const token = await getToken();
       if (!token) throw new Error("No auth token");
 
-      const [user, stats, board, achiev, cal, weekly] = await Promise.all([
-        apiService.fetchUser(token),
-        apiService.getUserStats(token),
-        apiService.getFriendsLeaderboard(token),
-        apiService.getAchievements(token),
-        apiService.getCurrentMonthCalendar(token),
-        apiService.getWeeklyStats(token),
-      ]);
+      const [user, stats, board, achiev, cal, friends, weekly] =
+        await Promise.all([
+          apiService.fetchUser(token),
+          apiService.getUserStats(token),
+          apiService.getFriendsLeaderboard(token),
+          apiService.getAchievements(token),
+          apiService.getCurrentMonthCalendar(token),
+          apiService.getFriends(token),
+          apiService.getWeeklyStats(token),
+        ]);
 
       // Update all state at once
       setUserData(user);
@@ -217,6 +236,7 @@ export function AppProvider({ children }: AppProviderProps) {
       setLeaderboard(board);
       setAchievements(achiev);
       setCalendar(cal);
+      setFriends(friends);
       setWeeklyStats(weekly);
 
       return true;
@@ -260,6 +280,31 @@ export function AppProvider({ children }: AppProviderProps) {
     [isSignedIn, getToken, withLoadingAndError]
   );
 
+  const addFriend = useCallback(
+    async (friendId: string) => {
+      if (!isSignedIn) {
+        throw new Error("Must be signed in to log drinking");
+      }
+
+      const result = await withLoadingAndError(async () => {
+        const token = await getToken();
+        if (!token) throw new Error("No auth token");
+
+        await apiService.addFriend( friendId , token);
+
+        // Refresh relevant data after adding friend
+        const [friends] = await Promise.all([apiService.getFriends(token)]);
+
+        return { friends };
+      });
+
+      if (result) {
+        setFriends(result.friends);
+      }
+    },
+    [isSignedIn, getToken, withLoadingAndError]
+  );
+
   // ============================================
   // Initial Load - FIXED to prevent infinite loop
   // ============================================
@@ -294,6 +339,7 @@ export function AppProvider({ children }: AppProviderProps) {
     achievements,
     calendar,
     weeklyStats,
+    friends,
 
     // Refresh Functions
     refreshUserData,
@@ -302,10 +348,12 @@ export function AppProvider({ children }: AppProviderProps) {
     refreshAchievements,
     refreshCalendar,
     refreshWeeklyStats,
+    refreshFriends,
     refreshAll,
 
     // Actions
     addDrinking,
+    addFriend,
 
     // Global State
     isLoading,
