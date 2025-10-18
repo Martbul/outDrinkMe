@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, ScrollView, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, ActivityIndicator, Image } from "react-native";
 import { useApp } from "@/providers/AppProvider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Header from "@/components/header";
@@ -7,6 +7,17 @@ import Header from "@/components/header";
 export default function AchievementsScreen() {
   const { achievements, userStats, isLoading } = useApp();
   const insets = useSafeAreaInsets();
+
+  const achievementImages = [
+    require("../../assets/images/achievements/lightning.png"),
+    require("../../assets/images/achievements/druid.png"),
+    require("../../assets/images/achievements/campfire.png"),
+    require("../../assets/images/achievements/target.png"),
+    require("../../assets/images/achievements/crown.png"),
+    require("../../assets/images/achievements/trophy.png"),
+    require("../../assets/images/achievements/star.png"),
+    require("../../assets/images/achievements/100.png"),
+  ];
 
   // Calculate progress for locked achievements
   const getProgress = (achievement: any) => {
@@ -78,7 +89,7 @@ export default function AchievementsScreen() {
       <ScrollView
         className="flex-1 px-5"
         contentContainerStyle={{
-          paddingTop: insets.top-10,
+          paddingTop: insets.top - 10,
           paddingBottom: 100 + insets.bottom,
         }}
       >
@@ -143,7 +154,11 @@ export default function AchievementsScreen() {
               >
                 {/* Icon */}
                 <View className="relative mb-3">
-                  <Text className="text-5xl">{achievement.icon}</Text>
+                  <Image
+                    source={achievementImages[index]}
+                    style={{ width: 70, height: 70 }}
+                  />
+                  {/* <Text className="text-5xl">{achievement.icon}</Text> */}
                   {isUnlocked && (
                     <View className="absolute -bottom-1 -right-1 bg-orange-600 rounded-full w-5 h-5 items-center justify-center">
                       <Text className="text-white text-xs font-black">✓</Text>

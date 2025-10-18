@@ -35,7 +35,7 @@ class ApiService {
         errorText = `HTTP ${response.status} ${response.statusText}`;
       }
 
-      console.log(`Error response: ${errorText}`);
+      console.log(`Error response: ${errorText} | failed endpoint: ${endpoint}`);
 
       if (response.status === 404) {
         throw new Error("USER_NOT_FOUND");
@@ -54,7 +54,7 @@ class ApiService {
     }
   }
 
-  async fetchUser(token: string, retries = 3): Promise<UserData> {
+  async fetchUser(token: string, retries = 5): Promise<UserData> {
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         console.log(`Fetch user attempt ${attempt + 1}/${retries + 1}`);
@@ -121,6 +121,7 @@ class ApiService {
     data: AddDrinkingRequest,
     token: string
   ): Promise<{ message: string }> {
+    console.log(data, token)
     return this.makeRequest<{ message: string }>("/api/v1/user/drink", {
       method: "POST",
       token,
@@ -192,53 +193,55 @@ class ApiService {
     return this.getCalendar(now.getFullYear(), now.getMonth() + 1, token);
   }
   async getFriends(token: string): Promise<UserData[]> {
-    const response = await this.makeRequest<{ friends: UserData[] }>(
+    const response = await this.makeRequest<UserData[]>(
       "/api/v1/user/friends",
       {
         method: "GET",
         token,
       }
     );
+    console.log("rr",response)
 
-    return response.friends || [];
+    // return response.friends || [];
+    return response || [];
   }
 
-  async sendFriendRequest(
-    friendUsername: string,
+  async addFriend(
+    friendId: string,
     token: string
   ): Promise<Friendship> {
-    return this.makeRequest<Friendship>("/api/v1/user/friends/request", {
+    return this.makeRequest<Friendship>("/api/v1/user/friends", {
       method: "POST",
       token,
-      body: JSON.stringify({ username: friendUsername }),
+      body: JSON.stringify({ friendId: friendId }),
     });
   }
 
-  async acceptFriendRequest(
-    friendshipId: string,
-    token: string
-  ): Promise<Friendship> {
-    return this.makeRequest<Friendship>(
-      `/api/v1/user/friends/request/${friendshipId}/accept`,
-      {
-        method: "POST",
-        token,
-      }
-    );
-  }
+  // async acceptFriendRequest(
+  //   friendshipId: string,
+  //   token: string
+  // ): Promise<Friendship> {
+  //   return this.makeRequest<Friendship>(
+  //     `/api/v1/user/friends/request/${friendshipId}/accept`,
+  //     {
+  //       method: "POST",
+  //       token,
+  //     }
+  //   );
+  // }
 
-  async rejectFriendRequest(
-    friendshipId: string,
-    token: string
-  ): Promise<void> {
-    return this.makeRequest<void>(
-      `/api/v1/user/friends/request/${friendshipId}/reject`,
-      {
-        method: "POST",
-        token,
-      }
-    );
-  }
+  // async rejectFriendRequest(
+  //   friendshipId: string,
+  //   token: string
+  // ): Promise<void> {
+  //   return this.makeRequest<void>(
+  //     `/api/v1/user/friends/request/${friendshipId}/reject`,
+  //     {
+  //       method: "POST",
+  //       token,
+  //     }
+  //   );
+  // }
 
   async removeFriend(friendId: string, token: string): Promise<void> {
     return this.makeRequest<void>(`/api/v1/user/friends/${friendId}`, {
@@ -247,17 +250,17 @@ class ApiService {
     });
   }
 
-  async getPendingFriendRequests(token: string): Promise<FriendRequest[]> {
-    const response = await this.makeRequest<{ requests: FriendRequest[] }>(
-      "/api/v1/user/friends/requests/pending",
-      {
-        method: "GET",
-        token,
-      }
-    );
+  // async getPendingFriendRequests(token: string): Promise<FriendRequest[]> {
+  //   const response = await this.makeRequest<{ requests: FriendRequest[] }>(
+  //     "/api/v1/user/friends/requests/pending",
+  //     {
+  //       method: "GET",
+  //       token,
+  //     }
+  //   );
 
-    return response.requests || [];
-  }
+  //   return response.requests || [];
+  // }
 
   async getStreak(token: string): Promise<{
     current_streak: number;
