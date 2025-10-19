@@ -11,7 +11,6 @@ export default function AddDrinksScreenV3() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0);
   const [isHolding, setIsHolding] = useState(false);
-  let holdTimer: NodeJS.Timeout;
   let progressInterval: ReturnType<typeof setInterval>;
 
   const logToday = async () => {

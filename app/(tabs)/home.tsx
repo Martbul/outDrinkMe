@@ -1,4 +1,5 @@
 import { Header } from "@/components/header";
+import ThisWeekGadget from "@/components/thisWeekGadget";
 import { useApp } from "@/providers/AppProvider";
 import React, { useState } from "react";
 import {
@@ -22,7 +23,6 @@ export default function HomeScreen() {
     addDrinking,
     isLoading,
   } = useApp();
-  console.log(userData);
 
   // Get rank badge info based on achievements
   const getRankInfo = () => {
@@ -52,24 +52,6 @@ export default function HomeScreen() {
   };
 
   const rankInfo = getRankInfo();
-
-  // Calculate week progress
-  const weekProgress = weeklyStats
-    ? (weeklyStats.days_drank / weeklyStats.total_days) * 100
-    : 0;
-
-  // Get days of week status (assuming week starts Monday)
-  const getWeekDays = () => {
-    const days = ["M", "T", "W", "T", "F", "S", "S"];
-    const daysLogged = weeklyStats?.days_drank || 0;
-
-    return days.map((day, index) => ({
-      day,
-      active: index < daysLogged,
-    }));
-  };
-
-  const weekDays = getWeekDays();
 
   const handleLogToday = async () => {
     if (userStats?.today_status) {
@@ -160,41 +142,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* This Week Stats */}
-        <View style={styles.card}>
-          <Text style={styles.cardLabel}>THIS WEEK</Text>
-
-          <View style={styles.progressSection}>
-            <View style={styles.progressHeader}>
-              <Text style={styles.progressValue}>
-                {weeklyStats?.days_drank || 0}/{weeklyStats?.total_days || 7}
-              </Text>
-              <Text style={styles.progressLabel}>Days Logged</Text>
-            </View>
-            <View style={styles.progressBarContainer}>
-              <View
-                style={[styles.progressBar, { width: `${weekProgress}%` }]}
-              />
-            </View>
-          </View>
-
-          {/* Week Grid */}
-          <View style={styles.weekGrid}>
-            {weekDays.map((item, index) => (
-              <View key={index} style={styles.dayContainer}>
-                <View
-                  style={[
-                    styles.dayBox,
-                    item.active ? styles.dayBoxActive : styles.dayBoxInactive,
-                  ]}
-                >
-                  {item.active && <Text style={styles.checkmark}>✓</Text>}
-                </View>
-                <Text style={styles.dayLabel}>{item.day}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
+        <ThisWeekGadget />
 
         {/* Quick Stats Grid */}
         <View style={styles.statsGrid}>

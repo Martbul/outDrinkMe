@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, TouchableOpacity, Image } from "react-native";
 import { useApp } from "@/providers/AppProvider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { router } from "expo-router";
 
 
 export const Header = () => {
@@ -23,17 +24,21 @@ export const Header = () => {
   };
 
 
-  return (
+  return (          
+
     <View className="bg-black" style={{ paddingTop: insets.top }}>
       {/* Profile and Stats Bar */}
       <View className="flex-row justify-between items-center px-4 py-4">
         {/* Avatar and Level */}
         <View className="flex-row items-center flex-1">
           {userData?.imageUrl ? (
-            <Image 
+            <TouchableOpacity onPress={() => router.push("/(screens)/userProfile")}>
+               <Image 
               source={{ uri: userData.imageUrl }} 
               className="w-14 h-14 rounded-full border-3 border-white"
             />
+            </TouchableOpacity>
+           
           ) : (
             <View className="w-14 h-14 rounded-full bg-orange-600 justify-center items-center border-3 border-white">
               <Text className="text-white text-xl font-black">
@@ -82,56 +87,6 @@ export const Header = () => {
           </View>
         </View>
       </View>
-
-      {/* <View className="flex-row px-4 border-b border-white/10 mt-2">
-        <TouchableOpacity
-          className="flex-1 py-3.5 items-center relative"
-          onPress={() => handleTabPress("forYou")}
-        >
-          <Text
-            className={`text-[15px] font-semibold ${
-              activeTab === "forYou" ? "text-orange-600" : "text-white/40"
-            }`}
-          >
-            For You
-          </Text>
-          {activeTab === "forYou" && (
-            <View className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-600 rounded-t" />
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          className="flex-1 py-3.5 items-center relative"
-          onPress={() => handleTabPress("friends")}
-        >
-          <Text
-            className={`text-[15px] font-semibold ${
-              activeTab === "friends" ? "text-orange-600" : "text-white/40"
-            }`}
-          >
-            Friends
-          </Text>
-          {activeTab === "friends" && (
-            <View className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-600 rounded-t" />
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          className="flex-1 py-3.5 items-center relative"
-          onPress={() => handleTabPress("discovery")}
-        >
-          <Text
-            className={`text-[15px] font-semibold ${
-              activeTab === "discovery" ? "text-orange-600" : "text-white/40"
-            }`}
-          >
-            Discovery
-          </Text>
-          {activeTab === "discovery" && (
-            <View className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-600 rounded-t" />
-          )}
-        </TouchableOpacity>
-      </View> */}
     </View>
   );
 };
