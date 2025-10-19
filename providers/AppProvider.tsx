@@ -17,6 +17,7 @@ import {
   UserData,
 } from "../types/api.types";
 import { apiService } from "@/api";
+import { Alert } from "react-native";
 
 interface AppContextType {
   // Data
@@ -41,6 +42,8 @@ interface AppContextType {
   // Actions
   addDrinking: (drankToday: boolean) => Promise<void>;
   addFriend: (friendId: string) => Promise<void>;
+  searchUsers: (searchQuery: string) => Promise<UserData[]>;
+  updateUserProfile: any;
 
   // Global State
   isLoading: boolean;
@@ -305,8 +308,39 @@ export function AppProvider({ children }: AppProviderProps) {
     [isSignedIn, getToken, withLoadingAndError]
   );
 
+const searchUsers = useCallback(
+  async (searchQuery: string): Promise<UserData[]> => {
+    if (!searchQuery.trim()) {
+      Alert.alert("Error", "Please enter a username to search");
+      return [];
+    }
+
+    if (!isSignedIn) {
+      throw new Error("Must be signed in to search friends");
+    }
+
+    const result = await withLoadingAndError(async () => {
+      const token = await getToken();
+      if (!token) throw new Error("No auth token");
+
+      const users = await apiService.searchUsers(searchQuery, token);
+      return users;
+    });
+
+    return result || [];
+  },
+  [isSignedIn, getToken, withLoadingAndError]
+);
+  
+  
+  const updateUserProfile = useCallback(
+    async (updateReq: any): Promise<any> => {},
+    [isSignedIn, getToken, withLoadingAndError]
+  );
+
+  
   // ============================================
-  // Initial Load - FIXED to prevent infinite loop
+  // Initial Load 
   // ============================================
 
   useEffect(() => {
@@ -354,6 +388,8 @@ export function AppProvider({ children }: AppProviderProps) {
     // Actions
     addDrinking,
     addFriend,
+    searchUsers,
+    updateUserProfile,
 
     // Global State
     isLoading,

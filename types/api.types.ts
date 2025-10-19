@@ -8,6 +8,9 @@ export interface UserData {
   imageUrl?: string;
   created_at: string;
   updated_at: string;
+  gems: number;
+	xp: number;
+	allDaysDrinkingCount: number;
 }
 
 export interface LeaderboardEntry {

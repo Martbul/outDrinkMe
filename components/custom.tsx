@@ -86,7 +86,7 @@ export const ClickableCard = ({
     <View
       className={`w-10 h-10 bg-containerBg rounded-2xl flex items-center justify-center ${arrowBoxClassName} `}
     >
-      <AntDesign name="arrowright" size={arrowSize} color="#6B7280" />
+      <AntDesign name="arrow-right" size={arrowSize} color="#6B7280" />
     </View>
   </TouchableOpacity>
 );
