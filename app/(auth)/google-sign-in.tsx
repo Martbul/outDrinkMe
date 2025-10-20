@@ -3,23 +3,23 @@ import {
   Text,
   TouchableOpacity,
   View,
-  StyleSheet,
   ActivityIndicator,
   Alert,
+  Image,
 } from "react-native";
 import { useOAuth } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-// This is required for the OAuth flow to work properly
 WebBrowser.maybeCompleteAuthSession();
 
-export default function GoogleSignInScreen() {
+export default function SignInScreen() {
   const router = useRouter();
   const [isLoading, setIsLoading] = React.useState(false);
+  const insets = useSafeAreaInsets();
 
-  // useOAuth hook for Google
   const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
 
   const onGoogleSignIn = React.useCallback(async () => {
@@ -28,165 +28,82 @@ export default function GoogleSignInScreen() {
     try {
       setIsLoading(true);
 
-      // Start the OAuth flow
-      const { createdSessionId, signIn, signUp, setActive } =
-        await startOAuthFlow({
-          redirectUrl: Linking.createURL("/oauth-native-callback", {
-            scheme: "outdrinkme",
-          }),
-        });
+      const { createdSessionId, setActive } = await startOAuthFlow({
+        redirectUrl: Linking.createURL("/oauth-native-callback", {
+          scheme: "outdrinkme",
+        }),
+      });
 
-      // If sign in was successful, set the active session
       if (createdSessionId) {
         await setActive!({ session: createdSessionId });
-
-        // Navigate to home or onboarding
         router.replace("/(tabs)/add");
-      } else {
-        // Handle user cancellation or incomplete OAuth
-        console.log("OAuth flow not completed");
       }
     } catch (err: any) {
-      console.error("OAuth error:", JSON.stringify(err, null, 2));
-
-      // Handle specific error cases
-      if (err.errors && err.errors.length > 0) {
-        Alert.alert(
-          "Sign In Error",
-          err.errors[0]?.longMessage ||
-            err.errors[0]?.message ||
-            "Failed to sign in with Google"
-        );
-      } else if (err.message) {
-        Alert.alert("Sign In Error", err.message);
-      } else {
-        Alert.alert(
-          "Sign In Error",
-          "An unexpected error occurred. Please try again."
-        );
-      }
+      console.error("OAuth error:", err);
+      Alert.alert(
+        "Sign In Error",
+        err.errors?.[0]?.message || "Failed to sign in with Google"
+      );
     } finally {
       setIsLoading(false);
     }
   }, [isLoading, startOAuthFlow, router]);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.content}>
-        {/* App Logo/Title */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Welcome</Text>
-          <Text style={styles.subtitle}>Sign in to continue</Text>
-        </View>
+    <View
+      className="flex-1 bg-black px-6 justify-center items-center"
+      style={{
+        paddingTop: insets.top + 20,
+        paddingBottom: insets.bottom + 20,
+      }}
+    >
+      <View className="items-center mb-16">
+        {/* App Name */}
+        <Text className="text-white text-4xl font-black mb-2">OutDrinkMe</Text>
+        <Text className="text-gray-500 text-base mb-12">
+          Sign in to start tracking
+        </Text>
 
-        {/* Google Sign In Button */}
-        <TouchableOpacity
-          style={[styles.googleButton, isLoading && styles.buttonDisabled]}
-          onPress={onGoogleSignIn}
-          disabled={isLoading}
-          activeOpacity={0.8}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <>
-              {/* Google Icon */}
-              <View style={styles.googleIcon}>
-                <Text style={styles.googleIconText}>G</Text>
-              </View>
-              <Text style={styles.buttonText}>Continue with Google</Text>
-            </>
-          )}
-        </TouchableOpacity>
-
-        {/* Optional: Terms and Privacy */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            By continuing, you agree to our{" "}
-            <Text style={styles.link}>Terms of Service</Text> and{" "}
-            <Text style={styles.link}>Privacy Policy</Text>
-          </Text>
+        {/* Sign In Illustration */}
+        <View className="w-32 h-32 rounded-full bg-gray-900 border-2 border-gray-800 items-center justify-center mb-12">
+          <Image
+            source={require("../../assets/images/icon.png")}
+            className="w-56 h-56 rounded-full border-3 border-white"
+          />
         </View>
+      </View>
+
+      {/* Google Sign In Button */}
+      <TouchableOpacity
+        onPress={onGoogleSignIn}
+        disabled={isLoading}
+        className="bg-[#ff8c00] rounded-2xl py-5 px-8 flex-row items-center justify-center w-full max-w-sm shadow-lg mb-4"
+      >
+        {isLoading ? (
+          <ActivityIndicator color="#000" />
+        ) : (
+          <>
+            <View className="w-8 h-8 bg-[#ff8c00] rounded items-center justify-center mr-4">
+              <Text className="text-2xl">G</Text>
+            </View>
+            <Text className="text-black text-base font-bold">
+              Continue with Google
+            </Text>
+          </>
+        )}
+      </TouchableOpacity>
+
+      {/* Terms */}
+      <View className="mt-12 px-8">
+        <Text className="text-gray-600 text-xs text-center leading-5">
+          By continuing, you agree to our{" "}
+          <Text className="text-orange-500 font-semibold">
+            Terms of Service
+          </Text>{" "}
+          and{" "}
+          <Text className="text-orange-500 font-semibold">Privacy Policy</Text>
+        </Text>
       </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
-  content: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 24,
-  },
-  header: {
-    alignItems: "center",
-    marginBottom: 48,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "#000",
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: "#666",
-  },
-  googleButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#4285F4",
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    width: "100%",
-    maxWidth: 320,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  googleIcon: {
-    width: 24,
-    height: 24,
-    backgroundColor: "#fff",
-    borderRadius: 4,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-  },
-  googleIconText: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#4285F4",
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  footer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  footerText: {
-    fontSize: 12,
-    color: "#999",
-    textAlign: "center",
-    lineHeight: 18,
-  },
-  link: {
-    color: "#4285F4",
-    fontWeight: "600",
-  },
-});
