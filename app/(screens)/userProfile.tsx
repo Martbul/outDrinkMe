@@ -3,6 +3,7 @@ import ThisWeekGadget from "@/components/thisWeekGadget";
 import { useApp } from "@/providers/AppProvider";
 import { View, Text, TouchableOpacity, ScrollView, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import LogoutButton from "@/components/logoutButton";
 
 const ACHIEVEMENT_IMAGES = {
   lightning: require("../../assets/images/achievements/lightning.png"),
@@ -149,10 +150,7 @@ export default function UserProfileScreen() {
         </View>
 
         <View className="px-4">
-          <TouchableOpacity className="bg-red-900/20 rounded-2xl p-5 border border-red-900/50 flex-row justify-between items-center">
-            <Text className="text-red-500 font-bold">Logout</Text>
-            <Text className="text-red-500">→</Text>
-          </TouchableOpacity>
+          <LogoutButton/>
         </View>
       </ScrollView>
     </View>
