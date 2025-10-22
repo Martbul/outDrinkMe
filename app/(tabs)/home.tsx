@@ -1,6 +1,7 @@
 import { Header } from "@/components/header";
 import ThisWeekGadget from "@/components/thisWeekGadget";
 import { useApp } from "@/providers/AppProvider";
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   ScrollView,
@@ -23,8 +24,8 @@ export default function HomeScreen() {
     addDrinking,
     isLoading,
   } = useApp();
+  const router = useRouter();
 
-  // Get rank badge info based on achievements
   const getRankInfo = () => {
     if (!userStats) return { level: 0, title: "NEWBIE", maxLevel: 10 };
 
@@ -53,45 +54,6 @@ export default function HomeScreen() {
 
   const rankInfo = getRankInfo();
 
-  const handleLogToday = async () => {
-    if (userStats?.today_status) {
-      Alert.alert(
-        "Already Logged",
-        "You've already logged your drinking for today!",
-        [{ text: "OK" }]
-      );
-      return;
-    }
-
-    Alert.alert("Log Today", "Did you drink today?", [
-      {
-        text: "Cancel",
-        style: "cancel",
-      },
-      {
-        text: "No",
-        onPress: async () => {
-          try {
-            await addDrinking(false);
-            Alert.alert("Success", "Logged as not drinking today");
-          } catch (error) {
-            Alert.alert("Error", "Failed to log. Please try again.");
-          }
-        },
-      },
-      {
-        text: "Yes",
-        onPress: async () => {
-          try {
-            await addDrinking(true);
-            Alert.alert("Success", "Great job! Keep the streak going! 🔥");
-          } catch (error) {
-            Alert.alert("Error", "Failed to log. Please try again.");
-          }
-        },
-      },
-    ]);
-  };
 
   if (isLoading && !userStats) {
     return (
@@ -121,7 +83,7 @@ export default function HomeScreen() {
           </View>
           <Text style={styles.rankTitle}>{rankInfo.title}</Text>
           <Text style={styles.rankSubtitle}>
-            RANK {rankInfo.level}/{rankInfo.maxLevel}
+            Level {rankInfo.level}/{rankInfo.maxLevel}
           </Text>
         </View>
 
@@ -215,14 +177,16 @@ export default function HomeScreen() {
             styles.logButton,
             userStats?.today_status && styles.logButtonDisabled,
           ]}
-          onPress={handleLogToday}
+          onPress={() => router.push("/(tabs)/add")}
           disabled={isLoading}
         >
           {isLoading ? (
             <ActivityIndicator color="#000000" />
           ) : (
             <Text style={styles.logButtonText}>
-              {userStats?.today_status ? "✓ LOGGED TODAY" : "LOG TODAY"}
+              {userStats?.today_status
+                ? "✓ CONGRATS MY ALCOHOLIC  "
+                : "DRINK TODAY"}
             </Text>
           )}
         </TouchableOpacity>

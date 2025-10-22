@@ -1,4 +1,4 @@
-import { Achievement, AddDrinkingRequest, CalendarResponse, DaysStat, FriendRequest, Friendship, Leaderboard, LeaderboardEntry, UserData, UserStats } from "./types/api.types";
+import { Achievement, AddDrinkingRequest, CalendarResponse, DaysStat, FriendRequest, Friendship, Leaderboard, LeaderboardEntry, UpdateUserProfileReq, UserData, UserStats } from "./types/api.types";
 
 class ApiService {
   private baseUrl: string;
@@ -35,7 +35,9 @@ class ApiService {
         errorText = `HTTP ${response.status} ${response.statusText}`;
       }
 
-      console.log(`Error response: ${errorText} | failed endpoint: ${endpoint}`);
+      console.log(
+        `Error response: ${errorText} | failed endpoint: ${endpoint}`
+      );
 
       if (response.status === 404) {
         throw new Error("USER_NOT_FOUND");
@@ -92,6 +94,17 @@ class ApiService {
     });
   }
 
+  async updateUserProfile(
+    updateReq: UpdateUserProfileReq,
+    token: string
+  ): Promise<UserData> {
+    return this.makeRequest<UserData>("/api/v1/user/update-profile", {
+      method: "PUT",
+      token,
+      body: JSON.stringify(updateReq),
+    });
+  }
+
   async deleteUser(token: string): Promise<void> {
     return this.makeRequest<void>("/api/v1/user", {
       method: "DELETE",
@@ -121,7 +134,7 @@ class ApiService {
     data: AddDrinkingRequest,
     token: string
   ): Promise<{ message: string }> {
-    console.log(data, token)
+    console.log(data, token);
     return this.makeRequest<{ message: string }>("/api/v1/user/drink", {
       method: "POST",
       token,
@@ -200,20 +213,25 @@ class ApiService {
         token,
       }
     );
-    console.log("rr",response)
+    console.log("rr", response);
 
     // return response.friends || [];
     return response || [];
   }
 
-  async addFriend(
-    friendId: string,
-    token: string
-  ): Promise<Friendship> {
+  async addFriend(friendId: string, token: string): Promise<Friendship> {
     return this.makeRequest<Friendship>("/api/v1/user/friends", {
       method: "POST",
       token,
       body: JSON.stringify({ friendId: friendId }),
+    });
+  }
+
+  async updateUserGems(gems: number, token: string): Promise<UserData> {
+    return this.makeRequest<UserData>("/api/v1/user/gems-reward", {
+      method: "PUT",
+      token,
+      body: JSON.stringify({ gems }),
     });
   }
 

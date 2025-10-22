@@ -16,8 +16,7 @@ export interface UserData {
 export interface LeaderboardEntry {
   user_id: string;
   username: string;
-  display_name?: string;
-  avatar_url?: string;
+  imageUrl?: string;
   days_this_week: number;
   rank: number;
   current_streak: number;
@@ -63,7 +62,7 @@ export interface UserStats {
   total_weeks_won: number;
   achievements_count: number;
   friends_count: number;
-  rank: number;
+  alcoholism_coefficient: number;
 }
 
 export interface CalendarDay {
@@ -101,9 +100,10 @@ export interface AddDrinkingRequest {
   drank_today: boolean;
 }
 
-export interface UpdateProfileRequest {
+export interface UpdateUserProfileReq {
   username?: string;
-  first_name?: string;
-  last_name?: string;
-  image_url?: string;
+  firstName?: string;
+  lastName?: string;
+  imageUrl?: string;
 }
+

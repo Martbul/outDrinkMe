@@ -1,15 +1,38 @@
-import { Tabs } from "expo-router";
+import { Tabs, Redirect } from "expo-router";
 import { StatusBar, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { useAuth } from "@clerk/clerk-expo";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import Octicons from "@expo/vector-icons/Octicons";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Feather } from "@expo/vector-icons";
+import SplashScreen from "@/components/spashScreen";
+import { useApp } from "@/providers/AppProvider";
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+  const { isSignedIn, isLoaded } = useAuth();
+  const [isReady, setIsReady] = useState(false);
+  const { isInitialLoading } = useApp();
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsReady(true);
+    }, 1500); 
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!isLoaded || !isReady || isInitialLoading) {
+    return <SplashScreen />;
+  }
+
+  if (!isSignedIn) {
+    return <Redirect href="/(auth)/google-sign-in" />;
+  }
+
   return (
     <>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
@@ -42,7 +65,13 @@ export default function TabLayout() {
           options={{
             title: "Home",
             tabBarIcon: ({ focused }) => (
-              <View style={{ alignItems: "center", justifyContent: "center", opacity: focused ? 1 : 0.5 }}>
+              <View
+                style={{
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: focused ? 1 : 0.5,
+                }}
+              >
                 <AntDesign name="home" size={24} color="#ff8c00" />
               </View>
             ),
@@ -53,7 +82,13 @@ export default function TabLayout() {
           options={{
             title: "Friends",
             tabBarIcon: ({ focused }) => (
-              <View style={{ alignItems: "center", justifyContent: "center", opacity: focused ? 1 : 0.5 }}>
+              <View
+                style={{
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: focused ? 1 : 0.5,
+                }}
+              >
                 <Feather name="users" size={28} color="#ff8c00" />
               </View>
             ),
@@ -64,7 +99,13 @@ export default function TabLayout() {
           options={{
             title: "Add",
             tabBarIcon: ({ focused }) => (
-              <View style={{ alignItems: "center", justifyContent: "center", opacity: focused ? 1 : 0.5 }}>
+              <View
+                style={{
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: focused ? 1 : 0.5,
+                }}
+              >
                 <MaterialIcons
                   name="add-circle-outline"
                   size={30}
@@ -79,7 +120,13 @@ export default function TabLayout() {
           options={{
             title: "Awards",
             tabBarIcon: ({ focused }) => (
-              <View style={{ alignItems: "center", justifyContent: "center", opacity: focused ? 1 : 0.5 }}>
+              <View
+                style={{
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: focused ? 1 : 0.5,
+                }}
+              >
                 <Octicons name="trophy" size={24} color="#ff8c00" />
               </View>
             ),
@@ -90,7 +137,13 @@ export default function TabLayout() {
           options={{
             title: "Calendar",
             tabBarIcon: ({ focused }) => (
-              <View style={{ alignItems: "center", justifyContent: "center", opacity: focused ? 1 : 0.5 }}>
+              <View
+                style={{
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: focused ? 1 : 0.5,
+                }}
+              >
                 <FontAwesome name="calendar" size={24} color="#ff8c00" />
               </View>
             ),

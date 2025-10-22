@@ -7,57 +7,53 @@ import {
   ScrollView,
   Image,
   TextInput,
-  ActivityIndicator,
   StatusBar,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import SecondaryHeader from "@/components/secondaryHeader";
+import { useRouter } from "expo-router";
 
 export default function EditProfileScreen() {
-  const { userData, updateUserProfile } = useApp();
+  const { userData, updateUserProfile, } = useApp();
   const insets = useSafeAreaInsets();
   const [isLoading, setIsLoading] = useState(false);
-
+const router = useRouter()
   const [formData, setFormData] = useState({
+    username: userData?.username || "",
     firstName: userData?.firstName || "",
     lastName: userData?.lastName || "",
-    email: userData?.email || "",
-    username: userData?.username || "",
+    imageUrl: userData?.imageUrl || "",
   });
 
   const handleSave = async () => {
     setIsLoading(true);
     try {
       await updateUserProfile(formData);
-      // Navigate back or show success message
     } catch (error) {
       console.error("Failed to update profile:", error);
     } finally {
       setIsLoading(false);
+      router.push("/(screens)/userProfile")
     }
   };
 
   const hasChanges =
+    formData.username !== userData?.username ||
     formData.firstName !== userData?.firstName ||
     formData.lastName !== userData?.lastName ||
-    formData.email !== userData?.email ||
-    formData.username !== userData?.username;
-
+    formData.imageUrl !== userData?.imageUrl;
+  
+  
   return (
-    <View className="flex-1 bg-black">
+    <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
 
       {/* Header */}
-      <View
-        className="px-4 border-b border-white/[0.08]"
-        style={{ paddingTop: insets.top + 16, paddingBottom: 16 }}
-      >
-        <Text className="text-white text-2xl font-black mb-1">
-          Edit Profile
-        </Text>
-        <Text className="text-white/50 text-sm">
-          Update your personal information
-        </Text>
-      </View>
+      <SecondaryHeader
+        title="Edit Profile"
+        secondActionTitle={hasChanges && !isLoading ? "Save" : undefined}
+        secondOnPressAction={hasChanges ? handleSave : undefined}
+      />
 
       <ScrollView
         className="flex-1 px-4 pt-6"
@@ -68,21 +64,34 @@ export default function EditProfileScreen() {
           <View className="relative">
             <View className="w-32 h-32 rounded-full bg-orange-600 items-center justify-center border-4 border-black">
               <Image
-                source={{ uri: userData?.imageUrl }}
+                source={{ uri: formData?.imageUrl }}
                 className="w-32 h-32 rounded-full border-3 border-white"
               />
             </View>
-            <TouchableOpacity className="absolute bottom-0 right-0 w-10 h-10 rounded-full bg-orange-600 items-center justify-center border-2 border-black">
-              <Text className="text-black text-lg font-black">📷</Text>
-            </TouchableOpacity>
+           {/* TODO: Add a image changer  */}
+            {/* <TouchableOpacity className="absolute bottom-0 right-0 w-10 h-10 rounded-full bg-black items-center justify-center border-2 border-black">
+              <Feather name="image" size={24} color="#ff8c00" />
+            </TouchableOpacity> */}
           </View>
-          <Text className="text-white/50 text-xs mt-3">
-            Tap to change profile photo
-          </Text>
         </View>
 
         {/* Form Fields */}
         <View className="gap-4 mb-6">
+          <View>
+            <Text className="text-white/50 text-[11px] font-bold tracking-widest uppercase mb-2">
+              Username
+            </Text>
+            <TextInput
+              value={formData.username}
+              onChangeText={(text) =>
+                setFormData({ ...formData, username: text })
+              }
+              placeholder="Enter username"
+              placeholderTextColor="#6B7280"
+              autoCapitalize="none"
+              className="bg-white/[0.03] border border-white/[0.08] rounded-2xl px-4 py-4 text-white text-base"
+            />
+          </View>
           {/* First Name */}
           <View>
             <Text className="text-white/50 text-[11px] font-bold tracking-widest uppercase mb-2">
@@ -115,37 +124,13 @@ export default function EditProfileScreen() {
             />
           </View>
 
-          {/* Username */}
-          <View>
-            <Text className="text-white/50 text-[11px] font-bold tracking-widest uppercase mb-2">
-              Username
-            </Text>
-            <TextInput
-              value={formData.username}
-              onChangeText={(text) =>
-                setFormData({ ...formData, username: text })
-              }
-              placeholder="Enter username"
-              placeholderTextColor="#6B7280"
-              autoCapitalize="none"
-              className="bg-white/[0.03] border border-white/[0.08] rounded-2xl px-4 py-4 text-white text-base"
-            />
-          </View>
-
-          {/* Email */}
           <View>
             <Text className="text-white/50 text-[11px] font-bold tracking-widest uppercase mb-2">
               Email
             </Text>
-            <TextInput
-              value={formData.email}
-              onChangeText={(text) => setFormData({ ...formData, email: text })}
-              placeholder="Enter email"
-              placeholderTextColor="#6B7280"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              className="bg-white/[0.03] border border-white/[0.08] rounded-2xl px-4 py-4 text-white text-base"
-            />
+            <Text className="bg-white/[0.03] border border-white/[0.08] rounded-2xl px-4 py-4 text-white text-base">
+              {userData?.email}
+            </Text>
           </View>
         </View>
 
@@ -161,17 +146,23 @@ export default function EditProfileScreen() {
             </Text>
             <Text className="text-white/50">→</Text>
           </TouchableOpacity>
+        </View>
+
+        <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08] mb-6">
+          <Text className="text-white/50 text-[11px] font-bold tracking-widest uppercase mb-4">
+            Terms
+          </Text>
 
           <TouchableOpacity className="flex-row justify-between items-center py-3 border-b border-white/[0.05]">
             <Text className="text-white text-base font-semibold">
-              Privacy Settings
+              Privacy Policy
             </Text>
             <Text className="text-white/50">→</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity className="flex-row justify-between items-center py-3">
+          <TouchableOpacity className="flex-row justify-between items-center py-3 border-b border-white/[0.05]">
             <Text className="text-white text-base font-semibold">
-              Notification Preferences
+              Terms of Service
             </Text>
             <Text className="text-white/50">→</Text>
           </TouchableOpacity>
@@ -193,32 +184,6 @@ export default function EditProfileScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
-
-      {/* Save Button - Fixed at bottom */}
-      <View
-        className="px-4 py-4 border-t border-white/[0.08] bg-black"
-        style={{ paddingBottom: insets.bottom + 16 }}
-      >
-        <TouchableOpacity
-          onPress={handleSave}
-          disabled={!hasChanges || isLoading}
-          className={`rounded-2xl py-4 items-center ${
-            hasChanges && !isLoading ? "bg-orange-600" : "bg-white/[0.05]"
-          }`}
-        >
-          {isLoading ? (
-            <ActivityIndicator size="small" color="#000" />
-          ) : (
-            <Text
-              className={`font-black uppercase tracking-widest text-sm ${
-                hasChanges ? "text-black" : "text-white/30"
-              }`}
-            >
-              Save Changes
-            </Text>
-          )}
-        </TouchableOpacity>
-      </View>
     </View>
   );
 }
