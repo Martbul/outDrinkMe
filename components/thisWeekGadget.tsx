@@ -31,7 +31,7 @@ export default function ThisWeekGadget() {
             {weeklyStats?.days_drank || 0}/{weeklyStats?.total_days || 7}
           </Text>
           <Text className="text-white/50 text-[13px] font-semibold">
-            Days Logged
+            Drunk Days
           </Text>
         </View>
         <View className="w-full h-2 bg-white/[0.08] rounded overflow-hidden">

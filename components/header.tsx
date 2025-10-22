@@ -1,18 +1,18 @@
-import React from "react";
-import { View, Text, TouchableOpacity, Image } from "react-native";
+import React, { useState } from "react";
+import { View, Text, TouchableOpacity, Image, Alert } from "react-native";
 import { useApp } from "@/providers/AppProvider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { getLevelInfo } from "@/utils/levels";
+import AdRewardModal from "./AdRewardModal";
 
 export const Header = () => {
-  const { userData, userStats } = useApp();
+  const { userData, userStats, updateUserProfile } = useApp();
+  const [showAdModal, setShowAdModal] = useState(false);
+
+  const levelInfo = getLevelInfo(userData?.xp);
   const insets = useSafeAreaInsets();
 
-  // Calculate level and progress using the new level system
-  const levelInfo = getLevelInfo(userData?.xp);
-
-  // Get user initials
   const getInitials = () => {
     if (!userData) return "??";
     const first = userData.firstName?.[0] || "";
@@ -20,8 +20,40 @@ export const Header = () => {
     return (first + last).toUpperCase() || "??";
   };
 
+  const handleEarnGems = () => {
+    setShowAdModal(true);
+  };
+
+  const handleRewardEarned = async (gemAmount: number) => {
+    try {
+      // Update user gems in your backend
+      const newGemCount = (userData?.gems || 0) + gemAmount;
+
+      // Call your API to update gems
+      // await updateUserProfile({ gems: newGemCount });
+
+      Alert.alert("Gems Earned! 💎", `You earned ${gemAmount} gems!`, [
+        { text: "Awesome!", style: "default" },
+      ]);
+
+      setShowAdModal(false);
+    } catch (error) {
+      console.error("Failed to update gems:", error);
+      Alert.alert("Error", "Failed to award gems. Please try again.");
+      setShowAdModal(false);
+    }
+  };
+
   return (
     <View className="bg-black" style={{ paddingTop: insets.top }}>
+      {/* Rewarded Ad Modal */}
+      {showAdModal && (
+        <AdRewardModal
+          onClose={() => setShowAdModal(false)}
+          onRewardEarned={handleRewardEarned}
+        />
+      )}
+
       {/* Profile and Stats Bar */}
       <View className="flex-row justify-between items-center px-4 py-4">
         {/* Avatar and Level */}
@@ -57,7 +89,6 @@ export const Header = () => {
           </View>
         </View>
 
-        {/* Stats */}
         <View className="flex-row items-center gap-4">
           {/* Streak */}
           <View className="flex-row items-center gap-1.5 bg-white/5 px-3 py-2 rounded-full">
@@ -67,11 +98,15 @@ export const Header = () => {
             </Text>
           </View>
 
-          {/* Achievements */}
-          <View className="flex-row items-center gap-1.5 bg-white/5 px-3 py-2 rounded-full">
+          {/* Gems - Click to earn more */}
+          <TouchableOpacity
+            className="flex-row items-center gap-1.5 bg-white/5 px-3 py-2 rounded-full"
+            onPress={handleEarnGems}
+          >
             <View className="relative">
               <Text className="text-xl">💎</Text>
 
+              {/* Plus badge to indicate you can earn more */}
               <View className="absolute -bottom-0.5 -right-0.5 bg-orange-600 w-3 h-3 rounded-full justify-center items-center">
                 <Text className="text-white text-[8px] font-black">+</Text>
               </View>
@@ -79,7 +114,7 @@ export const Header = () => {
             <Text className="text-white text-base font-bold">
               {userData?.gems || 0}
             </Text>
-          </View>
+          </TouchableOpacity>
         </View>
       </View>
     </View>

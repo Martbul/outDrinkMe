@@ -15,6 +15,7 @@ import {
   CalendarResponse,
   DaysStat,
   UserData,
+  UpdateUserProfileReq,
 } from "../types/api.types";
 import { apiService } from "@/api";
 import { Alert } from "react-native";
@@ -43,10 +44,11 @@ interface AppContextType {
   addDrinking: (drankToday: boolean) => Promise<void>;
   addFriend: (friendId: string) => Promise<void>;
   searchUsers: (searchQuery: string) => Promise<UserData[]>;
-  updateUserProfile: any;
+  updateUserProfile: (updateReq: UpdateUserProfileReq) => Promise<any>;
 
   // Global State
   isLoading: boolean;
+  isInitialLoading: boolean;
   error: string | null;
 }
 
@@ -67,6 +69,7 @@ export function AppProvider({ children }: AppProviderProps) {
   const [calendar, setCalendar] = useState<CalendarResponse | null>(null);
   const [weeklyStats, setWeeklyStats] = useState<DaysStat | null>(null);
   const [friends, setFriends] = useState<UserData[] | []>([]);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   // Global loading and error
   const [isLoading, setIsLoading] = useState(false);
@@ -242,10 +245,12 @@ export function AppProvider({ children }: AppProviderProps) {
       setFriends(friends);
       setWeeklyStats(weekly);
 
+      // Mark initial loading as complete
+      setIsInitialLoading(false);
+
       return true;
     });
   }, [isSignedIn, getToken, withLoadingAndError]);
-
   // ============================================
   // Actions
   // ============================================
@@ -293,7 +298,7 @@ export function AppProvider({ children }: AppProviderProps) {
         const token = await getToken();
         if (!token) throw new Error("No auth token");
 
-        await apiService.addFriend( friendId , token);
+        await apiService.addFriend(friendId, token);
 
         // Refresh relevant data after adding friend
         const [friends] = await Promise.all([apiService.getFriends(token)]);
@@ -308,58 +313,75 @@ export function AppProvider({ children }: AppProviderProps) {
     [isSignedIn, getToken, withLoadingAndError]
   );
 
-const searchUsers = useCallback(
-  async (searchQuery: string): Promise<UserData[]> => {
-    if (!searchQuery.trim()) {
-      Alert.alert("Error", "Please enter a username to search");
-      return [];
-    }
+  const searchUsers = useCallback(
+    async (searchQuery: string): Promise<UserData[]> => {
+      if (!searchQuery.trim()) {
+        Alert.alert("Error", "Please enter a username to search");
+        return [];
+      }
 
-    if (!isSignedIn) {
-      throw new Error("Must be signed in to search friends");
-    }
+      if (!isSignedIn) {
+        throw new Error("Must be signed in to search friends");
+      }
 
-    const result = await withLoadingAndError(async () => {
-      const token = await getToken();
-      if (!token) throw new Error("No auth token");
+      const result = await withLoadingAndError(async () => {
+        const token = await getToken();
+        if (!token) throw new Error("No auth token");
 
-      const users = await apiService.searchUsers(searchQuery, token);
-      return users;
-    });
+        const users = await apiService.searchUsers(searchQuery, token);
+        return users;
+      });
 
-    return result || [];
-  },
-  [isSignedIn, getToken, withLoadingAndError]
-);
-  
-  
-  const updateUserProfile = useCallback(
-    async (updateReq: any): Promise<any> => {},
+      return result || [];
+    },
     [isSignedIn, getToken, withLoadingAndError]
   );
 
-  
+  const updateUserProfile = useCallback(
+    async (updateReq: UpdateUserProfileReq): Promise<any> => {
+      if (!isSignedIn) {
+        throw new Error("Must be signed in to search friends");
+      }
+
+      let result = await withLoadingAndError(async () => {
+        const token = await getToken();
+        if (!token) throw new Error("No auth token");
+
+        await apiService.updateUserProfile(updateReq, token);
+
+        const [user] = await Promise.all([apiService.fetchUser(token)]);
+
+        return { user };
+      });
+      if (result) {
+        setUserData(result.user);
+      }
+    },
+    [isSignedIn, getToken, withLoadingAndError]
+  );
+
   // ============================================
-  // Initial Load 
+  // Initial Load
   // ============================================
 
-  useEffect(() => {
-    if (isSignedIn && !hasInitialized.current) {
-      hasInitialized.current = true;
-      refreshAll();
-    }
+ useEffect(() => {
+   if (isSignedIn && !hasInitialized.current) {
+     hasInitialized.current = true;
+     refreshAll();
+   }
 
-    // Reset initialization flag when user signs out
-    if (!isSignedIn) {
-      hasInitialized.current = false;
-      setUserData(null);
-      setUserStats(null);
-      setLeaderboard(null);
-      setAchievements(null);
-      setCalendar(null);
-      setWeeklyStats(null);
-    }
-  }, [isSignedIn]); // Only depend on isSignedIn, NOT refreshAll
+   // Reset initialization flag when user signs out
+   if (!isSignedIn) {
+     hasInitialized.current = false;
+     setUserData(null);
+     setUserStats(null);
+     setLeaderboard(null);
+     setAchievements(null);
+     setCalendar(null);
+     setWeeklyStats(null);
+     setIsInitialLoading(true);
+   }
+ }, [isSignedIn]);
 
   // ============================================
   // Context Value
@@ -393,6 +415,7 @@ const searchUsers = useCallback(
 
     // Global State
     isLoading,
+    isInitialLoading,
     error,
   };
 

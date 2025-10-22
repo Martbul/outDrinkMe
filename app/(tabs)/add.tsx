@@ -71,7 +71,6 @@ export default function AddDrinksScreenV3() {
 
   const potentialStreak = (userStats?.current_streak || 0) + 1;
 
-  // If already logged today, show success state
   if (alreadyLogged) {
     return (
       <View
@@ -90,8 +89,8 @@ export default function AddDrinksScreenV3() {
             Already Logged!
           </Text>
           <Text className="text-white/50 text-base text-center font-semibold">
-            You've already logged today.{"\n"}Come back tomorrow to continue
-            your streak! 🔥
+            You are my alcoholic pride!{"\n"}Drink again tomorrow and keep your
+            steak! 🔥
           </Text>
         </View>
 
@@ -128,7 +127,6 @@ export default function AddDrinksScreenV3() {
           </View>
         </View> */}
 
-        {/* Back Button */}
         <TouchableOpacity
           onPress={() => router.push("/(tabs)/home")}
           className="bg-orange-600 rounded-2xl py-5"
@@ -149,7 +147,6 @@ export default function AddDrinksScreenV3() {
         paddingBottom: insets.bottom + 40,
       }}
     >
-      {/* Header */}
       <View className="mb-12">
         <View className="flex-row items-center justify-center mb-6">
           <View className="w-2 h-2 bg-orange-600 rounded-full mr-3" />
@@ -162,7 +159,6 @@ export default function AddDrinksScreenV3() {
         </Text>
       </View>
 
-      {/* Current Streak Display */}
       <View className="bg-white/[0.03] rounded-2xl p-6 mb-12 border border-white/[0.08]">
         <View className="flex-row items-center justify-between">
           <View>
@@ -214,7 +210,6 @@ export default function AddDrinksScreenV3() {
         </Text>
       </View>
 
-      {/* Cancel */}
       <TouchableOpacity onPress={() => router.back()} className="py-4 mb-8">
         <Text className="text-white/40 text-sm font-bold text-center">
           Not now

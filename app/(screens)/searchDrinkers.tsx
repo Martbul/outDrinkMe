@@ -70,7 +70,7 @@ export default function AddByUsername() {
         <Text className="text-gray-500 text-sm mb-4">Search by username</Text>
 
         {/* Search Bar */}
-        <View className="bg-gray-900 rounded-2xl px-4 py-4 flex-row items-center border border-gray-800">
+        <View className="bg-white/[0.03]  rounded-2xl px-4 py-4 flex-row items-center border border-gray-800">
           <Ionicons name="search" size={24} color="#6B7280" />
           <TextInput
             value={searchQuery}

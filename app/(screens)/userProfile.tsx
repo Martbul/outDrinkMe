@@ -4,6 +4,8 @@ import { useApp } from "@/providers/AppProvider";
 import { View, Text, TouchableOpacity, ScrollView, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import LogoutButton from "@/components/logoutButton";
+import { useRouter } from "expo-router";
+import { getLevelInfo } from "@/utils/levels";
 
 const ACHIEVEMENT_IMAGES = {
   lightning: require("../../assets/images/achievements/lightning.png"),
@@ -19,7 +21,10 @@ const ACHIEVEMENT_IMAGES = {
 export default function UserProfileScreen() {
   const { userData, userStats, weeklyStats, isLoading } = useApp();
   const insets = useSafeAreaInsets();
- 
+  const router = useRouter();
+
+  const levelInfo = getLevelInfo(userData?.xp);
+
   const achievements = useMemo(
     () => [
       { image: ACHIEVEMENT_IMAGES.lightning, unlocked: true },
@@ -53,7 +58,7 @@ export default function UserProfileScreen() {
             </View>
             {/* Level Badge */}
             <View className="absolute -bottom-2 left-1/2 -ml-8 bg-gray-900 px-4 py-1 rounded-full border-2 border-orange-600">
-              <Text className="text-orange-600 text-sm font-black">LV. 5</Text>
+              <Text className="text-orange-600 text-sm font-black">{`LV. ${levelInfo.level}`}</Text>
             </View>
           </View>
 
@@ -67,7 +72,10 @@ export default function UserProfileScreen() {
           </Text>
 
           {/* Edit Profile Button */}
-          <TouchableOpacity className="bg-white/[0.03] px-8 py-3 rounded-xl border border-white/[0.08]">
+          <TouchableOpacity
+            className="bg-white/[0.03] px-8 py-3 rounded-xl border border-white/[0.08]"
+            onPress={() => router.push("/(screens)/editProfile")}
+          >
             <Text className="text-white font-bold uppercase tracking-widest text-sm">
               Edit Profile
             </Text>
@@ -87,7 +95,7 @@ export default function UserProfileScreen() {
             </View>
             <View className="flex-1 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08] items-center">
               <Text className="text-white text-4xl font-black mb-1">
-                {userStats?.best_streak || 0}
+                {userStats?.longest_streak || 0}
               </Text>
               <Text className="text-white/50 text-[11px] font-bold tracking-widest uppercase">
                 Best Streak
@@ -98,7 +106,7 @@ export default function UserProfileScreen() {
           <View className="flex-row gap-3">
             <View className="flex-1 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08] items-center">
               <Text className="text-white text-4xl font-black mb-1">
-                {userStats?.total_days || 0}
+                {userStats?.total_days_drank || 0}
               </Text>
               <Text className="text-white/50 text-[11px] font-bold tracking-widest uppercase">
                 Total Days
@@ -109,7 +117,7 @@ export default function UserProfileScreen() {
                 #{userStats?.rank || 0}
               </Text>
               <Text className="text-white/50 text-[11px] font-bold tracking-widest uppercase">
-                Current Rank
+                World Rank
               </Text>
             </View>
           </View>
@@ -150,7 +158,7 @@ export default function UserProfileScreen() {
         </View>
 
         <View className="px-4">
-          <LogoutButton/>
+          <LogoutButton />
         </View>
       </ScrollView>
     </View>
