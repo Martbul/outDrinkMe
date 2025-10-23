@@ -19,6 +19,7 @@ import {
 } from "../types/api.types";
 import { apiService } from "@/api";
 import { Alert } from "react-native";
+import { initializeAdMob } from "@/utils/initializeAdMob";
 
 interface AppContextType {
   // Data
@@ -29,6 +30,7 @@ interface AppContextType {
   calendar: CalendarResponse | null;
   weeklyStats: DaysStat | null;
   friends: UserData[] | [];
+  discovery: UserData[] | [];
 
   // Refresh Functions
   refreshUserData: () => Promise<void>;
@@ -38,6 +40,7 @@ interface AppContextType {
   refreshCalendar: (year?: number, month?: number) => Promise<void>;
   refreshWeeklyStats: () => Promise<void>;
   refreshFriends: () => Promise<void>;
+  refreshDiscovery: () => Promise<void>;
   refreshAll: () => Promise<void>;
 
   // Actions
@@ -69,6 +72,7 @@ export function AppProvider({ children }: AppProviderProps) {
   const [calendar, setCalendar] = useState<CalendarResponse | null>(null);
   const [weeklyStats, setWeeklyStats] = useState<DaysStat | null>(null);
   const [friends, setFriends] = useState<UserData[] | []>([]);
+  const [discovery, setDiscovery] = useState<UserData[] | []>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   // Global loading and error
@@ -214,11 +218,22 @@ export function AppProvider({ children }: AppProviderProps) {
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
 
+  const refreshDiscovery = useCallback(async () => {
+    if (!isSignedIn) return;
+
+    await withLoadingAndError(
+      async () => {
+        const token = await getToken();
+        if (!token) throw new Error("No auth token");
+        return await apiService.getDiscovery(token);
+      },
+      (data) => setDiscovery(data)
+    );
+  }, [isSignedIn, getToken, withLoadingAndError]);
+
   // ============================================
   // Refresh All - Using Parallel Execution
   // ============================================
-
-  // Replace your refreshAll function with this version
 
   const refreshAll = useCallback(async () => {
     if (!isSignedIn) return;
@@ -230,7 +245,6 @@ export function AppProvider({ children }: AppProviderProps) {
       const token = await getToken();
       if (!token) throw new Error("No auth token");
 
-      // Use Promise.allSettled instead of Promise.all
       const results = await Promise.allSettled([
         apiService.fetchUser(token),
         apiService.getUserStats(token),
@@ -238,6 +252,7 @@ export function AppProvider({ children }: AppProviderProps) {
         apiService.getAchievements(token),
         apiService.getCurrentMonthCalendar(token),
         apiService.getFriends(token),
+        apiService.getDiscovery(token),
         apiService.getWeeklyStats(token),
       ]);
 
@@ -249,10 +264,10 @@ export function AppProvider({ children }: AppProviderProps) {
         achievResult,
         calResult,
         friendsResult,
+        discoveryResult,
         weeklyResult,
       ] = results;
 
-      // Update state for successful calls
       if (userResult.status === "fulfilled") {
         setUserData(userResult.value);
       } else {
@@ -269,8 +284,7 @@ export function AppProvider({ children }: AppProviderProps) {
         setLeaderboard(boardResult.value);
       } else {
         console.error("Failed to fetch leaderboard:", boardResult.reason);
-        // Set empty leaderboard instead of leaving it null
-        setLeaderboard({entries:[], total_users:0});
+        setLeaderboard({ entries: [], total_users: 0 });
       }
 
       if (achievResult.status === "fulfilled") {
@@ -292,6 +306,13 @@ export function AppProvider({ children }: AppProviderProps) {
         setFriends([]);
       }
 
+      if (discoveryResult.status === "fulfilled") {
+        setDiscovery(discoveryResult.value);
+      } else {
+        console.error("Failed to fetch friends:", discoveryResult.reason);
+        setDiscovery([]);
+      }
+
       if (weeklyResult.status === "fulfilled") {
         setWeeklyStats(weeklyResult.value);
       } else {
@@ -310,11 +331,11 @@ export function AppProvider({ children }: AppProviderProps) {
       setError(errorMessage);
       console.error("RefreshAll Error:", err);
     } finally {
-      // CRITICAL: Always set initial loading to false, even if some calls fail
       setIsInitialLoading(false);
       setIsLoading(false);
     }
   }, [isSignedIn, getToken]);
+
   // ============================================
   // Actions
   // ============================================
@@ -432,6 +453,7 @@ export function AppProvider({ children }: AppProviderProps) {
     if (isSignedIn && !hasInitialized.current) {
       hasInitialized.current = true;
       refreshAll();
+      initializeAdMob();
     }
 
     // Reset initialization flag when user signs out
@@ -460,6 +482,7 @@ export function AppProvider({ children }: AppProviderProps) {
     calendar,
     weeklyStats,
     friends,
+    discovery,
 
     // Refresh Functions
     refreshUserData,
@@ -469,6 +492,7 @@ export function AppProvider({ children }: AppProviderProps) {
     refreshCalendar,
     refreshWeeklyStats,
     refreshFriends,
+    refreshDiscovery,
     refreshAll,
 
     // Actions

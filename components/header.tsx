@@ -29,8 +29,8 @@ export const Header = () => {
       // Update user gems in your backend
       const newGemCount = (userData?.gems || 0) + gemAmount;
 
-      // Call your API to update gems
-      // await updateUserProfile({ gems: newGemCount });
+
+      await updateUserProfile({ gems: newGemCount });
 
       Alert.alert("Gems Earned! 💎", `You earned ${gemAmount} gems!`, [
         { text: "Awesome!", style: "default" },

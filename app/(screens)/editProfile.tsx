@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import SecondaryHeader from "@/components/secondaryHeader";
 import { useRouter } from "expo-router";
+import { Feather } from "@expo/vector-icons";
 
 export default function EditProfileScreen() {
   const { userData, updateUserProfile, } = useApp();
@@ -68,7 +69,7 @@ const router = useRouter()
                 className="w-32 h-32 rounded-full border-3 border-white"
               />
             </View>
-           {/* TODO: Add a image changer  */}
+            {/* TODO: Add a image changer  */}
             {/* <TouchableOpacity className="absolute bottom-0 right-0 w-10 h-10 rounded-full bg-black items-center justify-center border-2 border-black">
               <Feather name="image" size={24} color="#ff8c00" />
             </TouchableOpacity> */}
@@ -144,7 +145,7 @@ const router = useRouter()
             <Text className="text-white text-base font-semibold">
               Change Password
             </Text>
-            <Text className="text-white/50">→</Text>
+            <Feather name="arrow-right" size={24} color="#999999" />
           </TouchableOpacity>
         </View>
 
@@ -157,14 +158,14 @@ const router = useRouter()
             <Text className="text-white text-base font-semibold">
               Privacy Policy
             </Text>
-            <Text className="text-white/50">→</Text>
+              <Feather name="arrow-right" size={24} color="#999999" />
           </TouchableOpacity>
 
           <TouchableOpacity className="flex-row justify-between items-center py-3 border-b border-white/[0.05]">
             <Text className="text-white text-base font-semibold">
               Terms of Service
             </Text>
-            <Text className="text-white/50">→</Text>
+              <Feather name="arrow-right" size={24} color="#999999" />
           </TouchableOpacity>
         </View>
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -12,10 +12,16 @@ import {
   TestIds,
 } from "react-native-google-mobile-ads";
 
+
 // Use test ID for development, real ID for production
-const adUnitId = __DEV__
-  ? TestIds.REWARDED
-  : "ca-app-pub-1167503921437683/4220175598";
+
+
+// const adUnitId = __DEV__
+//   ? TestIds.REWARDED
+//   : "ca-app-pub-1167503921437683/4220175598";
+
+const adUnitId = TestIds.REWARDED
+ 
 
 interface RewardedAdModalProps {
   onClose: () => void;
@@ -28,69 +34,99 @@ export default function RewardedAdModal({
 }: RewardedAdModalProps) {
   const [loaded, setLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [rewarded, setRewarded] = useState<RewardedAd | null>(null);
+  const [adShown, setAdShown] = useState(false);
+  const rewardedRef = useRef<RewardedAd | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     // Create rewarded ad instance
     const rewardedAd = RewardedAd.createForAdRequest(adUnitId, {
       requestNonPersonalizedAdsOnly: false,
+      keywords: ["gaming", "mobile games", "casual games"],
     });
 
-    // Event listeners - only LOADED and EARNED_REWARD are available
+    rewardedRef.current = rewardedAd;
+
+    // Event listener for when ad loads
     const loadedListener = rewardedAd.addAdEventListener(
       RewardedAdEventType.LOADED,
       () => {
-        console.log("Ad loaded successfully");
+        console.log("✅ Ad loaded successfully");
         setLoaded(true);
         setLoading(false);
+
+        // Clear timeout since ad loaded successfully
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+        }
       }
     );
 
+    // Event listener for when user earns reward
     const earnedListener = rewardedAd.addAdEventListener(
       RewardedAdEventType.EARNED_REWARD,
       (reward) => {
-        console.log("User earned reward:", reward);
-        // Award gems (typically 10-50 gems per ad)
-        onRewardEarned(25);
-        setRewarded(null);
+        console.log("💎 User earned reward:", reward);
+        onRewardEarned(1);
+
         // Close modal after reward with small delay
         setTimeout(() => onClose(), 500);
       }
     );
 
     // Load the ad
+    console.log("📱 Loading rewarded ad...");
     rewardedAd.load();
-    setRewarded(rewardedAd);
 
     // Timeout fallback in case ad fails to load
-    const timeout = setTimeout(() => {
-      if (!loaded && loading) {
-        console.log("Ad load timeout");
+    timeoutRef.current = setTimeout(() => {
+      if (!loaded) {
+        console.log("⏱️ Ad load timeout");
         setLoading(false);
         Alert.alert(
           "Ad Unavailable",
-          "Unable to load ad. Please try again later."
+          "Unable to load ad at this time. Please try again later.",
+          [{ text: "OK", onPress: onClose }]
         );
-        onClose();
       }
-    }, 10000); // 10 second timeout
+    }, 30000); // Increased to 15 seconds
 
     // Cleanup
     return () => {
+      console.log("🧹 Cleaning up ad listeners");
       loadedListener();
       earnedListener();
-      clearTimeout(timeout);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      rewardedRef.current = null;
     };
   }, []);
 
-  const showAd = () => {
-    if (loaded && rewarded) {
-      rewarded.show();
+  const showAd = async () => {
+    if (!loaded || !rewardedRef.current || adShown) {
+      console.log("❌ Cannot show ad:", {
+        loaded,
+        hasRef: !!rewardedRef.current,
+        adShown,
+      });
+      return;
+    }
+
+    try {
+      console.log("🎬 Showing ad...");
+      setAdShown(true);
+      await rewardedRef.current.show();
+    } catch (error) {
+      console.error("❌ Error showing ad:", error);
+      Alert.alert("Error", "Failed to show ad. Please try again.", [
+        { text: "OK", onPress: onClose },
+      ]);
     }
   };
 
   return (
-    <View className="absolute inset-0 bg-black/90 justify-center items-center z-50">
+    <View className="absolute inset-0 bg-black/90 justify-center items-center z-50 w-full h-screen">
       <View className="bg-white/10 rounded-3xl p-8 mx-4 border-2 border-orange-600/50">
         {/* Diamond Icon */}
         <View className="items-center mb-6">
@@ -107,7 +143,7 @@ export default function RewardedAdModal({
         {/* Description */}
         <Text className="text-white/70 text-center mb-6 font-semibold">
           Watch a short video to earn{"\n"}
-          <Text className="text-orange-600 font-black text-xl">25 Gems</Text>
+          <Text className="text-orange-600 font-black text-xl">1 Gems</Text>
         </Text>
 
         {/* Loading/Ready State */}
@@ -123,18 +159,22 @@ export default function RewardedAdModal({
             {/* Watch Ad Button */}
             <TouchableOpacity
               onPress={showAd}
-              disabled={!loaded}
+              disabled={!loaded || adShown}
               className={`${
-                loaded ? "bg-orange-600" : "bg-orange-600/50"
+                loaded && !adShown ? "bg-orange-600" : "bg-orange-600/50"
               } rounded-2xl py-4 mb-3`}
             >
               <Text className="text-black text-base font-black text-center tracking-widest">
-                {loaded ? "WATCH AD" : "LOADING..."}
+                {adShown ? "SHOWING..." : loaded ? "WATCH AD" : "UNAVAILABLE"}
               </Text>
             </TouchableOpacity>
 
             {/* Cancel Button */}
-            <TouchableOpacity onPress={onClose} className="py-3">
+            <TouchableOpacity
+              onPress={onClose}
+              className="py-3"
+              disabled={adShown}
+            >
               <Text className="text-white/50 text-sm font-bold text-center">
                 Maybe Later
               </Text>
