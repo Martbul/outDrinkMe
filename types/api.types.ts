@@ -9,8 +9,8 @@ export interface UserData {
   created_at: string;
   updated_at: string;
   gems: number;
-	xp: number;
-	allDaysDrinkingCount: number;
+  xp: number;
+  allDaysDrinkingCount: number;
 }
 
 export interface LeaderboardEntry {
@@ -106,5 +106,5 @@ export interface UpdateUserProfileReq {
   firstName?: string;
   lastName?: string;
   imageUrl?: string;
+  gems?: number;
 }
-

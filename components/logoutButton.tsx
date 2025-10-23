@@ -1,4 +1,5 @@
 import { useAuth } from "@clerk/clerk-expo";
+import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Alert, Text, TouchableOpacity } from "react-native";
@@ -27,7 +28,6 @@ export default function LogoutButton() {
                await signOut();
 
 
-               // Navigate to sign in screen
                router.replace("/(auth)/google-sign-in");
              } catch (error: any) {
                console.error("Logout error:", error);
@@ -55,7 +55,7 @@ export default function LogoutButton() {
        ) : (
          <>
            <Text className="text-red-500 font-bold">Logout</Text>
-           <Text className="text-red-500">→</Text>
+           <Feather name="arrow-right" size={24} color="#EF4444" />
          </>
        )}
      </TouchableOpacity>

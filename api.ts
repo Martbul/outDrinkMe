@@ -205,6 +205,7 @@ class ApiService {
     const now = new Date();
     return this.getCalendar(now.getFullYear(), now.getMonth() + 1, token);
   }
+
   async getFriends(token: string): Promise<UserData[]> {
     const response = await this.makeRequest<UserData[]>(
       "/api/v1/user/friends",
@@ -216,6 +217,18 @@ class ApiService {
     console.log("rr", response);
 
     // return response.friends || [];
+    return response || [];
+  }
+
+  async getDiscovery(token: string): Promise<UserData[]> {
+    const response = await this.makeRequest<UserData[]>(
+      "/api/v1/user/discovery",
+      {
+        method: "GET",
+        token,
+      }
+    );
+
     return response || [];
   }
 

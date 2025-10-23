@@ -17,9 +17,7 @@ export default function HomeScreen() {
   const {
     userData,
     userStats,
-    weeklyStats,
     leaderboard,
-    addDrinking,
     isLoading,
   } = useApp();
   const router = useRouter();
@@ -29,18 +27,19 @@ export default function HomeScreen() {
 
     const level = Math.min(Math.floor(userStats.alcoholism_coefficient * 0.75) + 1, 10);
 
-    const titles = [
-      "NEWBIE",
-      "ROOKIE",
-      "CONTENDER",
-      "CHALLENGER",
-      "WARRIOR",
-      "CHAMPION",
-      "MASTER",
-      "LEGEND",
-      "TITAN",
-      "IMMORTAL",
-    ];
+ const titles = [
+   "THE SOBER SOUL",
+   "THE FIRST SIP",
+   "THE TEMPTED",
+   "THE INTOXICATED",
+   "THE UNHINGED",
+   "THE FALLEN",
+   "THE DROWNED IN SPIRITS",
+   "THE WHISPERER OF WINE",
+   "THE LIQUOR SHADE",
+   "THE VOID DRINKER",
+ ];
+
 
     return {
       level,
@@ -84,9 +83,9 @@ export default function HomeScreen() {
           <Text className="text-white text-[22px] font-black tracking-wide">
             {levelInfo.title}
           </Text>
-          <Text className="text-white/40 text-xs font-bold tracking-[2px] mt-1">
+          {/* <Text className="text-white/40 text-xs font-bold tracking-[2px] mt-1">
             Coef
-          </Text>
+          </Text> */}
         </View>
 
         <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
@@ -119,9 +118,9 @@ export default function HomeScreen() {
             <Text className="text-white text-2xl font-black">
               #{userStats?.rank || 0}
             </Text>
-            <Text className="text-white/40 text-[11px] font-semibold mt-0.5">
+            {/* <Text className="text-white/40 text-[11px] font-semibold mt-0.5">
               of {leaderboard?.total_users || 0}
-            </Text>
+            </Text> */}
           </View>
 
           <View className="flex-1 bg-white/[0.03] rounded-xl p-4 border border-white/[0.08]">
@@ -201,7 +200,6 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Log Button */}
         <TouchableOpacity
           className={`rounded-2xl py-5 items-center mb-4 ${
             userStats?.today_status
@@ -216,7 +214,7 @@ export default function HomeScreen() {
           ) : (
             <Text className="text-black text-base font-black tracking-[1.5px]">
               {userStats?.today_status
-                ? "✓ CONGRATS MY ALCOHOLIC"
+                ? "CONGRATS MY ALCOHOLIC"
                 : "DRINK TODAY"}
             </Text>
           )}

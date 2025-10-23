@@ -19,23 +19,96 @@ const ACHIEVEMENT_IMAGES = {
 };
 
 export default function UserProfileScreen() {
-  const { userData, userStats, weeklyStats, isLoading } = useApp();
+  const { userData, userStats, weeklyStats, achievements, isLoading } =
+    useApp();
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
   const levelInfo = getLevelInfo(userData?.xp);
 
-  const achievements = useMemo(
-    () => [
-      { image: ACHIEVEMENT_IMAGES.lightning, unlocked: true },
-      { image: ACHIEVEMENT_IMAGES.crown, unlocked: true },
-      { image: ACHIEVEMENT_IMAGES.campfire, unlocked: true },
-      { image: ACHIEVEMENT_IMAGES.hundred, unlocked: true },
-      { image: ACHIEVEMENT_IMAGES.trophy, unlocked: false },
-      { image: ACHIEVEMENT_IMAGES.star, unlocked: false },
-    ],
-    []
-  );
+  // Group achievements by category
+  const groupedAchievements = useMemo(() => {
+    if (!achievements) return { streaks: [], competition: [], social: [] };
+
+    return {
+      streaks: achievements.filter(
+        (a) =>
+          a.criteria_type === "streak" ||
+          a.criteria_type === "perfect_week" ||
+          a.criteria_type === "total_days"
+      ),
+      competition: achievements.filter((a) => a.criteria_type === "weeks_won"),
+      social: achievements.filter((a) => a.criteria_type === "friends"),
+    };
+  }, [achievements]);
+
+  const unlockedCount = achievements?.filter((a) => a.unlocked).length || 0;
+  const totalCount = achievements?.length || 0;
+
+  const getAchievementImage = (name: string) => {
+    const imageMap: { [key: string]: any } = {
+      Lightning: ACHIEVEMENT_IMAGES.lightning,
+      "Beast Mode": ACHIEVEMENT_IMAGES.druid,
+      "Fire Starter": ACHIEVEMENT_IMAGES.campfire,
+      Sharpshooter: ACHIEVEMENT_IMAGES.target,
+      King: ACHIEVEMENT_IMAGES.crown,
+      Champion: ACHIEVEMENT_IMAGES.trophy,
+      Legend: ACHIEVEMENT_IMAGES.star,
+      Century: ACHIEVEMENT_IMAGES.hundred,
+    };
+    return imageMap[name] || ACHIEVEMENT_IMAGES.lightning;
+  };
+
+  const renderAchievementCategory = (
+    title: string,
+    achievements: any[],
+    icon: string
+  ) => {
+    if (achievements.length === 0) return null;
+
+    return (
+      <View className="mb-6">
+        <View className="flex-row items-center mb-3">
+          <Text className="text-2xl mr-2">{icon}</Text>
+          <Text className="text-white text-base font-bold">{title}</Text>
+          <View className="ml-auto bg-white/[0.05] px-2.5 py-1 rounded-full">
+            <Text className="text-white/50 text-xs font-bold">
+              {achievements.filter((a) => a.unlocked).length}/
+              {achievements.length}
+            </Text>
+          </View>
+        </View>
+
+        <View className="flex-row flex-wrap gap-2.5">
+          {achievements.map((achievement) => (
+            <View
+              key={achievement.id}
+              className={`w-[30%] aspect-square rounded-xl items-center justify-center border ${
+                achievement.unlocked
+                  ? "bg-orange-600/20 border-orange-600/50"
+                  : "bg-white/[0.03] border-white/[0.08]"
+              }`}
+            >
+              <Image
+                source={getAchievementImage(achievement.name)}
+                style={{
+                  width: 56,
+                  height: 56,
+                  opacity: achievement.unlocked ? 1 : 0.3,
+                }}
+                resizeMode="contain"
+              />
+              {achievement.unlocked && (
+                <View className="absolute top-1.5 right-1.5 bg-orange-600 rounded-full w-4 h-4 items-center justify-center">
+                  <Text className="text-white text-[10px] font-black">✓</Text>
+                </View>
+              )}
+            </View>
+          ))}
+        </View>
+      </View>
+    );
+  };
 
   return (
     <View className="flex-1 bg-black">
@@ -127,33 +200,52 @@ export default function UserProfileScreen() {
           <ThisWeekGadget />
         </View>
 
+        {/* Achievements Section */}
         <View className="px-4 mb-6">
-          <View className="flex-row justify-between items-center mb-4">
-            <Text className="text-white text-xl font-black">Achievements</Text>
-            <Text className="text-white/50 text-sm font-semibold">4/8</Text>
-          </View>
-
-          <View className="flex-row flex-wrap gap-3">
-            {achievements.map((achievement, index) => (
-              <View
-                key={index}
-                className={`w-[30%] aspect-square rounded-2xl items-center justify-center border ${
-                  achievement.unlocked
-                    ? "bg-orange-600/20 border-orange-600/50"
-                    : "bg-white/[0.05] border-white/[0.08]"
-                }`}
-              >
-                <Image
-                  source={achievement.image}
-                  style={{
-                    width: 64,
-                    height: 64,
-                    opacity: achievement.unlocked ? 1 : 0.3,
-                  }}
-                  resizeMode="contain"
-                />
+          <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
+            <View className="flex-row justify-between items-center mb-5">
+              <View>
+                <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-1">
+                  ACHIEVEMENTS
+                </Text>
+                <Text className="text-white text-xl font-black">
+                  Your Badges
+                </Text>
               </View>
-            ))}
+              <TouchableOpacity
+                className="bg-orange-600/20 px-3.5 py-1.5 rounded-lg"
+                onPress={() => router.push("/(tabs)/achievements")}
+              >
+                <Text className="text-orange-600 text-xs font-black">
+                  {unlockedCount}/{totalCount}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {renderAchievementCategory(
+              "Streaks & Days",
+              groupedAchievements.streaks,
+              "🔥"
+            )}
+            {renderAchievementCategory(
+              "Competition",
+              groupedAchievements.competition,
+              "👑"
+            )}
+            {renderAchievementCategory(
+              "Social",
+              groupedAchievements.social,
+              "🎯"
+            )}
+
+            <TouchableOpacity
+              className="bg-white/[0.05] py-3 rounded-xl border border-white/[0.08] mt-2"
+              onPress={() => router.push("/(tabs)/achievements")}
+            >
+              <Text className="text-white/70 text-sm font-bold text-center uppercase tracking-widest">
+                View All
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 

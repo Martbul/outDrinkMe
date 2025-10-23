@@ -90,7 +90,7 @@ export default function AddDrinksScreenV3() {
           </Text>
           <Text className="text-white/50 text-base text-center font-semibold">
             You are my alcoholic pride!{"\n"}Drink again tomorrow and keep your
-            steak! 🔥
+            steak!
           </Text>
         </View>
 

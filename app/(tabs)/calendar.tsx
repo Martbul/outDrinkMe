@@ -1,16 +1,17 @@
-import Header from "@/components/header";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import React, { useEffect, useState } from "react";
 import { useApp } from "@/providers/AppProvider";
 import { UserStats } from "@/types/api.types";
-import React, { useState, useEffect } from "react";
 import {
-  View,
+  ActivityIndicator,
+  Modal,
+  ScrollView,
   Text,
   TouchableOpacity,
-  ScrollView,
-  Modal,
-  ActivityIndicator,
+  View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Header from "@/components/header";
+import { AntDesign, Feather } from "@expo/vector-icons";
 
 interface CalendarDayProps {
   day: number;
@@ -44,28 +45,32 @@ const CalendarDay = ({
     <TouchableOpacity
       onPress={() => onPress(day, drank)}
       className={`
-        w-11 h-11 rounded-lg flex items-center justify-center m-0.5
+        w-11 h-11 rounded-lg flex items-center justify-center m-1
         ${
           isSelected
             ? "bg-orange-600"
-            : isToday
-              ? "bg-white/[0.08] border-2 border-orange-600"
-              : drank
-                ? "bg-orange-600/30"
-                : "bg-white/[0.03]"
+            : isToday && drank
+              ? "bg-orange-600/30 border-2 border-orange-600"
+              : isToday
+                ? "bg-white/[0.12] border-2 border-orange-600"
+                : drank
+                  ? "bg-orange-600/30"
+                  : "bg-white/[0.03]"
         }
-        border ${drank && !isSelected && !isToday ? "border-orange-600/50" : "border-white/[0.08]"}
+        border ${drank && !isSelected && !isToday ? "border-orange-600/50" : isToday ? "border-orange-600" : "border-white/[0.08]"}
       `}
     >
       <Text
         className={`
         text-sm font-bold
         ${
-          isSelected || isToday
+          isSelected
             ? "text-white"
-            : drank
-              ? "text-orange-500"
-              : "text-white/30"
+            : isToday
+              ? "text-white"
+              : drank
+                ? "text-orange-500"
+                : "text-white/30"
         }
       `}
       >
@@ -82,8 +87,6 @@ const DayDetailModal = ({
   selectedDay,
   userStats,
 }: DayDetailModalProps) => {
-  console.log("dayData: ", dayData);
-
   const insets = useSafeAreaInsets();
 
   if (!dayData || !selectedDay) return null;
@@ -132,7 +135,11 @@ const DayDetailModal = ({
                 className={`w-14 h-14 rounded-xl ${dayData.drank_today ? "bg-orange-600/20" : "bg-white/[0.05]"} items-center justify-center mr-4`}
               >
                 <Text className="text-4xl">
-                  {dayData.drank_today ? "✅" : "❌"}
+                  {dayData.drank_today ? (
+                    <AntDesign name="check" size={30} color="#ff8c00" />
+                  ) : (
+                    <AntDesign name="close" size={30} color="#ff8c00" />
+                  )}
                 </Text>
               </View>
               <View className="flex-1">
@@ -222,7 +229,6 @@ const DayDetailModal = ({
   );
 };
 
-// Main Calendar Screen Component
 const CalendarScreen = () => {
   const { userStats, calendar, isLoading, refreshCalendar } = useApp();
 
@@ -256,12 +262,11 @@ const CalendarScreen = () => {
   };
 
   const getFirstDayOfMonth = (month: number, year: number) => {
-    return new Date(year, month - 1, 1).getDay();
+    const firstDay = new Date(year, month - 1, 1).getDay();
+    return firstDay === 0 ? 6 : firstDay - 1;
   };
 
   const handleDayPress = (day: number, dayData: DayData | null) => {
-    console.log("DDD:", typeof dayData);
-
     setSelectedDay(day);
     setSelectedDayData(dayData);
     setModalVisible(true);
@@ -295,23 +300,29 @@ const CalendarScreen = () => {
     );
   };
 
+  const isTodayInCalendar = (day: number): boolean => {
+    if (!calendar?.days) return false;
+    const dayData = calendar.days.find((d) => {
+      const dayDate = new Date(d.date).getDate();
+      return dayDate === day;
+    });
+    return dayData?.is_today || false;
+  };
+
   const renderCalendar = () => {
     const daysInMonth = getDaysInMonth(currentMonth, currentYear);
     const firstDay = getFirstDayOfMonth(currentMonth, currentYear);
-    const today = new Date();
-    const isCurrentMonth =
-      currentMonth === today.getMonth() + 1 &&
-      currentYear === today.getFullYear();
 
     const days = [];
 
     for (let i = 0; i < firstDay; i++) {
-      days.push(<View key={`empty-${i}`} className="w-11 h-11 m-0.5" />);
+      days.push(<View key={`empty-${i}`} className="w-11 h-11 m-1" />);
     }
 
+    // Add actual day cells
     for (let day = 1; day <= daysInMonth; day++) {
       const dayData = getDayData(day);
-      const isToday = isCurrentMonth && day === today.getDate();
+      const isToday = isTodayInCalendar(day);
       const drank = dayData?.drank_today || false;
 
       days.push(
@@ -366,40 +377,13 @@ const CalendarScreen = () => {
           </View>
         </View>
 
-        {/* Current Stats */}
-        <View className="flex-row gap-3 mb-4">
-          <View className="flex-1 bg-white/[0.03] rounded-xl p-4 border border-white/[0.08]">
-            <Text className="text-white/50 text-[10px] font-bold tracking-widest mb-1.5">
-              STREAK
-            </Text>
-            <Text className="text-white text-2xl font-black">
-              {userStats?.current_streak || 0}
-            </Text>
-            <Text className="text-white/40 text-[11px] font-semibold mt-0.5">
-              days 🔥
-            </Text>
-          </View>
-          <View className="flex-1 bg-white/[0.03] rounded-xl p-4 border border-white/[0.08]">
-            <Text className="text-white/50 text-[10px] font-bold tracking-widest mb-1.5">
-              BEST
-            </Text>
-            <Text className="text-white text-2xl font-black">
-              {userStats?.longest_streak || 0}
-            </Text>
-            <Text className="text-white/40 text-[11px] font-semibold mt-0.5">
-              days max
-            </Text>
-          </View>
-        </View>
-
-        {/* Month Navigation */}
         <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
           <View className="flex-row justify-between items-center mb-4">
             <TouchableOpacity
               onPress={() => navigateMonth("prev")}
               className="w-10 h-10 rounded-lg bg-white/[0.05] items-center justify-center border border-white/[0.08]"
             >
-              <Text className="text-white/60 text-lg font-bold">←</Text>
+              <Feather name="arrow-left" size={24} color="#999999" />
             </TouchableOpacity>
 
             <View className="items-center">
@@ -415,23 +399,20 @@ const CalendarScreen = () => {
               onPress={() => navigateMonth("next")}
               className="w-10 h-10 rounded-lg bg-white/[0.05] items-center justify-center border border-white/[0.08]"
             >
-              <Text className="text-white/60 text-lg font-bold">→</Text>
+              <Feather name="arrow-right" size={24} color="#999999" />
             </TouchableOpacity>
           </View>
 
-          {/* Day Labels */}
-          <View className="flex-row justify-around mb-2">
-            {["S", "M", "T", "W", "T", "F", "S"].map((day, index) => (
-              <Text
-                key={index}
-                className="w-11 text-center text-white/30 font-bold text-xs uppercase"
-              >
-                {day}
-              </Text>
+          <View className="flex-row justify-between mb-2 px-0.5">
+            {["M", "T", "W", "T", "F", "S", "S"].map((day, index) => (
+              <View key={index} className="w-11 items-center">
+                <Text className="text-white/30 font-bold text-xs uppercase">
+                  {day}
+                </Text>
+              </View>
             ))}
           </View>
 
-          {/* Calendar Grid */}
           {isLoading ? (
             <View className="items-center justify-center py-8">
               <ActivityIndicator size="small" color="#EA580C" />
@@ -440,7 +421,6 @@ const CalendarScreen = () => {
             <View className="flex-row flex-wrap">{renderCalendar()}</View>
           )}
 
-          {/* Legend */}
           <View className="mt-4 pt-4 border-t border-white/5">
             <View className="flex-row justify-around">
               <View className="flex-row items-center">
@@ -448,7 +428,7 @@ const CalendarScreen = () => {
                 <Text className="text-white/50 text-xs font-bold">Logged</Text>
               </View>
               <View className="flex-row items-center">
-                <View className="w-5 h-5 rounded bg-white/[0.08] border-2 border-orange-600 mr-2" />
+                <View className="w-5 h-5 rounded bg-white/[0.12] border-2 border-orange-600 mr-2" />
                 <Text className="text-white/50 text-xs font-bold">Today</Text>
               </View>
               <View className="flex-row items-center">
@@ -527,7 +507,6 @@ const CalendarScreen = () => {
         </View>
       </ScrollView>
 
-      {/* Day Detail Modal */}
       <DayDetailModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}

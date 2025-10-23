@@ -93,7 +93,6 @@ export default function AchievementsScreen() {
           paddingBottom: 100 + insets.bottom,
         }}
       >
-        {/* Header Card */}
         <View className="mb-8">
           <View className="bg-white/[0.03] backdrop-blur-xl rounded-2xl p-6 border border-white/[0.08]">
             <View className="flex-row items-start justify-between mb-6">
