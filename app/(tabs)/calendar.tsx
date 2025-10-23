@@ -12,7 +12,34 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const CalendarDay = ({ day, drank, onPress, isToday, isSelected }) => {
+interface CalendarDayProps {
+  day: number;
+  drank: boolean;
+  onPress: (day: number, drank: boolean) => void;
+  isToday: boolean;
+  isSelected: boolean;
+}
+
+interface DayData {
+  date: string;
+  drank_today: boolean;
+}
+
+interface DayDetailModalProps {
+  visible: boolean;
+  onClose: () => void;
+  dayData: DayData | null;
+  selectedDay: number | null;
+  userStats: UserStats | null;
+}
+
+const CalendarDay = ({
+  day,
+  drank,
+  onPress,
+  isToday,
+  isSelected,
+}: CalendarDayProps) => {
   return (
     <TouchableOpacity
       onPress={() => onPress(day, drank)}
@@ -54,18 +81,12 @@ const DayDetailModal = ({
   dayData,
   selectedDay,
   userStats,
-}: {
-  visible: boolean;
-  onClose: () => {};
-  selectedDay:number;
-  userStats: UserStats;
-}) => {
-  
+}: DayDetailModalProps) => {
   console.log("dayData: ", dayData);
- 
+
   const insets = useSafeAreaInsets();
 
-  if (!dayData) return null;
+  if (!dayData || !selectedDay) return null;
 
   return (
     <Modal
@@ -208,7 +229,7 @@ const CalendarScreen = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
-  const [selectedDayData, setSelectedDayData] = useState(null);
+  const [selectedDayData, setSelectedDayData] = useState<DayData | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
 
   const monthNames = [
@@ -238,8 +259,8 @@ const CalendarScreen = () => {
     return new Date(year, month - 1, 1).getDay();
   };
 
-  const handleDayPress = (day:number, dayData) => {
-        console.log("DDD:",typeof dayData)
+  const handleDayPress = (day: number, dayData: DayData | null) => {
+    console.log("DDD:", typeof dayData);
 
     setSelectedDay(day);
     setSelectedDayData(dayData);
@@ -264,12 +285,14 @@ const CalendarScreen = () => {
     }
   };
 
-  const getDayData = (day: number) => {
+  const getDayData = (day: number): DayData | null => {
     if (!calendar?.days) return null;
-    return calendar.days.find((d) => {
-      const dayDate = new Date(d.date).getDate();
-      return dayDate === day;
-    });
+    return (
+      calendar.days.find((d) => {
+        const dayDate = new Date(d.date).getDate();
+        return dayDate === day;
+      }) || null
+    );
   };
 
   const renderCalendar = () => {
