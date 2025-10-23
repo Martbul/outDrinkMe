@@ -6,18 +6,16 @@ import { TailwindProvider } from "tailwindcss-react-native";
 import { AppProvider } from "@/providers/AppProvider";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import ErrorBoundary from "@/components/errorBoundary";
-import "../global.css";
 import SplashScreen from "@/components/spashScreen";
+import "../global.css";
 
 export default function RootLayout() {
-  // Load custom fonts
   const [loaded] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
 
   const clerkPublishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
-  // Show splash screen while fonts are loading
   if (!loaded) {
     return <SplashScreen />;
   }

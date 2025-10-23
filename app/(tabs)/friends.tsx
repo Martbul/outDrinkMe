@@ -6,7 +6,6 @@ import React, { useMemo, useState } from "react";
 import {
   FlatList,
   Image,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -54,7 +53,7 @@ const FriendsScreen = () => {
           </TouchableOpacity>
         )}
 
-        {activeTab === "dicovery" && (
+        {activeTab === "discovery" && (
           <TouchableOpacity
             onPress={() => router.push(`/(screens)/userInfo?userId=${item.id}`)}
             className="bg-gray-900 rounded-2xl p-4 border border-gray-800 flex-row items-center mb-3"
@@ -100,8 +99,10 @@ const FriendsScreen = () => {
     if (searchQuery.trim()) {
       return (
         <View className="flex-1 items-center justify-center py-16">
-          <FontAwesome6 name="sad-tear" size={24} color="black" />{" "}
-          <Text className="text-white text-xl font-bold mb-2">No results</Text>
+          <FontAwesome6 name="sad-tear" size={24} color="#9CA3AF" />
+          <Text className="text-white text-xl font-bold mb-2 mt-4">
+            No results
+          </Text>
           <Text className="text-gray-500 text-center px-8">
             No friends found matching "{searchQuery}"
           </Text>
@@ -138,6 +139,44 @@ const FriendsScreen = () => {
     return null;
   };
 
+  const TabSelection = () => {
+    return (
+      <View className="flex-row px-4 border-b-[1.5px] border-gray-700 mt-2">
+        <TouchableOpacity
+          className="flex-1 py-3.5 items-center relative"
+          onPress={() => setActiveTab("friends")}
+        >
+          <Text
+            className={`text-[15px] font-semibold ${
+              activeTab === "friends" ? "text-white" : "text-gray-700"
+            }`}
+          >
+            Friends
+          </Text>
+          {activeTab === "friends" && (
+            <View className="absolute -bottom-[1.5px] left-0 right-0 h-[3px] bg-white" />
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          className="flex-1 py-3.5 items-center relative"
+          onPress={() => setActiveTab("discovery")}
+        >
+          <Text
+            className={`text-[15px] font-semibold ${
+              activeTab === "discovery" ? "text-white" : "text-gray-700"
+            }`}
+          >
+            Discovery
+          </Text>
+          {activeTab === "discovery" && (
+            <View className="absolute -bottom-[1.5px] left-0 right-0 h-[3px] bg-white" />
+          )}
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
   const ListHeaderComponent = () => (
     <>
       <TabSelection />
@@ -148,7 +187,7 @@ const FriendsScreen = () => {
           onChangeText={setSearchQuery}
           placeholder="Search Friends"
           placeholderTextColor="#6B7280"
-          className="flex-1 text-white text-base"
+          className="flex-1 text-white text-base ml-2"
         />
         {searchQuery.length > 0 && (
           <TouchableOpacity
@@ -168,12 +207,7 @@ const FriendsScreen = () => {
         className="bg-orange-600 rounded-2xl p-5 flex-row items-center justify-center mb-24 mt-4"
         onPress={() => router.push(`/(screens)/searchDrinkers`)}
       >
-        <FontAwesome5
-          name="user-plus"
-          size={22}
-          color="black"
-          className="mr-3"
-        />
+        <FontAwesome5 name="user-plus" size={22} color="black" />
         <Text className="text-black text-lg font-black uppercase tracking-wider ml-3">
           Search Drinkers
         </Text>
@@ -203,42 +237,6 @@ const FriendsScreen = () => {
     }
   };
 
-  const TabSelection = () => {
-    return (
-      <View style={styles.tabBar}>
-        <TouchableOpacity
-          style={styles.tab}
-          onPress={() => setActiveTab("friends")}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "friends" && styles.activeTabText,
-            ]}
-          >
-            Friends
-          </Text>
-          {activeTab === "friends" && <View style={styles.tabIndicator} />}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.tab}
-          onPress={() => setActiveTab("discovery")}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "discovery" && styles.activeTabText,
-            ]}
-          >
-            Discovery
-          </Text>
-          {activeTab === "discovery" && <View style={styles.tabIndicator} />}
-        </TouchableOpacity>
-      </View>
-    );
-  };
-
   return (
     <View className="flex-1 bg-black">
       <Header />
@@ -260,188 +258,5 @@ const FriendsScreen = () => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  // Color Palette from reference image:
-  // - Pure Black: #000000 (backgrounds)
-  // - Pure White: #FFFFFF (primary text, borders)
-  // - Light Gray: #E5E5E5 (secondary elements)
-  // - Dark Gray: #404040 (muted text, borders)
-
-  container: {
-    backgroundColor: "#000000",
-  },
-  safeArea: {
-    backgroundColor: "#000000",
-  },
-  topBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
-  },
-  menuButton: {
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  menuLine: {
-    width: 22,
-    height: 2.5,
-    backgroundColor: "#FFFFFF",
-    marginVertical: 3,
-    borderRadius: 2,
-  },
-  rightSection: {
-    flexDirection: "row",
-    gap: 6,
-  },
-  iconButton: {
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 20,
-    backgroundColor: "#1A1A1A",
-    borderWidth: 1,
-    borderColor: "#404040",
-  },
-  iconText: {
-    fontSize: 18,
-  },
-  profileBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-  },
-  avatarSection: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "#E5E5E5",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 3,
-    borderColor: "#FFFFFF",
-  },
-  avatarText: {
-    color: "#000000",
-    fontSize: 20,
-    fontWeight: "900",
-  },
-  levelSection: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  levelText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 4,
-  },
-  progressBarContainer: {
-    maxWidth: 140,
-  },
-  progressBar: {
-    height: 8,
-    backgroundColor: "#1A1A1A",
-    borderRadius: 4,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#404040",
-  },
-  progressFill: {
-    height: "100%",
-    width: "25%",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 3,
-  },
-  stats: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  statItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  statIcon: {
-    fontSize: 20,
-  },
-  statValue: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  gemContainer: {
-    position: "relative",
-  },
-  plusBadge: {
-    position: "absolute",
-    bottom: -2,
-    right: -2,
-    backgroundColor: "#FFFFFF",
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  plusText: {
-    color: "#000000",
-    fontSize: 8,
-    fontWeight: "900",
-  },
-  bellButton: {
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 20,
-    backgroundColor: "#1A1A1A",
-    borderWidth: 1,
-    borderColor: "#404040",
-  },
-  tabBar: {
-    flexDirection: "row",
-    paddingHorizontal: 16,
-    borderBottomWidth: 1.5,
-    borderBottomColor: "#404040",
-    marginTop: 8,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 14,
-    alignItems: "center",
-    position: "relative",
-  },
-  tabText: {
-    color: "#404040",
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  activeTabText: {
-    color: "#FFFFFF",
-  },
-  tabIndicator: {
-    position: "absolute",
-    bottom: -1.5,
-    left: 0,
-    right: 0,
-    height: 3,
-    backgroundColor: "#FFFFFF",
-  },
-});
 
 export default FriendsScreen;

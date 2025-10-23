@@ -25,14 +25,16 @@ export default function TabLayout() {
     return () => clearTimeout(timer);
   }, []);
 
+   if (!isSignedIn) {
+     return <Redirect href="/(auth)/google-sign-in" />;
+   }
+
+
   if (!isLoaded || !isReady || isInitialLoading) {
     return <SplashScreen />;
   }
 
-  if (!isSignedIn) {
-    return <Redirect href="/(auth)/google-sign-in" />;
-  }
-
+ 
   return (
     <>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />

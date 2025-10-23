@@ -2,15 +2,13 @@ import { Header } from "@/components/header";
 import ThisWeekGadget from "@/components/thisWeekGadget";
 import { useApp } from "@/providers/AppProvider";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React from "react";
 import {
   ScrollView,
   Text,
   TouchableOpacity,
   View,
-  StyleSheet,
   ActivityIndicator,
-  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -26,11 +24,10 @@ export default function HomeScreen() {
   } = useApp();
   const router = useRouter();
 
-  const getRankInfo = () => {
+  const getLevelInfo = () => {
     if (!userStats) return { level: 0, title: "NEWBIE", maxLevel: 10 };
 
-    // Calculate level based on total days drank (every 20 days = 1 level)
-    const level = Math.min(Math.floor(userStats.total_days_drank / 20) + 1, 10);
+    const level = Math.min(Math.floor(userStats.alcoholism_coefficient * 0.75) + 1, 10);
 
     const titles = [
       "NEWBIE",
@@ -48,57 +45,65 @@ export default function HomeScreen() {
     return {
       level,
       title: titles[level - 1] || "NEWBIE",
-      maxLevel: 10,
+      coef: userStats.alcoholism_coefficient
     };
   };
 
-  const rankInfo = getRankInfo();
-
+  const levelInfo = getLevelInfo();
 
   if (isLoading && !userStats) {
     return (
-      <View style={styles.loadingContainer}>
+      <View className="flex-1 bg-black justify-center items-center">
         <ActivityIndicator size="large" color="#EA580C" />
-        <Text style={styles.loadingText}>Loading your stats...</Text>
+        <Text className="text-white/50 text-sm mt-4">
+          Loading your stats...
+        </Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View className="flex-1 bg-black">
       <Header />
 
       <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[
-          styles.contentContainer,
-          { paddingBottom: 100 + insets.bottom },
-        ]}
+        className="flex-1"
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingTop: 24,
+          paddingBottom: 100 + insets.bottom,
+        }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Rank Badge */}
-        <View style={styles.rankSection}>
-          <View style={styles.rankBadge}>
-            <Text style={styles.rankNumber}>{rankInfo.level}</Text>
+        <View className="items-center mb-6">
+          <View className="w-[120px] h-[120px] rounded-full bg-orange-600/15 border-4 border-orange-600 justify-center items-center mb-3">
+            <Text className="text-orange-600 text-5xl font-black">
+              {levelInfo.coef}
+            </Text>
           </View>
-          <Text style={styles.rankTitle}>{rankInfo.title}</Text>
-          <Text style={styles.rankSubtitle}>
-            Level {rankInfo.level}/{rankInfo.maxLevel}
+          <Text className="text-white text-[22px] font-black tracking-wide">
+            {levelInfo.title}
+          </Text>
+          <Text className="text-white/40 text-xs font-bold tracking-[2px] mt-1">
+            Coef
           </Text>
         </View>
 
-        {/* Current Streak */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
+        <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
+          <View className="flex-row justify-between items-center">
             <View>
-              <Text style={styles.cardLabel}>CURRENT STREAK</Text>
-              <Text style={styles.streakText}>
+              <Text className="text-white/50 text-[11px] font-bold tracking-[1.5px] mb-2">
+                CURRENT STREAK
+              </Text>
+              <Text className="text-white text-[32px] font-black">
                 {userStats?.current_streak || 0} Days 🔥
               </Text>
             </View>
             {userStats && userStats.current_streak > 0 && (
-              <View style={styles.statusBadge}>
-                <Text style={styles.statusText}>ACTIVE</Text>
+              <View className="bg-orange-600/20 px-3.5 py-1.5 rounded-lg">
+                <Text className="text-orange-600 text-[11px] font-black tracking-wide">
+                  ACTIVE
+                </Text>
               </View>
             )}
           </View>
@@ -106,66 +111,91 @@ export default function HomeScreen() {
 
         <ThisWeekGadget />
 
-        {/* Quick Stats Grid */}
-        <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>RANK</Text>
-            <Text style={styles.statValue}>#{userStats?.rank || 0}</Text>
-            <Text style={styles.statSubtext}>
+        <View className="flex-row gap-3 mb-4">
+          <View className="flex-1 bg-white/[0.03] rounded-xl p-4 border border-white/[0.08]">
+            <Text className="text-white/50 text-[10px] font-bold tracking-[1.5px] mb-1.5">
+              RANK
+            </Text>
+            <Text className="text-white text-2xl font-black">
+              #{userStats?.rank || 0}
+            </Text>
+            <Text className="text-white/40 text-[11px] font-semibold mt-0.5">
               of {leaderboard?.total_users || 0}
             </Text>
           </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>TOTAL</Text>
-            <Text style={styles.statValue}>
+
+          <View className="flex-1 bg-white/[0.03] rounded-xl p-4 border border-white/[0.08]">
+            <Text className="text-white/50 text-[10px] font-bold tracking-[1.5px] mb-1.5">
+              TOTAL
+            </Text>
+            <Text className="text-white text-2xl font-black">
               {userStats?.total_days_drank || 0}
             </Text>
-            <Text style={styles.statSubtext}>days</Text>
+            <Text className="text-white/40 text-[11px] font-semibold mt-0.5">
+              days
+            </Text>
           </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>WINS</Text>
-            <Text style={styles.statValue}>
+
+          <View className="flex-1 bg-white/[0.03] rounded-xl p-4 border border-white/[0.08]">
+            <Text className="text-white/50 text-[10px] font-bold tracking-[1.5px] mb-1.5">
+              WINS
+            </Text>
+            <Text className="text-white text-2xl font-black">
               {userStats?.total_weeks_won || 0}
             </Text>
-            <Text style={styles.statSubtext}>weeks</Text>
+            <Text className="text-white/40 text-[11px] font-semibold mt-0.5">
+              weeks
+            </Text>
           </View>
         </View>
 
         {/* Additional Stats */}
-        <View style={styles.card}>
-          <Text style={styles.cardLabel}>YOUR STATS</Text>
+        <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
+          <Text className="text-white/50 text-[11px] font-bold tracking-[1.5px] mb-2">
+            YOUR STATS
+          </Text>
 
-          <View style={styles.statRow}>
-            <Text style={styles.statRowLabel}>This Month</Text>
-            <Text style={styles.statRowValue}>
+          <View className="flex-row justify-between items-center py-3 border-b border-white/[0.05]">
+            <Text className="text-white/50 text-[13px] font-semibold">
+              This Month
+            </Text>
+            <Text className="text-white text-[15px] font-bold">
               {userStats?.days_this_month || 0} days
             </Text>
           </View>
 
-          <View style={styles.statRow}>
-            <Text style={styles.statRowLabel}>This Year</Text>
-            <Text style={styles.statRowValue}>
+          <View className="flex-row justify-between items-center py-3 border-b border-white/[0.05]">
+            <Text className="text-white/50 text-[13px] font-semibold">
+              This Year
+            </Text>
+            <Text className="text-white text-[15px] font-bold">
               {userStats?.days_this_year || 0} days
             </Text>
           </View>
 
-          <View style={styles.statRow}>
-            <Text style={styles.statRowLabel}>Longest Streak</Text>
-            <Text style={styles.statRowValue}>
+          <View className="flex-row justify-between items-center py-3 border-b border-white/[0.05]">
+            <Text className="text-white/50 text-[13px] font-semibold">
+              Longest Streak
+            </Text>
+            <Text className="text-white text-[15px] font-bold">
               {userStats?.longest_streak || 0} days
             </Text>
           </View>
 
-          <View style={styles.statRow}>
-            <Text style={styles.statRowLabel}>Achievements</Text>
-            <Text style={styles.statRowValue}>
+          <View className="flex-row justify-between items-center py-3 border-b border-white/[0.05]">
+            <Text className="text-white/50 text-[13px] font-semibold">
+              Achievements
+            </Text>
+            <Text className="text-white text-[15px] font-bold">
               {userStats?.achievements_count || 0}
             </Text>
           </View>
 
-          <View style={[styles.statRow, { borderBottomWidth: 0 }]}>
-            <Text style={styles.statRowLabel}>Friends</Text>
-            <Text style={styles.statRowValue}>
+          <View className="flex-row justify-between items-center py-3">
+            <Text className="text-white/50 text-[13px] font-semibold">
+              Friends
+            </Text>
+            <Text className="text-white text-[15px] font-bold">
               {userStats?.friends_count || 0}
             </Text>
           </View>
@@ -173,19 +203,20 @@ export default function HomeScreen() {
 
         {/* Log Button */}
         <TouchableOpacity
-          style={[
-            styles.logButton,
-            userStats?.today_status && styles.logButtonDisabled,
-          ]}
+          className={`rounded-2xl py-5 items-center mb-4 ${
+            userStats?.today_status
+              ? "bg-orange-600/50"
+              : "bg-orange-600 shadow-lg shadow-orange-600/30"
+          }`}
           onPress={() => router.push("/(tabs)/add")}
           disabled={isLoading}
         >
           {isLoading ? (
             <ActivityIndicator color="#000000" />
           ) : (
-            <Text style={styles.logButtonText}>
+            <Text className="text-black text-base font-black tracking-[1.5px]">
               {userStats?.today_status
-                ? "✓ CONGRATS MY ALCOHOLIC  "
+                ? "✓ CONGRATS MY ALCOHOLIC"
                 : "DRINK TODAY"}
             </Text>
           )}
@@ -194,231 +225,3 @@ export default function HomeScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#000000",
-  },
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: "#000000",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
-    color: "rgba(255, 255, 255, 0.5)",
-    fontSize: 14,
-    marginTop: 16,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  contentContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 24,
-  },
-  rankSection: {
-    alignItems: "center",
-    marginBottom: 24,
-  },
-  rankBadge: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: "rgba(234, 88, 12, 0.15)",
-    borderWidth: 4,
-    borderColor: "#EA580C",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  rankNumber: {
-    color: "#EA580C",
-    fontSize: 48,
-    fontWeight: "900",
-  },
-  rankTitle: {
-    color: "#FFFFFF",
-    fontSize: 22,
-    fontWeight: "900",
-    letterSpacing: 1,
-  },
-  rankSubtitle: {
-    color: "rgba(255, 255, 255, 0.4)",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 2,
-    marginTop: 4,
-  },
-  card: {
-    backgroundColor: "rgba(255, 255, 255, 0.03)",
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
-  },
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  cardLabel: {
-    color: "rgba(255, 255, 255, 0.5)",
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 1.5,
-    marginBottom: 8,
-  },
-  streakText: {
-    color: "#FFFFFF",
-    fontSize: 32,
-    fontWeight: "900",
-  },
-  statusBadge: {
-    backgroundColor: "rgba(234, 88, 12, 0.2)",
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  statusText: {
-    color: "#EA580C",
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 1,
-  },
-  progressSection: {
-    marginTop: 8,
-  },
-  progressHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-    marginBottom: 12,
-  },
-  progressValue: {
-    color: "#FFFFFF",
-    fontSize: 28,
-    fontWeight: "900",
-  },
-  progressLabel: {
-    color: "rgba(255, 255, 255, 0.5)",
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  progressBarContainer: {
-    width: "100%",
-    height: 8,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    borderRadius: 4,
-    overflow: "hidden",
-  },
-  progressBar: {
-    height: "100%",
-    backgroundColor: "#EA580C",
-    borderRadius: 4,
-  },
-  weekGrid: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 20,
-  },
-  dayContainer: {
-    alignItems: "center",
-  },
-  dayBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 6,
-  },
-  dayBoxActive: {
-    backgroundColor: "#EA580C",
-  },
-  dayBoxInactive: {
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
-  },
-  checkmark: {
-    color: "#000000",
-    fontSize: 14,
-    fontWeight: "900",
-  },
-  dayLabel: {
-    color: "rgba(255, 255, 255, 0.5)",
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  statsGrid: {
-    flexDirection: "row",
-    gap: 12,
-    marginBottom: 16,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: "rgba(255, 255, 255, 0.03)",
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
-  },
-  statLabel: {
-    color: "rgba(255, 255, 255, 0.5)",
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 1.5,
-    marginBottom: 6,
-  },
-  statValue: {
-    color: "#FFFFFF",
-    fontSize: 24,
-    fontWeight: "900",
-  },
-  statSubtext: {
-    color: "rgba(255, 255, 255, 0.4)",
-    fontSize: 11,
-    fontWeight: "600",
-    marginTop: 2,
-  },
-  statRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255, 255, 255, 0.05)",
-  },
-  statRowLabel: {
-    color: "rgba(255, 255, 255, 0.5)",
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  statRowValue: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  logButton: {
-    backgroundColor: "#EA580C",
-    borderRadius: 16,
-    paddingVertical: 18,
-    alignItems: "center",
-    marginBottom: 16,
-    shadowColor: "#EA580C",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  logButtonDisabled: {
-    backgroundColor: "rgba(234, 88, 12, 0.5)",
-  },
-  logButtonText: {
-    color: "#000000",
-    fontSize: 16,
-    fontWeight: "900",
-    letterSpacing: 1.5,
-  },
-});

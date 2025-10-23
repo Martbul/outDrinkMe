@@ -218,39 +218,103 @@ export function AppProvider({ children }: AppProviderProps) {
   // Refresh All - Using Parallel Execution
   // ============================================
 
+  // Replace your refreshAll function with this version
+
   const refreshAll = useCallback(async () => {
     if (!isSignedIn) return;
 
-    await withLoadingAndError(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
       const token = await getToken();
       if (!token) throw new Error("No auth token");
 
-      const [user, stats, board, achiev, cal, friends, weekly] =
-        await Promise.all([
-          apiService.fetchUser(token),
-          apiService.getUserStats(token),
-          apiService.getFriendsLeaderboard(token),
-          apiService.getAchievements(token),
-          apiService.getCurrentMonthCalendar(token),
-          apiService.getFriends(token),
-          apiService.getWeeklyStats(token),
-        ]);
+      // Use Promise.allSettled instead of Promise.all
+      const results = await Promise.allSettled([
+        apiService.fetchUser(token),
+        apiService.getUserStats(token),
+        apiService.getFriendsLeaderboard(token),
+        apiService.getAchievements(token),
+        apiService.getCurrentMonthCalendar(token),
+        apiService.getFriends(token),
+        apiService.getWeeklyStats(token),
+      ]);
 
-      // Update all state at once
-      setUserData(user);
-      setUserStats(stats);
-      setLeaderboard(board);
-      setAchievements(achiev);
-      setCalendar(cal);
-      setFriends(friends);
-      setWeeklyStats(weekly);
+      // Extract successful results and handle failures
+      const [
+        userResult,
+        statsResult,
+        boardResult,
+        achievResult,
+        calResult,
+        friendsResult,
+        weeklyResult,
+      ] = results;
 
-      // Mark initial loading as complete
+      // Update state for successful calls
+      if (userResult.status === "fulfilled") {
+        setUserData(userResult.value);
+      } else {
+        console.error("Failed to fetch user:", userResult.reason);
+      }
+
+      if (statsResult.status === "fulfilled") {
+        setUserStats(statsResult.value);
+      } else {
+        console.error("Failed to fetch user stats:", statsResult.reason);
+      }
+
+      if (boardResult.status === "fulfilled") {
+        setLeaderboard(boardResult.value);
+      } else {
+        console.error("Failed to fetch leaderboard:", boardResult.reason);
+        // Set empty leaderboard instead of leaving it null
+        setLeaderboard({entries:[], total_users:0});
+      }
+
+      if (achievResult.status === "fulfilled") {
+        setAchievements(achievResult.value);
+      } else {
+        console.error("Failed to fetch achievements:", achievResult.reason);
+      }
+
+      if (calResult.status === "fulfilled") {
+        setCalendar(calResult.value);
+      } else {
+        console.error("Failed to fetch calendar:", calResult.reason);
+      }
+
+      if (friendsResult.status === "fulfilled") {
+        setFriends(friendsResult.value);
+      } else {
+        console.error("Failed to fetch friends:", friendsResult.reason);
+        setFriends([]);
+      }
+
+      if (weeklyResult.status === "fulfilled") {
+        setWeeklyStats(weeklyResult.value);
+      } else {
+        console.error("Failed to fetch weekly stats:", weeklyResult.reason);
+      }
+
+      // Collect any errors
+      const failedCalls = results.filter((r) => r.status === "rejected");
+      if (failedCalls.length > 0) {
+        setError(
+          `${failedCalls.length} API call(s) failed. Some data may be incomplete.`
+        );
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      setError(errorMessage);
+      console.error("RefreshAll Error:", err);
+    } finally {
+      // CRITICAL: Always set initial loading to false, even if some calls fail
       setIsInitialLoading(false);
-
-      return true;
-    });
-  }, [isSignedIn, getToken, withLoadingAndError]);
+      setIsLoading(false);
+    }
+  }, [isSignedIn, getToken]);
   // ============================================
   // Actions
   // ============================================
@@ -364,24 +428,24 @@ export function AppProvider({ children }: AppProviderProps) {
   // Initial Load
   // ============================================
 
- useEffect(() => {
-   if (isSignedIn && !hasInitialized.current) {
-     hasInitialized.current = true;
-     refreshAll();
-   }
+  useEffect(() => {
+    if (isSignedIn && !hasInitialized.current) {
+      hasInitialized.current = true;
+      refreshAll();
+    }
 
-   // Reset initialization flag when user signs out
-   if (!isSignedIn) {
-     hasInitialized.current = false;
-     setUserData(null);
-     setUserStats(null);
-     setLeaderboard(null);
-     setAchievements(null);
-     setCalendar(null);
-     setWeeklyStats(null);
-     setIsInitialLoading(true);
-   }
- }, [isSignedIn]);
+    // Reset initialization flag when user signs out
+    if (!isSignedIn) {
+      hasInitialized.current = false;
+      setUserData(null);
+      setUserStats(null);
+      setLeaderboard(null);
+      setAchievements(null);
+      setCalendar(null);
+      setWeeklyStats(null);
+      setIsInitialLoading(true);
+    }
+  }, [isSignedIn]);
 
   // ============================================
   // Context Value

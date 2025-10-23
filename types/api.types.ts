@@ -63,6 +63,7 @@ export interface UserStats {
   achievements_count: number;
   friends_count: number;
   alcoholism_coefficient: number;
+  rank: number;
 }
 
 export interface CalendarDay {
