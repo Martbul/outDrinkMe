@@ -59,10 +59,14 @@ export default function SignInScreen() {
     >
       <View className="items-center mb-16">
         {/* App Name */}
-        <Text className="text-white text-4xl font-black mb-2">OutDrinkMe</Text>
-        <Text className="text-gray-500 text-base mb-12">
-          Sign in to start tracking
-        </Text>
+        <View className="flex my-6">
+          <Text className="text-white text-4xl font-black mb-2">
+            OutDrinkMe
+          </Text>
+          <Text className="text-gray-500 text-base mb-12">
+            Sign in to start tracking
+          </Text>
+        </View>
 
         {/* Sign In Illustration */}
         <View className="w-32 h-32 rounded-full bg-gray-900 border-2 border-gray-800 items-center justify-center mb-12">

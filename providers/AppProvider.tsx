@@ -16,6 +16,7 @@ import {
   DaysStat,
   UserData,
   UpdateUserProfileReq,
+  FriendDiscoveryDisplayProfileResponse,
 } from "../types/api.types";
 import { apiService } from "@/api";
 import { Alert } from "react-native";
@@ -31,6 +32,7 @@ interface AppContextType {
   weeklyStats: DaysStat | null;
   friends: UserData[] | [];
   discovery: UserData[] | [];
+  friendDiscoveryProfile: FriendDiscoveryDisplayProfileResponse | null
 
   // Refresh Functions
   refreshUserData: () => Promise<void>;
@@ -48,6 +50,7 @@ interface AppContextType {
   addFriend: (friendId: string) => Promise<void>;
   searchUsers: (searchQuery: string) => Promise<UserData[]>;
   updateUserProfile: (updateReq: UpdateUserProfileReq) => Promise<any>;
+  getFriendDiscoveryDisplayProfile: (friendDiscoveryId: string) => Promise<any>;
 
   // Global State
   isLoading: boolean;
@@ -74,6 +77,8 @@ export function AppProvider({ children }: AppProviderProps) {
   const [friends, setFriends] = useState<UserData[] | []>([]);
   const [discovery, setDiscovery] = useState<UserData[] | []>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [friendDiscoveryProfile, setFriendDiscoveryProfile] =
+    useState<FriendDiscoveryDisplayProfileResponse | null>(null);
 
   // Global loading and error
   const [isLoading, setIsLoading] = useState(false);
@@ -445,9 +450,6 @@ export function AppProvider({ children }: AppProviderProps) {
     [isSignedIn, getToken, withLoadingAndError]
   );
 
-  
-  
-  //!TODO: Continue, and add deleteUser
   const getFriendDiscoveryDisplayProfile = useCallback(
     async (friendDiscoveryId: string): Promise<any> => {
       if (!isSignedIn) {
@@ -458,18 +460,22 @@ export function AppProvider({ children }: AppProviderProps) {
         const token = await getToken();
         if (!token) throw new Error("No auth token");
 
-        await apiService.getFriendDiscoveryDisplayProfile(friendDiscoveryId, token);
+        const friendDiscover =
+          await apiService.getFriendDiscoveryDisplayProfile(
+            friendDiscoveryId,
+            token
+          );
 
-        const [user] = await Promise.all([apiService.fetchUser(token)]);
-
-        return { user };
+        return friendDiscover;
       });
       if (result) {
-        setUserData(result.user);
+        setFriendDiscoveryProfile(result);
       }
     },
     [isSignedIn, getToken, withLoadingAndError]
   );
+
+    //!TODO: Add deleteUser
 
   // ============================================
   // Initial Load
@@ -509,6 +515,7 @@ export function AppProvider({ children }: AppProviderProps) {
     weeklyStats,
     friends,
     discovery,
+    friendDiscoveryProfile,
 
     // Refresh Functions
     refreshUserData,
@@ -526,6 +533,7 @@ export function AppProvider({ children }: AppProviderProps) {
     addFriend,
     searchUsers,
     updateUserProfile,
+    getFriendDiscoveryDisplayProfile,
 
     // Global State
     isLoading,

@@ -4,6 +4,12 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/providers/AppProvider";
 import Entypo from "@expo/vector-icons/Entypo";
+
+
+
+
+
+//!TODO: Remove the Alert for modal(and confetti)
 export default function AddDrinksScreenV3() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -218,3 +224,4 @@ export default function AddDrinksScreenV3() {
     </View>
   );
 }
+

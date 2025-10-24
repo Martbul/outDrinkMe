@@ -4,6 +4,8 @@
  * XP required grows exponentially with each level
  */
 
+import { UserStats } from "@/types/api.types";
+
 export interface LevelInfo {
   level: number;
   currentXP: number;
@@ -128,3 +130,31 @@ export function getExampleLevelTable(maxLevel: number = 20): void {
     );
   }
 }
+
+export const getLevelInfo2 = (userStats:UserStats|null) => {
+  if (!userStats) return { level: 0, title: "NEWBIE", maxLevel: 10 };
+
+  const level = Math.min(
+    Math.floor(userStats.alcoholism_coefficient * 0.75) + 1,
+    10
+  );
+
+  const titles = [
+    "THE SOBER SOUL",
+    "THE FIRST SIP",
+    "THE TEMPTED",
+    "THE INTOXICATED",
+    "THE UNHINGED",
+    "THE FALLEN",
+    "THE DROWNED IN SPIRITS",
+    "THE WHISPERER OF WINE",
+    "THE LIQUOR SHADE",
+    "THE VOID DRINKER",
+  ];
+
+  return {
+    level,
+    title: titles[level - 1] || "NEWBIE",
+    coef: userStats.alcoholism_coefficient,
+  };
+};

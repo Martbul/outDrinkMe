@@ -1,6 +1,7 @@
 import { Header } from "@/components/header";
 import ThisWeekGadget from "@/components/thisWeekGadget";
 import { useApp } from "@/providers/AppProvider";
+import { getLevelInfo2 } from "@/utils/levels";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
@@ -15,40 +16,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const {
-    userData,
     userStats,
-    leaderboard,
     isLoading,
   } = useApp();
   const router = useRouter();
 
-  const getLevelInfo = () => {
-    if (!userStats) return { level: 0, title: "NEWBIE", maxLevel: 10 };
-
-    const level = Math.min(Math.floor(userStats.alcoholism_coefficient * 0.75) + 1, 10);
-
- const titles = [
-   "THE SOBER SOUL",
-   "THE FIRST SIP",
-   "THE TEMPTED",
-   "THE INTOXICATED",
-   "THE UNHINGED",
-   "THE FALLEN",
-   "THE DROWNED IN SPIRITS",
-   "THE WHISPERER OF WINE",
-   "THE LIQUOR SHADE",
-   "THE VOID DRINKER",
- ];
 
 
-    return {
-      level,
-      title: titles[level - 1] || "NEWBIE",
-      coef: userStats.alcoholism_coefficient
-    };
-  };
-
-  const levelInfo = getLevelInfo();
+  const levelInfo = getLevelInfo2(userStats);
 
   if (isLoading && !userStats) {
     return (

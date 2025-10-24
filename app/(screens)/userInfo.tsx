@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -10,11 +10,10 @@ import {
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FontAwesome5 } from "@expo/vector-icons";
-import { apiService } from "@/api";
-import { useAuth } from "@clerk/clerk-expo";
-import { Achievement, UserData, UserStats } from "@/types/api.types";
+import type { UserStats } from "@/types/api.types";
 import { getLevelInfo2 } from "@/utils/levels";
 import SecondaryHeader from "@/components/secondaryHeader";
+import { useApp } from "@/providers/AppProvider";
 
 const ACHIEVEMENT_IMAGES = {
   lightning: require("../../assets/images/achievements/lightning.png"),
@@ -31,14 +30,11 @@ const UserInfoScreen = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { userId: rawUserId } = useLocalSearchParams();
-  const { getToken, isSignedIn } = useAuth();
-
-  const [isLoading, setIsLoading] = useState(true);
-  const [userData, setUserData] = useState<UserData | null>(null);
-  const [userStats, setUserStats] = useState<UserStats | null>(null);
-  const [achievements, setAchievements] = useState<Achievement[] | []>([]);
-  const [isFriend, setIsFriend] = useState(false);
-
+  const {
+    friendDiscoveryProfile,
+    getFriendDiscoveryDisplayProfile,
+    isLoading,
+  } = useApp();
   useEffect(() => {
     const friendDiscoveryId = Array.isArray(rawUserId)
       ? rawUserId[0]
@@ -47,33 +43,16 @@ const UserInfoScreen = () => {
     if (!friendDiscoveryId) return;
 
     const loadData = async () => {
-      setIsLoading(true);
-
-      try {
-        const token = await getToken();
-        if (!token) return; //!TODO: Add error handling like appDataProvider
-
-        const response = await apiService.getFriendDiscoveryDisplayProfile(
-          friendDiscoveryId,
-          token
-        );
-
-        setUserData(response.user);
-        setUserStats(response.stats);
-        setAchievements(response.achievements);
-        setIsFriend(response.is_friend);
-      } catch (err) {
-        console.error("Failed to fetch profile:", err);
-      }
-
-      setIsLoading(false);
+      await getFriendDiscoveryDisplayProfile(friendDiscoveryId);
     };
 
     loadData();
   }, [rawUserId]);
 
-  const levelInfo = getLevelInfo2(userStats);
-
+  const levelInfo = getLevelInfo2(
+    friendDiscoveryProfile?.stats as UserStats | null
+  );
+  const achievements = friendDiscoveryProfile?.achievements;
   // Group achievements by category
   const groupedAchievements = useMemo(() => {
     if (!achievements) return { streaks: [], competition: [], social: [] };
@@ -157,9 +136,9 @@ const UserInfoScreen = () => {
       </View>
     );
   };
+  //!TODO
   const handleFriendAction = () => {
     // Add friend logic
-    setIsFriend(!isFriend);
   };
 
   if (isLoading) {
@@ -173,20 +152,6 @@ const UserInfoScreen = () => {
 
   return (
     <View className="flex-1 bg-black">
-      {/* Header */}
-      <View
-        className="flex-row items-center justify-between px-4 pb-4 border-b border-white/[0.08]"
-        style={{ paddingTop: insets.top + 16 }}
-      >
-        <TouchableOpacity
-          onPress={() => router.back()}
-          className="w-10 h-10 items-center justify-center"
-        >
-          <FontAwesome5 name="arrow-left" size={20} color="white" />
-        </TouchableOpacity>
-        <Text className="text-white text-lg font-bold">Profile</Text>
-        <View className="w-10" />
-      </View>
       <SecondaryHeader title="Profile" />
 
       <ScrollView
@@ -199,14 +164,14 @@ const UserInfoScreen = () => {
           {/* Avatar with Level & Coef Badge */}
           <View className="relative mb-4">
             <View className="w-32 h-32 rounded-full bg-orange-600 items-center justify-center border-4 border-black">
-              {userData?.imageUrl ? (
+              {friendDiscoveryProfile?.user?.imageUrl ? (
                 <Image
-                  source={{ uri: userData.imageUrl }}
+                  source={{ uri: friendDiscoveryProfile.user.imageUrl }}
                   className="w-full h-full rounded-full"
                 />
               ) : (
                 <Text className="text-black text-5xl font-black">
-                  {userData?.username?.[0]?.toUpperCase()}
+                  {friendDiscoveryProfile?.user?.username?.[0]?.toUpperCase()}
                 </Text>
               )}
             </View>
@@ -228,16 +193,17 @@ const UserInfoScreen = () => {
 
           {/* Name & Username */}
           <Text className="text-white text-2xl font-black mb-1">
-            {userData?.firstName} {userData?.lastName}
+            {friendDiscoveryProfile?.user?.firstName}{" "}
+            {friendDiscoveryProfile?.user?.lastName}
           </Text>
           <Text className="text-white/50 text-base mb-4">
-            @{userData?.username}
+            @{friendDiscoveryProfile?.user?.username}
           </Text>
 
           {/* Action Button */}
           <TouchableOpacity
             className={`px-8 py-3 rounded-xl ${
-              isFriend
+              friendDiscoveryProfile?.is_friend
                 ? "bg-white/[0.03] border border-white/[0.08]"
                 : "bg-orange-600"
             }`}
@@ -245,10 +211,12 @@ const UserInfoScreen = () => {
           >
             <Text
               className={`font-black uppercase tracking-widest text-sm ${
-                isFriend ? "text-white" : "text-black"
+                friendDiscoveryProfile?.is_friend ? "text-white" : "text-black"
               }`}
             >
-              {isFriend ? "Remove Friend" : "Add Friend"}
+              {friendDiscoveryProfile?.is_friend
+                ? "Remove Friend"
+                : "Add Friend"}
             </Text>
           </TouchableOpacity>
         </View>
@@ -262,10 +230,10 @@ const UserInfoScreen = () => {
                   CURRENT STREAK
                 </Text>
                 <Text className="text-white text-[32px] font-black">
-                  {userStats?.current_streak || 0} Days 🔥
+                  {friendDiscoveryProfile?.stats?.current_streak || 0} Days 🔥
                 </Text>
               </View>
-              {userStats && userStats.current_streak > 0 && (
+              {friendDiscoveryProfile?.stats && friendDiscoveryProfile.stats.current_streak > 0 && (
                 <View className="bg-orange-600/20 px-3.5 py-1.5 rounded-lg">
                   <Text className="text-orange-600 text-[11px] font-black tracking-wide">
                     ACTIVE
@@ -287,14 +255,14 @@ const UserInfoScreen = () => {
                 <View
                   key={day}
                   className={`w-10 h-10 rounded-lg items-center justify-center ${
-                    day < (userStats?.days_this_week || 0)
+                    day < (friendDiscoveryProfile?.stats?.days_this_week || 0)
                       ? "bg-orange-600"
                       : "bg-white/[0.05]"
                   }`}
                 >
                   <Text
                     className={`text-xs font-bold ${
-                      day < (userStats?.days_this_week || 0)
+                      day < (friendDiscoveryProfile?.stats?.days_this_week || 0)
                         ? "text-black"
                         : "text-white/30"
                     }`}
@@ -305,7 +273,7 @@ const UserInfoScreen = () => {
               ))}
             </View>
             <Text className="text-white text-lg font-bold mt-2">
-              {userStats?.days_this_week || 0}/7 days
+              {friendDiscoveryProfile?.stats?.days_this_week || 0}/7 days
             </Text>
           </View>
         </View>
@@ -318,7 +286,7 @@ const UserInfoScreen = () => {
                 RANK
               </Text>
               <Text className="text-white text-2xl font-black">
-                #{userStats?.rank || 0}
+                #{friendDiscoveryProfile?.stats?.rank || 0}
               </Text>
             </View>
 
@@ -327,7 +295,7 @@ const UserInfoScreen = () => {
                 TOTAL
               </Text>
               <Text className="text-white text-2xl font-black">
-                {userStats?.total_days_drank || 0}
+                {friendDiscoveryProfile?.stats?.total_days_drank || 0}
               </Text>
               <Text className="text-white/40 text-[11px] font-semibold mt-0.5">
                 days
@@ -339,7 +307,7 @@ const UserInfoScreen = () => {
                 WINS
               </Text>
               <Text className="text-white text-2xl font-black">
-                {userStats?.total_weeks_won || 0}
+                {friendDiscoveryProfile?.stats?.total_weeks_won || 0}
               </Text>
               <Text className="text-white/40 text-[11px] font-semibold mt-0.5">
                 weeks
@@ -353,7 +321,7 @@ const UserInfoScreen = () => {
                 BEST STREAK
               </Text>
               <Text className="text-white text-2xl font-black">
-                {userStats?.longest_streak || 0}
+                {friendDiscoveryProfile?.stats?.longest_streak || 0}
               </Text>
               <Text className="text-white/40 text-[11px] font-semibold mt-0.5">
                 days
@@ -365,7 +333,7 @@ const UserInfoScreen = () => {
                 FRIENDS
               </Text>
               <Text className="text-white text-2xl font-black">
-                {userStats?.friends_count || 0}
+                {friendDiscoveryProfile?.stats?.friends_count || 0}
               </Text>
             </View>
           </View>
@@ -383,7 +351,7 @@ const UserInfoScreen = () => {
                 This Month
               </Text>
               <Text className="text-white text-[15px] font-bold">
-                {userStats?.days_this_month || 0} days
+                {friendDiscoveryProfile?.stats?.days_this_month || 0} days
               </Text>
             </View>
 
@@ -392,7 +360,7 @@ const UserInfoScreen = () => {
                 This Year
               </Text>
               <Text className="text-white text-[15px] font-bold">
-                {userStats?.days_this_year || 0} days
+                {friendDiscoveryProfile?.stats?.days_this_year || 0} days
               </Text>
             </View>
 
@@ -401,7 +369,7 @@ const UserInfoScreen = () => {
                 Achievements
               </Text>
               <Text className="text-white text-[15px] font-bold">
-                {userStats?.achievements_count || 0}
+                {friendDiscoveryProfile?.stats?.achievements_count || 0}
               </Text>
             </View>
           </View>
@@ -421,8 +389,8 @@ const UserInfoScreen = () => {
               </View>
               <View className="bg-orange-600/20 px-3.5 py-1.5 rounded-lg">
                 <Text className="text-orange-600 text-xs font-black">
-                  {achievements.filter((a) => a.unlocked).length}/
-                  {achievements.length}
+                  {achievements?.filter((a) => a.unlocked).length}/
+                  {achievements?.length}
                 </Text>
               </View>
             </View>
@@ -440,7 +408,7 @@ const UserInfoScreen = () => {
               "Social",
               groupedAchievements.social,
               "🎯"
-            )}{" "}
+            )}
           </View>
         </View>
       </ScrollView>
