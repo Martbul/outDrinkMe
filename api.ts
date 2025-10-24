@@ -1,4 +1,4 @@
-import { Achievement, AddDrinkingRequest, CalendarResponse, DaysStat, FriendRequest, Friendship, Leaderboard, LeaderboardEntry, UpdateUserProfileReq, UserData, UserStats } from "./types/api.types";
+import { Achievement, AddDrinkingRequest, CalendarResponse, DaysStat, FriendDiscoveryDisplayProfileResponse, FriendRequest, Friendship, Leaderboard, LeaderboardEntry, UpdateUserProfileReq, UserData, UserStats } from "./types/api.types";
 
 class ApiService {
   private baseUrl: string;
@@ -292,6 +292,19 @@ class ApiService {
 
   //   return response.requests || [];
   // }
+
+
+  //!TODO: it sould be GET with friendDiscoveryId in query params...
+  async getFriendDiscoveryDisplayProfile(friendDiscoveryId: string, token: string) {
+    return this.makeRequest<FriendDiscoveryDisplayProfileResponse>(
+      `/api/v1/user/friend-discovery/display-profile`,
+      {
+        method: "POST",
+        token,
+        body: JSON.stringify({ friendDiscoveryId: friendDiscoveryId }),
+      }
+    );
+  }
 
   async getStreak(token: string): Promise<{
     current_streak: number;

@@ -108,3 +108,11 @@ export interface UpdateUserProfileReq {
   imageUrl?: string;
   gems?: number;
 }
+
+
+export interface FriendDiscoveryDisplayProfileResponse {
+  user: UserData;
+  stats: UserStats;
+  achievements: Achievement[];
+  is_friend: boolean;
+}

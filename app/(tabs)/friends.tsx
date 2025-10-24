@@ -32,7 +32,7 @@ const FriendsScreen = () => {
     return (
       <TouchableOpacity
         onPress={() => router.push(`/(screens)/userInfo?userId=${item.id}`)}
-        className="bg-gray-900 rounded-2xl p-4 border border-gray-800 flex-row items-center mb-3"
+        className="bg-white/[0.03] rounded-2xl p-4 border border-gray-800 flex-row items-center mb-3"
       >
         <View className="w-14 h-14 rounded-full bg-orange-600 items-center justify-center mr-4">
           {item.imageUrl ? (
@@ -65,7 +65,7 @@ const FriendsScreen = () => {
     return (
       <TouchableOpacity
         onPress={() => router.push(`/(screens)/userInfo?userId=${item.id}`)}
-        className="bg-gray-900 rounded-2xl p-4 border border-gray-800 flex-row items-center mb-3"
+        className="bg-white/[0.03] rounded-2xl p-4 border border-gray-800 flex-row items-center mb-3"
       >
         <View className="w-14 h-14 rounded-full bg-orange-600 items-center justify-center mr-4">
           {item.imageUrl ? (
@@ -206,13 +206,13 @@ const FriendsScreen = () => {
         >
           <Text
             className={`text-[15px] font-semibold ${
-              activeTab === "friends" ? "text-white" : "text-gray-700"
+              activeTab === "friends" ? "text-[#ff8c00]" : "text-gray-700"
             }`}
           >
             Friends
           </Text>
           {activeTab === "friends" && (
-            <View className="absolute -bottom-[1.5px] left-0 right-0 h-[3px] bg-white" />
+            <View className="absolute -bottom-[1.5px] left-0 right-0 h-[3px] bg-[#ff8c00]" />
           )}
         </TouchableOpacity>
 
@@ -222,13 +222,13 @@ const FriendsScreen = () => {
         >
           <Text
             className={`text-[15px] font-semibold ${
-              activeTab === "discovery" ? "text-white" : "text-gray-700"
+              activeTab === "discovery" ? "text-[#ff8c00]" : "text-gray-700"
             }`}
           >
             Discovery
           </Text>
           {activeTab === "discovery" && (
-            <View className="absolute -bottom-[1.5px] left-0 right-0 h-[3px] bg-white" />
+            <View className="absolute -bottom-[1.5px] left-0 right-0 h-[3px] bg-[#ff8c00]" />
           )}
         </TouchableOpacity>
       </View>
@@ -352,7 +352,7 @@ const FriendsScreen = () => {
           }
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 24 }}
           ListHeaderComponent={FriendsListHeaderComponent}
-          ListFooterComponent={ListFooterComponent}
+          // ListFooterComponent={ListFooterComponent}
           renderItem={renderFriendItem}
           ListEmptyComponent={renderEmptyFriendComponent}
           refreshing={isLoading}
@@ -368,7 +368,7 @@ const FriendsScreen = () => {
             item.id || item.username || Math.random().toString()
           }
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 24 }}
-          ListHeaderComponent={DiscoveryListHeaderComponent}
+          // ListHeaderComponent={DiscoveryListHeaderComponent}
           ListFooterComponent={ListFooterComponent}
           renderItem={renderDiscoveryItem}
           ListEmptyComponent={renderEmptyDiscoveryComponent}
