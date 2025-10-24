@@ -1,68 +1,55 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-
-# dependencies
+# =================================
+# Node / Dependencies
+# =================================
 node_modules/
 
-# Expo
+# =================================
+# Expo / Generated Output
+# =================================
 .expo/
+.expo-shared/
 dist/
 web-build/
 expo-env.d.ts
 
-# Native
-.kotlin/
-*.orig.*
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
-
-# Metro
-.metro-health-check*
-
-# debug
-npm-debug.*
-yarn-debug.*
-yarn-error.*
-
-# macOS
-.DS_Store
-*.pem
-
-# local env files
-.env*.local
-
-# typescript
-*.tsbuildinfo
-
-app-example
-
-# generated native folders
-/ios
-/android
-
-
-.local
-
-# typescript
-*.tsbuildinfo
-
-app-example
-
-
-# Build outputs
+# =================================
+# React Native / Native build
+# =================================
+ios/
+android/
 android/app/build/
-android/build/
+android/app/.cxx/
+android/.gradle/
+
+# =================================
+# Releases & Build Artifacts
+# =================================
+releases/
 *.apk
 *.aab
 *.ipa
 
-
+# =================================
+# Credentials & Secrets
+# =================================
+.env*
+*.pem
 credentials.json
 android/app/keystore.jks
 
-# Android build artifacts
-android/.gradle/
-android/app/.cxx/
-android/app/build/
+# =================================
+# Code & Config Noise
+# =================================
+*.tsbuildinfo
+*.orig.*
+.DS_Store
+.local
+app-example
+
+# =================================
+# Debug Logs
+# =================================
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+metro-health-check*
