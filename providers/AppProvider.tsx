@@ -445,6 +445,32 @@ export function AppProvider({ children }: AppProviderProps) {
     [isSignedIn, getToken, withLoadingAndError]
   );
 
+  
+  
+  //!TODO: Continue, and add deleteUser
+  const getFriendDiscoveryDisplayProfile = useCallback(
+    async (friendDiscoveryId: string): Promise<any> => {
+      if (!isSignedIn) {
+        throw new Error("Must be signed in to search friends");
+      }
+
+      let result = await withLoadingAndError(async () => {
+        const token = await getToken();
+        if (!token) throw new Error("No auth token");
+
+        await apiService.getFriendDiscoveryDisplayProfile(friendDiscoveryId, token);
+
+        const [user] = await Promise.all([apiService.fetchUser(token)]);
+
+        return { user };
+      });
+      if (result) {
+        setUserData(result.user);
+      }
+    },
+    [isSignedIn, getToken, withLoadingAndError]
+  );
+
   // ============================================
   // Initial Load
   // ============================================
