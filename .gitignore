@@ -41,3 +41,28 @@ app-example
 # generated native folders
 /ios
 /android
+
+
+.local
+
+# typescript
+*.tsbuildinfo
+
+app-example
+
+
+# Build outputs
+android/app/build/
+android/build/
+*.apk
+*.aab
+*.ipa
+
+
+credentials.json
+android/app/keystore.jks
+
+# Android build artifacts
+android/.gradle/
+android/app/.cxx/
+android/app/build/
