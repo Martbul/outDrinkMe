@@ -5,13 +5,18 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { getLevelInfo } from "@/utils/levels";
 import AdRewardModal from "./adRewardModal";
+import InfoTooltip from "./infoTooltip";
 
 export const Header = () => {
   const { userData, userStats, updateUserProfile } = useApp();
   const [showAdModal, setShowAdModal] = useState(false);
+  const [isLevelTooltipVisible, setIsLevelTooltipVisible] =
+    useState<boolean>(false);
 
   const levelInfo = getLevelInfo(userData?.xp);
   const insets = useSafeAreaInsets();
+
+  const levelInfoDescr = `Drink to get xp and level up!\nXP: ${levelInfo.currentXP}/${levelInfo.xpForNextLevel}`;
 
   const getInitials = () => {
     if (!userData) return "??";
@@ -26,9 +31,7 @@ export const Header = () => {
 
   const handleRewardEarned = async (gemAmount: number) => {
     try {
-      // Update user gems in your backend
       const newGemCount = (userData?.gems || 0) + gemAmount;
-
 
       await updateUserProfile({ gems: newGemCount });
 
@@ -46,7 +49,6 @@ export const Header = () => {
 
   return (
     <View className="bg-black" style={{ paddingTop: insets.top }}>
-      {/* Rewarded Ad Modal */}
       {showAdModal && (
         <AdRewardModal
           onClose={() => setShowAdModal(false)}
@@ -54,9 +56,7 @@ export const Header = () => {
         />
       )}
 
-      {/* Profile and Stats Bar */}
       <View className="flex-row justify-between items-center px-4 py-4">
-        {/* Avatar and Level */}
         <View className="flex-row items-center flex-1">
           {userData?.imageUrl ? (
             <TouchableOpacity
@@ -74,7 +74,10 @@ export const Header = () => {
               </Text>
             </View>
           )}
-          <View className="ml-3 flex-1">
+          <TouchableOpacity
+            className="ml-3 flex-1"
+            onPress={() => setIsLevelTooltipVisible(!isLevelTooltipVisible)}
+          >
             <Text className="text-white text-base font-bold mb-1">
               Lv.{levelInfo.level}
             </Text>
@@ -86,11 +89,18 @@ export const Header = () => {
                 />
               </View>
             </View>
-          </View>
+            {isLevelTooltipVisible && (
+              <InfoTooltip
+                title="Level"
+                visible={isLevelTooltipVisible}
+                description={levelInfoDescr}
+                onClose={() => setIsLevelTooltipVisible(false)}
+              />
+            )}
+          </TouchableOpacity>
         </View>
 
         <View className="flex-row items-center gap-4">
-          {/* Streak */}
           <View className="flex-row items-center gap-1.5 bg-white/5 px-3 py-2 rounded-full">
             <Text className="text-xl">🔥</Text>
             <Text className="text-white text-base font-bold">
@@ -98,7 +108,6 @@ export const Header = () => {
             </Text>
           </View>
 
-          {/* Gems - Click to earn more */}
           <TouchableOpacity
             className="flex-row items-center gap-1.5 bg-white/5 px-3 py-2 rounded-full"
             onPress={handleEarnGems}
@@ -106,7 +115,6 @@ export const Header = () => {
             <View className="relative">
               <Text className="text-xl">💎</Text>
 
-              {/* Plus badge to indicate you can earn more */}
               <View className="absolute -bottom-0.5 -right-0.5 bg-orange-600 w-3 h-3 rounded-full justify-center items-center">
                 <Text className="text-white text-[8px] font-black">+</Text>
               </View>

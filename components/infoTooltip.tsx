@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,45 +9,55 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 
+
 interface InfoTooltipProps {
+  visible: boolean;
   title: string;
   description: string;
   iconSize?: number;
-  iconColor?: string;
   position?: "top" | "bottom" | "left" | "right";
+  onClose: () => void; 
 }
 
 export default function InfoTooltip({
+  visible = false,
   title,
   description,
   iconSize = 18,
-  iconColor = "#666666",
   position = "bottom",
+  onClose,
 }: InfoTooltipProps) {
-  const [visible, setVisible] = useState(false);
-  const [buttonLayout, setButtonLayout] = useState({ x: 0, y: 0, width: 0, height: 0 });
+  const [buttonLayout, setButtonLayout] = useState({
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+  });
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const buttonRef = useRef<View>(null);
 
-  const handleOpen = () => {
-    buttonRef.current?.measure((fx, fy, width, height, px, py) => {
-      setButtonLayout({ x: px, y: py, width, height });
-      setVisible(true);
-      Animated.spring(scaleAnim, {
-        toValue: 1,
+  useEffect(() => {
+    if (visible) {
+      buttonRef.current?.measure((fx, fy, width, height, px, py) => {
+        setButtonLayout({ x: px, y: py, width, height });
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          useNativeDriver: true,
+          tension: 100,
+          friction: 8,
+        }).start();
+      });
+    } else {
+      Animated.timing(scaleAnim, {
+        toValue: 0,
+        duration: 200,
         useNativeDriver: true,
-        tension: 100,
-        friction: 8,
       }).start();
-    });
-  };
+    }
+  }, [visible]);
 
   const handleClose = () => {
-    Animated.timing(scaleAnim, {
-      toValue: 0,
-      duration: 200,
-      useNativeDriver: true,
-    }).start(() => setVisible(false));
+    onClose();
   };
 
   const getTooltipPosition = () => {
@@ -144,12 +154,8 @@ export default function InfoTooltip({
       {/* Info Icon Button */}
       <TouchableOpacity
         ref={buttonRef}
-        onPress={handleOpen}
-        className="w-6 h-6 rounded-full bg-white/[0.05] border border-white/[0.08] items-center justify-center"
-        style={{ width: iconSize + 8, height: iconSize + 8 }}
-      >
-        <Feather name="help-circle" size={iconSize} color={iconColor} />
-      </TouchableOpacity>
+        className=" items-center justify-center"
+      ></TouchableOpacity>
 
       {/* Tooltip Modal */}
       <Modal
@@ -158,10 +164,7 @@ export default function InfoTooltip({
         animationType="none"
         onRequestClose={handleClose}
       >
-        <Pressable
-          className="flex-1"
-          onPress={handleClose}
-        >
+        <Pressable className="flex-1" onPress={handleClose}>
           <Animated.View
             style={[
               {
@@ -190,9 +193,9 @@ export default function InfoTooltip({
                 />
 
                 {/* Content */}
-                <View className="flex-row items-start mb-2">
+                <View className="flex-row items-start">
                   <View className="w-8 h-8 rounded-full bg-orange-600/20 items-center justify-center mr-3">
-                    <Feather name="info" size={16} color="#ff8c00" />
+                    <Feather name="help-circle" size={18} color="#ff8c00" />
                   </View>
                   <View className="flex-1">
                     <Text className="text-white text-base font-black mb-1">
@@ -200,7 +203,7 @@ export default function InfoTooltip({
                     </Text>
                   </View>
                   <TouchableOpacity onPress={handleClose} className="ml-2">
-                    <Feather name="x" size={18} color="#666666" />
+                    <Feather name="x" size={18} color="#ff8c00" />
                   </TouchableOpacity>
                 </View>
 
@@ -215,36 +218,3 @@ export default function InfoTooltip({
     </>
   );
 }
-
-// Preset variants for common use cases
-export const XPInfoTooltip = () => (
-  <InfoTooltip
-    title="XP & Levels"
-    description="Earn XP by maintaining streaks and completing challenges. Level up to unlock exclusive badges and climb the leaderboard!"
-    position="bottom"
-  />
-);
-
-export const StreakInfoTooltip = () => (
-  <InfoTooltip
-    title="Current Streak"
-    description="Track consecutive days of drinking. Keep your streak alive to earn bonus XP and unlock special achievements!"
-    position="bottom"
-  />
-);
-
-export const CoefInfoTooltip = () => (
-  <InfoTooltip
-    title="Coefficient"
-    description="Your drinking consistency score calculated from your weekly performance. Higher coefficient means better consistency!"
-    position="bottom"
-  />
-);
-
-export const RankInfoTooltip = () => (
-  <InfoTooltip
-    title="World Rank"
-    description="Your position among all users globally. Compete with friends and climb to the top of the leaderboard!"
-    position="bottom"
-  />
-);

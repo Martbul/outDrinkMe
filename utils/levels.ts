@@ -131,7 +131,7 @@ export function getExampleLevelTable(maxLevel: number = 20): void {
   }
 }
 
-export const getLevelInfo2 = (userStats:UserStats|null) => {
+export const getCoefInfo2 = (userStats: UserStats | null) => {
   if (!userStats) return { level: 0, title: "NEWBIE", maxLevel: 10 };
 
   const level = Math.min(
@@ -153,7 +153,6 @@ export const getLevelInfo2 = (userStats:UserStats|null) => {
   ];
 
   return {
-    level,
     title: titles[level - 1] || "NEWBIE",
     coef: userStats.alcoholism_coefficient,
   };
