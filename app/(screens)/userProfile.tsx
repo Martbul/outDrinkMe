@@ -251,6 +251,7 @@ export default function UserProfileScreen() {
 
         <View className="px-4">
           <LogoutButton />
+          <></>
         </View>
       </ScrollView>
     </View>

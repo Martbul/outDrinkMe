@@ -52,7 +52,7 @@ export default function HomeScreen() {
         <View className="items-center mb-6">
           <View className="w-[120px] h-[120px] rounded-full bg-orange-600/15 border-4 border-orange-600 justify-center items-center mb-3">
             <Text className="text-orange-600 text-5xl font-black">
-              {levelInfo.coef}
+              {levelInfo.coef?.toFixed(2)}
             </Text>
           </View>
           <Text className="text-white text-[22px] font-black tracking-wide">
