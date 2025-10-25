@@ -4,7 +4,6 @@ import {
   CalendarResponse,
   DaysStat,
   FriendDiscoveryDisplayProfileResponse,
-  FriendRequest,
   Friendship,
   Leaderboard,
   LeaderboardEntry,
@@ -227,9 +226,7 @@ class ApiService {
         token,
       }
     );
-    console.log("rr", response);
 
-    // return response.friends || [];
     return response || [];
   }
 
@@ -253,6 +250,13 @@ class ApiService {
     });
   }
 
+  async removeFriend(friendId: string, token: string): Promise<void> {
+    return this.makeRequest<void>(`/api/v1/user/friends?friendId=${friendId}`, {
+      method: "DELETE",
+      token,
+    });
+  }
+
   async updateUserGems(gems: number, token: string): Promise<UserData> {
     return this.makeRequest<UserData>("/api/v1/user/gems-reward", {
       method: "PUT",
@@ -261,62 +265,15 @@ class ApiService {
     });
   }
 
-  // async acceptFriendRequest(
-  //   friendshipId: string,
-  //   token: string
-  // ): Promise<Friendship> {
-  //   return this.makeRequest<Friendship>(
-  //     `/api/v1/user/friends/request/${friendshipId}/accept`,
-  //     {
-  //       method: "POST",
-  //       token,
-  //     }
-  //   );
-  // }
-
-  // async rejectFriendRequest(
-  //   friendshipId: string,
-  //   token: string
-  // ): Promise<void> {
-  //   return this.makeRequest<void>(
-  //     `/api/v1/user/friends/request/${friendshipId}/reject`,
-  //     {
-  //       method: "POST",
-  //       token,
-  //     }
-  //   );
-  // }
-
-  async removeFriend(friendId: string, token: string): Promise<void> {
-    return this.makeRequest<void>(`/api/v1/user/friends/${friendId}`, {
-      method: "DELETE",
-      token,
-    });
-  }
-
-  // async getPendingFriendRequests(token: string): Promise<FriendRequest[]> {
-  //   const response = await this.makeRequest<{ requests: FriendRequest[] }>(
-  //     "/api/v1/user/friends/requests/pending",
-  //     {
-  //       method: "GET",
-  //       token,
-  //     }
-  //   );
-
-  //   return response.requests || [];
-  // }
-
-  //!TODO: it sould be GET with friendDiscoveryId in query params...
   async getFriendDiscoveryDisplayProfile(
     friendDiscoveryId: string,
     token: string
   ) {
     return this.makeRequest<FriendDiscoveryDisplayProfileResponse>(
-      `/api/v1/user/friend-discovery/display-profile`,
+      `/api/v1/user/friend-discovery/display-profile?friendDiscoveryId=${friendDiscoveryId}`,
       {
-        method: "POST",
+        method: "GET",
         token,
-        body: JSON.stringify({ friendDiscoveryId: friendDiscoveryId }),
       }
     );
   }
@@ -338,6 +295,7 @@ class ApiService {
       longest_streak: stats.longest_streak,
     };
   }
+
   async getBattleStatus(token: string): Promise<{
     user: LeaderboardEntry;
     leader: LeaderboardEntry;
@@ -361,3 +319,41 @@ class ApiService {
 }
 
 export const apiService = new ApiService();
+
+// async acceptFriendRequest(
+//   friendshipId: string,
+//   token: string
+// ): Promise<Friendship> {
+//   return this.makeRequest<Friendship>(
+//     `/api/v1/user/friends/request/${friendshipId}/accept`,
+//     {
+//       method: "POST",
+//       token,
+//     }
+//   );
+// }
+
+// async rejectFriendRequest(
+//   friendshipId: string,
+//   token: string
+// ): Promise<void> {
+//   return this.makeRequest<void>(
+//     `/api/v1/user/friends/request/${friendshipId}/reject`,
+//     {
+//       method: "POST",
+//       token,
+//     }
+//   );
+// }
+
+// async getPendingFriendRequests(token: string): Promise<FriendRequest[]> {
+//   const response = await this.makeRequest<{ requests: FriendRequest[] }>(
+//     "/api/v1/user/friends/requests/pending",
+//     {
+//       method: "GET",
+//       token,
+//     }
+//   );
+
+//   return response.requests || [];
+// }

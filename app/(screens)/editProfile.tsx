@@ -13,12 +13,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import SecondaryHeader from "@/components/secondaryHeader";
 import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
+import DeleteAccountButton from "@/components/deleteAccountButton";
 
 export default function EditProfileScreen() {
-  const { userData, updateUserProfile, } = useApp();
+  const { userData, updateUserProfile } = useApp();
   const insets = useSafeAreaInsets();
   const [isLoading, setIsLoading] = useState(false);
-const router = useRouter()
+  const router = useRouter();
   const [formData, setFormData] = useState({
     username: userData?.username || "",
     firstName: userData?.firstName || "",
@@ -34,7 +35,7 @@ const router = useRouter()
       console.error("Failed to update profile:", error);
     } finally {
       setIsLoading(false);
-      router.push("/(screens)/userProfile")
+      router.push("/(screens)/userProfile");
     }
   };
 
@@ -43,8 +44,7 @@ const router = useRouter()
     formData.firstName !== userData?.firstName ||
     formData.lastName !== userData?.lastName ||
     formData.imageUrl !== userData?.imageUrl;
-  
-  
+
   return (
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
@@ -158,14 +158,14 @@ const router = useRouter()
             <Text className="text-white text-base font-semibold">
               Privacy Policy
             </Text>
-              <Feather name="arrow-right" size={24} color="#999999" />
+            <Feather name="arrow-right" size={24} color="#999999" />
           </TouchableOpacity>
 
           <TouchableOpacity className="flex-row justify-between items-center py-3 border-b border-white/[0.05]">
             <Text className="text-white text-base font-semibold">
               Terms of Service
             </Text>
-              <Feather name="arrow-right" size={24} color="#999999" />
+            <Feather name="arrow-right" size={24} color="#999999" />
           </TouchableOpacity>
         </View>
 
@@ -174,15 +174,7 @@ const router = useRouter()
           <Text className="text-white/50 text-[11px] font-bold tracking-widest uppercase mb-4">
             Danger Zone
           </Text>
-
-          <TouchableOpacity className="py-3">
-            <Text className="text-red-500 text-base font-bold">
-              Delete Account
-            </Text>
-            <Text className="text-red-500/70 text-xs mt-1">
-              This action cannot be undone
-            </Text>
-          </TouchableOpacity>
+          <DeleteAccountButton />
         </View>
       </ScrollView>
     </View>

@@ -13,11 +13,13 @@ import {
 } from "react-native";
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import Header from "@/components/header";
+import { RefreshControl } from "react-native";
 
 const FriendsScreen = () => {
   const {
     userData,
     friends,
+    addFriend,
     refreshFriends,
     discovery,
     refreshDiscovery,
@@ -27,6 +29,44 @@ const FriendsScreen = () => {
   const [searchQueryFriend, setSearchQueryFriend] = useState("");
   const [searchQueryDiscovery, setSearchQueryDiscovery] = useState("");
   const [activeTab, setActiveTab] = useState("friends");
+
+  const TabSelection = () => {
+    return (
+      <View className="flex-row px-4 border-b-[1.5px] border-gray-700">
+        <TouchableOpacity
+          className="flex-1 py-3.5 items-center relative"
+          onPress={() => setActiveTab("friends")}
+        >
+          <Text
+            className={`text-[15px] font-semibold ${
+              activeTab === "friends" ? "text-[#ff8c00]" : "text-gray-700"
+            }`}
+          >
+            Friends
+          </Text>
+          {activeTab === "friends" && (
+            <View className="absolute -bottom-[1.5px] left-0 right-0 h-[3px] bg-[#ff8c00]" />
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          className="flex-1 py-3.5 items-center relative"
+          onPress={() => setActiveTab("discovery")}
+        >
+          <Text
+            className={`text-[15px] font-semibold ${
+              activeTab === "discovery" ? "text-[#ff8c00]" : "text-gray-700"
+            }`}
+          >
+            Discovery
+          </Text>
+          {activeTab === "discovery" && (
+            <View className="absolute -bottom-[1.5px] left-0 right-0 h-[3px] bg-[#ff8c00]" />
+          )}
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   const renderFriendItem = ({ item }: { item: UserData }) => {
     return (
@@ -89,7 +129,13 @@ const FriendsScreen = () => {
             </Text>
           )}
         </View>
-        <AntDesign name="right" size={20} color="#6B7280" />
+        <TouchableOpacity
+          onPress={() => {
+            addFriend(item.clerkId);
+          }}
+        >
+          <AntDesign name="user-add" size={24} color="#ff8c00" />
+        </TouchableOpacity>
       </TouchableOpacity>
     );
   };
@@ -189,50 +235,13 @@ const FriendsScreen = () => {
 
           {/* Motivational Text */}
           <Text className="text-gray-600 text-center text-base px-8 mb-0">
-            Who's the one who can bring you{"\n"}back to drinking?
+            Seems there are no drinkers at the moment
           </Text>
         </View>
       );
     }
 
     return null;
-  };
-  const TabSelection = () => {
-    return (
-      <View className="flex-row px-4 border-b-[1.5px] border-gray-700">
-        <TouchableOpacity
-          className="flex-1 py-3.5 items-center relative"
-          onPress={() => setActiveTab("friends")}
-        >
-          <Text
-            className={`text-[15px] font-semibold ${
-              activeTab === "friends" ? "text-[#ff8c00]" : "text-gray-700"
-            }`}
-          >
-            Friends
-          </Text>
-          {activeTab === "friends" && (
-            <View className="absolute -bottom-[1.5px] left-0 right-0 h-[3px] bg-[#ff8c00]" />
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          className="flex-1 py-3.5 items-center relative"
-          onPress={() => setActiveTab("discovery")}
-        >
-          <Text
-            className={`text-[15px] font-semibold ${
-              activeTab === "discovery" ? "text-[#ff8c00]" : "text-gray-700"
-            }`}
-          >
-            Discovery
-          </Text>
-          {activeTab === "discovery" && (
-            <View className="absolute -bottom-[1.5px] left-0 right-0 h-[3px] bg-[#ff8c00]" />
-          )}
-        </TouchableOpacity>
-      </View>
-    );
   };
 
   const FriendsListHeaderComponent = () => (
@@ -258,41 +267,16 @@ const FriendsScreen = () => {
     </>
   );
 
-  const DiscoveryListHeaderComponent = () => (
-    <>
-      <View className="bg-white/[0.03] rounded-2xl px-4 py-2 mb-4 flex-row items-center border border-gray-800">
-        <Ionicons name="search" size={24} color="#6B7280" />
-        <TextInput
-          value={searchQueryDiscovery}
-          onChangeText={setSearchQueryDiscovery}
-          placeholder="Search Users"
-          placeholderTextColor="#6B7280"
-          className="flex-1 text-white text-base ml-2"
-        />
-        {searchQueryDiscovery.length > 0 && (
-          <TouchableOpacity
-            onPress={() => setSearchQueryDiscovery("")}
-            className="ml-2 justify-center items-center"
-          >
-            <Text className="text-gray-600 text-xl">✕</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    </>
-  );
-
   const ListFooterComponent = () => (
-    <>
-      <TouchableOpacity
-        className="bg-orange-600 rounded-2xl p-5 flex-row items-center justify-center mb-24 mt-4"
-        onPress={() => router.push(`/(screens)/searchDrinkers`)}
-      >
-        <FontAwesome5 name="user-plus" size={22} color="black" />
-        <Text className="text-black text-lg font-black uppercase tracking-wider ml-3">
-          Search Drinkers
-        </Text>
-      </TouchableOpacity>
-    </>
+    <TouchableOpacity
+      className="bg-orange-600 rounded-2xl p-5 flex-row items-center justify-center mb-24 mt-4"
+      onPress={() => router.push(`/(screens)/searchDrinkers`)}
+    >
+      <FontAwesome5 name="user-plus" size={22} color="black" />
+      <Text className="text-black text-lg font-black uppercase tracking-wider ml-3">
+        Search Drinkers
+      </Text>
+    </TouchableOpacity>
   );
 
   const filteredFriends = useMemo(() => {
@@ -329,13 +313,13 @@ const FriendsScreen = () => {
 
   const handleFriendsRefresh = async () => {
     if (userData?.id) {
-      await refreshFriends();
+      refreshFriends();
     }
   };
 
   const handleDiscoveryRefresh = async () => {
     if (userData?.id) {
-      await refreshDiscovery();
+      refreshDiscovery();
     }
   };
 
@@ -352,12 +336,20 @@ const FriendsScreen = () => {
           }
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 24 }}
           ListHeaderComponent={FriendsListHeaderComponent}
-          // ListFooterComponent={ListFooterComponent}
           renderItem={renderFriendItem}
           ListEmptyComponent={renderEmptyFriendComponent}
           refreshing={isLoading}
           onRefresh={handleFriendsRefresh}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isLoading}
+              onRefresh={handleFriendsRefresh}
+              tintColor="#ff8c00" // iOS
+              colors={["#ff8c00"]} // Android
+              progressBackgroundColor="black"
+            />
+          }
         />
       )}
 
@@ -368,13 +360,21 @@ const FriendsScreen = () => {
             item.id || item.username || Math.random().toString()
           }
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 24 }}
-          // ListHeaderComponent={DiscoveryListHeaderComponent}
           ListFooterComponent={ListFooterComponent}
           renderItem={renderDiscoveryItem}
           ListEmptyComponent={renderEmptyDiscoveryComponent}
           refreshing={isLoading}
           onRefresh={handleDiscoveryRefresh}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isLoading}
+              onRefresh={handleDiscoveryRefresh}
+              tintColor="#ff8c00" // iOS
+              colors={["#ff8c00"]} // Android
+              progressBackgroundColor="black"
+            />
+          }
         />
       )}
     </View>

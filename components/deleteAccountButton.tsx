@@ -16,19 +16,14 @@ import CustomModal, {
 import { useApp } from "@/providers/AppProvider";
 
 export default function DeleteAccountButton() {
-  const { user } = useUser();
   const { signOut } = useAuth();
-  const router = useRouter();
   const { deleteUserAccount } = useApp();
+  const { user } = useUser();
   const [isLoading, setIsLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [confirmText, setConfirmText] = useState("");
+  const router = useRouter();
 
   const handleDeleteAccount = async () => {
-    // if (confirmText.toLowerCase() !== "delete") {
-    //   return;
-    // }
-
     try {
       setIsLoading(true);
 
@@ -50,12 +45,10 @@ export default function DeleteAccountButton() {
     }
   };
 
-  // const isConfirmValid = confirmText.toLowerCase() === "delete";
-
   return (
     <>
       <TouchableOpacity
-        className="bg-red-900/20 rounded-2xl p-5 border border-red-900/50 flex-row justify-between items-center"
+        className="flex-row justify-between items-center"
         onPress={() => setShowModal(true)}
         disabled={isLoading}
       >
@@ -73,7 +66,6 @@ export default function DeleteAccountButton() {
         visible={showModal}
         onClose={() => {
           setShowModal(false);
-          setConfirmText("");
         }}
         title="Delete Account"
         footer={
@@ -88,7 +80,6 @@ export default function DeleteAccountButton() {
               title="Cancel"
               onPress={() => {
                 setShowModal(false);
-                setConfirmText("");
               }}
             />
           </View>
@@ -122,27 +113,6 @@ export default function DeleteAccountButton() {
               </Text>
             </View>
           </View>
-
-          {/* Confirmation Input */}
-          {/* <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
-            <Text className="text-white text-sm font-bold mb-3">
-              Type <Text className="text-red-500">DELETE</Text> to confirm:
-            </Text>
-            <TextInput
-              value={confirmText}
-              onChangeText={setConfirmText}
-              placeholder="Type DELETE here"
-              placeholderTextColor="#6B7280"
-              autoCapitalize="none"
-              autoCorrect={false}
-              className="bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-base"
-            />
-            {confirmText.length > 0 && !isConfirmValid && (
-              <Text className="text-red-500/70 text-xs mt-2">
-                Please type DELETE exactly as shown
-              </Text>
-            )}
-          </View> */}
         </View>
       </CustomModal>
     </>

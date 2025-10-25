@@ -1,6 +1,6 @@
 export interface UserData {
   id: string;
-  clerk_id: string;
+  clerkId: string;
   username: string;
   email: string;
   firstName?: string;
