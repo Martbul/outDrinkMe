@@ -37,7 +37,7 @@ export default function LogoutButton() {
         ) : (
           <>
             <Text className="text-red-500 font-bold">Logout</Text>
-            <Feather name="arrow-right" size={24} color="#EF4444" />
+            <Feather name="arrow-right" size={20} color="#EF4444" />
           </>
         )}
       </TouchableOpacity>

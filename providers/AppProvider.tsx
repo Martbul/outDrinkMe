@@ -52,6 +52,7 @@ interface AppContextType {
   updateUserProfile: (updateReq: UpdateUserProfileReq) => Promise<any>;
   getFriendDiscoveryDisplayProfile: (friendDiscoveryId: string) => Promise<any>;
   deleteUserAccount: () => Promise<boolean>;
+  removeFriend: (friendId: string) => Promise<void>;
 
   // Global State
   isLoading: boolean;
@@ -391,14 +392,45 @@ export function AppProvider({ children }: AppProviderProps) {
 
         await apiService.addFriend(friendId, token);
 
-        // Refresh relevant data after adding friend
-        const [friends] = await Promise.all([apiService.getFriends(token)]);
+        const [friends, discovery] = await Promise.all([
+          apiService.getFriends(token),
+          apiService.getDiscovery(token),
+        ]);
 
-        return { friends };
+        return { friends, discovery };
       });
 
       if (result) {
         setFriends(result.friends);
+        setDiscovery(result.discovery);
+      }
+    },
+    [isSignedIn, getToken, withLoadingAndError]
+  );
+
+  const removeFriend = useCallback(
+    async (friendId: string) => {
+      if (!isSignedIn) {
+        throw new Error("Must be signed in to log drinking");
+      }
+
+      const result = await withLoadingAndError(async () => {
+        const token = await getToken();
+        if (!token) throw new Error("No auth token");
+
+        await apiService.removeFriend(friendId, token);
+
+        const [friends, discovery] = await Promise.all([
+          apiService.getFriends(token),
+          apiService.getDiscovery(token),
+        ]);
+
+        return { friends, discovery };
+      });
+
+      if (result) {
+        setFriends(result.friends);
+        setDiscovery(result.discovery);
       }
     },
     [isSignedIn, getToken, withLoadingAndError]
@@ -563,6 +595,7 @@ export function AppProvider({ children }: AppProviderProps) {
     // Actions
     addDrinking,
     addFriend,
+    removeFriend,
     searchUsers,
     updateUserProfile,
     getFriendDiscoveryDisplayProfile,

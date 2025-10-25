@@ -7,13 +7,12 @@ import {
   Image,
   ActivityIndicator,
 } from "react-native";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { FontAwesome5 } from "@expo/vector-icons";
 import type { UserStats } from "@/types/api.types";
-import { getLevelInfo2 } from "@/utils/levels";
 import SecondaryHeader from "@/components/secondaryHeader";
 import { useApp } from "@/providers/AppProvider";
+import { getCoefInfo, getLevelInfo } from "@/utils/levels";
 
 const ACHIEVEMENT_IMAGES = {
   lightning: require("../../assets/images/achievements/lightning.png"),
@@ -27,12 +26,14 @@ const ACHIEVEMENT_IMAGES = {
 };
 
 const UserInfoScreen = () => {
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { userId: rawUserId } = useLocalSearchParams();
   const {
+    userData,
     friendDiscoveryProfile,
     getFriendDiscoveryDisplayProfile,
+    addFriend,
+    removeFriend,
     isLoading,
   } = useApp();
   useEffect(() => {
@@ -49,11 +50,12 @@ const UserInfoScreen = () => {
     loadData();
   }, [rawUserId]);
 
-  const levelInfo = getLevelInfo2(
+  const coefInfo = getCoefInfo(
     friendDiscoveryProfile?.stats as UserStats | null
   );
+  const levelInfo = getLevelInfo(userData?.xp);
   const achievements = friendDiscoveryProfile?.achievements;
-  // Group achievements by category
+
   const groupedAchievements = useMemo(() => {
     if (!achievements) return { streaks: [], competition: [], social: [] };
 
@@ -84,6 +86,18 @@ const UserInfoScreen = () => {
       Century: ACHIEVEMENT_IMAGES.hundred,
     };
     return imageMap[name] || ACHIEVEMENT_IMAGES.lightning;
+  };
+
+  const handleFriendAction = () => {
+    if(!friendDiscoveryProfile?.user) return
+    console.log("-------",friendDiscoveryProfile.user.clerkId)
+    if (friendDiscoveryProfile?.is_friend === true) {
+      removeFriend(friendDiscoveryProfile.user.clerkId);
+    }
+
+    if (friendDiscoveryProfile?.is_friend === false) {
+      addFriend(friendDiscoveryProfile.user.clerkId);
+    }
   };
 
   const renderAchievementCategory = (
@@ -136,10 +150,6 @@ const UserInfoScreen = () => {
       </View>
     );
   };
-  //!TODO
-  const handleFriendAction = () => {
-    // Add friend logic
-  };
 
   if (isLoading) {
     return (
@@ -151,12 +161,12 @@ const UserInfoScreen = () => {
   }
 
   return (
-    <View className="flex-1 bg-black">
+    <View className="flex-1 bg-black" style={{ paddingTop: insets.top - 15 }}>
       <SecondaryHeader title="Profile" />
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 10 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Profile Header */}
@@ -179,25 +189,24 @@ const UserInfoScreen = () => {
             {/* Level Badge - Bottom Left */}
             <View className="absolute -bottom-2 -left-2 bg-gray-900 px-3 py-1 rounded-full border-2 border-orange-600">
               <Text className="text-orange-600 text-xs font-black">
-                LV. {levelInfo.level}
+                {coefInfo.coef}
               </Text>
             </View>
 
             {/* Coef Badge - Bottom Right */}
-            <View className="absolute -bottom-2 -right-2 bg-gray-900 px-3 py-1 rounded-full border-2 border-purple-600">
-              <Text className="text-purple-400 text-xs font-black">
-                {levelInfo.coef}%
+            <View className="absolute -bottom-2 -right-2 bg-gray-900 px-3 py-1 rounded-full border-2 border-[#666666]">
+              <Text className="text-neutral-500 text-xs font-black">
+                LV. {levelInfo.level}
               </Text>
             </View>
           </View>
 
           {/* Name & Username */}
           <Text className="text-white text-2xl font-black mb-1">
-            {friendDiscoveryProfile?.user?.firstName}{" "}
-            {friendDiscoveryProfile?.user?.lastName}
+            {`${friendDiscoveryProfile?.user?.firstName} ${friendDiscoveryProfile?.user?.lastName}`}
           </Text>
           <Text className="text-white/50 text-base mb-4">
-            @{friendDiscoveryProfile?.user?.username}
+            {friendDiscoveryProfile?.user?.username}
           </Text>
 
           {/* Action Button */}
@@ -233,13 +242,14 @@ const UserInfoScreen = () => {
                   {friendDiscoveryProfile?.stats?.current_streak || 0} Days 🔥
                 </Text>
               </View>
-              {friendDiscoveryProfile?.stats && friendDiscoveryProfile.stats.current_streak > 0 && (
-                <View className="bg-orange-600/20 px-3.5 py-1.5 rounded-lg">
-                  <Text className="text-orange-600 text-[11px] font-black tracking-wide">
-                    ACTIVE
-                  </Text>
-                </View>
-              )}
+              {friendDiscoveryProfile?.stats &&
+                friendDiscoveryProfile.stats.current_streak > 0 && (
+                  <View className="bg-orange-600/20 px-3.5 py-1.5 rounded-lg">
+                    <Text className="text-orange-600 text-[11px] font-black tracking-wide">
+                      ACTIVE
+                    </Text>
+                  </View>
+                )}
             </View>
           </View>
         </View>

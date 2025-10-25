@@ -131,10 +131,12 @@ export function getExampleLevelTable(maxLevel: number = 20): void {
   }
 }
 
-export const getCoefInfo2 = (userStats: UserStats | null) => {
-  if (!userStats) return { level: 0, title: "NEWBIE", maxLevel: 10 };
+export const getCoefInfo = (
+  userStats: UserStats | null
+): { title: string; coef: number } => {
+  if (!userStats) return { title: "NEWBIE", coef: 0.0 };
 
-  const level = Math.min(
+  const coefTitleCalc = Math.min(
     Math.floor(userStats.alcoholism_coefficient * 0.75) + 1,
     10
   );
@@ -153,7 +155,7 @@ export const getCoefInfo2 = (userStats: UserStats | null) => {
   ];
 
   return {
-    title: titles[level - 1] || "NEWBIE",
+    title: titles[coefTitleCalc - 1] || "NEWBIE",
     coef: userStats.alcoholism_coefficient,
   };
 };

@@ -1,7 +1,7 @@
 import { Header } from "@/components/header";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/providers/AppProvider";
-import { getCoefInfo2 } from "@/utils/levels";
+import { getCoefInfo } from "@/utils/levels";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -20,9 +20,9 @@ export default function HomeScreen() {
     useState<boolean>(false);
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  
+
   const { userStats, isLoading } = useApp();
-  const levelInfo = getCoefInfo2(userStats);
+  const coefInfo = getCoefInfo(userStats);
 
   if (isLoading && !userStats) {
     return (
@@ -51,7 +51,7 @@ export default function HomeScreen() {
         <View className="items-center mb-6">
           <View className="relative w-[120px] h-[120px] rounded-full bg-orange-600/15 border-4 border-orange-600 justify-center items-center mb-3">
             <Text className="text-orange-600 text-5xl font-black">
-              {levelInfo.coef?.toFixed(2)}
+              {coefInfo.coef?.toFixed(2)}
             </Text>
 
             <TouchableOpacity
@@ -74,7 +74,7 @@ export default function HomeScreen() {
           </View>
 
           <Text className="text-white text-[22px] font-black tracking-wide">
-            {levelInfo.title}
+            {coefInfo.title}
           </Text>
         </View>
 
