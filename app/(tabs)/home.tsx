@@ -1,9 +1,10 @@
 import { Header } from "@/components/header";
-import ThisWeekGadget from "@/components/thisWeekGadget";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/providers/AppProvider";
-import { getLevelInfo2 } from "@/utils/levels";
+import { getCoefInfo2 } from "@/utils/levels";
+import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useState } from "react";
 import {
   ScrollView,
   Text,
@@ -11,19 +12,17 @@ import {
   View,
   ActivityIndicator,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import ThisWeekGadget from "@/components/thisWeekGadget";
+import InfoTooltip from "@/components/infoTooltip";
 
 export default function HomeScreen() {
+  const [isCoefTooltipVisible, setIsCoefTooltipVisible] =
+    useState<boolean>(false);
   const insets = useSafeAreaInsets();
-  const {
-    userStats,
-    isLoading,
-  } = useApp();
   const router = useRouter();
-
-
-
-  const levelInfo = getLevelInfo2(userStats);
+  
+  const { userStats, isLoading } = useApp();
+  const levelInfo = getCoefInfo2(userStats);
 
   if (isLoading && !userStats) {
     return (
@@ -50,17 +49,33 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View className="items-center mb-6">
-          <View className="w-[120px] h-[120px] rounded-full bg-orange-600/15 border-4 border-orange-600 justify-center items-center mb-3">
+          <View className="relative w-[120px] h-[120px] rounded-full bg-orange-600/15 border-4 border-orange-600 justify-center items-center mb-3">
             <Text className="text-orange-600 text-5xl font-black">
               {levelInfo.coef?.toFixed(2)}
             </Text>
+
+            <TouchableOpacity
+              onPress={() => setIsCoefTooltipVisible(!isCoefTooltipVisible)}
+              className="absolute  w-8 h-8 rounded-full  items-center justify-center"
+              style={{ zIndex: 10, right: -14, bottom: -10 }}
+            >
+              <Feather name="help-circle" size={24} color="#666666" />
+            </TouchableOpacity>
+
+            {isCoefTooltipVisible && (
+              <InfoTooltip
+                title="Coefficient"
+                visible={isCoefTooltipVisible}
+                description="Your drinking coefficient calculated from your drunk performance. Higher number means more fun nights!"
+                onClose={() => setIsCoefTooltipVisible(false)}
+                position="bottom"
+              />
+            )}
           </View>
+
           <Text className="text-white text-[22px] font-black tracking-wide">
             {levelInfo.title}
           </Text>
-          {/* <Text className="text-white/40 text-xs font-bold tracking-[2px] mt-1">
-            Coef
-          </Text> */}
         </View>
 
         <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
