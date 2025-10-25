@@ -4,7 +4,7 @@ import { useApp } from "@/providers/AppProvider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { getLevelInfo } from "@/utils/levels";
-import AdRewardModal from "./AdRewardModal";
+import AdRewardModal from "./adRewardModal";
 
 export const Header = () => {
   const { userData, userStats, updateUserProfile } = useApp();
