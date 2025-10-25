@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import LogoutButton from "@/components/logoutButton";
 import { useRouter } from "expo-router";
 import { getLevelInfo } from "@/utils/levels";
+import DeleteAccountButton from "@/components/deleteAccountButton";
 
 const ACHIEVEMENT_IMAGES = {
   lightning: require("../../assets/images/achievements/lightning.png"),
@@ -249,9 +250,13 @@ export default function UserProfileScreen() {
           </View>
         </View>
 
-        <View className="px-4">
-          <LogoutButton />
-          <></>
+        <View className="px-4 gap-4">
+          <View>
+            <LogoutButton />
+          </View>
+          <View>
+            <DeleteAccountButton />
+          </View>
         </View>
       </ScrollView>
     </View>
