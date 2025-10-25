@@ -72,7 +72,7 @@ export default function SplashScreen() {
               ]}
             />
           </View>
-          <Text style={styles.loadingText}>Loading your stats...</Text>
+          <Text style={styles.loadingText}>Serving you drinks...</Text>
         </View>
       </Animated.View>
     </View>

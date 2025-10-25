@@ -32,7 +32,7 @@ interface AppContextType {
   weeklyStats: DaysStat | null;
   friends: UserData[] | [];
   discovery: UserData[] | [];
-  friendDiscoveryProfile: FriendDiscoveryDisplayProfileResponse | null
+  friendDiscoveryProfile: FriendDiscoveryDisplayProfileResponse | null;
 
   // Refresh Functions
   refreshUserData: () => Promise<void>;
@@ -51,6 +51,7 @@ interface AppContextType {
   searchUsers: (searchQuery: string) => Promise<UserData[]>;
   updateUserProfile: (updateReq: UpdateUserProfileReq) => Promise<any>;
   getFriendDiscoveryDisplayProfile: (friendDiscoveryId: string) => Promise<any>;
+  deleteUserAccount: () => Promise<boolean>;
 
   // Global State
   isLoading: boolean;
@@ -475,32 +476,38 @@ export function AppProvider({ children }: AppProviderProps) {
     [isSignedIn, getToken, withLoadingAndError]
   );
 
-    //!TODO: Add deleteUser
+  const deleteUserAccount = useCallback(async (): Promise<boolean> => {
+    if (!isSignedIn) {
+      throw new Error("Must be signed in to delete account");
+    }
 
-    const deleteUser = useCallback(
-    async (friendDiscoveryId: string): Promise<any> => {
-      if (!isSignedIn) {
-        throw new Error("Must be signed in to search friends");
-      }
+    const result = await withLoadingAndError(async () => {
+      const token = await getToken();
+      if (!token) throw new Error("No auth token");
 
-      let result = await withLoadingAndError(async () => {
-        const token = await getToken();
-        if (!token) throw new Error("No auth token");
+      const success = await apiService.deleteUserAccount(token);
+      return success;
+    });
 
-        const friendDiscover =
-          await apiService.getFriendDiscoveryDisplayProfile(
-            friendDiscoveryId,
-            token
-          );
+    if (result === true) {
+      setUserData(null);
+      setUserStats(null);
+      setLeaderboard(null);
+      setAchievements(null);
+      setCalendar(null);
+      setWeeklyStats(null);
+      setFriends([]);
+      setDiscovery([]);
+      setFriendDiscoveryProfile(null);
+      setError(null);
 
-        return friendDiscover;
-      });
-      if (result) {
-        setFriendDiscoveryProfile(result);
-      }
-    },
-    [isSignedIn, getToken, withLoadingAndError]
-  );
+      hasInitialized.current = false;
+
+      return true;
+    }
+
+    return false;
+  }, [isSignedIn, getToken, withLoadingAndError]);
 
   // ============================================
   // Initial Load
@@ -559,6 +566,7 @@ export function AppProvider({ children }: AppProviderProps) {
     searchUsers,
     updateUserProfile,
     getFriendDiscoveryDisplayProfile,
+    deleteUserAccount,
 
     // Global State
     isLoading,

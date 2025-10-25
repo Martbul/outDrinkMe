@@ -1,4 +1,17 @@
-import { Achievement, AddDrinkingRequest, CalendarResponse, DaysStat, FriendDiscoveryDisplayProfileResponse, FriendRequest, Friendship, Leaderboard, LeaderboardEntry, UpdateUserProfileReq, UserData, UserStats } from "./types/api.types";
+import {
+  Achievement,
+  AddDrinkingRequest,
+  CalendarResponse,
+  DaysStat,
+  FriendDiscoveryDisplayProfileResponse,
+  FriendRequest,
+  Friendship,
+  Leaderboard,
+  LeaderboardEntry,
+  UpdateUserProfileReq,
+  UserData,
+  UserStats,
+} from "./types/api.types";
 
 class ApiService {
   private baseUrl: string;
@@ -293,9 +306,11 @@ class ApiService {
   //   return response.requests || [];
   // }
 
-
   //!TODO: it sould be GET with friendDiscoveryId in query params...
-  async getFriendDiscoveryDisplayProfile(friendDiscoveryId: string, token: string) {
+  async getFriendDiscoveryDisplayProfile(
+    friendDiscoveryId: string,
+    token: string
+  ) {
     return this.makeRequest<FriendDiscoveryDisplayProfileResponse>(
       `/api/v1/user/friend-discovery/display-profile`,
       {
@@ -304,6 +319,13 @@ class ApiService {
         body: JSON.stringify({ friendDiscoveryId: friendDiscoveryId }),
       }
     );
+  }
+
+  async deleteUserAccount(token: string) {
+    return this.makeRequest<any>(`/api/v1/user/delete-account`, {
+      method: "DELETE",
+      token,
+    });
   }
 
   async getStreak(token: string): Promise<{
