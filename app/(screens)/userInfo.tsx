@@ -1,18 +1,19 @@
+// app/user-info.tsx (or your screen file)
 import React, { useEffect, useMemo } from "react";
 import {
   View,
   Text,
   ScrollView,
-  TouchableOpacity,
   Image,
-  ActivityIndicator,
 } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { UserStats } from "@/types/api.types";
 import SecondaryHeader from "@/components/secondaryHeader";
 import { useApp } from "@/providers/AppProvider";
 import { getCoefInfo, getLevelInfo } from "@/utils/levels";
+import { FriendButton } from "@/components/friendButton";
+import SplashScreen from "@/components/spashScreen";
 
 const ACHIEVEMENT_IMAGES = {
   lightning: require("../../assets/images/achievements/lightning.png"),
@@ -27,6 +28,7 @@ const ACHIEVEMENT_IMAGES = {
 
 const UserInfoScreen = () => {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { userId: rawUserId } = useLocalSearchParams();
   const {
     userData,
@@ -36,6 +38,7 @@ const UserInfoScreen = () => {
     removeFriend,
     isLoading,
   } = useApp();
+
   useEffect(() => {
     const friendDiscoveryId = Array.isArray(rawUserId)
       ? rawUserId[0]
@@ -71,9 +74,6 @@ const UserInfoScreen = () => {
     };
   }, [achievements]);
 
-  const unlockedCount = achievements?.filter((a) => a.unlocked).length || 0;
-  const totalCount = achievements?.length || 0;
-
   const getAchievementImage = (name: string) => {
     const imageMap: { [key: string]: any } = {
       Lightning: ACHIEVEMENT_IMAGES.lightning,
@@ -88,15 +88,13 @@ const UserInfoScreen = () => {
     return imageMap[name] || ACHIEVEMENT_IMAGES.lightning;
   };
 
-  const handleFriendAction = () => {
-    if(!friendDiscoveryProfile?.user) return
-    console.log("-------",friendDiscoveryProfile.user.clerkId)
-    if (friendDiscoveryProfile?.is_friend === true) {
-      removeFriend(friendDiscoveryProfile.user.clerkId);
-    }
+  const handleFriendToggle = async (newState: boolean) => {
+    if (!friendDiscoveryProfile?.user) return;
 
-    if (friendDiscoveryProfile?.is_friend === false) {
-      addFriend(friendDiscoveryProfile.user.clerkId);
+    if (newState) {
+      await addFriend(friendDiscoveryProfile.user.clerkId);
+    } else {
+      await removeFriend(friendDiscoveryProfile.user.clerkId);
     }
   };
 
@@ -151,12 +149,10 @@ const UserInfoScreen = () => {
     );
   };
 
-  if (isLoading) {
+  // Show splash screen style loader only on initial load
+  if (isLoading && !friendDiscoveryProfile) {
     return (
-      <View className="flex-1 bg-black justify-center items-center">
-        <ActivityIndicator size="large" color="#EA580C" />
-        <Text className="text-white/50 text-sm mt-4">Loading profile...</Text>
-      </View>
+     <SplashScreen/>
     );
   }
 
@@ -209,25 +205,13 @@ const UserInfoScreen = () => {
             {friendDiscoveryProfile?.user?.username}
           </Text>
 
-          {/* Action Button */}
-          <TouchableOpacity
-            className={`px-8 py-3 rounded-xl ${
-              friendDiscoveryProfile?.is_friend
-                ? "bg-white/[0.03] border border-white/[0.08]"
-                : "bg-orange-600"
-            }`}
-            onPress={handleFriendAction}
-          >
-            <Text
-              className={`font-black uppercase tracking-widest text-sm ${
-                friendDiscoveryProfile?.is_friend ? "text-white" : "text-black"
-              }`}
-            >
-              {friendDiscoveryProfile?.is_friend
-                ? "Remove Friend"
-                : "Add Friend"}
-            </Text>
-          </TouchableOpacity>
+          {/* Friend Button */}
+          {friendDiscoveryProfile?.user && (
+            <FriendButton
+              initialIsFriend={friendDiscoveryProfile.is_friend}
+              onToggle={handleFriendToggle}
+            />
+          )}
         </View>
 
         {/* Streak Section */}
