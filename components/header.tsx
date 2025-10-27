@@ -110,14 +110,14 @@ export const Header = () => {
 
           <TouchableOpacity
             className="flex-row items-center gap-1.5 bg-white/5 px-3 py-2 rounded-full"
-            onPress={handleEarnGems}
+            // onPress={handleEarnGems}
           >
             <View className="relative">
               <Text className="text-xl">💎</Text>
 
-              <View className="absolute -bottom-0.5 -right-0.5 bg-orange-600 w-3 h-3 rounded-full justify-center items-center">
+              {/* <View className="absolute -bottom-0.5 -right-0.5 bg-orange-600 w-3 h-3 rounded-full justify-center items-center">
                 <Text className="text-white text-[8px] font-black">+</Text>
-              </View>
+              </View> */}
             </View>
             <Text className="text-white text-base font-bold">
               {userData?.gems || 0}
