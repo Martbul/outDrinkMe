@@ -2,8 +2,9 @@ import { useApp } from "@/providers/AppProvider";
 import { UserData } from "@/types/api.types";
 import { AntDesign, FontAwesome6, Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   Image,
   Text,
@@ -27,7 +28,27 @@ const FriendsScreen = () => {
     error,
   } = useApp();
   const [searchQueryFriend, setSearchQueryFriend] = useState("");
+  const [lastSearchedFriendQuery, setLastSearchedFriendQuery] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [searchResults, setSearchResults] = useState<UserData[]>([]);
+
   const [activeTab, setActiveTab] = useState("friends");
+
+   const filteredFriends = useMemo(() => {
+     if (!Array.isArray(friends)) {
+       return [];
+     }
+
+     if (!searchQueryFriend.trim()) {
+       return friends;
+     }
+
+     return friends.filter((item) =>
+       (item.username || "")
+         .toLowerCase()
+         .includes(searchQueryFriend.toLowerCase().trim())
+     );
+   }, [friends, searchQueryFriend]);
 
   const TabSelection = () => {
     return (
@@ -200,7 +221,6 @@ const FriendsScreen = () => {
       );
     }
 
-
     if (discovery.length === 0) {
       return (
         <View className="items-center justify-center py-16">
@@ -230,8 +250,8 @@ const FriendsScreen = () => {
     return null;
   };
 
-  const FriendsListHeaderComponent = () => (
-    <>
+  const FriendsListHeaderComponent = useMemo(
+    () => (
       <View className="bg-white/[0.03] rounded-2xl px-4 py-2 mb-4 flex-row items-center border border-gray-800">
         <Ionicons name="search" size={24} color="#6B7280" />
         <TextInput
@@ -240,17 +260,23 @@ const FriendsScreen = () => {
           placeholder="Search Friends"
           placeholderTextColor="#6B7280"
           className="flex-1 text-white text-base ml-2"
+          autoCapitalize="none"
+          autoCorrect={false}
         />
-        {searchQueryFriend.length > 0 && (
-          <TouchableOpacity
-            onPress={() => setSearchQueryFriend("")}
-            className="ml-2 justify-center items-center"
-          >
-            <Text className="text-gray-600 text-xl">✕</Text>
-          </TouchableOpacity>
+        {(loading || searchQueryFriend.length > 0) && (
+          <View className="ml-2">
+            {loading ? (
+              <ActivityIndicator size="small" color="#f97316" />
+            ) : (
+              <TouchableOpacity onPress={() => setSearchQueryFriend("")}>
+                <Text className="text-gray-600 text-xl">✕</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         )}
       </View>
-    </>
+    ),
+    [searchQueryFriend, loading]
   );
 
   const ListFooterComponent = () => (
@@ -265,22 +291,7 @@ const FriendsScreen = () => {
     </TouchableOpacity>
   );
 
-  const filteredFriends = useMemo(() => {
-    if (!Array.isArray(friends)) {
-      return [];
-    }
-
-    if (!searchQueryFriend.trim()) {
-      return friends;
-    }
-
-    return friends.filter((item) =>
-      (item.username || "")
-        .toLowerCase()
-        .includes(searchQueryFriend.toLowerCase().trim())
-    );
-  }, [friends, searchQueryFriend]);
-
+ 
 
   const handleFriendsRefresh = async () => {
     if (userData?.id) {

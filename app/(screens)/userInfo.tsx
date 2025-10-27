@@ -163,7 +163,7 @@ const UserInfoScreen = () => {
         <View className="items-center pt-8 pb-6 px-4">
           {/* Avatar with Level & Coef Badge */}
           <View className="relative mb-4">
-            <View className="w-32 h-32 rounded-full bg-orange-600 items-center justify-center border-4 border-black">
+            <View className="w-32 h-32 rounded-full items-center justify-center border-4 border-black">
               {friendDiscoveryProfile?.user?.imageUrl ? (
                 <Image
                   source={{ uri: friendDiscoveryProfile.user.imageUrl }}

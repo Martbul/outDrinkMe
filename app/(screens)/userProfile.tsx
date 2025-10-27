@@ -7,6 +7,7 @@ import LogoutButton from "@/components/logoutButton";
 import { useRouter } from "expo-router";
 import { getLevelInfo } from "@/utils/levels";
 import BackHeader from "@/components/backHeader";
+import { MaterialIcons } from "@expo/vector-icons";
  
 const ACHIEVEMENT_IMAGES = {
   lightning: require("../../assets/images/achievements/lightning.png"),
@@ -20,14 +21,13 @@ const ACHIEVEMENT_IMAGES = {
 };
 
 export default function UserProfileScreen() {
-  const { userData, userStats, weeklyStats, achievements, isLoading } =
+  const { userData, userStats, achievements, isLoading } =
     useApp();
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
   const levelInfo = getLevelInfo(userData?.xp);
 
-  // Group achievements by category
   const groupedAchievements = useMemo(() => {
     if (!achievements) return { streaks: [], competition: [], social: [] };
 
@@ -117,7 +117,7 @@ export default function UserProfileScreen() {
         className="flex-1"
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
       >
-        <BackHeader className="top-16"/>
+        <BackHeader className="top-16" />
 
         {/* Profile Header */}
         <View
@@ -138,7 +138,6 @@ export default function UserProfileScreen() {
             </View>
           </View>
 
-          {/* Name & Username */}
           <Text className="text-white text-2xl font-black mb-1">
             {`${userData?.firstName} ${userData?.lastName}`}
           </Text>
@@ -146,16 +145,6 @@ export default function UserProfileScreen() {
           <Text className="text-white/50 text-base mb-4">
             {userData?.email}
           </Text>
-
-          {/* Edit Profile Button */}
-          <TouchableOpacity
-            className="bg-white/[0.03] px-8 py-3 rounded-xl border border-white/[0.08]"
-            onPress={() => router.push("/(screens)/editProfile")}
-          >
-            <Text className="text-white font-bold uppercase tracking-widest text-sm">
-              Edit Profile
-            </Text>
-          </TouchableOpacity>
         </View>
 
         {/* Stats Grid */}
@@ -253,6 +242,17 @@ export default function UserProfileScreen() {
         </View>
 
         <View className="px-4 gap-4">
+          <TouchableOpacity
+            className="bg-white/[0.03] rounded-2xl p-5  border border-white/[0.08]"
+            onPress={() => router.push("/(screens)/editProfile")}
+          >
+            <View className="flex flex-row justify-between items-center">
+              <Text className="text-white/80 font-bold uppercase tracking-widest text-sm">
+                Edit Profile
+              </Text>
+              <MaterialIcons name="mode-edit" size={24} color="#999999" />
+            </View>
+          </TouchableOpacity>
           <LogoutButton />
         </View>
       </ScrollView>

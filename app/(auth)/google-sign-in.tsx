@@ -12,6 +12,7 @@ import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { openPrivacy, openTerms } from "@/utils/links";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -29,7 +30,7 @@ export default function SignInScreen() {
       setIsLoading(true);
 
       const { createdSessionId, setActive } = await startOAuthFlow({
-        redirectUrl: Linking.createURL("/oauth-native-callback", {
+        redirectUrl: Linking.createURL("/(tabs)/add", {
           scheme: "outdrinkme",
         }),
       });
@@ -57,18 +58,15 @@ export default function SignInScreen() {
         paddingBottom: insets.bottom + 20,
       }}
     >
-      <View className="items-center mb-16">
-        {/* App Name */}
-        <View className="flex my-6">
-          <Text className="text-white text-4xl font-black mb-2">
+      <View className="items-center mb-12">
+        <View className="flex my-12">
+          <Text className="text-white text-4xl font-black text-center mb-2">
             OutDrinkMe
           </Text>
-          <Text className="text-gray-500 text-base mb-12">
+          <Text className="text-gray-500 text-base text-center mb-8">
             Sign in to start tracking
           </Text>
         </View>
-
-        {/* Sign In Illustration */}
         <View className="w-32 h-32 rounded-full bg-gray-900 border-2 border-gray-800 items-center justify-center mb-12">
           <Image
             source={require("../../assets/images/icon.png")}
@@ -76,18 +74,17 @@ export default function SignInScreen() {
           />
         </View>
       </View>
-
-      {/* Google Sign In Button */}
       <TouchableOpacity
         onPress={onGoogleSignIn}
         disabled={isLoading}
+        activeOpacity={0.6}
         className="bg-[#ff8c00] rounded-2xl py-5 px-8 flex-row items-center justify-center w-full max-w-sm shadow-lg mb-4"
       >
         {isLoading ? (
           <ActivityIndicator color="#000" />
         ) : (
           <>
-            <View className="w-8 h-8 bg-[#ff8c00] rounded items-center justify-center mr-4">
+            <View className="w-8 h-8 rounded items-center justify-center mr-4">
               <Text className="text-2xl">G</Text>
             </View>
             <Text className="text-black text-base font-bold">
@@ -96,16 +93,17 @@ export default function SignInScreen() {
           </>
         )}
       </TouchableOpacity>
-
-      {/* Terms */}
+      {/* //!TODO: Make a website and instead of downloads just rediect the user to the page */}
       <View className="mt-12 px-8">
         <Text className="text-gray-600 text-xs text-center leading-5">
           By continuing, you agree to our{" "}
-          <Text className="text-orange-500 font-semibold">
+          <Text className="text-orange-500 font-semibold" onPress={openTerms}>
             Terms of Service
           </Text>{" "}
           and{" "}
-          <Text className="text-orange-500 font-semibold">Privacy Policy</Text>
+          <Text className="text-orange-500 font-semibold" onPress={openPrivacy}>
+            Privacy Policy
+          </Text>
         </Text>
       </View>
     </View>
