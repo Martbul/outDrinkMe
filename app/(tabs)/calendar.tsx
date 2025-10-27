@@ -339,6 +339,7 @@ const CalendarScreen = () => {
 
     return days;
   };
+  const insets = useSafeAreaInsets();
 
   const activeDays = calendar?.days?.filter((d) => d.drank_today).length || 0;
   const daysInMonth = getDaysInMonth(currentMonth, currentYear);
@@ -355,10 +356,9 @@ const CalendarScreen = () => {
   }
 
   return (
-    <View className="flex-1 bg-black">
+    <View className="flex-1 bg-black" style={{ paddingBottom: insets.bottom+ 40 }}>
       <Header />
       <ScrollView className="flex-1 px-4 pt-6">
-        {/* Header - Matching Home Style */}
         <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
           <View className="flex-row justify-between items-center mb-2">
             <View>

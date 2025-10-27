@@ -3,19 +3,19 @@ import { useEffect, useState, useMemo } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import {
-  FlatList,
-  StatusBar,
   TextInput,
   View,
   TouchableOpacity,
   Text,
   ActivityIndicator,
+  ScrollView,
 } from "react-native";
-import { AntDesign, FontAwesome5, Ionicons } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import { UserCard } from "@/components/userCard";
 import { UserData } from "@/types/api.types";
 import { onBackPress } from "@/utils/navigation";
+import Header from "@/components/header";
 
 export default function AddByUsername() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -62,60 +62,19 @@ export default function AddByUsername() {
     }
   };
 
-  const ListHeaderComponent = useMemo(
-    () => (
-      <View className="mt-10 mb-4">
-        <View className="flex-row justify-between">
-          <TouchableOpacity onPress={onBackPress} className="flex">
-            <AntDesign name="arrow-left" size={28} color="#f54900" />
-          </TouchableOpacity>
-          <View className="flex">
-            <Text className="text-white text-2xl font-black mb-1">
-              Search Drinkers
-            </Text>
-            <Text className="text-gray-500 text-sm mb-4">by username</Text>
-          </View>
-        </View>
-
-        {/* Search Bar */}
-        <View className="bg-white/[0.03] rounded-2xl px-4 py-2 flex-row items-center border border-gray-800">
-          <Ionicons name="search" size={24} color="#6B7280" />
-          <TextInput
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholder="Type to search..."
-            placeholderTextColor="#6B7280"
-            className="flex-1 text-white text-base ml-2"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          {(loading || searchQuery.length > 0) && (
-            <View className="ml-2">
-              {loading ? (
-                <ActivityIndicator size="small" color="#f97316" />
-              ) : (
-                <TouchableOpacity onPress={() => setSearchQuery("")}>
-                  <Text className="text-gray-600 text-xl">✕</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
-        </View>
-      </View>
-    ),
-    [searchQuery, loading]
-  );
-
-  const ListEmptyComponent = useMemo(() => {
+  const renderEmptyState = () => {
     if (searchQuery.length >= 2 && !loading && searchResults.length === 0) {
       return (
-        <View className="items-center py-16">
-          <FontAwesome6 name="sad-tear" size={64} color="#9CA3AF" />
-          <Text className="text-white text-xl font-bold mb-2 mt-4">
-            No results
+        <View className="bg-white/[0.03] rounded-2xl p-8 border border-white/[0.08] items-center">
+          <View className="w-20 h-20 rounded-2xl bg-orange-600/20 items-center justify-center mb-4">
+            <FontAwesome6 name="sad-tear" size={40} color="#ff8c00" />
+          </View>
+          <Text className="text-white text-xl font-black mb-2">
+            No Results Found
           </Text>
-          <Text className="text-gray-500 text-center px-8">
-            No users found matching "{searchQuery}"
+          <Text className="text-white/50 text-sm text-center font-semibold">
+            No users found matching "{searchQuery}". Try a different search
+            term.
           </Text>
         </View>
       );
@@ -123,14 +82,14 @@ export default function AddByUsername() {
 
     if (searchQuery.length < 2) {
       return (
-        <View className="items-center py-16">
-          <View className="w-32 h-32 rounded-full bg-white/[0.03] border-2 border-gray-800 items-center justify-center mb-6">
-            <FontAwesome5 name="search" size={56} color="#f54900" />
+        <View className="bg-white/[0.03] rounded-2xl p-8 border border-white/[0.08] items-center">
+          <View className="w-24 h-24 rounded-2xl bg-orange-600/20 items-center justify-center mb-4">
+            <Ionicons name="search" size={48} color="#ff8c00" />
           </View>
-          <Text className="text-white text-xl font-bold mb-2">
-            Search for friends
+          <Text className="text-white text-xl font-black mb-2">
+            Start Searching
           </Text>
-          <Text className="text-gray-500 text-center px-8">
+          <Text className="text-white/50 text-sm text-center font-semibold px-4">
             Enter at least 2 characters to find and add friends to your drinking
             squad!
           </Text>
@@ -139,38 +98,98 @@ export default function AddByUsername() {
     }
 
     return null;
-  }, [searchQuery, loading, searchResults.length]);
+  };
 
   return (
-    <View className="flex-1 bg-black">
-      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+    <View
+      className="flex-1 bg-black"
+      style={{ paddingBottom: insets.bottom + 40 }}
+    >
+      <Header />
+      <ScrollView className="flex-1 px-4 pt-6">
+        {/* Page Header */}
+        <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
+          <View className="flex-row items-center mb-2">
+            <TouchableOpacity
+              onPress={onBackPress}
+              className="w-10 h-10 rounded-xl bg-white/[0.03] items-center justify-center border border-white/[0.08]"
+            >
+              <Feather name="arrow-left" size={24} color="#999999" />
+            </TouchableOpacity>
 
-      <FlatList
-        data={searchResults}
-        keyExtractor={(item) =>
-          item.id || item.username || Math.random().toString()
-        }
-        contentContainerStyle={{
-          paddingHorizontal: 16,
-          paddingTop: 24,
-          paddingBottom: 24,
-        }}
-        ListHeaderComponent={ListHeaderComponent}
-        renderItem={({ item }) => (
-          <UserCard
-            user={item}
-            onPress={() => router.push(`/(screens)/userInfo?userId=${item.id}`)}
-            rightAction={{
-              loading: addingFriendId === item.id,
-              onAction: () => handleAddFriend(item.id),
-              icon: "add",
-            }}
-          />
+            <View className="flex-1 items-end">
+              <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-2">
+                FIND FRIENDS
+              </Text>
+              <Text className="text-white text-[32px] font-black">
+                Search Drinkers
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Search Bar Card */}
+        <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
+          <View className="bg-white/[0.05] rounded-xl px-4 py-3 flex-row items-center border border-white/[0.08]">
+            <Ionicons name="search" size={20} color="#ff8c00" />
+            <TextInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Type to search..."
+              placeholderTextColor="#666666"
+              className="flex-1 text-white text-base ml-3 font-semibold"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            {(loading || searchQuery.length > 0) && (
+              <View className="ml-2">
+                {loading ? (
+                  <ActivityIndicator size="small" color="#ff8c00" />
+                ) : (
+                  <TouchableOpacity onPress={() => setSearchQuery("")}>
+                    <View className="w-6 h-6 rounded-full bg-white/[0.05] items-center justify-center">
+                      <Text className="text-white/40 text-sm">✕</Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Results Section */}
+        {searchResults.length > 0 && (
+          <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
+            <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-4">
+              SEARCH RESULTS ({searchResults.length})
+            </Text>
+            {searchResults.map((user, index) => (
+              <View key={user.id || index}>
+                <UserCard
+                  user={user}
+                  onPress={() =>
+                    router.push(`/(screens)/userInfo?userId=${user.id}`)
+                  }
+                  rightAction={{
+                    loading: addingFriendId === user.id,
+                    onAction: () => handleAddFriend(user.id),
+                    icon: "arrow",
+                  }}
+                />
+                {index < searchResults.length - 1 && (
+                  <View className="h-px bg-white/[0.05] my-3" />
+                )}
+              </View>
+            ))}
+          </View>
         )}
-        ListEmptyComponent={ListEmptyComponent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      />
+
+        {/* Empty State */}
+        {renderEmptyState()}
+
+        {/* Bottom Spacing */}
+        <View className="h-24" />
+      </ScrollView>
     </View>
   );
 }

@@ -6,7 +6,7 @@ import {
   View,
 } from "react-native";
 import { UserData } from "@/types/api.types";
-import { AntDesign } from "@expo/vector-icons";
+import { AntDesign, Ionicons } from "@expo/vector-icons";
 
 interface UserCardProps {
   user: UserData;
@@ -20,9 +20,10 @@ interface UserCardProps {
 
 export function UserCard({ user, onPress, rightAction }: UserCardProps) {
   return (
+
     <TouchableOpacity
       onPress={onPress}
-      className="bg-white/[0.03] rounded-2xl p-4 border border-gray-800 flex-row items-center mb-3"
+      className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08] flex-row items-center mb-3"
     >
       <View className="w-14 h-14 rounded-full bg-orange-600 items-center justify-center mr-4">
         {user.imageUrl ? (
@@ -36,23 +37,17 @@ export function UserCard({ user, onPress, rightAction }: UserCardProps) {
           </Text>
         )}
       </View>
-
-      {/* User Info */}
       <View className="flex-1">
         <Text className="text-white text-lg font-bold mb-1">
           {user.username || "Unknown User"}
         </Text>
         {(user.firstName || user.lastName) && (
-          <Text className="text-gray-500 text-sm">
+          <Text className="text-white/50 text-sm font-semibold">
             {[user.firstName, user.lastName].filter(Boolean).join(" ")}
           </Text>
         )}
-        {user.username && (
-          <Text className="text-gray-600 text-xs mt-0.5">{user.username}</Text>
-        )}
       </View>
 
-      {/* Right Action */}
       {rightAction && (
         <>
           {rightAction.loading ? (
@@ -63,8 +58,9 @@ export function UserCard({ user, onPress, rightAction }: UserCardProps) {
                 e.stopPropagation();
                 rightAction.onAction();
               }}
+              className="w-10 h-10 rounded-xl bg-orange-600/20 items-center justify-center border border-orange-600/50"
             >
-              <AntDesign name="user-add" size={24} color="#ff8c00" />
+              <Ionicons name="person-add" size={20} color="#ff8c00" />
             </TouchableOpacity>
           ) : (
             <AntDesign name="right" size={20} color="#6B7280" />
