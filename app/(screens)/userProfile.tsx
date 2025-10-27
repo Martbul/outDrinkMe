@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import LogoutButton from "@/components/logoutButton";
 import { useRouter } from "expo-router";
 import { getLevelInfo } from "@/utils/levels";
+import BackHeader from "@/components/backHeader";
  
 const ACHIEVEMENT_IMAGES = {
   lightning: require("../../assets/images/achievements/lightning.png"),
@@ -116,10 +117,12 @@ export default function UserProfileScreen() {
         className="flex-1"
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
       >
+        <BackHeader className="top-16"/>
+
         {/* Profile Header */}
         <View
           className="items-center pb-6 px-4"
-          style={{ paddingTop: insets.top + 32 }}
+          style={{ paddingTop: insets.top + 16 }}
         >
           {/* Avatar with Level */}
           <View className="relative mb-4">

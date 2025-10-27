@@ -1,11 +1,6 @@
 // app/user-info.tsx (or your screen file)
 import React, { useEffect, useMemo } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  Image,
-} from "react-native";
+import { View, Text, ScrollView, Image } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { UserStats } from "@/types/api.types";
@@ -14,6 +9,7 @@ import { useApp } from "@/providers/AppProvider";
 import { getCoefInfo, getLevelInfo } from "@/utils/levels";
 import { FriendButton } from "@/components/friendButton";
 import SplashScreen from "@/components/spashScreen";
+import BackHeader from "@/components/backHeader";
 
 const ACHIEVEMENT_IMAGES = {
   lightning: require("../../assets/images/achievements/lightning.png"),
@@ -151,20 +147,18 @@ const UserInfoScreen = () => {
 
   // Show splash screen style loader only on initial load
   if (isLoading && !friendDiscoveryProfile) {
-    return (
-     <SplashScreen/>
-    );
+    return <SplashScreen />;
   }
 
   return (
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top - 15 }}>
-      <SecondaryHeader title="Profile" />
-
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ paddingBottom: insets.bottom + 10 }}
         showsVerticalScrollIndicator={false}
       >
+        <BackHeader className="top-12" />
+
         {/* Profile Header */}
         <View className="items-center pt-8 pb-6 px-4">
           {/* Avatar with Level & Coef Badge */}

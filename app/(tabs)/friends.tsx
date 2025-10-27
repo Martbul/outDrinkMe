@@ -27,7 +27,6 @@ const FriendsScreen = () => {
     error,
   } = useApp();
   const [searchQueryFriend, setSearchQueryFriend] = useState("");
-  const [searchQueryDiscovery, setSearchQueryDiscovery] = useState("");
   const [activeTab, setActiveTab] = useState("friends");
 
   const TabSelection = () => {
@@ -39,13 +38,13 @@ const FriendsScreen = () => {
         >
           <Text
             className={`text-[15px] font-semibold ${
-              activeTab === "friends" ? "text-[#ff8c00]" : "text-gray-700"
+              activeTab === "friends" ? "text-[#f54900]" : "text-gray-700"
             }`}
           >
             Friends
           </Text>
           {activeTab === "friends" && (
-            <View className="absolute -bottom-[1.5px] left-0 right-0 h-[3px] bg-[#ff8c00]" />
+            <View className="absolute -bottom-[1.5px] left-0 right-0 h-[3px] bg-[#f54900]" />
           )}
         </TouchableOpacity>
 
@@ -55,13 +54,13 @@ const FriendsScreen = () => {
         >
           <Text
             className={`text-[15px] font-semibold ${
-              activeTab === "discovery" ? "text-[#ff8c00]" : "text-gray-700"
+              activeTab === "discovery" ? "text-[#f54900]" : "text-gray-700"
             }`}
           >
             Discovery
           </Text>
           {activeTab === "discovery" && (
-            <View className="absolute -bottom-[1.5px] left-0 right-0 h-[3px] bg-[#ff8c00]" />
+            <View className="absolute -bottom-[1.5px] left-0 right-0 h-[3px] bg-[#f54900]" />
           )}
         </TouchableOpacity>
       </View>
@@ -201,19 +200,6 @@ const FriendsScreen = () => {
       );
     }
 
-    if (searchQueryDiscovery.trim()) {
-      return (
-        <View className="flex-1 items-center justify-center py-16">
-          <FontAwesome6 name="sad-tear" size={24} color="#9CA3AF" />
-          <Text className="text-white text-xl font-bold mb-2 mt-4">
-            No results
-          </Text>
-          <Text className="text-gray-500 text-center px-8">
-            No users found matching "{searchQueryDiscovery}"
-          </Text>
-        </View>
-      );
-    }
 
     if (discovery.length === 0) {
       return (
@@ -295,21 +281,6 @@ const FriendsScreen = () => {
     );
   }, [friends, searchQueryFriend]);
 
-  const filteredDiscovery = useMemo(() => {
-    if (!Array.isArray(discovery)) {
-      return [];
-    }
-
-    if (!searchQueryDiscovery.trim()) {
-      return discovery;
-    }
-
-    return discovery.filter((item) =>
-      (item.username || "")
-        .toLowerCase()
-        .includes(searchQueryDiscovery.toLowerCase().trim())
-    );
-  }, [discovery, searchQueryDiscovery]);
 
   const handleFriendsRefresh = async () => {
     if (userData?.id) {
@@ -355,7 +326,7 @@ const FriendsScreen = () => {
 
       {activeTab === "discovery" && (
         <FlatList
-          data={filteredDiscovery}
+          data={discovery}
           keyExtractor={(item) =>
             item.id || item.username || Math.random().toString()
           }

@@ -9,7 +9,7 @@ export default function BackArrow() {
       className="absolute left-4"
       style={{ zIndex: 10 }}
     >
-      <AntDesign name="arrow-left" size={28} color="#ff8c00" />
+      <AntDesign name="arrow-left" size={28} color="#f54900" />
     </TouchableOpacity>
   );
 }

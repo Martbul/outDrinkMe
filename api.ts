@@ -125,15 +125,15 @@ class ApiService {
   }
 
   async searchUsers(searchQuery: string, token: string): Promise<UserData[]> {
-    const response = await this.makeRequest<{ users: UserData[] }>(
-      `/api/v1/users/search?username=${encodeURIComponent(searchQuery)}`,
+    const response = await this.makeRequest<UserData[]>(
+      `/api/v1/user/search?q=${encodeURIComponent(searchQuery)}`,
       {
         method: "GET",
         token,
       }
     );
 
-    return response.users || [];
+    return response || [];
   }
   async getUserStats(token: string): Promise<UserStats> {
     return this.makeRequest<UserStats>("/api/v1/user/stats", {
@@ -316,6 +316,7 @@ class ApiService {
       difference: leader.days_this_week - user.days_this_week,
     };
   }
+  
 }
 
 export const apiService = new ApiService();
