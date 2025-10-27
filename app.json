@@ -49,13 +49,14 @@
           }
         }
       ],
-      [
-        "react-native-google-mobile-ads",
-         {
-           "androidAppId": "ca-app-pub-1167503921437683~3406815046",
-           "iosAppId": "ca-app-pub-1167503921437683~3406815046"
-         }
-      ]
+     [
+       "react-native-google-mobile-ads",
+       {
+         "android_app_id": "ca-app-pub-1167503921437683~3406815046",
+         "ios_app_id": "ca-app-pub-1167503921437683~3406815046"
+       }
+     ]
+
     ],
     "experiments": {
       "typedRoutes": true,
