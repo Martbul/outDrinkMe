@@ -19,15 +19,13 @@ fi
 # Check if android directory exists
 if [ ! -d "android" ]; then
     echo -e "${YELLOW}⚠️ Android directory not found. Creating with prebuild...${NC}"
+    npx expo prebuild --platform android --clean
 else
-    # Clean previous builds
-    echo -e "${YELLOW}🧹 Cleaning previous builds...${NC}"
-    cd android && ./gradlew clean && cd ..
+    # Clean only problematic CMake cache, not entire build
+    echo -e "${YELLOW}🧹 Cleaning CMake cache...${NC}"
+    rm -rf android/app/.cxx
+    rm -rf android/app/build/generated/autolinking
 fi
-
-# Prebuild
-echo -e "${YELLOW}⚙️ Running prebuild...${NC}"
-npx expo prebuild --platform android --clean
 
 # Check if keystore exists
 if [ ! -f "credentials/android/keystore.jks" ]; then
@@ -36,7 +34,7 @@ if [ ! -f "credentials/android/keystore.jks" ]; then
     exit 1
 fi
 
-# Build release APK
+# Build release APK (without gradle clean to preserve codegen)
 echo -e "${YELLOW}📦 Building release APK...${NC}"
 cd android && ./gradlew assembleRelease && cd ..
 

@@ -112,6 +112,7 @@ export const Header = () => {
             className="flex-row items-center gap-1.5 bg-white/5 px-3 py-2 rounded-full"
             // onPress={handleEarnGems}
           >
+            
             <View className="relative">
               <Text className="text-xl">💎</Text>
 

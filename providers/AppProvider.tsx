@@ -20,7 +20,7 @@ import {
 } from "../types/api.types";
 import { apiService } from "@/api";
 import { Alert } from "react-native";
-import { initializeAdMob } from "@/utils/initializeAdMob";
+import MobileAds from "react-native-google-mobile-ads";
 
 interface AppContextType {
   // Data
@@ -549,8 +549,12 @@ export function AppProvider({ children }: AppProviderProps) {
     if (isSignedIn && !hasInitialized.current) {
       hasInitialized.current = true;
       refreshAll();
-      initializeAdMob();
-    }
+
+MobileAds()
+  .initialize()
+  .then((adapterStatuses) => {
+    // Initialization complete!
+  });    }
 
     // Reset initialization flag when user signs out
     if (!isSignedIn) {

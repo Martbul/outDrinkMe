@@ -1,26 +1,20 @@
 import mobileAds, { MaxAdContentRating } from "react-native-google-mobile-ads";
 
-export const initializeAdMob = async () => {
-  try {
-    await mobileAds().initialize();
-    console.log("AdMob initialized successfully");
+mobileAds()
+  .setRequestConfiguration({
+    // Update all future requests suitable for parental guidance
+    maxAdContentRating: MaxAdContentRating.PG,
 
-    // Optional: Set request configuration
-    await mobileAds().setRequestConfiguration({
-      // Max Ad Content Rating
-      maxAdContentRating: MaxAdContentRating.T, // T for Teen
-      // Other options: MaxAdContentRating.G, MaxAdContentRating.PG, MaxAdContentRating.MA
+    // Indicates that you want your content treated as child-directed for purposes of COPPA.
+    tagForChildDirectedTreatment: true,
 
-      // Indicate to serve non-personalized ads
-      tagForChildDirectedTreatment: false,
+    // Indicates that you want the ad request to be handled in a
+    // manner suitable for users under the age of consent.
+    tagForUnderAgeOfConsent: true,
 
-      // Indicate to under age of consent
-      tagForUnderAgeOfConsent: false,
-    });
-
-    return true;
-  } catch (error) {
-    console.error("Failed to initialize AdMob:", error);
-    return false;
-  }
-};
+    // An array of test device IDs to allow.
+    testDeviceIdentifiers: ["EMULATOR"],
+  })
+  .then(() => {
+    // Request config successfully set!
+  });
