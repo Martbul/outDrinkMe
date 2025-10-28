@@ -8,11 +8,6 @@
     "scheme": "outdrinkme",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/images/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#000000"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.martbul.outDrinkMe"
