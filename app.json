@@ -8,13 +8,20 @@
     "scheme": "outdrinkme",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#000000"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.martbul.outDrinkMe"
     },
     "android": {
-                "image": "./assets/images/icon.png",
-
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#000000"
+      },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.martbul.outDrinkMe",
@@ -51,10 +58,10 @@
       ],
       [
         "react-native-google-mobile-ads",
-         {
-           "androidAppId": "ca-app-pub-1167503921437683~3406815046",
-           "iosAppId": "ca-app-pub-1167503921437683~3406815046"
-         }
+        {
+          "androidAppId": "ca-app-pub-1167503921437683~3406815046",
+          "iosAppId": "ca-app-pub-1167503921437683~3406815046"
+        }
       ]
     ],
     "experiments": {

@@ -4,7 +4,6 @@ import { useApp } from "@/providers/AppProvider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { getLevelInfo } from "@/utils/levels";
-import AdRewardModal from "./adRewardModal";
 import InfoTooltip from "./infoTooltip";
 
 export const Header = () => {
@@ -49,12 +48,12 @@ export const Header = () => {
 
   return (
     <View className="bg-black" style={{ paddingTop: insets.top }}>
-      {showAdModal && (
+      {/* {showAdModal && (
         <AdRewardModal
           onClose={() => setShowAdModal(false)}
           onRewardEarned={handleRewardEarned}
         />
-      )}
+      )} */}
 
       <View className="flex-row justify-between items-center px-4 py-4">
         <View className="flex-row items-center flex-1">

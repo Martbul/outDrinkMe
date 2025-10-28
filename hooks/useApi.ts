@@ -1,5 +1,4 @@
 import { useState, useCallback } from "react";
-import { apiService } from "../services/api.service";
 
 export function useApi<T>(apiFunction: (...args: any[]) => Promise<T>) {
   const [data, setData] = useState<T | null>(null);

@@ -550,11 +550,12 @@ export function AppProvider({ children }: AppProviderProps) {
       hasInitialized.current = true;
       refreshAll();
 
-MobileAds()
-  .initialize()
-  .then((adapterStatuses) => {
-    // Initialization complete!
-  });    }
+      // MobileAds()
+      //   .initialize()
+      //   .then((adapterStatuses) => {
+      //     // Initialization complete!
+      //   });
+    }
 
     // Reset initialization flag when user signs out
     if (!isSignedIn) {
