@@ -18,10 +18,7 @@
       "bundleIdentifier": "com.martbul.outDrinkMe"
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#000000"
-      },
+      "image": "./assets/images/icon.png",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.martbul.outDrinkMe",
