@@ -1,10 +1,50 @@
-name: EAS Build
+# name: EAS Build
+
+# on:
+#   workflow_dispatch:
+
+# jobs:
+#   build:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v3
+      
+#       - name: Setup Node.js
+#         uses: actions/setup-node@v3
+#         with:
+#           node-version: 20  # Променено от 18 на 20
+          
+#       - name: Setup Java
+#         uses: actions/setup-java@v3
+#         with:
+#           distribution: 'temurin'
+#           java-version: '17'
+          
+#       - name: Setup Android SDK
+#         uses: android-actions/setup-android@v3
+        
+#       - name: Setup Expo and EAS
+#         uses: expo/expo-github-action@v8
+#         with:
+#           eas-version: latest
+#           token: ${{ secrets.EXPO_TOKEN }}
+          
+#       - name: Install dependencies
+#         run: npm ci
+        
+#       - name: Create .env file
+#         run: |
+#           touch .env
+#           echo "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.CLERK_PUBLISHABLE_KEY }}" >> .env
+          
+#       - name: Build on EAS
+#         run: eas build --platform android --non-interactive --no-wait
+
+name: Local Android Build
 
 on:
-  workflow_dispatch: # Ръчно стартиране
-  push:
-    branches:
-      - main # Или master, зависи от твоя branch
+  workflow_dispatch:
 
 jobs:
   build:
@@ -12,21 +52,42 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-
-      - name: Setup Node.js
+      
+      - name: Setup Node.js 20
         uses: actions/setup-node@v3
         with:
-          node-version: 18
-
-      - name: Setup Expo
-        uses: expo/expo-github-action@v8
+          node-version: 20
+          
+      - name: Setup Java 17
+        uses: actions/setup-java@v3
         with:
-          expo-version: latest
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-
+          distribution: 'temurin'
+          java-version: '17'
+          
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        
       - name: Install dependencies
-        run: npm install
-
-      - name: Build Android
-        run: eas build --platform android --profile production --non-interactive --local
+        run: npm ci
+        
+      - name: Setup Expo
+        run: |
+          npm install -g eas-cli
+          npx expo install
+          
+      - name: Create .env file
+        run: |
+          touch .env
+          echo "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.CLERK_PUBLISHABLE_KEY }}" >> .env
+          
+      - name: Authenticate with EAS
+        run: eas login --token ${{ secrets.EXPO_TOKEN }}
+        
+      - name: Build Android locally
+        run: eas build --platform android --profile production --local --non-interactive
+        
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: android-release
+          path: '**/*.aab'
