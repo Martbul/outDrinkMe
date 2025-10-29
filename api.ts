@@ -16,10 +16,16 @@ class ApiService {
   private baseUrl: string;
 
   constructor() {
-    this.baseUrl =
-      process.env.EXPO_PUBLIC_OUTDRINKME_API_URL || "http://localhost:3000";
-  }
+    // Make sure the env variable exists
+    const apiUrl = process.env.EXPO_PUBLIC_OUTDRINKME_API_URL;
 
+    if (!apiUrl) {
+      console.warn("EXPO_PUBLIC_OUTDRINKME_API_URL not set, using localhost");
+    }
+
+    this.baseUrl = apiUrl || "http://localhost:3000";
+    console.log("API initialized with base URL:", this.baseUrl);
+  }
   private async makeRequest<T>(
     endpoint: string,
     options: RequestInit & { token?: string }
@@ -316,7 +322,6 @@ class ApiService {
       difference: leader.days_this_week - user.days_this_week,
     };
   }
-  
 }
 
 export const apiService = new ApiService();

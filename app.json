@@ -13,8 +13,11 @@
       "bundleIdentifier": "com.martbul.outDrinkMe"
     },
     "android": {
-      "image": "./assets/images/icon.png",
-      "edgeToEdgeEnabled": true,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#000000"
+      },
+      "edgeToEdgeEnabled": false,
       "predictiveBackGestureEnabled": false,
       "package": "com.martbul.outDrinkMe",
       "intentFilters": [
@@ -46,13 +49,6 @@
           "dark": {
             "backgroundColor": "#000000"
           }
-        }
-      ],
-      [
-        "react-native-google-mobile-ads",
-        {
-          "androidAppId": "ca-app-pub-1167503921437683~3406815046",
-          "iosAppId": "ca-app-pub-1167503921437683~3406815046"
         }
       ]
     ],

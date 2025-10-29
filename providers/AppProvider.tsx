@@ -20,7 +20,6 @@ import {
 } from "../types/api.types";
 import { apiService } from "@/api";
 import { Alert } from "react-native";
-import MobileAds from "react-native-google-mobile-ads";
 
 interface AppContextType {
   // Data
