@@ -136,10 +136,10 @@ export const getCoefInfo = (
 ): { title: string; coef: number } => {
   if (!userStats) return { title: "NEWBIE", coef: 0.0 };
 
-  const coefTitleCalc = Math.min(
-    Math.floor(userStats.alcoholism_coefficient * 0.75) + 1,
-    10
-  );
+  // Clamp coefficient between 0 and 1
+  const coef = Math.max(0, Math.min(1, userStats.alcoholism_coefficient));
+
+  const coefTitleCalc = Math.min(Math.floor(coef * 0.75 * 10) + 1, 10);
 
   const titles = [
     "THE SOBER SOUL",
@@ -156,6 +156,6 @@ export const getCoefInfo = (
 
   return {
     title: titles[coefTitleCalc - 1] || "NEWBIE",
-    coef: userStats.alcoholism_coefficient,
+    coef: coef,
   };
 };
