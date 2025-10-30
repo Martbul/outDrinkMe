@@ -71,8 +71,7 @@
             "backgroundColor": "#000000"
           }
         }
-      ],
-      "react-native-google-mobile-ads"
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
