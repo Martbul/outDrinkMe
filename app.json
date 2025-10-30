@@ -11,7 +11,9 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.martbul.outDrinkMe",
-      "associatedDomains": ["applinks:clerk.martbul.com"]
+      "associatedDomains": [
+        "applinks:clerk.martbul.com"
+      ]
     },
     "android": {
       "adaptiveIcon": {
@@ -30,7 +32,10 @@
               "scheme": "outdrinkme"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         },
         {
           "action": "VIEW",
@@ -42,7 +47,10 @@
               "pathPrefix": "/v1/oauth_callback"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -63,7 +71,8 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "react-native-google-mobile-ads"
     ],
     "experiments": {
       "typedRoutes": true,
