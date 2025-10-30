@@ -55,3 +55,9 @@ yarn-error.*
 metro-health-check*
 .env
 .env.local
+
+# Add these lines to your .gitignore
+keystore_base64.txt
+credentials.json
+credentials/android/*.jks
+credentials/android/*.keystore
