@@ -10,7 +10,8 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.martbul.outDrinkMe"
+      "bundleIdentifier": "com.martbul.outDrinkMe",
+      "associatedDomains": ["applinks:clerk.martbul.com"]
     },
     "android": {
       "adaptiveIcon": {
@@ -27,6 +28,18 @@
           "data": [
             {
               "scheme": "outdrinkme"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        },
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "clerk.martbul.com",
+              "pathPrefix": "/v1/oauth_callback"
             }
           ],
           "category": ["BROWSABLE", "DEFAULT"]

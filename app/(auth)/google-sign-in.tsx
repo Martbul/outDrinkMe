@@ -10,7 +10,6 @@ import {
 import { useOAuth } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import * as Linking from "expo-linking";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { openPrivacy, openTerms } from "@/utils/links";
 
@@ -29,11 +28,8 @@ export default function SignInScreen() {
     try {
       setIsLoading(true);
 
-      const { createdSessionId, setActive } = await startOAuthFlow({
-        redirectUrl: Linking.createURL("/(tabs)/add", {
-          scheme: "outdrinkme",
-        }),
-      });
+      // Let Clerk handle the redirect automatically
+      const { createdSessionId, setActive } = await startOAuthFlow();
 
       if (createdSessionId) {
         await setActive!({ session: createdSessionId });
@@ -93,7 +89,6 @@ export default function SignInScreen() {
           </>
         )}
       </TouchableOpacity>
-      {/* //!TODO: Make a website and instead of downloads just rediect the user to the page */}
       <View className="mt-12 px-8">
         <Text className="text-gray-600 text-xs text-center leading-5">
           By continuing, you agree to our{" "}
