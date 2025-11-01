@@ -1,13 +1,8 @@
-# .github/workflows/build-production.yml
 name: Build Production
 
 on:
-  push:
-    branches: [main]
-    tags:
-      - 'v*'
   workflow_dispatch:
-
+  
 jobs:
   build-android-production:
     name: Build Android Production
