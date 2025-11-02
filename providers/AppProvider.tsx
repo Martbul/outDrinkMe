@@ -32,6 +32,7 @@ interface AppContextType {
   friends: UserData[] | [];
   discovery: UserData[] | [];
   friendDiscoveryProfile: FriendDiscoveryDisplayProfileResponse | null;
+  drunkThought: string;
 
   // Refresh Functions
   refreshUserData: () => Promise<void>;
@@ -57,6 +58,7 @@ interface AppContextType {
   getFriendDiscoveryDisplayProfile: (friendDiscoveryId: string) => Promise<any>;
   deleteUserAccount: () => Promise<boolean>;
   removeFriend: (friendId: string) => Promise<void>;
+  addDrunkThought: (drunkThought: string) => Promise<void>;
 
   // Global State
   isLoading: boolean;
@@ -83,6 +85,8 @@ export function AppProvider({ children }: AppProviderProps) {
   const [friends, setFriends] = useState<UserData[] | []>([]);
   const [discovery, setDiscovery] = useState<UserData[] | []>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [drunkThought, setDrunkThought] = useState("");
+
   const [friendDiscoveryProfile, setFriendDiscoveryProfile] =
     useState<FriendDiscoveryDisplayProfileResponse | null>(null);
 
@@ -397,6 +401,31 @@ export function AppProvider({ children }: AppProviderProps) {
     [isSignedIn, getToken, withLoadingAndError]
   );
 
+  const addDrunkThought = useCallback(
+    async (drunkThought: string) => {
+      if (!isSignedIn) {
+        throw new Error("Must be signed in to log drinking");
+      }
+
+      const result = await withLoadingAndError(async () => {
+        const token = await getToken();
+        if (!token) throw new Error("No auth token");
+
+        const newDrunkThought = await apiService.addDrunkThought(
+          drunkThought,
+          token
+        );
+
+        return newDrunkThought;
+      });
+
+      if (result) {
+        setDrunkThought(result.drunk_thought);
+      }
+    },
+    [isSignedIn, getToken, withLoadingAndError]
+  );
+
   const addFriend = useCallback(
     async (friendId: string) => {
       if (!isSignedIn) {
@@ -602,6 +631,7 @@ export function AppProvider({ children }: AppProviderProps) {
     friends,
     discovery,
     friendDiscoveryProfile,
+    drunkThought,
 
     // Refresh Functions
     refreshUserData,
@@ -622,6 +652,7 @@ export function AppProvider({ children }: AppProviderProps) {
     updateUserProfile,
     getFriendDiscoveryDisplayProfile,
     deleteUserAccount,
+    addDrunkThought,
 
     // Global State
     isLoading,

@@ -10,6 +10,7 @@ import {
   Image,
   ActivityIndicator,
   FlatList,
+  TextInput,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -19,13 +20,18 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { UserData } from "@/types/api.types";
-import * as FileSystem from "expo-file-system";
-import pcloudSdk from "pcloud-sdk-js";
 
 export default function AddDrinksScreenV3() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { userStats, friends, isLoading, addDrinking } = useApp();
+  const {
+    userStats,
+    friends,
+    isLoading,
+    addDrinking,
+    drunkThought,
+    addDrunkThought,
+  } = useApp();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0);
   const [isHolding, setIsHolding] = useState(false);
@@ -34,6 +40,8 @@ export default function AddDrinksScreenV3() {
   );
   const [isAfterDrinkLoggedModalVisible, setAfterDrinkLoggedModal] =
     useState(false);
+  const [thoughtInput, setThoughtInput] = useState(drunkThought || "");
+  const [isSubmittingDrtunkThought, setIsSubmittingDrunkThought] = useState(false);
 
   const hasCompletedRef = useRef(false);
 
@@ -96,6 +104,20 @@ export default function AddDrinksScreenV3() {
   const potentialStreak = (userStats?.current_streak || 0) + 1;
 
   if (alreadyLogged) {
+    const handleSubmitThought = async () => {
+      if (!thoughtInput.trim()) return;
+
+      setIsSubmittingDrunkThought(true);
+      try {
+        await addDrunkThought(thoughtInput.trim());
+      } catch (error) {
+        console.error("Failed to submit drunk thought:", error);
+        Alert.alert("Error", "Failed to save your thought. Try again!");
+      } finally {
+        setIsSubmittingDrunkThought(false);
+      }
+    };
+
     return (
       <View
         className="flex-1 bg-black px-4 justify-center"
@@ -114,7 +136,7 @@ export default function AddDrinksScreenV3() {
           </Text>
           <Text className="text-white/50 text-base text-center font-semibold">
             You are my alcoholic pride!{"\n"}Drink again tomorrow and keep your
-            steak!
+            streak!
           </Text>
         </View>
 
@@ -130,12 +152,58 @@ export default function AddDrinksScreenV3() {
           </View>
         </View>
 
+        {/* Drunk Thought Section */}
+        {drunkThought ? (
+          // Show saved thought
+          <View className="bg-white/[0.03] rounded-2xl p-6 mb-6 border border-white/[0.08]">
+            <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-3">
+              TODAY`&apos;`S DRUNK THOUGHT
+            </Text>
+            <Text className="text-white text-base leading-relaxed">
+              {drunkThought}
+            </Text>
+          </View>
+        ) : (
+          // Show input for new thought
+          <View className="mb-6">
+            <Text className="text-white/70 text-sm font-bold mb-3 text-center">
+              Share your drunk thought of the day
+            </Text>
+            <TextInput
+              value={thoughtInput}
+              onChangeText={setThoughtInput}
+              placeholder="What's on your mind?"
+              placeholderTextColor="#ffffff40"
+              multiline
+              numberOfLines={3}
+              maxLength={280}
+              className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-4 text-white text-base mb-4"
+              style={{ textAlignVertical: "top", minHeight: 100 }}
+              editable={!isSubmittingDrtunkThought}
+            />
+            <TouchableOpacity
+              onPress={handleSubmitThought}
+              disabled={!thoughtInput.trim() || isSubmittingDrtunkThought}
+              className={`rounded-2xl py-5 ${
+                !thoughtInput.trim() || isSubmittingDrtunkThought
+                  ? "bg-orange-600/30"
+                  : "bg-orange-600"
+              }`}
+            >
+              <Text className="text-black text-base font-black text-center tracking-widest uppercase">
+                {isSubmittingDrtunkThought ? "Saving..." : "Share Thought"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Back to Home Button */}
         <TouchableOpacity
           onPress={() => router.push("/(tabs)/home")}
-          className="bg-orange-600 rounded-2xl py-5"
+          className="bg-white/[0.05] rounded-2xl py-4 border border-white/[0.08]"
         >
-          <Text className="text-black text-base font-black text-center tracking-widest uppercase">
-            Back to Home
+          <Text className="text-white/50 text-sm font-bold text-center tracking-widest uppercase">
+            {drunkThought ? "Back to Home" : "Skip"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -490,7 +558,7 @@ function AdditionalInfoModal({
             No Friends Yet
           </Text>
           <Text className="text-white/50 text-sm text-center font-semibold px-4">
-            Who's the one who can bring you back to drinking?
+            Whos the one who can bring you back to drinking?
           </Text>
         </View>
       );

@@ -256,6 +256,17 @@ class ApiService {
     });
   }
 
+  async addDrunkThought(
+    drunkThought: string,
+    token: string
+  ): Promise<{ message: string; drunk_thought: string }> {
+    return this.makeRequest("/api/v1/user/drunk-thought", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ drunk_thought: drunkThought }),
+    });
+  }
+
   async removeFriend(friendId: string, token: string): Promise<void> {
     return this.makeRequest<void>(`/api/v1/user/friends?friendId=${friendId}`, {
       method: "DELETE",
