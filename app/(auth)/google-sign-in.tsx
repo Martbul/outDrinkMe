@@ -12,6 +12,7 @@ import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { openPrivacy, openTerms } from "@/utils/links";
+import * as Linking from "expo-linking";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -25,25 +26,28 @@ export default function SignInScreen() {
   const onGoogleSignIn = React.useCallback(async () => {
     if (isLoading) return;
 
-    try {
-      setIsLoading(true);
+      try {
+        setIsLoading(true);
 
-      // Let Clerk handle the redirect automatically
-      const { createdSessionId, setActive } = await startOAuthFlow();
+        const { createdSessionId, setActive } = await startOAuthFlow({
+          redirectUrl: Linking.createURL("/(tabs)/add", {
+            scheme: "outdrinkme",
+          }),
+        });
 
-      if (createdSessionId) {
-        await setActive!({ session: createdSessionId });
-        router.replace("/(tabs)/add");
+        if (createdSessionId) {
+          await setActive!({ session: createdSessionId });
+          router.replace("/(tabs)/add");
+        }
+      } catch (err: any) {
+        console.error("OAuth error:", err);
+        Alert.alert(
+          "Sign In Error",
+          err.errors?.[0]?.message || "Failed to sign in with Google"
+        );
+      } finally {
+        setIsLoading(false);
       }
-    } catch (err: any) {
-      console.error("OAuth error:", err);
-      Alert.alert(
-        "Sign In Error",
-        err.errors?.[0]?.message || "Failed to sign in with Google"
-      );
-    } finally {
-      setIsLoading(false);
-    }
   }, [isLoading, startOAuthFlow, router]);
 
   return (

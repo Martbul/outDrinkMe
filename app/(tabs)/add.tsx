@@ -19,8 +19,7 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { UserData } from "@/types/api.types";
-import * as FileSystem from "expo-file-system";
-import pcloudSdk from "pcloud-sdk-js";
+
 
 export default function AddDrinksScreenV3() {
   const router = useRouter();
@@ -374,7 +373,7 @@ function AdditionalInfoModal({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [4, 3],
-        quality: 0.8,
+        quality: 1,
       });
 
       if (!result.canceled && result.assets[0]) {

@@ -179,7 +179,7 @@ const UserInfoScreen = () => {
             {/* Level Badge - Bottom Left */}
             <View className="absolute -bottom-2 -left-2 bg-gray-900 px-3 py-1 rounded-full border-2 border-orange-600">
               <Text className="text-orange-600 text-xs font-black">
-                {coefInfo.coef}
+                {coefInfo.coef?.toFixed(2)}
               </Text>
             </View>
 

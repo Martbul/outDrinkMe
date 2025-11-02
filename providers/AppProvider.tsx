@@ -17,9 +17,11 @@ import {
   UserData,
   UpdateUserProfileReq,
   FriendDiscoveryDisplayProfileResponse,
+  YourMixPostData,
 } from "../types/api.types";
 import { apiService } from "@/api";
 import { Alert } from "react-native";
+import mobileAds from "react-native-google-mobile-ads";
 
 interface AppContextType {
   // Data
@@ -31,6 +33,7 @@ interface AppContextType {
   weeklyStats: DaysStat | null;
   friends: UserData[] | [];
   discovery: UserData[] | [];
+  yourMixData: YourMixPostData[] | [];
   friendDiscoveryProfile: FriendDiscoveryDisplayProfileResponse | null;
 
   // Refresh Functions
@@ -42,6 +45,7 @@ interface AppContextType {
   refreshWeeklyStats: () => Promise<void>;
   refreshFriends: () => Promise<void>;
   refreshDiscovery: () => Promise<void>;
+  refreshYourMixData: () => Promise<void>;
   refreshAll: () => Promise<void>;
 
   // Actions
@@ -82,6 +86,7 @@ export function AppProvider({ children }: AppProviderProps) {
   const [weeklyStats, setWeeklyStats] = useState<DaysStat | null>(null);
   const [friends, setFriends] = useState<UserData[] | []>([]);
   const [discovery, setDiscovery] = useState<UserData[] | []>([]);
+  const [yourMixData, setYourMixData] = useState<YourMixPostData[] | []>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [friendDiscoveryProfile, setFriendDiscoveryProfile] =
     useState<FriendDiscoveryDisplayProfileResponse | null>(null);
@@ -242,6 +247,19 @@ export function AppProvider({ children }: AppProviderProps) {
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
 
+  const refreshYourMixData = useCallback(async () => {
+    if (!isSignedIn) return;
+
+    await withLoadingAndError(
+      async () => {
+        const token = await getToken();
+        if (!token) throw new Error("No auth token");
+        return await apiService.getYourMixData(token);
+      },
+      (data) => setYourMixData(data)
+    );
+  }, [isSignedIn, getToken, withLoadingAndError]);
+
   // ============================================
   // Refresh All - Using Parallel Execution
   // ============================================
@@ -264,6 +282,7 @@ export function AppProvider({ children }: AppProviderProps) {
         apiService.getCurrentMonthCalendar(token),
         apiService.getFriends(token),
         apiService.getDiscovery(token),
+        apiService.getYourMixData(token),
         apiService.getWeeklyStats(token),
       ]);
 
@@ -276,6 +295,7 @@ export function AppProvider({ children }: AppProviderProps) {
         calResult,
         friendsResult,
         discoveryResult,
+        yourMixDataResult,
         weeklyResult,
       ] = results;
 
@@ -322,6 +342,13 @@ export function AppProvider({ children }: AppProviderProps) {
       } else {
         console.error("Failed to fetch friends:", discoveryResult.reason);
         setDiscovery([]);
+      }
+
+      if (yourMixDataResult.status === "fulfilled") {
+        setYourMixData(yourMixDataResult.value);
+      } else {
+        console.error("Failed to your-mix data:", yourMixDataResult.reason);
+        setYourMixData([]);
       }
 
       if (weeklyResult.status === "fulfilled") {
@@ -566,12 +593,6 @@ export function AppProvider({ children }: AppProviderProps) {
     if (isSignedIn && !hasInitialized.current) {
       hasInitialized.current = true;
       refreshAll();
-
-      // MobileAds()
-      //   .initialize()
-      //   .then((adapterStatuses) => {
-      //     // Initialization complete!
-      //   });
     }
 
     // Reset initialization flag when user signs out
@@ -601,6 +622,7 @@ export function AppProvider({ children }: AppProviderProps) {
     weeklyStats,
     friends,
     discovery,
+    yourMixData,
     friendDiscoveryProfile,
 
     // Refresh Functions
@@ -612,6 +634,7 @@ export function AppProvider({ children }: AppProviderProps) {
     refreshWeeklyStats,
     refreshFriends,
     refreshDiscovery,
+    refreshYourMixData,
     refreshAll,
 
     // Actions

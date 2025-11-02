@@ -12,16 +12,13 @@
 //   TestIds,
 // } from "react-native-google-mobile-ads";
 
-
 // // Use test ID for development, real ID for production
-
 
 // // const adUnitId = __DEV__
 // //   ? TestIds.REWARDED
 // //   : "ca-app-pub-1167503921437683/4220175598";
 
 // const adUnitId = TestIds.REWARDED
- 
 
 // interface RewardedAdModalProps {
 //   onClose: () => void;

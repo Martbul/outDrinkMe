@@ -2,6 +2,7 @@ import {
   Achievement,
   AddDrinkingRequest,
   CalendarResponse,
+  DailyDrinkingPostResponse,
   DaysStat,
   FriendDiscoveryDisplayProfileResponse,
   Friendship,
@@ -10,6 +11,7 @@ import {
   UpdateUserProfileReq,
   UserData,
   UserStats,
+  YourMixPostData,
 } from "./types/api.types";
 
 class ApiService {
@@ -246,6 +248,38 @@ class ApiService {
     );
 
     return response || [];
+  }
+
+  async getYourMixData(token: string): Promise<YourMixPostData[]> {
+    try {
+      const response = await this.makeRequest<DailyDrinkingPostResponse[]>(
+        "/api/v1/user/your-mix",
+        {
+          method: "GET",
+          token,
+        }
+      );
+
+      // Transform PascalCase to camelCase
+      const transformed = response.map((post) => ({
+        id: post.ID,
+        userId: post.UserID,
+        userImageUrl: post.UserImageURL,
+        date: post.Date,
+        drankToday: post.DrankToday,
+        loggedAt: post.LoggedAt,
+        imageUrl: post.ImageURL,
+        locationText: post.LocationText,
+        mentionedBuddies: post.MentionedBuddies || [],
+        sourceType: post.SourceType,
+      }));
+
+      console.log("Your Mix data:", transformed);
+      return transformed;
+    } catch (error) {
+      console.error("Failed to fetch Your Mix:", error);
+      return [];
+    }
   }
 
   async addFriend(friendId: string, token: string): Promise<Friendship> {

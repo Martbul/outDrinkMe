@@ -112,10 +112,35 @@ export interface UpdateUserProfileReq {
   gems?: number;
 }
 
-
 export interface FriendDiscoveryDisplayProfileResponse {
   user: UserData;
   stats: UserStats;
   achievements: Achievement[];
   is_friend: boolean;
+}
+
+export interface DailyDrinkingPostResponse {
+  ID: string;
+  UserID: string;
+  UserImageURL: string;
+  Date: string;
+  DrankToday: boolean;
+  LoggedAt: string;
+  ImageURL: string;
+  LocationText: string | null;
+  MentionedBuddies: string[] | null;
+  SourceType: "friend" | "other";
+}
+
+export interface YourMixPostData {
+  id: string;
+  userId: string;
+  userImageUrl: string;
+  date: string;
+  drankToday: boolean;
+  loggedAt: string;
+  imageUrl: string;
+  locationText: string | null;
+  mentionedBuddies: string[];
+  sourceType: "friend" | "other";
 }
