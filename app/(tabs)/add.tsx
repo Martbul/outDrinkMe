@@ -20,6 +20,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { UserData } from "@/types/api.types";
 import * as FileSystem from "expo-file-system";
+import pcloudSdk from "pcloud-sdk-js";
 
 export default function AddDrinksScreenV3() {
   const router = useRouter();
@@ -50,8 +51,7 @@ export default function AddDrinksScreenV3() {
 
     setIsSubmitting(true);
     try {
-        await addDrinking(drinkToday, imageUri, locationText, mentionedBuddies);
-
+      await addDrinking(drinkToday, imageUri, locationText, mentionedBuddies);
     } catch (error) {
       Alert.alert("Error", "Failed to log. Please try again.");
     } finally {
@@ -242,7 +242,6 @@ interface InfoTooltipProps {
   ) => Promise<void>;
   onClose: () => void;
 }
-
 function AdditionalInfoModal({
   friends,
   visible,
@@ -280,10 +279,8 @@ function AdditionalInfoModal({
       const isAlreadySelected = prev.some((f) => f.id === friend.id);
 
       if (isAlreadySelected) {
-        // Remove from selection
         return prev.filter((f) => f.id !== friend.id);
       } else {
-        // Add to selection
         return [...prev, friend];
       }
     });
@@ -293,62 +290,66 @@ function AdditionalInfoModal({
     return mentionedBuddies.some((f) => f.id === friendId);
   };
 
-  // Upload to pCloud using REST API
-  const uploadToPCloud = async (localUri: string): Promise<string | null> => {
+  // Upload to Cloudinary using REST API
+  const uploadToCloudinary = async (
+    localUri: string
+  ): Promise<string | null> => {
     try {
       setIsUploadingImage(true);
 
-      // Your pCloud credentials - store these securely (env variables or secure storage)
-      const PCLOUD_ACCESS_TOKEN =
-        process.env.EXPO_PUBLIC_PCLOUD_ACCESS_TOKEN || "YOUR_ACCESS_TOKEN";
-      const PCLOUD_FOLDER_ID = 0; // 0 for root folder
+      // Your Cloudinary credentials
+      const CLOUDINARY_CLOUD_NAME =
+        process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
+      const CLOUDINARY_UPLOAD_PRESET =
+        process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
-      // Generate unique filename
-      const timestamp = Date.now();
-      const random = Math.random().toString(36).substring(7);
-      const filename = `drank_${timestamp}_${random}.jpg`;
+      // Validate credentials
+      if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+        throw new Error(
+          "Cloudinary credentials are not configured. Please check your .env file."
+        );
+      }
 
-      // Use Expo FileSystem to upload
-      const uploadResult = await FileSystem.uploadAsync(
-        `https://api.pcloud.com/uploadfile?access_token=${PCLOUD_ACCESS_TOKEN}&folderid=${PCLOUD_FOLDER_ID}&filename=${filename}`,
-        localUri,
+      // Create form data
+      const formData = new FormData();
+
+      // Append the file
+      formData.append("file", {
+        uri: localUri,
+        type: "image/jpeg",
+        name: `drank_${Date.now()}.jpg`,
+      } as any);
+
+      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+      // Optional: Add folder organization
+      formData.append("folder", "drank-images");
+
+      // Upload to Cloudinary
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
         {
-          httpMethod: "POST",
-          uploadType: FileSystem.FileSystemUploadType.MULTIPART,
-          fieldName: "file",
+          method: "POST",
+          body: formData,
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
         }
       );
 
-      const responseData = JSON.parse(uploadResult.body);
+      const data = await response.json();
 
-      if (responseData.result !== 0) {
-        throw new Error(responseData.error || "Upload failed");
+      if (data.secure_url) {
+        console.log("Upload successful:", data.secure_url);
+        return data.secure_url; // This is your public URL to save in DB
       }
 
-      // Get the file ID from upload response
-      const fileId = responseData.metadata[0].fileid;
-
-      // Get public download link
-      const linkResponse = await fetch(
-        `https://api.pcloud.com/getfilepublink?access_token=${PCLOUD_ACCESS_TOKEN}&fileid=${fileId}`
-      );
-
-      const linkData = await linkResponse.json();
-
-      if (linkData.result !== 0) {
-        throw new Error(linkData.error || "Failed to get public link");
-      }
-
-      // Construct the public URL
-      // pCloud returns the link in the format that needs to be constructed
-      const publicUrl = `https://${linkData.hosts[0]}${linkData.path}`;
-
-      return publicUrl;
+      throw new Error(data.error?.message || "Upload failed");
     } catch (error) {
-      console.error("pCloud upload error:", error);
+      console.error("Cloudinary upload error:", error);
       Alert.alert(
         "Upload Error",
-        "Failed to upload image to pCloud. Please try again."
+        "Failed to upload image to Cloudinary. Please try again."
       );
       return null;
     } finally {
@@ -356,51 +357,51 @@ function AdditionalInfoModal({
     }
   };
 
- const handleImageUpload = async () => {
-   try {
-     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  const handleImageUpload = async () => {
+    try {
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-     if (status !== "granted") {
-       Alert.alert(
-         "Permission needed",
-         "Please grant permission to access your photos"
-       );
-       return;
-     }
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission needed",
+          "Please grant permission to access your photos"
+        );
+        return;
+      }
 
-     const result = await ImagePicker.launchImageLibraryAsync({
-       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-       allowsEditing: true,
-       aspect: [4, 3],
-       quality: 1,
-     });
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
 
-     if (!result.canceled && result.assets[0]) {
-       const localUri = result.assets[0].uri;
-       setImageUri(localUri); // Show preview immediately
+      if (!result.canceled && result.assets[0]) {
+        const localUri = result.assets[0].uri;
+        setImageUri(localUri); // Show preview immediately with local URI
 
-       // Upload to pCloud in background
-       const pCloudUrl = await uploadToPCloud(localUri);
+        // Upload to Cloudinary in background
+        const cloudinaryUrl = await uploadToCloudinary(localUri);
 
-       if (pCloudUrl) {
-         // Update with the pCloud URL (this is what will be saved to DB)
-         setImageUri(pCloudUrl);
-       } else {
-         // If upload failed, clear the image
-         setImageUri(null);
-       }
-     }
-   } catch (error) {
-     Alert.alert("Error", "Failed to pick image");
-     console.error(error);
-   }
- };
+        if (cloudinaryUrl) {
+          // Update with the Cloudinary URL (this is what will be saved to DB)
+          setImageUri(cloudinaryUrl);
+        } else {
+          // If upload failed, clear the image
+          setImageUri(null);
+        }
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to pick image");
+      console.error(error);
+    }
+  };
 
   const handleLocationSelect = async () => {
     try {
       setIsLoadingLocation(true);
 
-      // Request permission
       const { status } = await Location.requestForegroundPermissionsAsync();
 
       if (status !== "granted") {
@@ -412,12 +413,10 @@ function AdditionalInfoModal({
         return;
       }
 
-      // Get current location
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
 
-      // Reverse geocode to get address
       const [address] = await Location.reverseGeocodeAsync({
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
@@ -447,29 +446,27 @@ function AdditionalInfoModal({
     }
   };
 
-    const handleSkip = () => {
-      setImageUri(null);
-      setLocationText("");
-      setMentionedBuddies([]);
-      onClose();
-    };
+  const handleSkip = () => {
+    setImageUri(null);
+    setLocationText("");
+    setMentionedBuddies([]);
+    onClose();
+  };
 
-    const handleDone = async () => {
-      if (isUploadingImage) {
-        Alert.alert("Please wait", "Image is still uploading...");
-        return;
-      }
+  const handleDone = async () => {
+    if (isUploadingImage) {
+      Alert.alert("Please wait", "Image is still uploading...");
+      return;
+    }
 
-      // imageUri now contains the pCloud public URL
-      await handleUpload(true, imageUri, locationText, mentionedBuddies);
+    // imageUri now contains the Cloudinary public URL
+    await handleUpload(true, imageUri, locationText, mentionedBuddies);
 
-      // Reset state after successful upload
-      setImageUri(null);
-      setLocationText("");
-      setMentionedBuddies([]);
-    };
-
-
+    // Reset state after successful upload
+    setImageUri(null);
+    setLocationText("");
+    setMentionedBuddies([]);
+  };
 
   const renderEmptyFriendComponent = () => {
     if (isLoading) {
@@ -586,7 +583,7 @@ function AdditionalInfoModal({
                   <View className="items-center">
                     <ActivityIndicator size="large" color="#ff8c00" />
                     <Text className="text-white/70 text-sm mt-2 font-semibold">
-                      Uploading to pCloud...
+                      Uploading to Cloudinary...
                     </Text>
                   </View>
                 ) : imageUri ? (
