@@ -99,6 +99,9 @@ export interface FriendRequest {
 
 export interface AddDrinkingRequest {
   drank_today: boolean;
+  image_url?: string | null;
+  location_text?: string;
+  mentioned_buddies?: UserData[] | [];
 }
 
 export interface UpdateUserProfileReq {

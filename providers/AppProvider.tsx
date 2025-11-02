@@ -45,7 +45,12 @@ interface AppContextType {
   refreshAll: () => Promise<void>;
 
   // Actions
-  addDrinking: (drankToday: boolean) => Promise<void>;
+  addDrinking: (
+    drinkToday: boolean,
+    imageUri?: string | null,
+    locationText?: string,
+    mentionedBuddies?: UserData[] | []
+  ) => Promise<void>;
   addFriend: (friendId: string) => Promise<void>;
   searchUsers: (searchQuery: string) => Promise<UserData[]>;
   updateUserProfile: (updateReq: UpdateUserProfileReq) => Promise<any>;
@@ -347,7 +352,12 @@ export function AppProvider({ children }: AppProviderProps) {
   // ============================================
 
   const addDrinking = useCallback(
-    async (drankToday: boolean) => {
+    async (
+      drinkToday: boolean,
+      imageUri?: string | null,
+      locationText?: string,
+      mentionedBuddies?: UserData[] | []
+    ) => {
       if (!isSignedIn) {
         throw new Error("Must be signed in to log drinking");
       }
@@ -356,7 +366,15 @@ export function AppProvider({ children }: AppProviderProps) {
         const token = await getToken();
         if (!token) throw new Error("No auth token");
 
-        await apiService.addDrinking({ drank_today: drankToday }, token);
+        await apiService.addDrinking(
+          {
+            drank_today: drinkToday,
+            image_url: imageUri,
+            location_text: locationText,
+            mentioned_buddies: mentionedBuddies,
+          },
+          token
+        );
 
         // Refresh relevant data after logging
         const [stats, board, cal, weekly] = await Promise.all([

@@ -19,6 +19,7 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { UserData } from "@/types/api.types";
+import * as FileSystem from "expo-file-system";
 
 export default function AddDrinksScreenV3() {
   const router = useRouter();
@@ -39,13 +40,18 @@ export default function AddDrinksScreenV3() {
   const alreadyLogged = userStats?.today_status || false;
   const levelInfoDescr = "You are big drinker";
 
-  const handleUpload = async () => {
+  const handleUpload = async (
+    drinkToday: boolean,
+    imageUri?: string | null,
+    locationText?: string,
+    mentionedBuddies?: UserData[] | []
+  ) => {
     if (isSubmitting) return;
 
     setIsSubmitting(true);
     try {
-      //TODO! Add data not only true value
-      await addDrinking(true);
+        await addDrinking(drinkToday, imageUri, locationText, mentionedBuddies);
+
     } catch (error) {
       Alert.alert("Error", "Failed to log. Please try again.");
     } finally {
@@ -228,7 +234,12 @@ interface InfoTooltipProps {
   friends: UserData[];
   visible: boolean;
   isLoading: boolean;
-  handleUpload: () => Promise<void>;
+  handleUpload: (
+    drinkToday: boolean,
+    imageUri?: string | null,
+    locationText?: string,
+    mentionedBuddies?: UserData[] | []
+  ) => Promise<void>;
   onClose: () => void;
 }
 
@@ -245,6 +256,7 @@ function AdditionalInfoModal({
   const [mentionedBuddies, setMentionedBuddies] = useState<UserData[] | []>([]);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [isFriendsListVisible, setFriendsListVisible] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -281,36 +293,108 @@ function AdditionalInfoModal({
     return mentionedBuddies.some((f) => f.id === friendId);
   };
 
-  const handleImageUpload = async () => {
+  // Upload to pCloud using REST API
+  const uploadToPCloud = async (localUri: string): Promise<string | null> => {
     try {
-      // Request permission
-      const { status } =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      setIsUploadingImage(true);
 
-      if (status !== "granted") {
-        Alert.alert(
-          "Permission needed",
-          "Please grant permission to access your photos"
-        );
-        return;
+      // Your pCloud credentials - store these securely (env variables or secure storage)
+      const PCLOUD_ACCESS_TOKEN =
+        process.env.EXPO_PUBLIC_PCLOUD_ACCESS_TOKEN || "YOUR_ACCESS_TOKEN";
+      const PCLOUD_FOLDER_ID = 0; // 0 for root folder
+
+      // Generate unique filename
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(7);
+      const filename = `drank_${timestamp}_${random}.jpg`;
+
+      // Use Expo FileSystem to upload
+      const uploadResult = await FileSystem.uploadAsync(
+        `https://api.pcloud.com/uploadfile?access_token=${PCLOUD_ACCESS_TOKEN}&folderid=${PCLOUD_FOLDER_ID}&filename=${filename}`,
+        localUri,
+        {
+          httpMethod: "POST",
+          uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+          fieldName: "file",
+        }
+      );
+
+      const responseData = JSON.parse(uploadResult.body);
+
+      if (responseData.result !== 0) {
+        throw new Error(responseData.error || "Upload failed");
       }
 
-      // Launch image picker
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
-      });
+      // Get the file ID from upload response
+      const fileId = responseData.metadata[0].fileid;
 
-      if (!result.canceled && result.assets[0]) {
-        setImageUri(result.assets[0].uri);
+      // Get public download link
+      const linkResponse = await fetch(
+        `https://api.pcloud.com/getfilepublink?access_token=${PCLOUD_ACCESS_TOKEN}&fileid=${fileId}`
+      );
+
+      const linkData = await linkResponse.json();
+
+      if (linkData.result !== 0) {
+        throw new Error(linkData.error || "Failed to get public link");
       }
+
+      // Construct the public URL
+      // pCloud returns the link in the format that needs to be constructed
+      const publicUrl = `https://${linkData.hosts[0]}${linkData.path}`;
+
+      return publicUrl;
     } catch (error) {
-      Alert.alert("Error", "Failed to pick image");
-      console.error(error);
+      console.error("pCloud upload error:", error);
+      Alert.alert(
+        "Upload Error",
+        "Failed to upload image to pCloud. Please try again."
+      );
+      return null;
+    } finally {
+      setIsUploadingImage(false);
     }
   };
+
+ const handleImageUpload = async () => {
+   try {
+     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+     if (status !== "granted") {
+       Alert.alert(
+         "Permission needed",
+         "Please grant permission to access your photos"
+       );
+       return;
+     }
+
+     const result = await ImagePicker.launchImageLibraryAsync({
+       mediaTypes: ImagePicker.MediaTypeOptions.Images,
+       allowsEditing: true,
+       aspect: [4, 3],
+       quality: 1,
+     });
+
+     if (!result.canceled && result.assets[0]) {
+       const localUri = result.assets[0].uri;
+       setImageUri(localUri); // Show preview immediately
+
+       // Upload to pCloud in background
+       const pCloudUrl = await uploadToPCloud(localUri);
+
+       if (pCloudUrl) {
+         // Update with the pCloud URL (this is what will be saved to DB)
+         setImageUri(pCloudUrl);
+       } else {
+         // If upload failed, clear the image
+         setImageUri(null);
+       }
+     }
+   } catch (error) {
+     Alert.alert("Error", "Failed to pick image");
+     console.error(error);
+   }
+ };
 
   const handleLocationSelect = async () => {
     try {
@@ -363,12 +447,29 @@ function AdditionalInfoModal({
     }
   };
 
-  const handleSkip = () => {
-    // Reset state and close
-    setImageUri(null);
-    setLocationText("");
-    onClose();
-  };
+    const handleSkip = () => {
+      setImageUri(null);
+      setLocationText("");
+      setMentionedBuddies([]);
+      onClose();
+    };
+
+    const handleDone = async () => {
+      if (isUploadingImage) {
+        Alert.alert("Please wait", "Image is still uploading...");
+        return;
+      }
+
+      // imageUri now contains the pCloud public URL
+      await handleUpload(true, imageUri, locationText, mentionedBuddies);
+
+      // Reset state after successful upload
+      setImageUri(null);
+      setLocationText("");
+      setMentionedBuddies([]);
+    };
+
+
 
   const renderEmptyFriendComponent = () => {
     if (isLoading) {
@@ -475,11 +576,20 @@ function AdditionalInfoModal({
         >
           <Pressable>
             <View className="bg-[#1a1a1a] rounded-2xl p-4 border-2 border-orange-600/30 shadow-2xl w-80">
+              {/* Image Upload Area with Loading Spinner */}
               <TouchableOpacity
                 onPress={handleImageUpload}
+                disabled={isUploadingImage}
                 className="bg-[#2a2a2a] border-2 border-dashed border-orange-600/40 rounded-xl h-40 items-center justify-center mb-4 overflow-hidden"
               >
-                {imageUri ? (
+                {isUploadingImage ? (
+                  <View className="items-center">
+                    <ActivityIndicator size="large" color="#ff8c00" />
+                    <Text className="text-white/70 text-sm mt-2 font-semibold">
+                      Uploading to pCloud...
+                    </Text>
+                  </View>
+                ) : imageUri ? (
                   <Image
                     source={{ uri: imageUri }}
                     className="w-full h-full"
@@ -526,7 +636,6 @@ function AdditionalInfoModal({
                 </TouchableOpacity>
               </View>
 
-              {/* Location Display */}
               {locationText ? (
                 <View className="bg-[#2a2a2a] rounded-xl p-3 mb-3 border border-orange-600/20">
                   <View className="flex-row items-start">
@@ -552,13 +661,26 @@ function AdditionalInfoModal({
 
               {(imageUri || locationText || mentionedBuddies.length > 0) && (
                 <TouchableOpacity
-                  onPress={handleUpload(true, imageUri, mentionedBuddies)}
-                  className="bg-orange-600/20 border-2 border-orange-600/40 rounded-xl py-3 px-4 flex-row items-center justify-center mb-2"
+                  onPress={handleDone}
+                  disabled={isUploadingImage}
+                  className={`bg-orange-600/20 border-2 border-orange-600/40 rounded-xl py-3 px-4 flex-row items-center justify-center mb-2 ${
+                    isUploadingImage ? "opacity-50" : ""
+                  }`}
                 >
-                  <Ionicons name="checkmark-circle" size={20} color="#ff8c00" />
-                  <Text className="text-orange-500 font-semibold ml-2">
-                    Done
-                  </Text>
+                  {isUploadingImage ? (
+                    <ActivityIndicator size="small" color="#ff8c00" />
+                  ) : (
+                    <>
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={20}
+                        color="#ff8c00"
+                      />
+                      <Text className="text-orange-500 font-semibold ml-2">
+                        Done
+                      </Text>
+                    </>
+                  )}
                 </TouchableOpacity>
               )}
 
