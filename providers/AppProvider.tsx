@@ -21,7 +21,6 @@ import {
 } from "../types/api.types";
 import { apiService } from "@/api";
 import { Alert } from "react-native";
-import mobileAds from "react-native-google-mobile-ads";
 
 interface AppContextType {
   // Data
@@ -35,7 +34,7 @@ interface AppContextType {
   discovery: UserData[] | [];
   yourMixData: YourMixPostData[] | [];
   friendDiscoveryProfile: FriendDiscoveryDisplayProfileResponse | null;
-  drunkThought: string;
+  drunkThought: string | null;
 
   // Refresh Functions
   refreshUserData: () => Promise<void>;
@@ -47,6 +46,7 @@ interface AppContextType {
   refreshFriends: () => Promise<void>;
   refreshDiscovery: () => Promise<void>;
   refreshYourMixData: () => Promise<void>;
+  refreshDrunkThought: () => Promise<void>;
   refreshAll: () => Promise<void>;
 
   // Actions
@@ -90,7 +90,7 @@ export function AppProvider({ children }: AppProviderProps) {
   const [discovery, setDiscovery] = useState<UserData[] | []>([]);
   const [yourMixData, setYourMixData] = useState<YourMixPostData[] | []>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
-  const [drunkThought, setDrunkThought] = useState("");
+  const [drunkThought, setDrunkThought] = useState<string | null>(null);
 
   const [friendDiscoveryProfile, setFriendDiscoveryProfile] =
     useState<FriendDiscoveryDisplayProfileResponse | null>(null);
@@ -264,6 +264,19 @@ export function AppProvider({ children }: AppProviderProps) {
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
 
+ const refreshDrunkThought = useCallback(async () => {
+   if (!isSignedIn) return;
+
+   await withLoadingAndError(
+     async () => {
+       const token = await getToken();
+       if (!token) throw new Error("No auth token");
+       return await apiService.getDrunkThought(token);
+     },
+     (data) => setDrunkThought(data) // data is now directly the string
+   );
+ }, [isSignedIn, getToken, withLoadingAndError]);
+
   // ============================================
   // Refresh All - Using Parallel Execution
   // ============================================
@@ -288,6 +301,7 @@ export function AppProvider({ children }: AppProviderProps) {
         apiService.getDiscovery(token),
         apiService.getYourMixData(token),
         apiService.getWeeklyStats(token),
+        apiService.getDrunkThought(token),
       ]);
 
       // Extract successful results and handle failures
@@ -301,6 +315,7 @@ export function AppProvider({ children }: AppProviderProps) {
         discoveryResult,
         yourMixDataResult,
         weeklyResult,
+        drunkThoughtResult,
       ] = results;
 
       if (userResult.status === "fulfilled") {
@@ -360,6 +375,16 @@ export function AppProvider({ children }: AppProviderProps) {
       } else {
         console.error("Failed to fetch weekly stats:", weeklyResult.reason);
       }
+
+     if (drunkThoughtResult.status === "fulfilled") {
+       setDrunkThought(drunkThoughtResult.value); 
+     } else {
+       setDrunkThought(null);
+       console.error(
+         "Failed to fetch drunk thought:",
+         drunkThoughtResult.reason
+       );
+     }
 
       // Collect any errors
       const failedCalls = results.filter((r) => r.status === "rejected");
@@ -665,6 +690,7 @@ export function AppProvider({ children }: AppProviderProps) {
     refreshFriends,
     refreshDiscovery,
     refreshYourMixData,
+    refreshDrunkThought,
     refreshAll,
 
     // Actions

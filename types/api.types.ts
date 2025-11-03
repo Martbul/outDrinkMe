@@ -128,7 +128,7 @@ export interface DailyDrinkingPostResponse {
   LoggedAt: string;
   ImageURL: string;
   LocationText: string | null;
-  MentionedBuddies: string[] | null;
+  MentionedBuddies: UserData[] | null;
   SourceType: "friend" | "other";
 }
 
@@ -141,6 +141,6 @@ export interface YourMixPostData {
   loggedAt: string;
   imageUrl: string;
   locationText: string | null;
-  mentionedBuddies: string[];
+  mentionedBuddies: UserData[];
   sourceType: "friend" | "other";
 }

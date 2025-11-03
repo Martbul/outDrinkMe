@@ -40,14 +40,27 @@ export default function AddDrinksScreenV3() {
   );
   const [isAfterDrinkLoggedModalVisible, setAfterDrinkLoggedModal] =
     useState(false);
-  const [thoughtInput, setThoughtInput] = useState(drunkThought || "");
-  const [isSubmittingDrtunkThought, setIsSubmittingDrunkThought] = useState(false);
+  const [thoughtInput, setThoughtInput] = useState("");
+  const [isSubmittingDrtunkThought, setIsSubmittingDrunkThought] =
+    useState(false);
 
   const hasCompletedRef = useRef(false);
-
-  // Check if user has already logged today
   const alreadyLogged = userStats?.today_status || false;
-  const levelInfoDescr = "You are big drinker";
+
+  // Sync thoughtInput with drunkThought from context
+  useEffect(() => {
+    if (drunkThought) {
+      setThoughtInput(drunkThought);
+    }
+  }, [drunkThought]);
+
+  // Add logging to debug
+  useEffect(() => {
+    console.log("DrunkThought value:", drunkThought);
+    console.log("DrunkThought type:", typeof drunkThought);
+    console.log("AlreadyLogged:", alreadyLogged);
+  }, [drunkThought, alreadyLogged]);
+
 
   const handleUpload = async (
     drinkToday: boolean,
@@ -157,7 +170,7 @@ export default function AddDrinksScreenV3() {
           // Show saved thought
           <View className="bg-white/[0.03] rounded-2xl p-6 mb-6 border border-white/[0.08]">
             <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-3">
-              TODAY`&apos;`S DRUNK THOUGHT
+              TODAY&apos;S DRUNK THOUGHT
             </Text>
             <Text className="text-white text-base leading-relaxed">
               {drunkThought}
@@ -196,16 +209,6 @@ export default function AddDrinksScreenV3() {
             </TouchableOpacity>
           </View>
         )}
-
-        {/* Back to Home Button */}
-        <TouchableOpacity
-          onPress={() => router.push("/(tabs)/home")}
-          className="bg-white/[0.05] rounded-2xl py-4 border border-white/[0.08]"
-        >
-          <Text className="text-white/50 text-sm font-bold text-center tracking-widest uppercase">
-            {drunkThought ? "Back to Home" : "Skip"}
-          </Text>
-        </TouchableOpacity>
       </View>
     );
   }
@@ -310,6 +313,8 @@ interface InfoTooltipProps {
   ) => Promise<void>;
   onClose: () => void;
 }
+
+
 function AdditionalInfoModal({
   friends,
   visible,
@@ -514,10 +519,11 @@ function AdditionalInfoModal({
     }
   };
 
-  const handleSkip = () => {
+  const handleSkip = async () => {
     setImageUri(null);
     setLocationText("");
     setMentionedBuddies([]);
+    await handleUpload(true)
     onClose();
   };
 

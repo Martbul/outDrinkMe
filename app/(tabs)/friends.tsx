@@ -23,14 +23,15 @@ const FriendsScreen = () => {
     userData,
     friends,
     yourMixData,
+    discovery,
+    isLoading,
+    error,
     refreshYourMixData,
     addFriend,
     refreshFriends,
-    discovery,
     refreshDiscovery,
-    isLoading,
-    error,
   } = useApp();
+
   const [searchQueryFriend, setSearchQueryFriend] = useState("");
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("friends");
@@ -103,174 +104,187 @@ const FriendsScreen = () => {
       </View>
     );
   };
-const YourMixCard = ({ item }: { item: YourMixPostData }) => {
-  const [flipState, setFlipState] = useState(0); // 0: image, 1: map, 2: buddies
-  const rotateAnim = useRef(new Animated.Value(0)).current;
-  const [isAnimating, setIsAnimating] = useState(false);
-  const [rotationCount, setRotationCount] = useState(0); // Track rotations manually
 
-  // Determine if we should skip certain states
-  const hasLocation = !!item.locationText;
-  const hasBuddies = item.mentionedBuddies && item.mentionedBuddies.length > 0;
-const handlePress = () => {
-  if (isAnimating) return;
+  const YourMixCard = ({ item }: { item: YourMixPostData }) => {
+    const [flipState, setFlipState] = useState(0); // 0: image, 1: map, 2: buddies
+    const rotateAnim = useRef(new Animated.Value(0)).current;
+    const [isAnimating, setIsAnimating] = useState(false);
+    const [rotationCount, setRotationCount] = useState(0);
 
-  setIsAnimating(true);
+    const hasLocation = !!item.locationText;
+    const hasBuddies =
+      item.mentionedBuddies && item.mentionedBuddies.length > 0;
+    const handlePress = () => {
+      if (isAnimating) return;
 
-  const calculateNextState = (current: number) => {
-    if (current === 0) {
-      return hasLocation ? 1 : hasBuddies ? 2 : 0;
-    } else if (current === 1) {
-      return hasBuddies ? 2 : 0;
-    } else {
-      return 0;
-    }
-  };
+      setIsAnimating(true);
 
-  const newState = calculateNextState(flipState);
-  const nextRotation = rotationCount + 1;
+      const calculateNextState = (current: number) => {
+        if (current === 0) {
+          return hasLocation ? 1 : hasBuddies ? 2 : 0;
+        } else if (current === 1) {
+          return hasBuddies ? 2 : 0;
+        } else {
+          return 0;
+        }
+      };
 
-  // First half: rotate to edge (fast start, ease out)
-  Animated.timing(rotateAnim, {
-    toValue: nextRotation + 0.5,
-    duration: 250,
-    easing: Easing.out(Easing.quad), // Fast start, ease out
-    useNativeDriver: true,
-  }).start(() => {
-    setFlipState(newState);
+      const newState = calculateNextState(flipState);
+      const nextRotation = rotationCount + 1;
 
-    // Second half: complete the flip (fast start, ease out)
-    Animated.timing(rotateAnim, {
-      toValue: nextRotation + 1,
-      duration: 250,
-      easing: Easing.out(Easing.quad), // Fast start, ease out
-      useNativeDriver: true,
-    }).start(() => {
-      setRotationCount(nextRotation + 1);
-      setIsAnimating(false);
+      // First half: rotate to edge (fast start, ease out)
+      Animated.timing(rotateAnim, {
+        toValue: nextRotation + 0.5,
+        duration: 250,
+        easing: Easing.out(Easing.quad), // Fast start, ease out
+        useNativeDriver: true,
+      }).start(() => {
+        setFlipState(newState);
+
+        // Second half: complete the flip (fast start, ease out)
+        Animated.timing(rotateAnim, {
+          toValue: nextRotation + 1,
+          duration: 250,
+          easing: Easing.out(Easing.quad), // Fast start, ease out
+          useNativeDriver: true,
+        }).start(() => {
+          setRotationCount(nextRotation + 1);
+          setIsAnimating(false);
+        });
+      });
+    };
+
+    const rotateInterpolate = rotateAnim.interpolate({
+      inputRange: [0, 1, 2, 3, 4],
+      outputRange: ["0deg", "180deg", "360deg", "540deg", "720deg"],
     });
-  });
-};
 
-  const rotateInterpolate = rotateAnim.interpolate({
-    inputRange: [0, 1, 2, 3, 4],
-    outputRange: ["0deg", "180deg", "360deg", "540deg", "720deg"],
-  });
+    const animatedStyle = {
+      transform: [{ rotateY: rotateInterpolate }],
+    };
 
-  const animatedStyle = {
-    transform: [{ rotateY: rotateInterpolate }],
-  };
+    const renderContent = () => {
+      if (flipState === 0) {
+        // State 0: Image with overlay text
+        return (
+          <>
+            <Image
+              source={{ uri: item.imageUrl }}
+              className="w-full h-full"
+              resizeMode="cover"
+            />
+            <View className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
 
-  // Render content based on state
-  const renderContent = () => {
-    if (flipState === 0) {
-      // State 0: Image with overlay text
-      return (
-        <>
-          <Image
-            source={{ uri: item.imageUrl }}
-            className="w-full h-full"
-            resizeMode="cover"
-          />
-          {/* Gradient overlay */}
-          <View className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-
-          {/* Bottom right info overlay */}
-          <View className="absolute bottom-0 right-0 px-2 py-1">
-            <Text className="text-[#ff8c00] text-md font-semibold text-right">
-              {new Date(item.date).toLocaleDateString()}
-            </Text>
-            {/* {item.locationText && (
-              <Text className="text-white/70 text-xs font-semibold mt-1 text-right">
-                {item.locationText}
-              </Text>
-            )} */}
-          </View>
-
-          {/* Source type badge (top left) */}
-          <View className="absolute top-3 left-3">
-            {item.userImageUrl && (
-              <View className="w-14 h-14 rounded-full bg-black/40 p-0.5">
-                <Image
-                  source={{ uri: item.userImageUrl }}
-                  className="w-full h-full rounded-full"
-                />
-              </View>
-            )}
-          </View>
-        </>
-      );
-    } else if (flipState === 1) {
-      // State 1: Map with location
-      return (
-        <View className="w-full h-full bg-gray-900 items-center justify-center">
-          <View className="bg-black/70 rounded-2xl p-6 m-6">
-            <Text className="text-white text-xl font-bold mb-4 text-center">
-              📍 Location
-            </Text>
-            <Text className="text-white/90 text-base font-semibold text-center mb-4">
-              {item.locationText}
-            </Text>
-            <View className="bg-gray-800 rounded-xl p-8 items-center justify-center">
-              <Text className="text-6xl mb-2">📍</Text>
-              <Text className="text-white/60 text-sm text-center">
-                Map integration coming soon
+            <View className="absolute bottom-0 right-0 px-2 py-1">
+              <Text className="text-[#ff8c00] text-md font-semibold text-right">
+                {new Date(item.date).toLocaleDateString()}
               </Text>
             </View>
-            <Text className="text-white/50 text-sm text-center mt-4">
-              {new Date(item.loggedAt).toLocaleString()}
-            </Text>
+
+            <TouchableOpacity
+              className="absolute top-3 left-3"
+              onPress={() =>
+                router.push(`/(screens)/userInfo?userId=${item.userId}`)
+              }
+            >
+              {item.userImageUrl && (
+                <View className="w-14 h-14 rounded-full bg-black/40 p-0.5">
+                  <Image
+                    source={{ uri: item.userImageUrl }}
+                    className="w-full h-full rounded-full"
+                  />
+                </View>
+              )}
+            </TouchableOpacity>
+          </>
+        );
+      } else if (flipState === 1) {
+        // State 1: Map with location
+        return (
+          <View className="w-full h-full bg-gray-900 items-center justify-center">
+            <View className="bg-black/70 rounded-2xl p-6 m-6">
+              <Text className="text-white text-xl font-bold mb-4 text-center">
+                📍 Location
+              </Text>
+              <Text className="text-white/90 text-base font-semibold text-center mb-4">
+                {item.locationText}
+              </Text>
+              <View className="bg-gray-800 rounded-xl p-8 items-center justify-center">
+                <Text className="text-6xl mb-2">📍</Text>
+                <Text className="text-white/60 text-sm text-center">
+                  Map integration coming soon
+                </Text>
+              </View>
+              <Text className="text-white/50 text-sm text-center mt-4">
+                {new Date(item.loggedAt).toLocaleString()}
+              </Text>
+            </View>
           </View>
-        </View>
-      );
-    } else {
-      // State 2: Mentioned buddies
-      return (
-        <View className="w-full h-full bg-white/[0.03] items-center justify-center p-6">
-          <View className="w-full">
-            <View className="flex-row flex-wrap justify-center gap-4">
+        );
+      } else {
+        // State 2: Mentioned buddies
+        return (
+          <View className="w-full bg-white/[0.03] p-4">
+            <View className="flex-row flex-wrap gap-3">
               {item.mentionedBuddies.map((buddy, index) => (
-                <View key={index} className="items-center w-20">
-                  <View className="w-16 h-16 rounded-full bg-orange-600 items-center justify-center mb-2">
-                    <Text className="text-white text-2xl font-bold">
-                      {buddy.charAt(0).toUpperCase()}
-                    </Text>
+                <View
+                  key={buddy.id || index}
+                  className="items-center"
+                  style={{ width: 70 }}
+                >
+                  <View className="w-14 h-14 rounded-full bg-orange-600 items-center justify-center mb-1.5 overflow-hidden">
+                    {buddy.imageUrl ? (
+                      <Image
+                        source={{ uri: buddy.imageUrl }}
+                        className="w-full h-full"
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <Text className="text-white text-xl font-bold">
+                        {buddy.firstName?.charAt(0).toUpperCase() ||
+                          buddy.username?.charAt(0).toUpperCase() ||
+                          "?"}
+                      </Text>
+                    )}
                   </View>
-                  <Text className="text-white text-sm text-center font-semibold">
-                    {buddy}
+                  <Text
+                    className="text-white text-xs text-center font-medium"
+                    numberOfLines={2}
+                    ellipsizeMode="tail"
+                  >
+                    {buddy.firstName && buddy.lastName
+                      ? `${buddy.firstName} ${buddy.lastName}`
+                      : buddy.username || "Unknown"}
                   </Text>
                 </View>
               ))}
             </View>
           </View>
-        </View>
-      );
-    }
+        );
+      }
+    };
+
+    return (
+      <TouchableOpacity
+        onPress={handlePress}
+        className="bg-white/[0.03] rounded-2xl overflow-hidden border border-white/[0.08] mb-3"
+        activeOpacity={0.7}
+        disabled={isAnimating}
+      >
+        <Animated.View
+          style={animatedStyle}
+          className="relative w-full aspect-[4/3]"
+        >
+          {renderContent()}
+        </Animated.View>
+      </TouchableOpacity>
+    );
   };
 
-  return (
-    <TouchableOpacity
-      onPress={handlePress}
-      className="bg-white/[0.03] rounded-2xl overflow-hidden border border-white/[0.08] mb-3"
-      activeOpacity={0.7}
-      disabled={isAnimating}
-    >
-      <Animated.View
-        style={animatedStyle}
-        className="relative w-full aspect-[4/3]"
-      >
-        {renderContent()}
-      </Animated.View>
-    </TouchableOpacity>
-  );
-};
+  const renderYourMixItem = ({ item }: { item: YourMixPostData }) => {
+    return <YourMixCard item={item} />;
+  };
 
-// Then use it in your FlatList
-const renderYourMixItem = ({ item }: { item: YourMixPostData }) => {
-  return <YourMixCard item={item} />;
-};
-  
-  
   const renderFriendItem = ({ item }: { item: UserData }) => {
     return (
       <TouchableOpacity

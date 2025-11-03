@@ -290,6 +290,15 @@ class ApiService {
     });
   }
 
+  async getDrunkThought(token: string): Promise<string | null> {
+    const response = await this.makeRequest("/api/v1/user/drunk-thought", {
+      method: "GET",
+      token,
+    });
+    // Response is just a string, not an object
+    return response as string | null;
+  }
+
   async addDrunkThought(
     drunkThought: string,
     token: string
