@@ -290,13 +290,19 @@ class ApiService {
     });
   }
 
-  async getDrunkThought(token: string): Promise<string | null> {
-    const response = await this.makeRequest("/api/v1/user/drunk-thought", {
+  async getDrunkThought(token: string, date?: string): Promise<string | null> {
+    // Add date query param only if provided
+    const url = date
+      ? `/api/v1/user/drunk-thought?date=${encodeURIComponent(date)}`
+      : `/api/v1/user/drunk-thought`;
+
+    const response = await this.makeRequest(url, {
       method: "GET",
       token,
     });
-    // Response is just a string, not an object
-    return response as string | null;
+
+    // Backend returns { drunk_thought: string | null }
+    return response?.drunk_thought ?? null;
   }
 
   async addDrunkThought(

@@ -12,10 +12,13 @@ import {
 } from "react-native";
 import Header from "@/components/header";
 import { AntDesign, Feather } from "@expo/vector-icons";
+import { apiService } from "@/api";
+import { useAuth } from "@clerk/clerk-expo";
 
 interface CalendarDayProps {
   day: number;
   drank: boolean;
+  // image_background: string;
   onPress: (day: number, drank: boolean) => void;
   isToday: boolean;
   isSelected: boolean;
@@ -32,47 +35,35 @@ interface DayDetailModalProps {
   dayData: DayData | null;
   selectedDay: number | null;
   userStats: UserStats | null;
+  drunkThought: string | null;
+  isLoadingThought: boolean;
 }
 
-const CalendarDay = ({
-  day,
-  drank,
-  onPress,
-  isToday,
-  isSelected,
-}: CalendarDayProps) => {
+const CalendarDay = ({ day, drank, onPress, isToday }: CalendarDayProps) => {
   return (
     <TouchableOpacity
       onPress={() => onPress(day, drank)}
       className={`
         w-11 h-11 rounded-lg flex items-center justify-center m-1
         ${
-          isSelected
-            ? "bg-orange-600"
-            : isToday && drank
-              ? "bg-orange-600/30 border-2 border-orange-600"
-              : isToday
-                ? "bg-white/[0.12] border-2 border-orange-600"
-                : drank
-                  ? "bg-orange-600/30"
-                  : "bg-white/[0.03]"
+          isToday && drank
+            ? "bg-orange-600/30 border-2 border-orange-600"
+            : isToday
+              ? "bg-white/[0.12] border-2 border-orange-600"
+              : drank
+                ? "bg-orange-600/30"
+                : "bg-white/[0.03]"
         }
-        border ${drank && !isSelected && !isToday ? "border-orange-600/50" : isToday ? "border-orange-600" : "border-white/[0.08]"}
+        border ${drank && !isToday ? "border-orange-600/50" : isToday ? "border-orange-600" : "border-white/[0.08]"}
       `}
     >
       <Text
         className={`
-        text-sm font-bold
-        ${
-          isSelected
-            ? "text-white"
-            : isToday
-              ? "text-white"
-              : drank
-                ? "text-orange-500"
-                : "text-white/30"
-        }
-      `}
+          text-sm font-bold
+          ${
+            isToday ? "text-white" : drank ? "text-orange-500" : "text-white/30"
+          }
+        `}
       >
         {day}
       </Text>
@@ -80,12 +71,15 @@ const CalendarDay = ({
   );
 };
 
+
 const DayDetailModal = ({
   visible,
   onClose,
   dayData,
   selectedDay,
   userStats,
+  drunkThought,
+  isLoadingThought,
 }: DayDetailModalProps) => {
   const insets = useSafeAreaInsets();
 
@@ -154,6 +148,36 @@ const DayDetailModal = ({
               </View>
             </View>
           </View>
+
+          {/* Drunk Thought Section */}
+          {dayData.drank_today && (
+            <View className="bg-white/[0.03] rounded-2xl p-6 mb-4 border border-white/[0.08]">
+              <Text className="text-white/50 text-[11px] font-bold tracking-widest uppercase mb-3">
+                Drunk Thought
+              </Text>
+              {isLoadingThought ? (
+                <View className="py-4 items-center">
+                  <ActivityIndicator size="small" color="#ff8c00" />
+                  <Text className="text-white/50 text-sm mt-2">
+                    Loading thought...
+                  </Text>
+                </View>
+              ) : drunkThought && drunkThought.trim().length > 0 ? (
+                <View className="bg-white/[0.05] rounded-xl p-4 border border-white/[0.08]">
+                  <Text className="text-white text-base leading-relaxed">
+                    "{drunkThought}"
+                  </Text>
+                </View>
+              ) : (
+                <View className="bg-white/[0.05] rounded-xl p-4 border border-white/[0.08] items-center">
+                  <Feather name="message-circle" size={32} color="#666666" />
+                  <Text className="text-white/50 text-sm mt-2 text-center">
+                    No drunk thought recorded for this day
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
 
           {/* Current Stats Context */}
           {dayData.drank_today && userStats && (
@@ -230,6 +254,8 @@ const DayDetailModal = ({
 };
 
 const CalendarScreen = () => {
+  const { getToken } = useAuth();
+
   const { userStats, calendar, isLoading, refreshCalendar } = useApp();
 
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
@@ -237,6 +263,8 @@ const CalendarScreen = () => {
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [selectedDayData, setSelectedDayData] = useState<DayData | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [dayDrunkThought, setDayDrunkThought] = useState<string | null>(null);
+  const [isLoadingThought, setIsLoadingThought] = useState(false);
 
   const monthNames = [
     "January",
@@ -266,10 +294,33 @@ const CalendarScreen = () => {
     return firstDay === 0 ? 6 : firstDay - 1;
   };
 
-  const handleDayPress = (day: number, dayData: DayData | null) => {
+  const handleDayPress = async (day: number, dayData: DayData | null) => {
+
     setSelectedDay(day);
     setSelectedDayData(dayData);
     setModalVisible(true);
+    setDayDrunkThought(null);
+
+    // Fetch drunk thought for this specific date if the day was logged
+    if (dayData && dayData.drank_today) {
+      setIsLoadingThought(true);
+      try {
+        // Format date as YYYY-MM-DD
+        const dateStr = dayData.date.split('T')[0]; // Assuming date comes as ISO string
+        
+        // Call API to get drunk thought for this date
+        const token = await getToken(); // You'll need to get this from useAuth
+        if (token) {
+          const response = await apiService.getDrunkThought(token, dateStr);
+          setDayDrunkThought(response);
+        }
+      } catch (error) {
+        console.error("Failed to fetch drunk thought for date:", error);
+        setDayDrunkThought(null);
+      } finally {
+        setIsLoadingThought(false);
+      }
+    }
   };
 
   const navigateMonth = (direction: string) => {
@@ -513,6 +564,8 @@ const CalendarScreen = () => {
         dayData={selectedDayData}
         selectedDay={selectedDay}
         userStats={userStats}
+        drunkThought={dayDrunkThought}
+        isLoadingThought={isLoadingThought}
       />
     </View>
   );

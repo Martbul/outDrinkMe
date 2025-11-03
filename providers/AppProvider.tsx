@@ -264,18 +264,18 @@ export function AppProvider({ children }: AppProviderProps) {
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
 
- const refreshDrunkThought = useCallback(async () => {
-   if (!isSignedIn) return;
+  const refreshDrunkThought = useCallback(async () => {
+    if (!isSignedIn) return;
 
-   await withLoadingAndError(
-     async () => {
-       const token = await getToken();
-       if (!token) throw new Error("No auth token");
-       return await apiService.getDrunkThought(token);
-     },
-     (data) => setDrunkThought(data) // data is now directly the string
-   );
- }, [isSignedIn, getToken, withLoadingAndError]);
+    await withLoadingAndError(
+      async () => {
+        const token = await getToken();
+        if (!token) throw new Error("No auth token");
+        return await apiService.getDrunkThought(token);
+      },
+      (data) => setDrunkThought(data || null)
+    );
+  }, [isSignedIn, getToken, withLoadingAndError]);
 
   // ============================================
   // Refresh All - Using Parallel Execution
@@ -376,15 +376,15 @@ export function AppProvider({ children }: AppProviderProps) {
         console.error("Failed to fetch weekly stats:", weeklyResult.reason);
       }
 
-     if (drunkThoughtResult.status === "fulfilled") {
-       setDrunkThought(drunkThoughtResult.value); 
-     } else {
-       setDrunkThought(null);
-       console.error(
-         "Failed to fetch drunk thought:",
-         drunkThoughtResult.reason
-       );
-     }
+      if (drunkThoughtResult.status === "fulfilled") {
+        setDrunkThought(drunkThoughtResult.value);
+      } else {
+        setDrunkThought(null);
+        console.error(
+          "Failed to fetch drunk thought:",
+          drunkThoughtResult.reason
+        );
+      }
 
       // Collect any errors
       const failedCalls = results.filter((r) => r.status === "rejected");

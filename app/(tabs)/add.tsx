@@ -54,12 +54,6 @@ export default function AddDrinksScreenV3() {
     }
   }, [drunkThought]);
 
-  // Add logging to debug
-  useEffect(() => {
-    console.log("DrunkThought value:", drunkThought);
-    console.log("DrunkThought type:", typeof drunkThought);
-    console.log("AlreadyLogged:", alreadyLogged);
-  }, [drunkThought, alreadyLogged]);
 
 
   const handleUpload = async (
@@ -165,14 +159,12 @@ export default function AddDrinksScreenV3() {
           </View>
         </View>
 
-        {/* Drunk Thought Section */}
         {drunkThought ? (
-          // Show saved thought
           <View className="bg-white/[0.03] rounded-2xl p-6 mb-6 border border-white/[0.08]">
             <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-3">
               TODAY&apos;S DRUNK THOUGHT
             </Text>
-            <Text className="text-white text-base leading-relaxed">
+            <Text className="text-orange-600 text-2xl  font-bold leading-relaxed">
               {drunkThought}
             </Text>
           </View>
