@@ -18,8 +18,7 @@ import { useApp } from "@/providers/AppProvider";
 import Entypo from "@expo/vector-icons/Entypo";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import * as Location from "expo-location";
-import { UserData } from "@/types/api.types";
+import type { UserData } from "@/types/api.types";
 
 export default function AddDrinksScreenV3() {
   const router = useRouter();
@@ -463,53 +462,53 @@ function AdditionalInfoModal({
     }
   };
 
-  const handleLocationSelect = async () => {
-    try {
-      setIsLoadingLocation(true);
+  // const handleLocationSelect = async () => {
+  //   try {
+  //     setIsLoadingLocation(true);
 
-      const { status } = await Location.requestForegroundPermissionsAsync();
+  //     const { status } = await Location.requestForegroundPermissionsAsync();
 
-      if (status !== "granted") {
-        Alert.alert(
-          "Permission needed",
-          "Please grant permission to access your location"
-        );
-        setIsLoadingLocation(false);
-        return;
-      }
+  //     if (status !== "granted") {
+  //       Alert.alert(
+  //         "Permission needed",
+  //         "Please grant permission to access your location"
+  //       );
+  //       setIsLoadingLocation(false);
+  //       return;
+  //     }
 
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
+  //     const location = await Location.getCurrentPositionAsync({
+  //       accuracy: Location.Accuracy.Balanced,
+  //     });
 
-      const [address] = await Location.reverseGeocodeAsync({
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      });
+  //     const [address] = await Location.reverseGeocodeAsync({
+  //       latitude: location.coords.latitude,
+  //       longitude: location.coords.longitude,
+  //     });
 
-      if (address) {
-        const formattedLocation = [
-          address.street,
-          address.city,
-          address.region,
-          address.country,
-        ]
-          .filter(Boolean)
-          .join(", ");
+  //     if (address) {
+  //       const formattedLocation = [
+  //         address.street,
+  //         address.city,
+  //         address.region,
+  //         address.country,
+  //       ]
+  //         .filter(Boolean)
+  //         .join(", ");
 
-        setLocationText(formattedLocation || "Location selected");
-      } else {
-        setLocationText(
-          `${location.coords.latitude.toFixed(4)}, ${location.coords.longitude.toFixed(4)}`
-        );
-      }
-    } catch (error) {
-      Alert.alert("Error", "Failed to get location");
-      console.error(error);
-    } finally {
-      setIsLoadingLocation(false);
-    }
-  };
+  //       setLocationText(formattedLocation || "Location selected");
+  //     } else {
+  //       setLocationText(
+  //         `${location.coords.latitude.toFixed(4)}, ${location.coords.longitude.toFixed(4)}`
+  //       );
+  //     }
+  //   } catch (error) {
+  //     Alert.alert("Error", "Failed to get location");
+  //     console.error(error);
+  //   } finally {
+  //     setIsLoadingLocation(false);
+  //   }
+  // };
 
   const handleSkip = async () => {
     setImageUri(null);
@@ -681,7 +680,7 @@ function AdditionalInfoModal({
                   </Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity
+                {/* <TouchableOpacity
                   onPress={handleLocationSelect}
                   disabled={isLoadingLocation}
                   className="flex-1 bg-orange-600/20 border-2 border-orange-600/40 rounded-xl py-3 px-2 flex-row items-center justify-center"
@@ -696,7 +695,7 @@ function AdditionalInfoModal({
                       </Text>
                     </>
                   )}
-                </TouchableOpacity>
+                </TouchableOpacity> */}
               </View>
 
               {locationText ? (

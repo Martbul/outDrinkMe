@@ -50,7 +50,7 @@ export default function HomeScreen() {
         <View className="items-center mb-6">
           <View className="relative w-[120px] h-[120px] rounded-full bg-orange-600/15 border-4 border-orange-600 justify-center items-center mb-3">
             <Text className="text-orange-600 text-5xl font-black">
-              {coefInfo.coef?.toFixed(2)}
+              {coefInfo.coef}
             </Text>
 
             <TouchableOpacity

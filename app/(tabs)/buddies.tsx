@@ -1,5 +1,5 @@
 import { useApp } from "@/providers/AppProvider";
-import { UserData, YourMixPostData } from "@/types/api.types";
+import type { UserData, YourMixPostData } from "@/types/api.types";
 import { FontAwesome6, Ionicons, Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useMemo, useRef, useState } from "react";
@@ -82,7 +82,7 @@ const FriendsScreen = () => {
                 activeTab === "friends" ? "text-white" : "text-white/30"
               }`}
             >
-              FRIENDS
+              BUDDIES
             </Text>
           </TouchableOpacity>
 
@@ -104,183 +104,233 @@ const FriendsScreen = () => {
       </View>
     );
   };
+const YourMixCard = ({ item }: { item: YourMixPostData }) => {
+  const [flipState, setFlipState] = useState(0); // 0: image, 1: buddies, 2: map
+  const rotateAnim = useRef(new Animated.Value(0)).current;
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [rotationCount, setRotationCount] = useState(0);
 
-  const YourMixCard = ({ item }: { item: YourMixPostData }) => {
-    const [flipState, setFlipState] = useState(0); // 0: image, 1: map, 2: buddies
-    const rotateAnim = useRef(new Animated.Value(0)).current;
-    const [isAnimating, setIsAnimating] = useState(false);
-    const [rotationCount, setRotationCount] = useState(0);
+  const hasBuddies = item.mentionedBuddies && item.mentionedBuddies.length > 0;
+  const hasLocation = !!item.locationText;
 
-    const hasLocation = !!item.locationText;
-    const hasBuddies =
-      item.mentionedBuddies && item.mentionedBuddies.length > 0;
-    const handlePress = () => {
-      if (isAnimating) return;
+  const handlePress = () => {
+    if (isAnimating) return;
 
-      setIsAnimating(true);
+    setIsAnimating(true);
 
-      const calculateNextState = (current: number) => {
-        if (current === 0) {
-          return hasLocation ? 1 : hasBuddies ? 2 : 0;
-        } else if (current === 1) {
-          return hasBuddies ? 2 : 0;
-        } else {
-          return 0;
-        }
-      };
-
-      const newState = calculateNextState(flipState);
-      const nextRotation = rotationCount + 1;
-
-      // First half: rotate to edge (fast start, ease out)
-      Animated.timing(rotateAnim, {
-        toValue: nextRotation + 0.5,
-        duration: 250,
-        easing: Easing.out(Easing.quad), // Fast start, ease out
-        useNativeDriver: true,
-      }).start(() => {
-        setFlipState(newState);
-
-        // Second half: complete the flip (fast start, ease out)
-        Animated.timing(rotateAnim, {
-          toValue: nextRotation + 1,
-          duration: 250,
-          easing: Easing.out(Easing.quad), // Fast start, ease out
-          useNativeDriver: true,
-        }).start(() => {
-          setRotationCount(nextRotation + 1);
-          setIsAnimating(false);
-        });
-      });
-    };
-
-    const rotateInterpolate = rotateAnim.interpolate({
-      inputRange: [0, 1, 2, 3, 4],
-      outputRange: ["0deg", "180deg", "360deg", "540deg", "720deg"],
-    });
-
-    const animatedStyle = {
-      transform: [{ rotateY: rotateInterpolate }],
-    };
-
-    const renderContent = () => {
-      if (flipState === 0) {
-        // State 0: Image with overlay text
-        return (
-          <>
-            <Image
-              source={{ uri: item.imageUrl }}
-              className="w-full h-full"
-              resizeMode="cover"
-            />
-            <View className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-
-            <View className="absolute bottom-0 right-0 px-2 py-1">
-              <Text className="text-[#ff8c00] text-md font-semibold text-right">
-                {new Date(item.date).toLocaleDateString()}
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              className="absolute top-3 left-3"
-              onPress={() =>
-                router.push(`/(screens)/userInfo?userId=${item.userId}`)
-              }
-            >
-              {item.userImageUrl && (
-                <View className="w-14 h-14 rounded-full bg-black/40 p-0.5">
-                  <Image
-                    source={{ uri: item.userImageUrl }}
-                    className="w-full h-full rounded-full"
-                  />
-                </View>
-              )}
-            </TouchableOpacity>
-          </>
-        );
-      } else if (flipState === 1) {
-        // State 1: Map with location
-        return (
-          <View className="w-full h-full bg-gray-900 items-center justify-center">
-            <View className="bg-black/70 rounded-2xl p-6 m-6">
-              <Text className="text-white text-xl font-bold mb-4 text-center">
-                📍 Location
-              </Text>
-              <Text className="text-white/90 text-base font-semibold text-center mb-4">
-                {item.locationText}
-              </Text>
-              <View className="bg-gray-800 rounded-xl p-8 items-center justify-center">
-                <Text className="text-6xl mb-2">📍</Text>
-                <Text className="text-white/60 text-sm text-center">
-                  Map integration coming soon
-                </Text>
-              </View>
-              <Text className="text-white/50 text-sm text-center mt-4">
-                {new Date(item.loggedAt).toLocaleString()}
-              </Text>
-            </View>
-          </View>
-        );
+    const calculateNextState = (current: number) => {
+      if (current === 0) {
+        return hasBuddies ? 1 : hasLocation ? 2 : 0;
+      } else if (current === 1) {
+        return hasLocation ? 2 : 0;
       } else {
-        // State 2: Mentioned buddies
-        return (
-          <View className="w-full bg-white/[0.03] p-4">
-            <View className="flex-row flex-wrap gap-3">
-              {item.mentionedBuddies.map((buddy, index) => (
-                <View
-                  key={buddy.id || index}
-                  className="items-center"
-                  style={{ width: 70 }}
-                >
-                  <View className="w-14 h-14 rounded-full bg-orange-600 items-center justify-center mb-1.5 overflow-hidden">
-                    {buddy.imageUrl ? (
-                      <Image
-                        source={{ uri: buddy.imageUrl }}
-                        className="w-full h-full"
-                        resizeMode="cover"
-                      />
-                    ) : (
-                      <Text className="text-white text-xl font-bold">
-                        {buddy.firstName?.charAt(0).toUpperCase() ||
-                          buddy.username?.charAt(0).toUpperCase() ||
-                          "?"}
-                      </Text>
-                    )}
-                  </View>
-                  <Text
-                    className="text-white text-xs text-center font-medium"
-                    numberOfLines={2}
-                    ellipsizeMode="tail"
-                  >
-                    {buddy.firstName && buddy.lastName
-                      ? `${buddy.firstName} ${buddy.lastName}`
-                      : buddy.username || "Unknown"}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        );
+        return 0;
       }
     };
 
-    return (
-      <TouchableOpacity
-        onPress={handlePress}
-        className="bg-white/[0.03] rounded-2xl overflow-hidden border border-white/[0.08] mb-3"
-        activeOpacity={0.7}
-        disabled={isAnimating}
-      >
-        <Animated.View
-          style={animatedStyle}
-          className="relative w-full aspect-[4/3]"
-        >
-          {renderContent()}
-        </Animated.View>
-      </TouchableOpacity>
-    );
+    const newState = calculateNextState(flipState);
+    const nextRotation = rotationCount + 1;
+
+    // First half: rotate to edge (fast start, ease out)
+    Animated.timing(rotateAnim, {
+      toValue: nextRotation + 0.5,
+      duration: 250,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start(() => {
+      setFlipState(newState);
+
+      // Second half: complete the flip (fast start, ease out)
+      Animated.timing(rotateAnim, {
+        toValue: nextRotation + 1,
+        duration: 250,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }).start(() => {
+        setRotationCount(nextRotation + 1);
+        setIsAnimating(false);
+      });
+    });
   };
 
+  const rotateInterpolate = rotateAnim.interpolate({
+    inputRange: [0, 1, 2, 3, 4],
+    outputRange: ["0deg", "180deg", "360deg", "540deg", "720deg"],
+  });
+
+  const animatedStyle = {
+    transform: [{ rotateY: rotateInterpolate }],
+  };
+
+  const renderContent = () => {
+    if (flipState === 0) {
+      // State 0: Image with overlay text
+      return (
+        <>
+          <Image
+            source={{ uri: item.imageUrl }}
+            className="w-full h-full"
+            resizeMode="cover"
+          />
+          {/* Gradient overlay */}
+          <View className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+
+          {/* Date badge - top right */}
+          <View className="absolute top-3 right-3">
+            <View className="bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/[0.08]">
+              <Text className="text-orange-600 text-xs font-bold tracking-wide">
+                {new Date(item.date).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+              </Text>
+            </View>
+          </View>
+
+          {/* User avatar - top left */}
+          <TouchableOpacity
+            className="absolute top-3 left-3"
+            onPress={() =>
+              router.push(`/(screens)/userInfo?userId=${item.userId}`)
+            }
+          >
+            {item.userImageUrl && (
+              <View className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-sm border-2 border-white/[0.15] overflow-hidden">
+                <Image
+                  source={{ uri: item.userImageUrl }}
+                  className="w-full h-full"
+                  resizeMode="cover"
+                />
+              </View>
+            )}
+          </TouchableOpacity>
+
+        </>
+      );
+    } else if (flipState === 1) {
+      // State 1: Mentioned buddies
+      return (
+        <View className="w-full h-full bg-black items-center justify-center p-6">
+          {/* Header */}
+          <View className="items-center mb-5">
+            <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-2">
+              DRINKING BUDDIES
+            </Text>
+            <View className="flex-row items-center gap-2">
+              <Text className="text-orange-600 text-2xl font-black">
+                {item.mentionedBuddies.length}
+              </Text>
+            </View>
+          </View>
+
+          {/* Buddies grid */}
+          <View className="flex-row flex-wrap gap-4 justify-center mb-5">
+            {item.mentionedBuddies.map((buddy, index) => (
+              <View
+                key={buddy.id || index}
+                className="items-center"
+                style={{ width: 75 }}
+              >
+                <TouchableOpacity
+                  className="w-16 h-16 rounded-full bg-orange-600/20 border-2 border-orange-600/40 items-center justify-center mb-2 overflow-hidden"
+                >
+                  {buddy.imageUrl ? (
+                    <Image
+                      source={{ uri: buddy.imageUrl }}
+                      className="w-full h-full"
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <Text className="text-orange-600 text-2xl font-black">
+                      {buddy.firstName?.charAt(0).toUpperCase() ||
+                        buddy.username?.charAt(0).toUpperCase() ||
+                        "?"}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+                <Text
+                  className="text-white text-xs text-center font-semibold"
+                  numberOfLines={2}
+                  ellipsizeMode="tail"
+                >
+                  {buddy.firstName && buddy.lastName
+                    ? `${buddy.firstName} ${buddy.lastName}`
+                    : buddy.username || "Unknown"}
+                </Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Timestamp */}
+          <View className="pt-4 border-t border-white/[0.05]">
+            <Text className="text-white/40 text-xs text-center font-semibold">
+              {new Date(item.loggedAt).toLocaleString("en-US", {
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+              })}
+            </Text>
+          </View>
+        </View>
+      );
+    } else {
+      // State 2: Map with location
+      return (
+        <View className="w-full h-full bg-black items-center justify-center p-6">
+          <View className="bg-white/[0.03] rounded-2xl p-6 w-full border border-white/[0.08]">
+            {/* Header */}
+            <View className="items-center mb-5">
+              <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-2">
+                LOCATION
+              </Text>
+              <Text className="text-white text-xl font-black text-center mb-4">
+                {item.locationText}
+              </Text>
+            </View>
+
+            {/* Map placeholder */}
+            <View className="bg-white/[0.03] rounded-xl p-8 items-center justify-center border border-white/[0.08] mb-5">
+             
+              <Text className="text-orange-600 text-sm text-center font-semibold">
+                Map integration coming soon
+              </Text>
+            </View>
+
+            {/* Timestamp */}
+            <View className="pt-4 border-t border-white/[0.05]">
+              <Text className="text-white/40 text-xs text-center font-semibold">
+                {new Date(item.loggedAt).toLocaleString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}
+              </Text>
+            </View>
+          </View>
+        </View>
+      );
+    }
+  };
+
+  return (
+    <TouchableOpacity
+      onPress={handlePress}
+      className="bg-white/[0.03] rounded-2xl overflow-hidden border border-white/[0.08] mb-4"
+      activeOpacity={0.8}
+      disabled={isAnimating}
+    >
+      <Animated.View
+        style={animatedStyle}
+        className="relative w-full aspect-[4/3]"
+      >
+        {renderContent()}
+      </Animated.View>
+    </TouchableOpacity>
+  );
+};
   const renderYourMixItem = ({ item }: { item: YourMixPostData }) => {
     return <YourMixCard item={item} />;
   };
@@ -397,7 +447,7 @@ const FriendsScreen = () => {
         <View className="flex-1 items-center justify-center py-16">
           <ActivityIndicator size="large" color="#ff8c00" />
           <Text className="text-white/50 mt-4 text-sm font-semibold">
-            Loading friends...
+            Loading buddies...
           </Text>
         </View>
       );
@@ -413,7 +463,7 @@ const FriendsScreen = () => {
             No Results Found
           </Text>
           <Text className="text-white/50 text-sm text-center font-semibold">
-            No friends found matching "{searchQueryFriend}"
+            No buddies found matching "{searchQueryFriend}"
           </Text>
         </View>
       );
@@ -426,7 +476,7 @@ const FriendsScreen = () => {
             <Ionicons name="people-outline" size={48} color="#ff8c00" />
           </View>
           <Text className="text-white text-xl font-black mb-2">
-            No Friends Yet
+            No buddies Yet
           </Text>
           <Text className="text-white/50 text-sm text-center font-semibold px-4">
             Who's the one who can bring you back to drinking?
@@ -477,9 +527,9 @@ const FriendsScreen = () => {
           <View className="flex-row justify-between items-center mb-2">
             <View>
               <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-2">
-                YOUR SQUAD
+                YOUR DRINKING
               </Text>
-              <Text className="text-white text-[32px] font-black">Friends</Text>
+              <Text className="text-white text-[32px] font-black">Buddies</Text>
             </View>
             <View className="bg-orange-600/20 px-3.5 py-1.5 rounded-lg">
               <Text className="text-orange-600 text-[11px] font-black tracking-wider">
@@ -492,7 +542,7 @@ const FriendsScreen = () => {
         {/* Search Bar */}
         <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
           <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-3">
-            SEARCH FRIENDS
+            SEARCH BUDDIES
           </Text>
           <View className="bg-white/[0.05] rounded-xl px-4 py-3 flex-row items-center border border-white/[0.08]">
             <Ionicons name="search" size={20} color="#ff8c00" />
@@ -526,7 +576,7 @@ const FriendsScreen = () => {
           <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-3">
             {searchQueryFriend.trim()
               ? `RESULTS (${filteredFriends.length})`
-              : `ALL FRIENDS (${filteredFriends.length})`}
+              : `ALL BUDDIES (${filteredFriends.length})`}
           </Text>
         )}
       </View>
@@ -542,7 +592,7 @@ const FriendsScreen = () => {
           <View className="flex-row justify-between items-center mb-2">
             <View>
               <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-2">
-                FIND FRIENDS
+                FIND BUDDIES
               </Text>
               <Text className="text-white text-[32px] font-black">
                 Discovery

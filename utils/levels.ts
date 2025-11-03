@@ -131,38 +131,40 @@ export function getExampleLevelTable(maxLevel: number = 20): void {
   }
 }
 
-//! TODO: Initili the coeef should be 0
 export const getCoefInfo = (
   userStats: UserStats | null
 ): { title: string; coef: number } => {
-  if (!userStats) return { title: "NEWBIE", coef: 0.0 };
+  if (!userStats) return { title: "NEWBIE", coef: 0 };
 
   const rawCoef = userStats.alcoholism_coefficient;
 
-  // Transform using exponential decay: Score = 100 * e^(-k * rawValue)
-  // k = 0.035 creates the distribution where:
-  // ~30% can hit 50+, ~10% can hit 70+, ~5% can hit 80+
-  const k = 0.035;
-  const transformedScore = 100 * Math.exp(-k * rawCoef);
+  // If rawCoef is 0 (new user with no drinking data), return initial state
+  if (rawCoef === 0) return { title: "THE SOBER SOUL", coef: 0 };
 
-  // Normalize to 0-1 range for coef display
-  const coef = Math.max(0, Math.min(1, transformedScore / 100));
+  // Transform using inverse exponential: Score = 100 * (1 - e^(-k * rawValue))
+  // This way: low rawCoef = low score, high rawCoef = high score
+  // k = 0.1 controls growth rate (adjust this based on your rawCoef scale)
+  const k = 0.05;
+  const transformedScore = 100 * (1 - Math.exp(-k * rawCoef));
+
+  // Normalize to 0-100 range for coef display (as integer)
+  const coef = Math.max(0, Math.min(100, Math.round(transformedScore)));
 
   // Calculate title index based on score (0-100 scale)
-  // Map 100-0 to titles 0-9 (higher score = higher title index)
-  const titleIndex = Math.min(Math.floor(coef * 10), 9);
+  // Map 0-100 to titles 0-9 (lower score = lower title index)
+  const titleIndex = Math.min(Math.floor(coef / 10), 9);
 
   const titles = [
-    "THE VOID DRINKER", // 0-10 score (most common for high drinkers)
-    "THE LIQUOR SHADE", // 10-20 score
-    "THE WHISPERER OF WINE", // 20-30 score
-    "THE DROWNED IN SPIRITS", // 30-40 score
-    "THE FALLEN", // 40-50 score
-    "THE UNHINGED", // 50-60 score
-    "THE INTOXICATED", // 60-70 score
-    "THE TEMPTED", // 70-80 score
-    "THE FIRST SIP", // 80-90 score
-    "THE SOBER SOUL", // 90-100 score (most common for low drinkers)
+    "THE SOBER SOUL", // 0-9 score (weak drinkers)
+    "THE FIRST SIP", // 10-19 score
+    "THE TEMPTED", // 20-29 score
+    "THE INTOXICATED", // 30-39 score
+    "THE UNHINGED", // 40-49 score
+    "THE FALLEN", // 50-59 score
+    "THE DROWNED IN SPIRITS", // 60-69 score
+    "THE WHISPERER OF WINE", // 70-79 score
+    "THE LIQUOR SHADE", // 80-89 score
+    "THE VOID DRINKER", // 90-100 score (strongest drinkers)
   ];
 
   return {

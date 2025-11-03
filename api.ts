@@ -152,10 +152,16 @@ class ApiService {
 
   async addDrinking(
     data: AddDrinkingRequest,
-    token: string
+    token: string,
+    date?: string
   ): Promise<{ message: string }> {
+  console.log("devbug for add drinking")
     console.log(data, token);
-    return this.makeRequest<{ message: string }>("/api/v1/user/drink", {
+    const url = date
+      ? `/api/v1/user/drink?date=${encodeURIComponent(date)}`
+      : `/api/v1/user/drink`;
+
+    return await this.makeRequest(url, {
       method: "POST",
       token,
       body: JSON.stringify(data),
