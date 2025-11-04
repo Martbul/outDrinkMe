@@ -33,7 +33,7 @@ jobs:
       - name: Setup EAS CLI
         run: npm install -g eas-cli
         
-     - name: Create .env.production file
+      - name: Create .env.production file
         run: |
           cat > .env << EOF
           EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY }}
