@@ -17,6 +17,7 @@ import {
   UserData,
   UpdateUserProfileReq,
   FriendDiscoveryDisplayProfileResponse,
+  YourMixPostData,
 } from "../types/api.types";
 import { apiService } from "@/api";
 import { Alert } from "react-native";
@@ -31,7 +32,9 @@ interface AppContextType {
   weeklyStats: DaysStat | null;
   friends: UserData[] | [];
   discovery: UserData[] | [];
+  yourMixData: YourMixPostData[] | [];
   friendDiscoveryProfile: FriendDiscoveryDisplayProfileResponse | null;
+  drunkThought: string | null;
 
   // Refresh Functions
   refreshUserData: () => Promise<void>;
@@ -42,16 +45,24 @@ interface AppContextType {
   refreshWeeklyStats: () => Promise<void>;
   refreshFriends: () => Promise<void>;
   refreshDiscovery: () => Promise<void>;
+  refreshYourMixData: () => Promise<void>;
+  refreshDrunkThought: () => Promise<void>;
   refreshAll: () => Promise<void>;
 
   // Actions
-  addDrinking: (drankToday: boolean) => Promise<void>;
+  addDrinking: (
+    drinkToday: boolean,
+    imageUri?: string | null,
+    locationText?: string,
+    mentionedBuddies?: UserData[] | []
+  ) => Promise<void>;
   addFriend: (friendId: string) => Promise<void>;
   searchUsers: (searchQuery: string) => Promise<UserData[]>;
   updateUserProfile: (updateReq: UpdateUserProfileReq) => Promise<any>;
   getFriendDiscoveryDisplayProfile: (friendDiscoveryId: string) => Promise<any>;
   deleteUserAccount: () => Promise<boolean>;
   removeFriend: (friendId: string) => Promise<void>;
+  addDrunkThought: (drunkThought: string) => Promise<void>;
 
   // Global State
   isLoading: boolean;
@@ -77,7 +88,10 @@ export function AppProvider({ children }: AppProviderProps) {
   const [weeklyStats, setWeeklyStats] = useState<DaysStat | null>(null);
   const [friends, setFriends] = useState<UserData[] | []>([]);
   const [discovery, setDiscovery] = useState<UserData[] | []>([]);
+  const [yourMixData, setYourMixData] = useState<YourMixPostData[] | []>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [drunkThought, setDrunkThought] = useState<string | null>(null);
+
   const [friendDiscoveryProfile, setFriendDiscoveryProfile] =
     useState<FriendDiscoveryDisplayProfileResponse | null>(null);
 
@@ -237,6 +251,32 @@ export function AppProvider({ children }: AppProviderProps) {
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
 
+  const refreshYourMixData = useCallback(async () => {
+    if (!isSignedIn) return;
+
+    await withLoadingAndError(
+      async () => {
+        const token = await getToken();
+        if (!token) throw new Error("No auth token");
+        return await apiService.getYourMixData(token);
+      },
+      (data) => setYourMixData(data)
+    );
+  }, [isSignedIn, getToken, withLoadingAndError]);
+
+  const refreshDrunkThought = useCallback(async () => {
+    if (!isSignedIn) return;
+
+    await withLoadingAndError(
+      async () => {
+        const token = await getToken();
+        if (!token) throw new Error("No auth token");
+        return await apiService.getDrunkThought(token);
+      },
+      (data) => setDrunkThought(data || null)
+    );
+  }, [isSignedIn, getToken, withLoadingAndError]);
+
   // ============================================
   // Refresh All - Using Parallel Execution
   // ============================================
@@ -259,7 +299,9 @@ export function AppProvider({ children }: AppProviderProps) {
         apiService.getCurrentMonthCalendar(token),
         apiService.getFriends(token),
         apiService.getDiscovery(token),
+        apiService.getYourMixData(token),
         apiService.getWeeklyStats(token),
+        apiService.getDrunkThought(token),
       ]);
 
       // Extract successful results and handle failures
@@ -271,7 +313,9 @@ export function AppProvider({ children }: AppProviderProps) {
         calResult,
         friendsResult,
         discoveryResult,
+        yourMixDataResult,
         weeklyResult,
+        drunkThoughtResult,
       ] = results;
 
       if (userResult.status === "fulfilled") {
@@ -319,10 +363,27 @@ export function AppProvider({ children }: AppProviderProps) {
         setDiscovery([]);
       }
 
+      if (yourMixDataResult.status === "fulfilled") {
+        setYourMixData(yourMixDataResult.value);
+      } else {
+        console.error("Failed to your-mix data:", yourMixDataResult.reason);
+        setYourMixData([]);
+      }
+
       if (weeklyResult.status === "fulfilled") {
         setWeeklyStats(weeklyResult.value);
       } else {
         console.error("Failed to fetch weekly stats:", weeklyResult.reason);
+      }
+
+      if (drunkThoughtResult.status === "fulfilled") {
+        setDrunkThought(drunkThoughtResult.value);
+      } else {
+        setDrunkThought(null);
+        console.error(
+          "Failed to fetch drunk thought:",
+          drunkThoughtResult.reason
+        );
       }
 
       // Collect any errors
@@ -347,7 +408,12 @@ export function AppProvider({ children }: AppProviderProps) {
   // ============================================
 
   const addDrinking = useCallback(
-    async (drankToday: boolean) => {
+    async (
+      drinkToday: boolean,
+      imageUri?: string | null,
+      locationText?: string,
+      mentionedBuddies?: UserData[] | []
+    ) => {
       if (!isSignedIn) {
         throw new Error("Must be signed in to log drinking");
       }
@@ -356,7 +422,15 @@ export function AppProvider({ children }: AppProviderProps) {
         const token = await getToken();
         if (!token) throw new Error("No auth token");
 
-        await apiService.addDrinking({ drank_today: drankToday }, token);
+        await apiService.addDrinking(
+          {
+            drank_today: drinkToday,
+            image_url: imageUri,
+            location_text: locationText,
+            mentioned_buddies: mentionedBuddies,
+          },
+          token
+        );
 
         // Refresh relevant data after logging
         const [stats, board, cal, weekly] = await Promise.all([
@@ -374,6 +448,31 @@ export function AppProvider({ children }: AppProviderProps) {
         setLeaderboard(result.board);
         setCalendar(result.cal);
         setWeeklyStats(result.weekly);
+      }
+    },
+    [isSignedIn, getToken, withLoadingAndError]
+  );
+
+  const addDrunkThought = useCallback(
+    async (drunkThought: string) => {
+      if (!isSignedIn) {
+        throw new Error("Must be signed in to log drinking");
+      }
+
+      const result = await withLoadingAndError(async () => {
+        const token = await getToken();
+        if (!token) throw new Error("No auth token");
+
+        const newDrunkThought = await apiService.addDrunkThought(
+          drunkThought,
+          token
+        );
+
+        return newDrunkThought;
+      });
+
+      if (result) {
+        setDrunkThought(result.drunk_thought);
       }
     },
     [isSignedIn, getToken, withLoadingAndError]
@@ -548,12 +647,6 @@ export function AppProvider({ children }: AppProviderProps) {
     if (isSignedIn && !hasInitialized.current) {
       hasInitialized.current = true;
       refreshAll();
-
-      // MobileAds()
-      //   .initialize()
-      //   .then((adapterStatuses) => {
-      //     // Initialization complete!
-      //   });
     }
 
     // Reset initialization flag when user signs out
@@ -583,7 +676,9 @@ export function AppProvider({ children }: AppProviderProps) {
     weeklyStats,
     friends,
     discovery,
+    yourMixData,
     friendDiscoveryProfile,
+    drunkThought,
 
     // Refresh Functions
     refreshUserData,
@@ -594,6 +689,8 @@ export function AppProvider({ children }: AppProviderProps) {
     refreshWeeklyStats,
     refreshFriends,
     refreshDiscovery,
+    refreshYourMixData,
+    refreshDrunkThought,
     refreshAll,
 
     // Actions
@@ -604,6 +701,7 @@ export function AppProvider({ children }: AppProviderProps) {
     updateUserProfile,
     getFriendDiscoveryDisplayProfile,
     deleteUserAccount,
+    addDrunkThought,
 
     // Global State
     isLoading,

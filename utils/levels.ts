@@ -134,28 +134,41 @@ export function getExampleLevelTable(maxLevel: number = 20): void {
 export const getCoefInfo = (
   userStats: UserStats | null
 ): { title: string; coef: number } => {
-  if (!userStats) return { title: "NEWBIE", coef: 0.0 };
+  if (!userStats) return { title: "NEWBIE", coef: 0 };
 
-  // Clamp coefficient between 0 and 1
-  const coef = Math.max(0, Math.min(1, userStats.alcoholism_coefficient));
+  const rawCoef = userStats.alcoholism_coefficient;
 
-  const coefTitleCalc = Math.min(Math.floor(coef * 0.75 * 10) + 1, 10);
+  // If rawCoef is 0 (new user with no drinking data), return initial state
+  if (rawCoef === 0) return { title: "THE SOBER SOUL", coef: 0 };
+
+  // Transform using inverse exponential: Score = 100 * (1 - e^(-k * rawValue))
+  // This way: low rawCoef = low score, high rawCoef = high score
+  // k = 0.1 controls growth rate (adjust this based on your rawCoef scale)
+  const k = 0.05;
+  const transformedScore = 100 * (1 - Math.exp(-k * rawCoef));
+
+  // Normalize to 0-100 range for coef display (as integer)
+  const coef = Math.max(0, Math.min(100, Math.round(transformedScore)));
+
+  // Calculate title index based on score (0-100 scale)
+  // Map 0-100 to titles 0-9 (lower score = lower title index)
+  const titleIndex = Math.min(Math.floor(coef / 10), 9);
 
   const titles = [
-    "THE SOBER SOUL",
-    "THE FIRST SIP",
-    "THE TEMPTED",
-    "THE INTOXICATED",
-    "THE UNHINGED",
-    "THE FALLEN",
-    "THE DROWNED IN SPIRITS",
-    "THE WHISPERER OF WINE",
-    "THE LIQUOR SHADE",
-    "THE VOID DRINKER",
+    "THE SOBER SOUL", // 0-9 score (weak drinkers)
+    "THE FIRST SIP", // 10-19 score
+    "THE TEMPTED", // 20-29 score
+    "THE INTOXICATED", // 30-39 score
+    "THE UNHINGED", // 40-49 score
+    "THE FALLEN", // 50-59 score
+    "THE DROWNED IN SPIRITS", // 60-69 score
+    "THE WHISPERER OF WINE", // 70-79 score
+    "THE LIQUOR SHADE", // 80-89 score
+    "THE VOID DRINKER", // 90-100 score (strongest drinkers)
   ];
 
   return {
-    title: titles[coefTitleCalc - 1] || "NEWBIE",
+    title: titles[titleIndex] || "NEWBIE",
     coef: coef,
   };
 };

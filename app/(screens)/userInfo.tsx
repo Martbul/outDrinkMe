@@ -24,7 +24,6 @@ const ACHIEVEMENT_IMAGES = {
 
 const UserInfoScreen = () => {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
   const { userId: rawUserId } = useLocalSearchParams();
   const {
     userData,

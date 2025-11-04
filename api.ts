@@ -2,6 +2,7 @@ import {
   Achievement,
   AddDrinkingRequest,
   CalendarResponse,
+  DailyDrinkingPostResponse,
   DaysStat,
   FriendDiscoveryDisplayProfileResponse,
   Friendship,
@@ -10,6 +11,7 @@ import {
   UpdateUserProfileReq,
   UserData,
   UserStats,
+  YourMixPostData,
 } from "./types/api.types";
 
 class ApiService {
@@ -150,10 +152,16 @@ class ApiService {
 
   async addDrinking(
     data: AddDrinkingRequest,
-    token: string
+    token: string,
+    date?: string
   ): Promise<{ message: string }> {
+  console.log("devbug for add drinking")
     console.log(data, token);
-    return this.makeRequest<{ message: string }>("/api/v1/user/drink", {
+    const url = date
+      ? `/api/v1/user/drink?date=${encodeURIComponent(date)}`
+      : `/api/v1/user/drink`;
+
+    return await this.makeRequest(url, {
       method: "POST",
       token,
       body: JSON.stringify(data),
@@ -248,11 +256,69 @@ class ApiService {
     return response || [];
   }
 
+  async getYourMixData(token: string): Promise<YourMixPostData[]> {
+    try {
+      const response = await this.makeRequest<DailyDrinkingPostResponse[]>(
+        "/api/v1/user/your-mix",
+        {
+          method: "GET",
+          token,
+        }
+      );
+
+      // Transform PascalCase to camelCase
+      const transformed = response.map((post) => ({
+        id: post.ID,
+        userId: post.UserID,
+        userImageUrl: post.UserImageURL,
+        date: post.Date,
+        drankToday: post.DrankToday,
+        loggedAt: post.LoggedAt,
+        imageUrl: post.ImageURL,
+        locationText: post.LocationText,
+        mentionedBuddies: post.MentionedBuddies || [],
+        sourceType: post.SourceType,
+      }));
+
+      console.log("Your Mix data:", transformed);
+      return transformed;
+    } catch (error) {
+      console.error("Failed to fetch Your Mix:", error);
+      return [];
+    }
+  }
+
   async addFriend(friendId: string, token: string): Promise<Friendship> {
     return this.makeRequest<Friendship>("/api/v1/user/friends", {
       method: "POST",
       token,
       body: JSON.stringify({ friendId: friendId }),
+    });
+  }
+
+  async getDrunkThought(token: string, date?: string): Promise<string | null> {
+    // Add date query param only if provided
+    const url = date
+      ? `/api/v1/user/drunk-thought?date=${encodeURIComponent(date)}`
+      : `/api/v1/user/drunk-thought`;
+
+    const response = await this.makeRequest(url, {
+      method: "GET",
+      token,
+    });
+
+    // Backend returns { drunk_thought: string | null }
+    return response?.drunk_thought ?? null;
+  }
+
+  async addDrunkThought(
+    drunkThought: string,
+    token: string
+  ): Promise<{ message: string; drunk_thought: string }> {
+    return this.makeRequest("/api/v1/user/drunk-thought", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ drunk_thought: drunkThought }),
     });
   }
 

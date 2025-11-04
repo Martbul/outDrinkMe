@@ -38,7 +38,6 @@ export default function HomeScreen() {
   return (
     <View className="flex-1 bg-black">
       <Header />
-
       <ScrollView
         className="flex-1"
         contentContainerStyle={{
@@ -51,7 +50,7 @@ export default function HomeScreen() {
         <View className="items-center mb-6">
           <View className="relative w-[120px] h-[120px] rounded-full bg-orange-600/15 border-4 border-orange-600 justify-center items-center mb-3">
             <Text className="text-orange-600 text-5xl font-black">
-              {coefInfo.coef?.toFixed(2)}
+              {coefInfo.coef}
             </Text>
 
             <TouchableOpacity
@@ -99,6 +98,7 @@ export default function HomeScreen() {
         </View>
 
         <ThisWeekGadget />
+        {/* <BannerAd unitId={TestIds.BANNER} size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER} requestOptions={{requestNonPersonalizedAdsOnly:true, networkExtras:{collapsible:"bottom"}}} /> */}
 
         <View className="flex-row gap-3 mb-4">
           <View className="flex-1 bg-white/[0.03] rounded-xl p-4 border border-white/[0.08]">

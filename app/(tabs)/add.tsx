@@ -10,6 +10,7 @@ import {
   Image,
   ActivityIndicator,
   FlatList,
+  TextInput,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -17,13 +18,19 @@ import { useApp } from "@/providers/AppProvider";
 import Entypo from "@expo/vector-icons/Entypo";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import * as Location from "expo-location";
-import { UserData } from "@/types/api.types";
+import type { UserData } from "@/types/api.types";
 
 export default function AddDrinksScreenV3() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { userStats, friends, isLoading, addDrinking } = useApp();
+  const {
+    userStats,
+    friends,
+    isLoading,
+    addDrinking,
+    drunkThought,
+    addDrunkThought,
+  } = useApp();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0);
   const [isHolding, setIsHolding] = useState(false);
@@ -32,20 +39,33 @@ export default function AddDrinksScreenV3() {
   );
   const [isAfterDrinkLoggedModalVisible, setAfterDrinkLoggedModal] =
     useState(false);
+  const [thoughtInput, setThoughtInput] = useState("");
+  const [isSubmittingDrtunkThought, setIsSubmittingDrunkThought] =
+    useState(false);
 
   const hasCompletedRef = useRef(false);
-
-  // Check if user has already logged today
   const alreadyLogged = userStats?.today_status || false;
-  const levelInfoDescr = "You are big drinker";
 
-  const handleUpload = async () => {
+  // Sync thoughtInput with drunkThought from context
+  useEffect(() => {
+    if (drunkThought) {
+      setThoughtInput(drunkThought);
+    }
+  }, [drunkThought]);
+
+
+
+  const handleUpload = async (
+    drinkToday: boolean,
+    imageUri?: string | null,
+    locationText?: string,
+    mentionedBuddies?: UserData[] | []
+  ) => {
     if (isSubmitting) return;
 
     setIsSubmitting(true);
     try {
-      //TODO! Add data not only true value
-      await addDrinking(true);
+      await addDrinking(drinkToday, imageUri, locationText, mentionedBuddies);
     } catch (error) {
       Alert.alert("Error", "Failed to log. Please try again.");
     } finally {
@@ -90,6 +110,20 @@ export default function AddDrinksScreenV3() {
   const potentialStreak = (userStats?.current_streak || 0) + 1;
 
   if (alreadyLogged) {
+    const handleSubmitThought = async () => {
+      if (!thoughtInput.trim()) return;
+
+      setIsSubmittingDrunkThought(true);
+      try {
+        await addDrunkThought(thoughtInput.trim());
+      } catch (error) {
+        console.error("Failed to submit drunk thought:", error);
+        Alert.alert("Error", "Failed to save your thought. Try again!");
+      } finally {
+        setIsSubmittingDrunkThought(false);
+      }
+    };
+
     return (
       <View
         className="flex-1 bg-black px-4 justify-center"
@@ -108,7 +142,7 @@ export default function AddDrinksScreenV3() {
           </Text>
           <Text className="text-white/50 text-base text-center font-semibold">
             You are my alcoholic pride!{"\n"}Drink again tomorrow and keep your
-            steak!
+            streak!
           </Text>
         </View>
 
@@ -124,14 +158,48 @@ export default function AddDrinksScreenV3() {
           </View>
         </View>
 
-        <TouchableOpacity
-          onPress={() => router.push("/(tabs)/home")}
-          className="bg-orange-600 rounded-2xl py-5"
-        >
-          <Text className="text-black text-base font-black text-center tracking-widest uppercase">
-            Back to Home
-          </Text>
-        </TouchableOpacity>
+        {drunkThought ? (
+          <View className="bg-white/[0.03] rounded-2xl p-6 mb-6 border border-white/[0.08]">
+            <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-3">
+              TODAY&apos;S DRUNK THOUGHT
+            </Text>
+            <Text className="text-orange-600 text-2xl  font-bold leading-relaxed">
+              {drunkThought}
+            </Text>
+          </View>
+        ) : (
+          // Show input for new thought
+          <View className="mb-6">
+            <Text className="text-white/70 text-sm font-bold mb-3 text-center">
+              Share your drunk thought of the day
+            </Text>
+            <TextInput
+              value={thoughtInput}
+              onChangeText={setThoughtInput}
+              placeholder="What's on your mind?"
+              placeholderTextColor="#ffffff40"
+              multiline
+              numberOfLines={3}
+              maxLength={280}
+              className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-4 text-white text-base mb-4"
+              style={{ textAlignVertical: "top", minHeight: 100 }}
+              editable={!isSubmittingDrtunkThought}
+            />
+            <TouchableOpacity
+              onPress={handleSubmitThought}
+              disabled={!thoughtInput.trim() || isSubmittingDrtunkThought}
+              className={`rounded-2xl py-5 ${
+                !thoughtInput.trim() || isSubmittingDrtunkThought
+                  ? "bg-orange-600/30"
+                  : "bg-orange-600"
+              }`}
+            >
+              <Text className="text-black text-base font-black text-center tracking-widest uppercase">
+                {isSubmittingDrtunkThought ? "Saving..." : "Share Thought"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     );
   }
@@ -228,9 +296,15 @@ interface InfoTooltipProps {
   friends: UserData[];
   visible: boolean;
   isLoading: boolean;
-  handleUpload: () => Promise<void>;
+  handleUpload: (
+    drinkToday: boolean,
+    imageUri?: string | null,
+    locationText?: string,
+    mentionedBuddies?: UserData[] | []
+  ) => Promise<void>;
   onClose: () => void;
 }
+
 
 function AdditionalInfoModal({
   friends,
@@ -245,6 +319,7 @@ function AdditionalInfoModal({
   const [mentionedBuddies, setMentionedBuddies] = useState<UserData[] | []>([]);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [isFriendsListVisible, setFriendsListVisible] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -268,10 +343,8 @@ function AdditionalInfoModal({
       const isAlreadySelected = prev.some((f) => f.id === friend.id);
 
       if (isAlreadySelected) {
-        // Remove from selection
         return prev.filter((f) => f.id !== friend.id);
       } else {
-        // Add to selection
         return [...prev, friend];
       }
     });
@@ -281,9 +354,75 @@ function AdditionalInfoModal({
     return mentionedBuddies.some((f) => f.id === friendId);
   };
 
+  // Upload to Cloudinary using REST API
+  const uploadToCloudinary = async (
+    localUri: string
+  ): Promise<string | null> => {
+    try {
+      setIsUploadingImage(true);
+
+      // Your Cloudinary credentials
+      const CLOUDINARY_CLOUD_NAME =
+        process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
+      const CLOUDINARY_UPLOAD_PRESET =
+        process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+
+      // Validate credentials
+      if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+        throw new Error(
+          "Cloudinary credentials are not configured. Please check your .env file."
+        );
+      }
+
+      // Create form data
+      const formData = new FormData();
+
+      // Append the file
+      formData.append("file", {
+        uri: localUri,
+        type: "image/jpeg",
+        name: `drank_${Date.now()}.jpg`,
+      } as any);
+
+      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+      // Optional: Add folder organization
+      formData.append("folder", "drank-images");
+
+      // Upload to Cloudinary
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: "POST",
+          body: formData,
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.secure_url) {
+        console.log("Upload successful:", data.secure_url);
+        return data.secure_url; // This is your public URL to save in DB
+      }
+
+      throw new Error(data.error?.message || "Upload failed");
+    } catch (error) {
+      console.error("Cloudinary upload error:", error);
+      Alert.alert(
+        "Upload Error",
+        "Failed to upload image to Cloudinary. Please try again."
+      );
+      return null;
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
   const handleImageUpload = async () => {
     try {
-      // Request permission
       const { status } =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
 
@@ -295,16 +434,27 @@ function AdditionalInfoModal({
         return;
       }
 
-      // Launch image picker
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [4, 3],
-        quality: 0.8,
+        quality: 1,
       });
 
       if (!result.canceled && result.assets[0]) {
-        setImageUri(result.assets[0].uri);
+        const localUri = result.assets[0].uri;
+        setImageUri(localUri); // Show preview immediately with local URI
+
+        // Upload to Cloudinary in background
+        const cloudinaryUrl = await uploadToCloudinary(localUri);
+
+        if (cloudinaryUrl) {
+          // Update with the Cloudinary URL (this is what will be saved to DB)
+          setImageUri(cloudinaryUrl);
+        } else {
+          // If upload failed, clear the image
+          setImageUri(null);
+        }
       }
     } catch (error) {
       Alert.alert("Error", "Failed to pick image");
@@ -312,62 +462,75 @@ function AdditionalInfoModal({
     }
   };
 
-  const handleLocationSelect = async () => {
-    try {
-      setIsLoadingLocation(true);
+  // const handleLocationSelect = async () => {
+  //   try {
+  //     setIsLoadingLocation(true);
 
-      // Request permission
-      const { status } = await Location.requestForegroundPermissionsAsync();
+  //     const { status } = await Location.requestForegroundPermissionsAsync();
 
-      if (status !== "granted") {
-        Alert.alert(
-          "Permission needed",
-          "Please grant permission to access your location"
-        );
-        setIsLoadingLocation(false);
-        return;
-      }
+  //     if (status !== "granted") {
+  //       Alert.alert(
+  //         "Permission needed",
+  //         "Please grant permission to access your location"
+  //       );
+  //       setIsLoadingLocation(false);
+  //       return;
+  //     }
 
-      // Get current location
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
+  //     const location = await Location.getCurrentPositionAsync({
+  //       accuracy: Location.Accuracy.Balanced,
+  //     });
 
-      // Reverse geocode to get address
-      const [address] = await Location.reverseGeocodeAsync({
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      });
+  //     const [address] = await Location.reverseGeocodeAsync({
+  //       latitude: location.coords.latitude,
+  //       longitude: location.coords.longitude,
+  //     });
 
-      if (address) {
-        const formattedLocation = [
-          address.street,
-          address.city,
-          address.region,
-          address.country,
-        ]
-          .filter(Boolean)
-          .join(", ");
+  //     if (address) {
+  //       const formattedLocation = [
+  //         address.street,
+  //         address.city,
+  //         address.region,
+  //         address.country,
+  //       ]
+  //         .filter(Boolean)
+  //         .join(", ");
 
-        setLocationText(formattedLocation || "Location selected");
-      } else {
-        setLocationText(
-          `${location.coords.latitude.toFixed(4)}, ${location.coords.longitude.toFixed(4)}`
-        );
-      }
-    } catch (error) {
-      Alert.alert("Error", "Failed to get location");
-      console.error(error);
-    } finally {
-      setIsLoadingLocation(false);
-    }
-  };
+  //       setLocationText(formattedLocation || "Location selected");
+  //     } else {
+  //       setLocationText(
+  //         `${location.coords.latitude.toFixed(4)}, ${location.coords.longitude.toFixed(4)}`
+  //       );
+  //     }
+  //   } catch (error) {
+  //     Alert.alert("Error", "Failed to get location");
+  //     console.error(error);
+  //   } finally {
+  //     setIsLoadingLocation(false);
+  //   }
+  // };
 
-  const handleSkip = () => {
-    // Reset state and close
+  const handleSkip = async () => {
     setImageUri(null);
     setLocationText("");
+    setMentionedBuddies([]);
+    await handleUpload(true)
     onClose();
+  };
+
+  const handleDone = async () => {
+    if (isUploadingImage) {
+      Alert.alert("Please wait", "Image is still uploading...");
+      return;
+    }
+
+    // imageUri now contains the Cloudinary public URL
+    await handleUpload(true, imageUri, locationText, mentionedBuddies);
+
+    // Reset state after successful upload
+    setImageUri(null);
+    setLocationText("");
+    setMentionedBuddies([]);
   };
 
   const renderEmptyFriendComponent = () => {
@@ -392,7 +555,7 @@ function AdditionalInfoModal({
             No Friends Yet
           </Text>
           <Text className="text-white/50 text-sm text-center font-semibold px-4">
-            Who's the one who can bring you back to drinking?
+            Whos the one who can bring you back to drinking?
           </Text>
         </View>
       );
@@ -475,11 +638,20 @@ function AdditionalInfoModal({
         >
           <Pressable>
             <View className="bg-[#1a1a1a] rounded-2xl p-4 border-2 border-orange-600/30 shadow-2xl w-80">
+              {/* Image Upload Area with Loading Spinner */}
               <TouchableOpacity
                 onPress={handleImageUpload}
+                disabled={isUploadingImage}
                 className="bg-[#2a2a2a] border-2 border-dashed border-orange-600/40 rounded-xl h-40 items-center justify-center mb-4 overflow-hidden"
               >
-                {imageUri ? (
+                {isUploadingImage ? (
+                  <View className="items-center">
+                    <ActivityIndicator size="large" color="#ff8c00" />
+                    <Text className="text-white/70 text-sm mt-2 font-semibold">
+                      Uploading to Cloudinary...
+                    </Text>
+                  </View>
+                ) : imageUri ? (
                   <Image
                     source={{ uri: imageUri }}
                     className="w-full h-full"
@@ -508,7 +680,7 @@ function AdditionalInfoModal({
                   </Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity
+                {/* <TouchableOpacity
                   onPress={handleLocationSelect}
                   disabled={isLoadingLocation}
                   className="flex-1 bg-orange-600/20 border-2 border-orange-600/40 rounded-xl py-3 px-2 flex-row items-center justify-center"
@@ -523,10 +695,9 @@ function AdditionalInfoModal({
                       </Text>
                     </>
                   )}
-                </TouchableOpacity>
+                </TouchableOpacity> */}
               </View>
 
-              {/* Location Display */}
               {locationText ? (
                 <View className="bg-[#2a2a2a] rounded-xl p-3 mb-3 border border-orange-600/20">
                   <View className="flex-row items-start">
@@ -552,13 +723,26 @@ function AdditionalInfoModal({
 
               {(imageUri || locationText || mentionedBuddies.length > 0) && (
                 <TouchableOpacity
-                  onPress={handleUpload(true, imageUri, mentionedBuddies)}
-                  className="bg-orange-600/20 border-2 border-orange-600/40 rounded-xl py-3 px-4 flex-row items-center justify-center mb-2"
+                  onPress={handleDone}
+                  disabled={isUploadingImage}
+                  className={`bg-orange-600/20 border-2 border-orange-600/40 rounded-xl py-3 px-4 flex-row items-center justify-center mb-2 ${
+                    isUploadingImage ? "opacity-50" : ""
+                  }`}
                 >
-                  <Ionicons name="checkmark-circle" size={20} color="#ff8c00" />
-                  <Text className="text-orange-500 font-semibold ml-2">
-                    Done
-                  </Text>
+                  {isUploadingImage ? (
+                    <ActivityIndicator size="small" color="#ff8c00" />
+                  ) : (
+                    <>
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={20}
+                        color="#ff8c00"
+                      />
+                      <Text className="text-orange-500 font-semibold ml-2">
+                        Done
+                      </Text>
+                    </>
+                  )}
                 </TouchableOpacity>
               )}
 
