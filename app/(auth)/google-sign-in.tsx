@@ -23,32 +23,30 @@ export default function SignInScreen() {
 
   const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
 
-  const onGoogleSignIn = React.useCallback(async () => {
-    if (isLoading) return;
 
-      try {
-        setIsLoading(true);
+   const onGoogleSignIn = React.useCallback(async () => {
+     if (isLoading) return;
 
-        const { createdSessionId, setActive } = await startOAuthFlow({
-          redirectUrl: Linking.createURL("/(tabs)/add", {
-            scheme: "outdrinkme",
-          }),
-        });
+     try {
+       setIsLoading(true);
 
-        if (createdSessionId) {
-          await setActive!({ session: createdSessionId });
-          router.replace("/(tabs)/add");
-        }
-      } catch (err: any) {
-        console.error("OAuth error:", err);
-        Alert.alert(
-          "Sign In Error",
-          err.errors?.[0]?.message || "Failed to sign in with Google"
-        );
-      } finally {
-        setIsLoading(false);
-      }
-  }, [isLoading, startOAuthFlow, router]);
+       // Let Clerk handle the redirect automatically
+       const { createdSessionId, setActive } = await startOAuthFlow();
+
+       if (createdSessionId) {
+         await setActive!({ session: createdSessionId });
+         router.replace("/(tabs)/add");
+       }
+     } catch (err: any) {
+       console.error("OAuth error:", err);
+       Alert.alert(
+         "Sign In Error",
+         err.errors?.[0]?.message || "Failed to sign in with Google"
+       );
+     } finally {
+       setIsLoading(false);
+     }
+   }, [isLoading, startOAuthFlow, router]);
 
   return (
     <View
