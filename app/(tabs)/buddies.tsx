@@ -34,7 +34,7 @@ const FriendsScreen = () => {
 
   const [searchQueryFriend, setSearchQueryFriend] = useState("");
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("friends");
+  const [activeTab, setActiveTab] = useState("yourmix");
   const insets = useSafeAreaInsets();
 
   const filteredFriends = useMemo(() => {
@@ -55,22 +55,8 @@ const FriendsScreen = () => {
 
   const TabSelection = () => {
     return (
-      <View className="px-4 pt-6 pb-4">
+      <View className="px-4 pt-1 pb-4">
         <View className="bg-white/[0.03] rounded-2xl p-1.5 flex-row border border-white/[0.08]">
-          <TouchableOpacity
-            className={`flex-1 py-3 rounded-xl items-center ${
-              activeTab === "yourmix" ? "bg-orange-600" : ""
-            }`}
-            onPress={() => setActiveTab("yourmix")}
-          >
-            <Text
-              className={`text-sm font-black tracking-wider ${
-                activeTab === "yourmix" ? "text-white" : "text-white/30"
-              }`}
-            >
-              YOUR MIX
-            </Text>
-          </TouchableOpacity>
           <TouchableOpacity
             className={`flex-1 py-3 rounded-xl items-center ${
               activeTab === "friends" ? "bg-orange-600" : ""
@@ -85,7 +71,20 @@ const FriendsScreen = () => {
               BUDDIES
             </Text>
           </TouchableOpacity>
-
+          <TouchableOpacity
+            className={`flex-1 py-3 rounded-xl items-center ${
+              activeTab === "yourmix" ? "bg-orange-600" : ""
+            }`}
+            onPress={() => setActiveTab("yourmix")}
+          >
+            <Text
+              className={`text-sm font-black tracking-wider ${
+                activeTab === "yourmix" ? "text-white" : "text-white/30"
+              }`}
+            >
+              YOUR MIX
+            </Text>
+          </TouchableOpacity>
           <TouchableOpacity
             className={`flex-1 py-3 rounded-xl items-center ${
               activeTab === "discovery" ? "bg-orange-600" : ""
@@ -104,198 +103,160 @@ const FriendsScreen = () => {
       </View>
     );
   };
-const YourMixCard = ({ item }: { item: YourMixPostData }) => {
-  const [flipState, setFlipState] = useState(0); // 0: image, 1: buddies, 2: map
-  const rotateAnim = useRef(new Animated.Value(0)).current;
-  const [isAnimating, setIsAnimating] = useState(false);
-  const [rotationCount, setRotationCount] = useState(0);
+  const YourMixCard = ({ item }: { item: YourMixPostData }) => {
+    const [flipState, setFlipState] = useState(0); // 0: image, 1: buddies, 2: map
+    const rotateAnim = useRef(new Animated.Value(0)).current;
+    const [isAnimating, setIsAnimating] = useState(false);
+    const [rotationCount, setRotationCount] = useState(0);
 
-  const hasBuddies = item.mentionedBuddies && item.mentionedBuddies.length > 0;
-  const hasLocation = !!item.locationText;
+    const hasBuddies =
+      item.mentionedBuddies && item.mentionedBuddies.length > 0;
+    const hasLocation = !!item.locationText;
 
-  const handlePress = () => {
-    if (isAnimating) return;
+    const handlePress = () => {
+      if (isAnimating) return;
 
-    setIsAnimating(true);
+      setIsAnimating(true);
 
-    const calculateNextState = (current: number) => {
-      if (current === 0) {
-        return hasBuddies ? 1 : hasLocation ? 2 : 0;
-      } else if (current === 1) {
-        return hasLocation ? 2 : 0;
-      } else {
-        return 0;
-      }
-    };
+      const calculateNextState = (current: number) => {
+        if (current === 0) {
+          return hasBuddies ? 1 : hasLocation ? 2 : 0;
+        } else if (current === 1) {
+          return hasLocation ? 2 : 0;
+        } else {
+          return 0;
+        }
+      };
 
-    const newState = calculateNextState(flipState);
-    const nextRotation = rotationCount + 1;
+      const newState = calculateNextState(flipState);
+      const nextRotation = rotationCount + 1;
 
-    // First half: rotate to edge (fast start, ease out)
-    Animated.timing(rotateAnim, {
-      toValue: nextRotation + 0.5,
-      duration: 250,
-      easing: Easing.out(Easing.quad),
-      useNativeDriver: true,
-    }).start(() => {
-      setFlipState(newState);
-
-      // Second half: complete the flip (fast start, ease out)
+      // First half: rotate to edge (fast start, ease out)
       Animated.timing(rotateAnim, {
-        toValue: nextRotation + 1,
+        toValue: nextRotation + 0.5,
         duration: 250,
         easing: Easing.out(Easing.quad),
         useNativeDriver: true,
       }).start(() => {
-        setRotationCount(nextRotation + 1);
-        setIsAnimating(false);
+        setFlipState(newState);
+
+        // Second half: complete the flip (fast start, ease out)
+        Animated.timing(rotateAnim, {
+          toValue: nextRotation + 1,
+          duration: 250,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }).start(() => {
+          setRotationCount(nextRotation + 1);
+          setIsAnimating(false);
+        });
       });
+    };
+
+    const rotateInterpolate = rotateAnim.interpolate({
+      inputRange: [0, 1, 2, 3, 4],
+      outputRange: ["0deg", "180deg", "360deg", "540deg", "720deg"],
     });
-  };
 
-  const rotateInterpolate = rotateAnim.interpolate({
-    inputRange: [0, 1, 2, 3, 4],
-    outputRange: ["0deg", "180deg", "360deg", "540deg", "720deg"],
-  });
+    const animatedStyle = {
+      transform: [{ rotateY: rotateInterpolate }],
+    };
 
-  const animatedStyle = {
-    transform: [{ rotateY: rotateInterpolate }],
-  };
+    const renderContent = () => {
+      if (flipState === 0) {
+        // State 0: Image with overlay text
+        return (
+          <>
+            <Image
+              source={{ uri: item.imageUrl }}
+              className="w-full h-full"
+              resizeMode="cover"
+            />
+            {/* Gradient overlay */}
+            <View className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
 
-  const renderContent = () => {
-    if (flipState === 0) {
-      // State 0: Image with overlay text
-      return (
-        <>
-          <Image
-            source={{ uri: item.imageUrl }}
-            className="w-full h-full"
-            resizeMode="cover"
-          />
-          {/* Gradient overlay */}
-          <View className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-
-          {/* Date badge - top right */}
-          <View className="absolute top-3 right-3">
-            <View className="bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/[0.08]">
-              <Text className="text-orange-600 text-xs font-bold tracking-wide">
-                {new Date(item.date).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-              </Text>
-            </View>
-          </View>
-
-          {/* User avatar - top left */}
-          <TouchableOpacity
-            className="absolute top-3 left-3"
-            onPress={() =>
-              router.push(`/(screens)/userInfo?userId=${item.userId}`)
-            }
-          >
-            {item.userImageUrl && (
-              <View className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-sm border-2 border-white/[0.15] overflow-hidden">
-                <Image
-                  source={{ uri: item.userImageUrl }}
-                  className="w-full h-full"
-                  resizeMode="cover"
-                />
-              </View>
-            )}
-          </TouchableOpacity>
-
-        </>
-      );
-    } else if (flipState === 1) {
-      // State 1: Mentioned buddies
-      return (
-        <View className="w-full h-full bg-black items-center justify-center p-6">
-          {/* Header */}
-          <View className="items-center mb-5">
-            <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-2">
-              DRINKING BUDDIES
-            </Text>
-            <View className="flex-row items-center gap-2">
-              <Text className="text-orange-600 text-2xl font-black">
-                {item.mentionedBuddies.length}
-              </Text>
-            </View>
-          </View>
-
-          {/* Buddies grid */}
-          <View className="flex-row flex-wrap gap-4 justify-center mb-5">
-            {item.mentionedBuddies.map((buddy, index) => (
-              <View
-                key={buddy.id || index}
-                className="items-center"
-                style={{ width: 75 }}
-              >
-                <TouchableOpacity
-                  className="w-16 h-16 rounded-full bg-orange-600/20 border-2 border-orange-600/40 items-center justify-center mb-2 overflow-hidden"
-                >
-                  {buddy.imageUrl ? (
-                    <Image
-                      source={{ uri: buddy.imageUrl }}
-                      className="w-full h-full"
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <Text className="text-orange-600 text-2xl font-black">
-                      {buddy.firstName?.charAt(0).toUpperCase() ||
-                        buddy.username?.charAt(0).toUpperCase() ||
-                        "?"}
-                    </Text>
-                  )}
-                </TouchableOpacity>
-                <Text
-                  className="text-white text-xs text-center font-semibold"
-                  numberOfLines={2}
-                  ellipsizeMode="tail"
-                >
-                  {buddy.firstName && buddy.lastName
-                    ? `${buddy.firstName} ${buddy.lastName}`
-                    : buddy.username || "Unknown"}
+            {/* Date badge - top right */}
+            <View className="absolute top-3 right-3">
+              <View className="bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/[0.08]">
+                <Text className="text-orange-600 text-xs font-bold tracking-wide">
+                  {new Date(item.date).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
                 </Text>
               </View>
-            ))}
-          </View>
+            </View>
 
-          {/* Timestamp */}
-          <View className="pt-4 border-t border-white/[0.05]">
-            <Text className="text-white/40 text-xs text-center font-semibold">
-              {new Date(item.loggedAt).toLocaleString("en-US", {
-                month: "short",
-                day: "numeric",
-                hour: "numeric",
-                minute: "2-digit",
-              })}
-            </Text>
-          </View>
-        </View>
-      );
-    } else {
-      // State 2: Map with location
-      return (
-        <View className="w-full h-full bg-black items-center justify-center p-6">
-          <View className="bg-white/[0.03] rounded-2xl p-6 w-full border border-white/[0.08]">
+            {/* User avatar - top left */}
+            <TouchableOpacity
+              className="absolute top-3 left-3"
+              onPress={() =>
+                router.push(`/(screens)/userInfo?userId=${item.userId}`)
+              }
+            >
+              {item.userImageUrl && (
+                <View className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-sm border-2 border-white/[0.15] overflow-hidden">
+                  <Image
+                    source={{ uri: item.userImageUrl }}
+                    className="w-full h-full"
+                    resizeMode="cover"
+                  />
+                </View>
+              )}
+            </TouchableOpacity>
+          </>
+        );
+      } else if (flipState === 1) {
+        // State 1: Mentioned buddies
+        return (
+          <View className="w-full h-full bg-black items-center justify-center p-6">
             {/* Header */}
             <View className="items-center mb-5">
               <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-2">
-                LOCATION
+                DRINKING BUDDIES
               </Text>
-              <Text className="text-white text-xl font-black text-center mb-4">
-                {item.locationText}
-              </Text>
+              <View className="flex-row items-center gap-2">
+                <Text className="text-orange-600 text-2xl font-black">
+                  {item.mentionedBuddies.length}
+                </Text>
+              </View>
             </View>
 
-            {/* Map placeholder */}
-            <View className="bg-white/[0.03] rounded-xl p-8 items-center justify-center border border-white/[0.08] mb-5">
-             
-              <Text className="text-orange-600 text-sm text-center font-semibold">
-                Map integration coming soon
-              </Text>
+            {/* Buddies grid */}
+            <View className="flex-row flex-wrap gap-4 justify-center mb-5">
+              {item.mentionedBuddies.map((buddy, index) => (
+                <View
+                  key={buddy.id || index}
+                  className="items-center"
+                  style={{ width: 75 }}
+                >
+                  <TouchableOpacity className="w-16 h-16 rounded-full bg-orange-600/20 border-2 border-orange-600/40 items-center justify-center mb-2 overflow-hidden">
+                    {buddy.imageUrl ? (
+                      <Image
+                        source={{ uri: buddy.imageUrl }}
+                        className="w-full h-full"
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <Text className="text-orange-600 text-2xl font-black">
+                        {buddy.firstName?.charAt(0).toUpperCase() ||
+                          buddy.username?.charAt(0).toUpperCase() ||
+                          "?"}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                  <Text
+                    className="text-white text-xs text-center font-semibold"
+                    numberOfLines={2}
+                    ellipsizeMode="tail"
+                  >
+                    {buddy.firstName && buddy.lastName
+                      ? `${buddy.firstName} ${buddy.lastName}`
+                      : buddy.username || "Unknown"}
+                  </Text>
+                </View>
+              ))}
             </View>
 
             {/* Timestamp */}
@@ -310,27 +271,62 @@ const YourMixCard = ({ item }: { item: YourMixPostData }) => {
               </Text>
             </View>
           </View>
-        </View>
-      );
-    }
-  };
+        );
+      } else {
+        // State 2: Map with location
+        return (
+          <View className="w-full h-full bg-black items-center justify-center p-6">
+            <View className="bg-white/[0.03] rounded-2xl p-6 w-full border border-white/[0.08]">
+              {/* Header */}
+              <View className="items-center mb-5">
+                <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-2">
+                  LOCATION
+                </Text>
+                <Text className="text-white text-xl font-black text-center mb-4">
+                  {item.locationText}
+                </Text>
+              </View>
 
-  return (
-    <TouchableOpacity
-      onPress={handlePress}
-      className="bg-white/[0.03] rounded-2xl overflow-hidden border border-white/[0.08] mb-4"
-      activeOpacity={0.8}
-      disabled={isAnimating}
-    >
-      <Animated.View
-        style={animatedStyle}
-        className="relative w-full aspect-[4/3]"
+              {/* Map placeholder */}
+              <View className="bg-white/[0.03] rounded-xl p-8 items-center justify-center border border-white/[0.08] mb-5">
+                <Text className="text-orange-600 text-sm text-center font-semibold">
+                  Map integration coming soon
+                </Text>
+              </View>
+
+              {/* Timestamp */}
+              <View className="pt-4 border-t border-white/[0.05]">
+                <Text className="text-white/40 text-xs text-center font-semibold">
+                  {new Date(item.loggedAt).toLocaleString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}
+                </Text>
+              </View>
+            </View>
+          </View>
+        );
+      }
+    };
+
+    return (
+      <TouchableOpacity
+        onPress={handlePress}
+        className="bg-white/[0.03] rounded-2xl overflow-hidden border border-white/[0.08] mb-4"
+        activeOpacity={0.8}
+        disabled={isAnimating}
       >
-        {renderContent()}
-      </Animated.View>
-    </TouchableOpacity>
-  );
-};
+        <Animated.View
+          style={animatedStyle}
+          className="relative w-full aspect-[4/3]"
+        >
+          {renderContent()}
+        </Animated.View>
+      </TouchableOpacity>
+    );
+  };
   const renderYourMixItem = ({ item }: { item: YourMixPostData }) => {
     return <YourMixCard item={item} />;
   };
@@ -586,50 +582,51 @@ const YourMixCard = ({ item }: { item: YourMixPostData }) => {
 
   const DiscoveryListHeaderComponent = useMemo(
     () => (
-      <View>
-        {/* Header Card */}
-        <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
-          <View className="flex-row justify-between items-center mb-2">
-            <View>
-              <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-2">
-                FIND BUDDIES
-              </Text>
-              <Text className="text-white text-[32px] font-black">
-                Discovery
-              </Text>
-            </View>
-            <View className="bg-orange-600/20 px-3.5 py-1.5 rounded-lg">
-              <Text className="text-orange-600 text-[11px] font-black tracking-wider">
-                {discovery.length} FOUND
-              </Text>
+      <>
+        <View>
+          {/* Header Card */}
+          <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
+            <View className="flex-row justify-between items-center mb-2">
+              <View>
+                <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-2">
+                  FIND BUDDIES
+                </Text>
+                <Text className="text-white text-[32px] font-black">
+                  Discovery
+                </Text>
+              </View>
+              <View className="bg-orange-600/20 px-3.5 py-1.5 rounded-lg">
+                <Text className="text-orange-600 text-[11px] font-black tracking-wider">
+                  {discovery.length} FOUND
+                </Text>
+              </View>
             </View>
           </View>
-        </View>
 
-        {/* Results Label */}
+          {/* Results Label */}
+        </View>
+        <View className="mb-6 ">
+          <TouchableOpacity
+            className="bg-orange-600 rounded-2xl p-5 flex-row items-center justify-center"
+            onPress={() => router.push(`/(screens)/searchDrinkers`)}
+          >
+            <Ionicons name="search" size={22} color="black" />
+            <Text className="text-black text-base font-black uppercase tracking-wider ml-3">
+              Search Drinkers
+            </Text>
+          </TouchableOpacity>
+        </View>
         {discovery.length > 0 && (
-          <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-3">
+          <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-1">
             SUGGESTED DRINKERS ({discovery.length})
           </Text>
         )}
-      </View>
+      </>
     ),
     [discovery.length]
   );
 
-  const ListFooterComponent = () => (
-    <View className="mb-24 mt-4">
-      <TouchableOpacity
-        className="bg-orange-600 rounded-2xl p-5 flex-row items-center justify-center"
-        onPress={() => router.push(`/(screens)/searchDrinkers`)}
-      >
-        <Ionicons name="search" size={22} color="black" />
-        <Text className="text-black text-base font-black uppercase tracking-wider ml-3">
-          Search Drinkers
-        </Text>
-      </TouchableOpacity>
-    </View>
-  );
+
 
   const handleYourMixRefresh = async () => {
     if (userData?.id) {
@@ -718,9 +715,12 @@ const YourMixCard = ({ item }: { item: YourMixPostData }) => {
           keyExtractor={(item) =>
             item.id || item.username || Math.random().toString()
           }
-          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 0 }}
+          contentContainerStyle={{
+            paddingHorizontal: 16,
+            paddingTop: 0,
+            paddingBottom: 48,
+          }}
           ListHeaderComponent={DiscoveryListHeaderComponent}
-          ListFooterComponent={ListFooterComponent}
           renderItem={renderDiscoveryItem}
           ListEmptyComponent={renderEmptyDiscoveryComponent}
           refreshing={isLoading}

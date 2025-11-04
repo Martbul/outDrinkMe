@@ -82,7 +82,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="buddies"
           options={{
-            title: "Buddies",
+            title: "Mix",
             tabBarIcon: ({ focused }) => (
               <View
                 style={{
