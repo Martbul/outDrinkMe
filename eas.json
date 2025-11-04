@@ -19,9 +19,6 @@
     },
     "production": {
       "autoIncrement": true,
-      "env": {
-        "EXPO_PUBLIC_ENV": "production"
-      },
       "android": {
         "buildType": "app-bundle",
         "gradleCommand": ":app:bundleRelease"
