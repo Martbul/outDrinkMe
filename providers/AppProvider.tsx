@@ -433,17 +433,19 @@ export function AppProvider({ children }: AppProviderProps) {
         );
 
         // Refresh relevant data after logging
-        const [stats, board, cal, weekly] = await Promise.all([
+        const [userData, stats, board, cal, weekly] = await Promise.all([
+          apiService.fetchUser(token),
           apiService.getUserStats(token),
           apiService.getFriendsLeaderboard(token),
           apiService.getCurrentMonthCalendar(token),
           apiService.getWeeklyStats(token),
         ]);
 
-        return { stats, board, cal, weekly };
+        return { userData, stats, board, cal, weekly };
       });
 
       if (result) {
+        setUserData(result.userData);
         setUserStats(result.stats);
         setLeaderboard(result.board);
         setCalendar(result.cal);
