@@ -61,3 +61,7 @@ keystore_base64.txt
 credentials.json
 credentials/android/*.jks
 credentials/android/*.keystore
+
+.env.development
+.env.production
+.env.local

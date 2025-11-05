@@ -15,8 +15,9 @@ export const Header = () => {
   const levelInfo = getLevelInfo(userData?.xp);
   const insets = useSafeAreaInsets();
 
-  const levelInfoDescr = `Drink to get xp and level up!\nXP: ${levelInfo.currentXP}/${levelInfo.xpForNextLevel}`;
-
+  const xpNeededForLevel =
+    levelInfo.xpForNextLevel - levelInfo.xpForCurrentLevel;
+  const levelInfoDescr = `Drink to get xp and level up!\nLevel Progress: ${Math.floor(levelInfo.xpProgress)}/${xpNeededForLevel} XP`;
   const getInitials = () => {
     if (!userData) return "??";
     const first = userData.firstName?.[0] || "";
@@ -111,7 +112,6 @@ export const Header = () => {
             className="flex-row items-center gap-1.5 bg-white/5 px-3 py-2 rounded-full"
             // onPress={handleEarnGems}
           >
-            
             <View className="relative">
               <Text className="text-xl">💎</Text>
 
