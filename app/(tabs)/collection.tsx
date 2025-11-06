@@ -42,10 +42,19 @@ export default function Collection() {
   const [scanning, setScanning] = useState(false);
   const [scanned, setScanned] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [currentScreen, setCurrentScreen] = useState("collection"); // 'collection' or 'manual'
+  const [currentScreen, setCurrentScreen] = useState<"collection" | "manual">(
+    "collection"
+  ); // 'collection' or 'manual'
   const [customBeverages, setCustomBeverages] = useState<CustomBeverage[]>([]);
   const [selectedFilter, setSelectedFilter] = useState<
-    "All" |"Beer" | "Whiskey" | "Wine" | "Vodka" | "Liqueur" | "Rum" | "Tequila"
+    | "All"
+    | "Beer"
+    | "Whiskey"
+    | "Wine"
+    | "Vodka"
+    | "Liqueur"
+    | "Rum"
+    | "Tequila"
   >("All");
   const [collection, setCollection] = useState<BeverageItem[]>([
     {

@@ -237,7 +237,7 @@ export default function UserProfileScreen() {
               </View>
               <TouchableOpacity
                 className="bg-orange-600/20 px-3.5 py-1.5 rounded-lg"
-                onPress={() => router.push("/(tabs)/achievements")}
+                onPress={() => router.push("/(screens)/achievements")}
               >
                 <Text className="text-orange-600 text-xs font-black">
                   {unlockedCount}/{totalCount}

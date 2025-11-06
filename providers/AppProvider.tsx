@@ -33,6 +33,7 @@ interface AppContextType {
   friends: UserData[] | [];
   discovery: UserData[] | [];
   yourMixData: YourMixPostData[] | [];
+  mixTimelineData: YourMixPostData[] | [];
   friendDiscoveryProfile: FriendDiscoveryDisplayProfileResponse | null;
   drunkThought: string | null;
 
@@ -46,6 +47,7 @@ interface AppContextType {
   refreshFriends: () => Promise<void>;
   refreshDiscovery: () => Promise<void>;
   refreshYourMixData: () => Promise<void>;
+  refreshMixTimelineData: () => Promise<void>;
   refreshDrunkThought: () => Promise<void>;
   refreshAll: () => Promise<void>;
 
@@ -89,6 +91,9 @@ export function AppProvider({ children }: AppProviderProps) {
   const [friends, setFriends] = useState<UserData[] | []>([]);
   const [discovery, setDiscovery] = useState<UserData[] | []>([]);
   const [yourMixData, setYourMixData] = useState<YourMixPostData[] | []>([]);
+  const [mixTimelineData, setMixTimelineData] = useState<
+    YourMixPostData[] | []
+  >([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [drunkThought, setDrunkThought] = useState<string | null>(null);
 
@@ -264,6 +269,19 @@ export function AppProvider({ children }: AppProviderProps) {
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
 
+  const refreshMixTimelineData = useCallback(async () => {
+    if (!isSignedIn) return;
+
+    await withLoadingAndError(
+      async () => {
+        const token = await getToken();
+        if (!token) throw new Error("No auth token");
+        return await apiService.getMixTimeline(token);
+      },
+      (data) => setMixTimelineData(data)
+    );
+  }, [isSignedIn, getToken, withLoadingAndError]);
+
   const refreshDrunkThought = useCallback(async () => {
     if (!isSignedIn) return;
 
@@ -300,6 +318,7 @@ export function AppProvider({ children }: AppProviderProps) {
         apiService.getFriends(token),
         apiService.getDiscovery(token),
         apiService.getYourMixData(token),
+        apiService.getMixTimeline(token),
         apiService.getWeeklyStats(token),
         apiService.getDrunkThought(token),
       ]);
@@ -314,6 +333,7 @@ export function AppProvider({ children }: AppProviderProps) {
         friendsResult,
         discoveryResult,
         yourMixDataResult,
+        mixTimelineDataResult,
         weeklyResult,
         drunkThoughtResult,
       ] = results;
@@ -366,8 +386,18 @@ export function AppProvider({ children }: AppProviderProps) {
       if (yourMixDataResult.status === "fulfilled") {
         setYourMixData(yourMixDataResult.value);
       } else {
-        console.error("Failed to your-mix data:", yourMixDataResult.reason);
+        console.error("Failed to mix timeline data:", yourMixDataResult.reason);
         setYourMixData([]);
+      }
+
+      if (mixTimelineDataResult.status === "fulfilled") {
+        setMixTimelineData(mixTimelineDataResult.value);
+      } else {
+        console.error(
+          "Failed to mix timeline data:",
+          mixTimelineDataResult.reason
+        );
+        setMixTimelineData([]);
       }
 
       if (weeklyResult.status === "fulfilled") {
@@ -679,6 +709,7 @@ export function AppProvider({ children }: AppProviderProps) {
     friends,
     discovery,
     yourMixData,
+    mixTimelineData,
     friendDiscoveryProfile,
     drunkThought,
 
@@ -692,6 +723,7 @@ export function AppProvider({ children }: AppProviderProps) {
     refreshFriends,
     refreshDiscovery,
     refreshYourMixData,
+    refreshMixTimelineData,
     refreshDrunkThought,
     refreshAll,
 

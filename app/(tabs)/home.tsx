@@ -2,7 +2,7 @@ import { Header } from "@/components/header";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/providers/AppProvider";
 import { getCoefInfo } from "@/utils/levels";
-import { Feather } from "@expo/vector-icons";
+import { AntDesign, Feather, MaterialCommunityIcons, MaterialIcons, Octicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -100,6 +100,37 @@ export default function HomeScreen() {
         <ThisWeekGadget />
         {/* <BannerAd unitId={TestIds.BANNER} size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER} requestOptions={{requestNonPersonalizedAdsOnly:true, networkExtras:{collapsible:"bottom"}}} /> */}
 
+        <View className="flex-row gap-3  mb-4">
+          <TouchableOpacity
+            onPress={() => router.push("/(screens)/mixTimeline")}
+            className="flex-1 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08] items-center"
+          >
+            <AntDesign
+              name="align-center"
+              size={30}
+              color="#ff8c00"
+              className="mb-2"
+            />
+            <Text className="text-white/50 text-[12px] font-bold tracking-widest uppercase">
+              Mix Timeline
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => router.push("/(screens)/stats")}
+            className="flex-1 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08] items-center"
+          >
+            <MaterialIcons
+              name="query-stats"
+              size={30}
+              color="#ff8c00"
+              className="mb-2"
+            />
+            <Text className="text-white/50 text-[12px] font-bold tracking-widest uppercase">
+              Stats
+            </Text>
+          </TouchableOpacity>
+        </View>
         <View className="flex-row gap-3 mb-4">
           <View className="flex-1 bg-white/[0.03] rounded-xl p-4 border border-white/[0.08]">
             <Text className="text-white/50 text-[10px] font-bold tracking-[1.5px] mb-1.5">

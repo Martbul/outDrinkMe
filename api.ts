@@ -155,7 +155,7 @@ class ApiService {
     token: string,
     date?: string
   ): Promise<{ message: string }> {
-  console.log("devbug for add drinking")
+    console.log("devbug for add drinking");
     console.log(data, token);
     const url = date
       ? `/api/v1/user/drink?date=${encodeURIComponent(date)}`
@@ -280,10 +280,39 @@ class ApiService {
         sourceType: post.SourceType,
       }));
 
-      console.log("Your Mix data:", transformed);
       return transformed;
     } catch (error) {
       console.error("Failed to fetch Your Mix:", error);
+      return [];
+    }
+  }
+
+  async getMixTimeline(token: string): Promise<YourMixPostData[]> {
+    try {
+      const response = await this.makeRequest<DailyDrinkingPostResponse[]>(
+        "/api/v1/user/mix-timeline",
+        {
+          method: "GET",
+          token,
+        }
+      );
+
+      const transformed = response.map((post) => ({
+        id: post.ID,
+        userId: post.UserID,
+        userImageUrl: post.UserImageURL,
+        date: post.Date,
+        drankToday: post.DrankToday,
+        loggedAt: post.LoggedAt,
+        imageUrl: post.ImageURL,
+        locationText: post.LocationText,
+        mentionedBuddies: post.MentionedBuddies || [],
+        sourceType: post.SourceType,
+      }));
+
+      return transformed;
+    } catch (error) {
+      console.error("Failed to fetch Mix Timeline:", error);
       return [];
     }
   }
@@ -297,7 +326,6 @@ class ApiService {
   }
 
   async getDrunkThought(token: string, date?: string): Promise<string | null> {
-    // Add date query param only if provided
     const url = date
       ? `/api/v1/user/drunk-thought?date=${encodeURIComponent(date)}`
       : `/api/v1/user/drunk-thought`;
@@ -307,7 +335,6 @@ class ApiService {
       token,
     });
 
-    // Backend returns { drunk_thought: string | null }
     return response?.drunk_thought ?? null;
   }
 
@@ -391,41 +418,3 @@ class ApiService {
 }
 
 export const apiService = new ApiService();
-
-// async acceptFriendRequest(
-//   friendshipId: string,
-//   token: string
-// ): Promise<Friendship> {
-//   return this.makeRequest<Friendship>(
-//     `/api/v1/user/friends/request/${friendshipId}/accept`,
-//     {
-//       method: "POST",
-//       token,
-//     }
-//   );
-// }
-
-// async rejectFriendRequest(
-//   friendshipId: string,
-//   token: string
-// ): Promise<void> {
-//   return this.makeRequest<void>(
-//     `/api/v1/user/friends/request/${friendshipId}/reject`,
-//     {
-//       method: "POST",
-//       token,
-//     }
-//   );
-// }
-
-// async getPendingFriendRequests(token: string): Promise<FriendRequest[]> {
-//   const response = await this.makeRequest<{ requests: FriendRequest[] }>(
-//     "/api/v1/user/friends/requests/pending",
-//     {
-//       method: "GET",
-//       token,
-//     }
-//   );
-
-//   return response.requests || [];
-// }
