@@ -7,8 +7,13 @@ import LogoutButton from "@/components/logoutButton";
 import { useRouter } from "expo-router";
 import { getLevelInfo } from "@/utils/levels";
 import BackHeader from "@/components/backHeader";
-import { MaterialIcons } from "@expo/vector-icons";
- 
+import {
+  Ionicons,
+  MaterialCommunityIcons,
+  MaterialIcons,
+  Octicons,
+} from "@expo/vector-icons";
+
 const ACHIEVEMENT_IMAGES = {
   lightning: require("../../assets/images/achievements/lightning.png"),
   druid: require("../../assets/images/achievements/druid.png"),
@@ -21,8 +26,7 @@ const ACHIEVEMENT_IMAGES = {
 };
 
 export default function UserProfileScreen() {
-  const { userData, userStats, achievements, isLoading } =
-    useApp();
+  const { userData, userStats, achievements, isLoading } = useApp();
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -192,8 +196,35 @@ export default function UserProfileScreen() {
           <ThisWeekGadget />
         </View>
 
+        <View className="flex-row gap-3 px-4 mb-4">
+          <TouchableOpacity
+            onPress={() => router.push("/(screens)/store")}
+            className="flex-1 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08] items-center"
+          >
+            <MaterialCommunityIcons
+              name="store"
+              size={32}
+              color="white"
+              className="mb-2"
+            />
+            <Text className="text-white/50 text-[11px] font-bold tracking-widest uppercase">
+              Store
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => router.push("/(screens)/inventory")}
+            className="flex-1 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08] items-center"
+          >
+            <Octicons name="inbox" size={32} color="white" className="mb-2" />
+            <Text className="text-white/50 text-[11px] font-bold tracking-widest uppercase">
+              Inventory
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Achievements Section */}
-        <View className="px-4 mb-6">
+        <View className="px-4 mb-4">
           <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
             <View className="flex-row justify-between items-center mb-5">
               <View>
@@ -232,7 +263,7 @@ export default function UserProfileScreen() {
 
             <TouchableOpacity
               className="bg-white/[0.05] py-3 rounded-xl border border-white/[0.08] mt-2"
-              onPress={() => router.push("/(tabs)/achievements")}
+              onPress={() => router.push("/(screens)/achievements")}
             >
               <Text className="text-white/70 text-sm font-bold text-center uppercase tracking-widest">
                 View All

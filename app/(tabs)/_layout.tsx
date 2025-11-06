@@ -118,9 +118,9 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="achievements"
+          name="collection"
           options={{
-            title: "Awards",
+            title: "Collection",
             tabBarIcon: ({ focused }) => (
               <View
                 style={{

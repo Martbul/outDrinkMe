@@ -11,7 +11,13 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.martbul.outDrinkMe",
-      "associatedDomains": ["applinks:clerk.martbul.com"]
+      "associatedDomains": [
+        "applinks:clerk.martbul.com",
+        "applinks:clerk.martbul.com"
+      ],
+      "infoPlist": {
+        "NSCameraUsageDescription": "OutDrinkMe needs camera access to scan beverage barcodes for your collection."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -21,6 +27,16 @@
       "edgeToEdgeEnabled": false,
       "predictiveBackGestureEnabled": false,
       "package": "com.martbul.outDrinkMe",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ],
       "intentFilters": [
         {
           "action": "VIEW",
@@ -30,7 +46,10 @@
               "scheme": "outdrinkme"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         },
         {
           "action": "VIEW",
@@ -42,7 +61,38 @@
               "pathPrefix": "/v1/oauth_callback"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "outdrinkme"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "clerk.martbul.com",
+              "pathPrefix": "/v1/oauth_callback"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -83,6 +133,12 @@
           "androidAppId": "ca-app-pub-3940256099942544~3347511713",
           "iosAppId": "ca-app-pub-3940256099942544~1458002511"
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow OutDrinkMe to access camera to scan beverage barcodes."
+        }
       ]
     ],
     "experiments": {
@@ -95,6 +151,12 @@
         "projectId": "c9bec799-f894-4acc-ad04-3217517dc5cc"
       }
     },
-    "owner": "martbul"
+    "owner": "martbul",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/c9bec799-f894-4acc-ad04-3217517dc5cc"
+    }
   }
 }
