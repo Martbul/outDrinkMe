@@ -144,3 +144,13 @@ export interface YourMixPostData {
   mentionedBuddies: UserData[];
   sourceType: "friend" | "other";
 }
+
+
+export interface DrunkThought  {
+  id: string;
+  user_id: string;
+  username: string;
+  user_image_url: string;
+  thought: string;
+  created_at: string; // ISO 8601 date string from JSON
+}

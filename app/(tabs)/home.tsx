@@ -2,27 +2,63 @@ import { Header } from "@/components/header";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/providers/AppProvider";
 import { getCoefInfo } from "@/utils/levels";
-import { AntDesign, Feather, MaterialCommunityIcons, MaterialIcons, Octicons } from "@expo/vector-icons";
+import { AntDesign, Feather, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   ScrollView,
   Text,
   TouchableOpacity,
   View,
   ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import ThisWeekGadget from "@/components/thisWeekGadget";
 import InfoTooltip from "@/components/infoTooltip";
+import DrunkThought from "@/components/drunkThought";
 
 export default function HomeScreen() {
   const [isCoefTooltipVisible, setIsCoefTooltipVisible] =
     useState<boolean>(false);
+  const [refreshing, setRefreshing] = useState(false);
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  const { userStats, isLoading } = useApp();
+  const { userStats, friendsDrunkThoughts, isLoading, refreshAll } = useApp();
   const coefInfo = getCoefInfo(userStats);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refreshAll();
+    setRefreshing(false);
+  };
+
+  // Get 1-2 random thoughts
+  const displayedThoughts = useMemo(() => {
+    if (!friendsDrunkThoughts || friendsDrunkThoughts.length === 0) {
+      return [];
+    }
+
+    const count = Math.min(
+      Math.floor(Math.random() * 2) + 1, // Random 1 or 2
+      friendsDrunkThoughts.length
+    );
+
+    const result = [];
+    const usedIndices = new Set<number>();
+
+    while (result.length < count) {
+      const randomIndex = Math.floor(
+        Math.random() * friendsDrunkThoughts.length
+      );
+      if (!usedIndices.has(randomIndex)) {
+        usedIndices.add(randomIndex);
+        result.push(friendsDrunkThoughts[randomIndex]);
+      }
+    }
+
+    return result;
+  }, [friendsDrunkThoughts]);
 
   if (isLoading && !userStats) {
     return (
@@ -38,6 +74,15 @@ export default function HomeScreen() {
   return (
     <View className="flex-1 bg-black">
       <Header />
+
+      {displayedThoughts.map((thought) => (
+        <DrunkThought
+          key={thought.id}
+          thought={thought.thought}
+          userImageUrl={thought.user_image_url}
+        />
+      ))}
+
       <ScrollView
         className="flex-1"
         contentContainerStyle={{
@@ -46,6 +91,14 @@ export default function HomeScreen() {
           paddingBottom: 100 + insets.bottom,
         }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#EA580C"
+            colors={["#EA580C"]}
+          />
+        }
       >
         <View className="items-center mb-6">
           <View className="relative w-[120px] h-[120px] rounded-full bg-orange-600/15 border-4 border-orange-600 justify-center items-center mb-3">
@@ -98,7 +151,6 @@ export default function HomeScreen() {
         </View>
 
         <ThisWeekGadget />
-        {/* <BannerAd unitId={TestIds.BANNER} size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER} requestOptions={{requestNonPersonalizedAdsOnly:true, networkExtras:{collapsible:"bottom"}}} /> */}
 
         <View className="flex-row gap-3  mb-4">
           <TouchableOpacity
@@ -131,6 +183,7 @@ export default function HomeScreen() {
             </Text>
           </TouchableOpacity>
         </View>
+
         <View className="flex-row gap-3 mb-4">
           <View className="flex-1 bg-white/[0.03] rounded-xl p-4 border border-white/[0.08]">
             <Text className="text-white/50 text-[10px] font-bold tracking-[1.5px] mb-1.5">
@@ -139,9 +192,6 @@ export default function HomeScreen() {
             <Text className="text-white text-2xl font-black">
               #{userStats?.rank || 0}
             </Text>
-            {/* <Text className="text-white/40 text-[11px] font-semibold mt-0.5">
-              of {leaderboard?.total_users || 0}
-            </Text> */}
           </View>
 
           <View className="flex-1 bg-white/[0.03] rounded-xl p-4 border border-white/[0.08]">
@@ -169,7 +219,6 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Additional Stats */}
         <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
           <Text className="text-white/50 text-[11px] font-bold tracking-[1.5px] mb-2">
             YOUR STATS

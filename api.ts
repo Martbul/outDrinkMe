@@ -4,6 +4,7 @@ import {
   CalendarResponse,
   DailyDrinkingPostResponse,
   DaysStat,
+  DrunkThought,
   FriendDiscoveryDisplayProfileResponse,
   Friendship,
   Leaderboard,
@@ -254,8 +255,18 @@ class ApiService {
     );
 
     return response || [];
-  }
-
+  }  
+  
+ async getFriendsDrunkThoughts(token: string): Promise<DrunkThought[]> {
+  const response = await this.makeRequest<DrunkThought[]>(
+    "/api/v1/user/drunk-friend-thoughts",
+    {
+      method: "GET",
+      token,
+    }
+  );
+  return response || [];
+}
   async getYourMixData(token: string): Promise<YourMixPostData[]> {
     try {
       const response = await this.makeRequest<DailyDrinkingPostResponse[]>(
@@ -266,7 +277,6 @@ class ApiService {
         }
       );
 
-      // Transform PascalCase to camelCase
       const transformed = response.map((post) => ({
         id: post.ID,
         userId: post.UserID,

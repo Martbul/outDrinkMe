@@ -18,6 +18,7 @@ import {
   UpdateUserProfileReq,
   FriendDiscoveryDisplayProfileResponse,
   YourMixPostData,
+  DrunkThought,
 } from "../types/api.types";
 import { apiService } from "@/api";
 import { Alert } from "react-native";
@@ -36,6 +37,7 @@ interface AppContextType {
   mixTimelineData: YourMixPostData[] | [];
   friendDiscoveryProfile: FriendDiscoveryDisplayProfileResponse | null;
   drunkThought: string | null;
+  friendsDrunkThoughts: DrunkThought[] | [];
 
   // Refresh Functions
   refreshUserData: () => Promise<void>;
@@ -49,6 +51,7 @@ interface AppContextType {
   refreshYourMixData: () => Promise<void>;
   refreshMixTimelineData: () => Promise<void>;
   refreshDrunkThought: () => Promise<void>;
+  refreshFriendsDrunkThoughs: () => Promise<void>;
   refreshAll: () => Promise<void>;
 
   // Actions
@@ -96,6 +99,9 @@ export function AppProvider({ children }: AppProviderProps) {
   >([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [drunkThought, setDrunkThought] = useState<string | null>(null);
+  const [friendsDrunkThoughts, setFriendsDrunkThoughts] = useState<
+    DrunkThought[] | []
+  >([]);
 
   const [friendDiscoveryProfile, setFriendDiscoveryProfile] =
     useState<FriendDiscoveryDisplayProfileResponse | null>(null);
@@ -295,6 +301,19 @@ export function AppProvider({ children }: AppProviderProps) {
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
 
+  const refreshFriendsDrunkThoughs = useCallback(async () => {
+    if (!isSignedIn) return;
+
+    await withLoadingAndError(
+      async () => {
+        const token = await getToken();
+        if (!token) throw new Error("No auth token");
+        return await apiService.getFriendsDrunkThoughts(token);
+      },
+      (data) => setFriendsDrunkThoughts(data)
+    );
+  }, [isSignedIn, getToken, withLoadingAndError]);
+
   // ============================================
   // Refresh All - Using Parallel Execution
   // ============================================
@@ -321,6 +340,7 @@ export function AppProvider({ children }: AppProviderProps) {
         apiService.getMixTimeline(token),
         apiService.getWeeklyStats(token),
         apiService.getDrunkThought(token),
+        apiService.getFriendsDrunkThoughts(token),
       ]);
 
       // Extract successful results and handle failures
@@ -336,6 +356,7 @@ export function AppProvider({ children }: AppProviderProps) {
         mixTimelineDataResult,
         weeklyResult,
         drunkThoughtResult,
+        friendsDrunkThoughtsResult,
       ] = results;
 
       if (userResult.status === "fulfilled") {
@@ -413,6 +434,16 @@ export function AppProvider({ children }: AppProviderProps) {
         console.error(
           "Failed to fetch drunk thought:",
           drunkThoughtResult.reason
+        );
+      }
+
+      if (friendsDrunkThoughtsResult.status === "fulfilled") {
+        setFriendsDrunkThoughts(friendsDrunkThoughtsResult.value);
+      } else {
+        setFriendsDrunkThoughts([]);
+        console.error(
+          "Failed to fetch friends drunk thoughts:",
+          friendsDrunkThoughtsResult.reason
         );
       }
 
@@ -712,6 +743,7 @@ export function AppProvider({ children }: AppProviderProps) {
     mixTimelineData,
     friendDiscoveryProfile,
     drunkThought,
+    friendsDrunkThoughts,
 
     // Refresh Functions
     refreshUserData,
@@ -725,6 +757,7 @@ export function AppProvider({ children }: AppProviderProps) {
     refreshYourMixData,
     refreshMixTimelineData,
     refreshDrunkThought,
+    refreshFriendsDrunkThoughs,
     refreshAll,
 
     // Actions
