@@ -157,7 +157,7 @@ export default function LiftoffStoreScreen() {
         {deal.originalPrice}
       </Text>
       <View className="bg-white/[0.05] rounded-xl py-2 px-3 flex-row items-center justify-center border border-white/[0.08]">
-        <Text className="text-lg mr-1">🥚</Text>
+        <Text className="text-lg mr-1">💎</Text>
         <Text className="text-white text-xl font-black">{deal.price}</Text>
       </View>
     </View>
@@ -197,7 +197,7 @@ export default function LiftoffStoreScreen() {
         {deal.originalPrice}
       </Text>
       <View className="bg-white/[0.05] rounded-xl py-2 px-3 flex-row items-center justify-center border border-white/[0.08]">
-        <Text className="text-lg mr-1">🥚</Text>
+        <Text className="text-lg mr-1">💎</Text>
         <Text className="text-white text-xl font-black">{deal.price}</Text>
       </View>
     </View>
@@ -214,7 +214,7 @@ export default function LiftoffStoreScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Pro Banner */}
-        <View className="mx-4 mt-6 mb-4">
+        {/* <View className="mx-4 mt-6 mb-4">
           <View
             className="rounded-2xl p-5 flex-row items-center justify-between border border-purple-600/30"
             style={{
@@ -239,17 +239,17 @@ export default function LiftoffStoreScreen() {
               </View>
             </TouchableOpacity>
           </View>
-        </View>
+        </View> */}
 
         {/* Timer */}
-        <View className="mx-4 mb-4">
+        {/* <View className="mx-4 mb-4">
           <View className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]">
             <Text className="text-white text-base font-bold text-center">
               Deals refresh in {timeLeft.hours}h {timeLeft.minutes}m{" "}
               {timeLeft.seconds}s
             </Text>
           </View>
-        </View>
+        </View> */}
 
         {/* Regular Deals Section */}
         <View className="mx-4 mb-6">
@@ -259,7 +259,7 @@ export default function LiftoffStoreScreen() {
                 Regular Deals
               </Text>
               <View className="bg-white/[0.05] px-3 py-1.5 rounded-full flex-row items-center border border-white/[0.08]">
-                <Text className="text-lg mr-1">🥚</Text>
+                <Text className="text-lg mr-1">💎</Text>
                 <Text className="text-white font-black mr-2">10</Text>
                 <Ionicons name="refresh" size={16} color="#999999" />
               </View>
@@ -284,7 +284,7 @@ export default function LiftoffStoreScreen() {
                 <Ionicons name="lock-closed" size={20} color="#999999" />
               </View>
               <View className="bg-white/[0.05] px-3 py-1.5 rounded-full flex-row items-center border border-white/[0.08]">
-                <Text className="text-lg mr-1">🥚</Text>
+                <Text className="text-lg mr-1">💎</Text>
                 <Text className="text-white font-black mr-2">10</Text>
                 <Ionicons name="refresh" size={16} color="#999999" />
               </View>
@@ -316,7 +316,7 @@ export default function LiftoffStoreScreen() {
                 <Text className="text-white text-xs font-black">2x</Text>
               </View>
               <View className="bg-white/[0.05] rounded-xl py-2 px-3 flex-row items-center justify-center border border-white/[0.08] w-full">
-                <Text className="text-lg mr-1">🥚</Text>
+                <Text className="text-lg mr-1">💎</Text>
                 <Text className="text-white text-xl font-black">40</Text>
               </View>
             </View>
@@ -328,7 +328,7 @@ export default function LiftoffStoreScreen() {
                 <Text className="text-white text-xs font-black">3x</Text>
               </View>
               <View className="bg-white/[0.05] rounded-xl py-2 px-3 flex-row items-center justify-center border border-white/[0.08] w-full">
-                <Text className="text-lg mr-1">🥚</Text>
+                <Text className="text-lg mr-1">💎</Text>
                 <Text className="text-white text-xl font-black">100</Text>
               </View>
             </View>
@@ -359,7 +359,7 @@ export default function LiftoffStoreScreen() {
                 </View>
               </View>
               <View className="bg-white/[0.05] rounded-xl py-2 px-3 flex-row items-center justify-center border border-white/[0.08]">
-                <Text className="text-lg mr-1">🥚</Text>
+                <Text className="text-lg mr-1">💎</Text>
                 <Text className="text-white text-xl font-black">250</Text>
               </View>
             </View>
@@ -379,7 +379,7 @@ export default function LiftoffStoreScreen() {
                 </View>
               </View>
               <View className="bg-white/[0.05] rounded-xl py-2 px-3 flex-row items-center justify-center border border-white/[0.08]">
-                <Text className="text-lg mr-1">🥚</Text>
+                <Text className="text-lg mr-1">💎</Text>
                 <Text className="text-white text-xl font-black">600</Text>
               </View>
             </View>
@@ -394,7 +394,7 @@ export default function LiftoffStoreScreen() {
                 Color Themes
               </Text>
               <View className="bg-white/[0.05] px-3 py-1.5 rounded-full flex-row items-center border border-white/[0.08]">
-                <Text className="text-lg mr-1">🥚</Text>
+                <Text className="text-lg mr-1">💎</Text>
                 <Text className="text-white font-black">125</Text>
               </View>
             </View>
@@ -427,31 +427,49 @@ export default function LiftoffStoreScreen() {
         <View className="mx-4 mb-6">
           <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08] mb-4">
             <Text className="text-white text-2xl font-black">
-              Get More Eggs!
+              Get More Gems!
             </Text>
           </View>
 
           <View className="flex-row flex-wrap justify-between">
             <TouchableOpacity className="w-[48%] bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08] mb-3 items-center">
               <View className="bg-white/[0.05] rounded-full w-16 h-16 items-center justify-center mb-3">
-                <Text style={{ fontSize: 32 }}>🥚</Text>
+                <Text style={{ fontSize: 32 }}>💎</Text>
               </View>
               <View className="bg-white/[0.05] rounded-xl py-2 px-3 flex-row items-center justify-center border border-white/[0.08] w-full mb-2">
-                <Text className="text-lg mr-1">🥚</Text>
-                <Text className="text-white text-xl font-black">100</Text>
+                <Text className="text-white text-xl font-black">10</Text>
               </View>
-              <Text className="text-white/50 text-sm font-bold">2,19 лв.</Text>
+              <Text className="text-white/50 text-sm font-bold">2,99 лв.</Text>
             </TouchableOpacity>
 
             <TouchableOpacity className="w-[48%] bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08] mb-3 items-center">
               <View className="bg-white/[0.05] rounded-full w-16 h-16 items-center justify-center mb-3">
-                <Text style={{ fontSize: 32 }}>🥚</Text>
+                <Text style={{ fontSize: 32 }}>💎</Text>
               </View>
               <View className="bg-white/[0.05] rounded-xl py-2 px-3 flex-row items-center justify-center border border-white/[0.08] w-full mb-2">
-                <Text className="text-lg mr-1">🥚</Text>
-                <Text className="text-white text-xl font-black">500</Text>
+                <Text className="text-white text-xl font-black">50</Text>
               </View>
               <Text className="text-white/50 text-sm font-bold">10,99 лв.</Text>
+            </TouchableOpacity>
+
+             <TouchableOpacity className="w-[48%] bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08] mb-3 items-center">
+              <View className="bg-white/[0.05] rounded-full w-16 h-16 items-center justify-center mb-3">
+                <Text style={{ fontSize: 32 }}>💎</Text>
+              </View>
+              <View className="bg-white/[0.05] rounded-xl py-2 px-3 flex-row items-center justify-center border border-white/[0.08] w-full mb-2">
+                <Text className="text-white text-xl font-black">100</Text>
+              </View>
+              <Text className="text-white/50 text-sm font-bold">15,99 лв.</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity className="w-[48%] bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08] mb-3 items-center">
+              <View className="bg-white/[0.05] rounded-full w-16 h-16 items-center justify-center mb-3">
+                <Text style={{ fontSize: 32 }}>💎</Text>
+              </View>
+              <View className="bg-white/[0.05] rounded-xl py-2 px-3 flex-row items-center justify-center border border-white/[0.08] w-full mb-2">
+                <Text className="text-white text-xl font-black">250</Text>
+              </View>
+              <Text className="text-white/50 text-sm font-bold">20,99 лв.</Text>
             </TouchableOpacity>
           </View>
         </View>

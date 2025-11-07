@@ -227,7 +227,7 @@ export default function MixTimeline() {
             }}
           >
             {expandedItem && (
-              <View className="bg-[#0a0a0a] rounded-3xl overflow-hidden border border-[#00d4ff]/30">
+              <View className="bg-[#0a0a0a] rounded-3xl overflow-hidden border border-orange-600 ">
                 {/* Close Button */}
                 <View className="absolute top-4 right-4 z-20">
                   <TouchableOpacity
@@ -259,7 +259,7 @@ export default function MixTimeline() {
                   <View className="flex-row items-center gap-3 mb-4">
                     <Image
                       source={{ uri: expandedItem.userImageUrl }}
-                      className="w-12 h-12 rounded-full border-2 border-[#00d4ff]"
+                      className="w-12 h-12 rounded-full border-2 border-orange-600"
                     />
                     <View>
                       <Text className="text-white font-bold">
@@ -275,7 +275,7 @@ export default function MixTimeline() {
 
                   {/* Mentioned Buddies */}
                   {expandedItem.mentionedBuddies.length > 0 && (
-                    <View className="bg-white/[0.05] rounded-xl p-3 mb-3">
+                    <View className="bg-white/[0.05] rounded-xl p-3">
                       <View className="flex-row items-center gap-2 mb-3">
                         <FontAwesome5 name="user" size={24} color="white" />
                         <Text className="text-white/50 text-xs font-semibold">
@@ -301,28 +301,7 @@ export default function MixTimeline() {
                     </View>
                   )}
 
-                  {/* Status Badge */}
-                  <View className="pt-2">
-                    <View
-                      className={`self-start px-4 py-2 rounded-full ${
-                        expandedItem.drankToday
-                          ? "bg-[#00d4ff]/20 border border-[#00d4ff]/40"
-                          : "bg-white/[0.05] border border-white/10"
-                      }`}
-                    >
-                      <Text
-                        className={`text-sm font-bold ${
-                          expandedItem.drankToday
-                            ? "text-[#00d4ff]"
-                            : "text-white/50"
-                        }`}
-                      >
-                        {expandedItem.drankToday
-                          ? "🍹 Drank Today"
-                          : "📅 Logged"}
-                      </Text>
-                    </View>
-                  </View>
+              
                 </View>
               </View>
             )}
