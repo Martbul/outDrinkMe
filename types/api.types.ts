@@ -154,3 +154,12 @@ export interface DrunkThought  {
   thought: string;
   created_at: string; // ISO 8601 date string from JSON
 }
+
+export interface AlcoholDbItem {
+  id: string;
+  name: string;
+  type: string;
+  image_url: string;
+  rarity: string;
+  abv: number;
+}

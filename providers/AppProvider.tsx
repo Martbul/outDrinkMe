@@ -19,6 +19,7 @@ import {
   FriendDiscoveryDisplayProfileResponse,
   YourMixPostData,
   DrunkThought,
+  AlcoholDbItem,
 } from "../types/api.types";
 import { apiService } from "@/api";
 import { Alert } from "react-native";
@@ -38,6 +39,7 @@ interface AppContextType {
   friendDiscoveryProfile: FriendDiscoveryDisplayProfileResponse | null;
   drunkThought: string | null;
   friendsDrunkThoughts: DrunkThought[] | [];
+  alcoholCollection: AlcoholDbItem[] | [];
 
   // Refresh Functions
   refreshUserData: () => Promise<void>;
@@ -52,6 +54,7 @@ interface AppContextType {
   refreshMixTimelineData: () => Promise<void>;
   refreshDrunkThought: () => Promise<void>;
   refreshFriendsDrunkThoughs: () => Promise<void>;
+  refreshUserAlcoholCollection: () => Promise<void>;
   refreshAll: () => Promise<void>;
 
   // Actions
@@ -102,7 +105,9 @@ export function AppProvider({ children }: AppProviderProps) {
   const [friendsDrunkThoughts, setFriendsDrunkThoughts] = useState<
     DrunkThought[] | []
   >([]);
-
+const [alcoholCollection, setAlcoholCollection] = useState<
+    AlcoholDbItem[] | []
+  >([]);
   const [friendDiscoveryProfile, setFriendDiscoveryProfile] =
     useState<FriendDiscoveryDisplayProfileResponse | null>(null);
 
@@ -311,6 +316,19 @@ export function AppProvider({ children }: AppProviderProps) {
         return await apiService.getFriendsDrunkThoughts(token);
       },
       (data) => setFriendsDrunkThoughts(data)
+    );
+  }, [isSignedIn, getToken, withLoadingAndError]); 
+  
+  const refreshUserAlcoholCollection = useCallback(async () => {
+    if (!isSignedIn) return;
+
+    await withLoadingAndError(
+      async () => {
+        const token = await getToken();
+        if (!token) throw new Error("No auth token");
+        return await apiService.getUserAlcoholCollection(token);
+      },
+      (data) => setAlcoholCollection(data)
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
 

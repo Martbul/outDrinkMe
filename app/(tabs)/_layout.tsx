@@ -120,7 +120,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="collection"
           options={{
-            title: "Collection",
+            title: "Collect",
             tabBarIcon: ({ focused }) => (
               <View
                 style={{

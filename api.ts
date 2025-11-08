@@ -1,6 +1,7 @@
 import {
   Achievement,
   AddDrinkingRequest,
+  AlcoholDbItem,
   CalendarResponse,
   DailyDrinkingPostResponse,
   DaysStat,
@@ -144,6 +145,32 @@ class ApiService {
 
     return response || [];
   }
+
+  async searchDbAlcoholCollection(searchQuery: string, token: string): Promise<AlcoholDbItem> {
+    const response = await this.makeRequest<AlcoholDbItem>(
+      `/api/v1/user/search-db-alcohol?alcohol_name=${encodeURIComponent(searchQuery)}`,
+      {
+        method: "GET",
+        token,
+      }
+    );
+
+    return response;
+  }
+
+  async getUserAlcoholCollection(token: string): Promise<AlcoholDbItem> {
+    const response = await this.makeRequest<AlcoholDbItem>(
+      `/api/v1/user/alcohol-collection`,
+      {
+        method: "GET",
+        token,
+      }
+    );
+
+    return response;
+  }
+
+
   async getUserStats(token: string): Promise<UserStats> {
     return this.makeRequest<UserStats>("/api/v1/user/stats", {
       method: "GET",
