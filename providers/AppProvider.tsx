@@ -20,6 +20,7 @@ import {
   YourMixPostData,
   DrunkThought,
   AlcoholDbItem,
+  AlcoholCollectionByType,
 } from "../types/api.types";
 import { apiService } from "@/api";
 import { Alert } from "react-native";
@@ -39,7 +40,7 @@ interface AppContextType {
   friendDiscoveryProfile: FriendDiscoveryDisplayProfileResponse | null;
   drunkThought: string | null;
   friendsDrunkThoughts: DrunkThought[] | [];
-  alcoholCollection: AlcoholDbItem[] | [];
+  alcoholCollection: AlcoholCollectionByType | null;
 
   // Refresh Functions
   refreshUserData: () => Promise<void>;
@@ -105,9 +106,8 @@ export function AppProvider({ children }: AppProviderProps) {
   const [friendsDrunkThoughts, setFriendsDrunkThoughts] = useState<
     DrunkThought[] | []
   >([]);
-const [alcoholCollection, setAlcoholCollection] = useState<
-    AlcoholDbItem[] | []
-  >([]);
+  const [alcoholCollection, setAlcoholCollection] =
+    useState<AlcoholCollectionByType | null>(null);
   const [friendDiscoveryProfile, setFriendDiscoveryProfile] =
     useState<FriendDiscoveryDisplayProfileResponse | null>(null);
 
@@ -317,8 +317,8 @@ const [alcoholCollection, setAlcoholCollection] = useState<
       },
       (data) => setFriendsDrunkThoughts(data)
     );
-  }, [isSignedIn, getToken, withLoadingAndError]); 
-  
+  }, [isSignedIn, getToken, withLoadingAndError]);
+
   const refreshUserAlcoholCollection = useCallback(async () => {
     if (!isSignedIn) return;
 
@@ -331,7 +331,6 @@ const [alcoholCollection, setAlcoholCollection] = useState<
       (data) => setAlcoholCollection(data)
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
-
   // ============================================
   // Refresh All - Using Parallel Execution
   // ============================================
@@ -359,6 +358,7 @@ const [alcoholCollection, setAlcoholCollection] = useState<
         apiService.getWeeklyStats(token),
         apiService.getDrunkThought(token),
         apiService.getFriendsDrunkThoughts(token),
+        apiService.getUserAlcoholCollection(token),
       ]);
 
       // Extract successful results and handle failures
@@ -375,6 +375,7 @@ const [alcoholCollection, setAlcoholCollection] = useState<
         weeklyResult,
         drunkThoughtResult,
         friendsDrunkThoughtsResult,
+        userAlcoholCollectionResult,
       ] = results;
 
       if (userResult.status === "fulfilled") {
@@ -462,6 +463,15 @@ const [alcoholCollection, setAlcoholCollection] = useState<
         console.error(
           "Failed to fetch friends drunk thoughts:",
           friendsDrunkThoughtsResult.reason
+        );
+      }
+      if (userAlcoholCollectionResult.status === "fulfilled") {
+        setAlcoholCollection(userAlcoholCollectionResult.value);
+      } else {
+        setAlcoholCollection(null);
+        console.error(
+          "Failed to fetchuser alcohol collection:",
+          userAlcoholCollectionResult.reason
         );
       }
 
@@ -762,6 +772,7 @@ const [alcoholCollection, setAlcoholCollection] = useState<
     friendDiscoveryProfile,
     drunkThought,
     friendsDrunkThoughts,
+    alcoholCollection,
 
     // Refresh Functions
     refreshUserData,
@@ -776,6 +787,7 @@ const [alcoholCollection, setAlcoholCollection] = useState<
     refreshMixTimelineData,
     refreshDrunkThought,
     refreshFriendsDrunkThoughs,
+    refreshUserAlcoholCollection,
     refreshAll,
 
     // Actions

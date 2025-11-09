@@ -1,33 +1,26 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
-  Image,
   ActivityIndicator,
   TextInput,
+  RefreshControl,
 } from "react-native";
+import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { FontAwesome5, MaterialCommunityIcons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Header } from "@/components/header";
 import { apiService } from "@/api";
 import { useAuth } from "@clerk/clerk-expo";
 import InfoTooltip from "@/components/infoTooltip";
+import { AlcoholDbItem } from "@/types/api.types";
+import { useApp } from "@/providers/AppProvider";
 
 interface ScanedAlcohol {
   name: string;
-}
-
-interface BeverageItem {
-  id: string;
-  name: string;
-  image_url: string | null;
-  abv: number;
-  type: string;
-  rarity: "common" | "rare" | "epic" | "legendary";
-  company: string;
 }
 
 interface CustomBeverage {
@@ -44,9 +37,12 @@ interface ModalState {
     style?: "primary" | "secondary" | "danger";
   }>;
 }
-
+//! item already in collection error fix when scanning an item that the user already ahs
+//! refresh user collection after ading new item
+//! 
 export default function Collection() {
   const { getToken } = useAuth();
+  const { alcoholCollection, refreshUserAlcoholCollection } = useApp();
   const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanning, setScanning] = useState(false);
@@ -57,18 +53,25 @@ export default function Collection() {
   );
   const [customBeverages, setCustomBeverages] = useState<CustomBeverage[]>([]);
   const [selectedFilter, setSelectedFilter] = useState<
-    | "All"
-    | "Beer"
-    | "Whiskey"
-    | "Wine"
-    | "Vodka"
-    | "Gin"
-    | "Liqueur"
-    | "Rum"
-    | "Tequila"
-  >("All");
+    | "all"
+    | "beer"
+    | "whiskey"
+    | "wine"
+    | "vodka"
+    | "gin"
+    | "liqueur"
+    | "rum"
+    | "tequila"
+    | "rakiya"
+  >("all");
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Modal state
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refreshUserAlcoholCollection();
+    setRefreshing(false);
+  };
+
   const [modalState, setModalState] = useState<ModalState>({
     visible: false,
     title: "",
@@ -76,43 +79,41 @@ export default function Collection() {
     buttons: [],
   });
 
-  const [collection, setCollection] = useState<BeverageItem[]>([
-    {
-      id: "1",
-      name: "Heineken Lager",
-      company: "Heineken",
-      image_url:
-        "https://www.heineken.com/media/y0ve1jpq/hnk-original-bottle.png",
-      abv: 5.0,
-      type: "Beer",
-      rarity: "common",
-    },
-    {
-      id: "2",
-      name: "Jack Daniel's No. 7",
-      company: "Jack Daniel's",
-      image_url:
-        "https://vida.bg/wp-content/uploads/2022/03/Jack-Daniels-Old-Number-7-1L-1000x1000-1.png",
-      abv: 40,
-      type: "Whiskey",
-      rarity: "epic",
-    },
-  ]);
-
   const [formData, setFormData] = useState({ name: "" });
 
   const categories = [
-    "Beer",
-    "Whiskey",
-    "Wine",
-    "Vodka",
-    "Gin",
-    "Liqueur",
-    "Rum",
-    "Tequila",
+    { key: "all", label: "All" },
+    { key: "beer", label: "Beer" },
+    { key: "whiskey", label: "Whiskey" },
+    { key: "wine", label: "Wine" },
+    { key: "vodka", label: "Vodka" },
+    { key: "gin", label: "Gin" },
+    { key: "liqueur", label: "Liqueur" },
+    { key: "rum", label: "Rum" },
+    { key: "tequila", label: "Tequila" },
+    { key: "rakiya", label: "Rakiya" },
   ];
-  const totalSlots = 2547;
-  const collectedCount = collection.length;
+
+  const totalSlots = 477;
+
+  useEffect(() => {
+    refreshUserAlcoholCollection();
+  }, []);
+
+  const getFilteredCollection = (): AlcoholDbItem[] => {
+    if (!alcoholCollection) return [];
+
+    if (selectedFilter === "all") {
+      return Object.values(alcoholCollection).flat() as AlcoholDbItem[];
+    }
+
+    return alcoholCollection[selectedFilter] || [];
+  };
+
+  const filteredCollection = getFilteredCollection();
+  const collectedCount = alcoholCollection
+    ? Object.values(alcoholCollection).flat().length
+    : 0;
   const completionPercentage = (collectedCount / totalSlots) * 100;
 
   const showModal = (
@@ -139,12 +140,12 @@ export default function Collection() {
 
   const getRarityColor = (rarity: string) => {
     switch (rarity) {
-      case "legendary":
-        return "#FFD700";
-      case "epic":
-        return "#A855F7";
-      case "rare":
-        return "#3B82F6";
+      case "Legendary":
+        return "#d08700";
+      case "Epic":
+        return "#6e11b0";
+      case "Rare":
+        return "#193cb8";
       default:
         return "#9CA3AF";
     }
@@ -224,7 +225,8 @@ export default function Collection() {
       name: productInfo.name,
     };
 
-    setCollection((prev) => [newItem, ...prev]);
+    await refreshUserAlcoholCollection();
+
     setScanned(false);
     setScanning(false);
 
@@ -239,17 +241,13 @@ export default function Collection() {
 
   const handleAddCustomBeverage = () => {
     if (!formData.name) {
-      showModal(
-        "Missing Information",
-        "Please fill in name of the alcohol.",
-        [
-          {
-            text: "OK",
-            onPress: closeModal,
-            style: "primary",
-          },
-        ]
-      );
+      showModal("Missing Information", "Please fill in name of the alcohol.", [
+        {
+          text: "OK",
+          onPress: closeModal,
+          style: "primary",
+        },
+      ]);
       return;
     }
 
@@ -348,6 +346,23 @@ export default function Collection() {
     }
   };
 
+  const getRarityCounts = () => {
+    if (!alcoholCollection) {
+      return { legendary: 0, epic: 0, rare: 0, common: 0 };
+    }
+
+    const allItems = Object.values(alcoholCollection).flat() as AlcoholDbItem[];
+    console.log(allItems)
+    return {
+      legendary: allItems.filter((i) => i.rarity === "Legendary").length,
+      epic: allItems.filter((i) => i.rarity === "Epic").length,
+      rare: allItems.filter((i) => i.rarity === "Rare").length,
+      common: allItems.filter((i) => i.rarity === "Common").length,
+    };
+  };
+
+  const rarityCounts = getRarityCounts();
+
   if (!permission) {
     return (
       <View className="flex-1 bg-black justify-center items-center">
@@ -370,7 +385,6 @@ export default function Collection() {
     );
   }
 
-  // Manual Entry Screen
   if (currentScreen === "manual" && !scanning) {
     return (
       <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
@@ -510,7 +524,6 @@ export default function Collection() {
           </View>
         </CameraView>
 
-        {/* Custom Modal for Scanner */}
         {modalState.visible && modalState.buttons && (
           <View className="absolute inset-0 bg-black/80 justify-center items-center px-4">
             <View className="bg-[#1a1a1a] rounded-2xl p-6 border-2 border-orange-600/30 w-full max-w-sm">
@@ -543,19 +556,26 @@ export default function Collection() {
     );
   }
 
-  // Collection Screen (Main)
   return (
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
       <Header />
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#EA580C"
+            colors={["#EA580C"]}
+          />
+        }
       >
-        {/* Album Header */}
+        {/* Album Header with Scan Button */}
         <View className="px-4 pt-1 pb-4">
           <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
             <View className="flex-row items-center justify-between mb-3">
-              <View>
+              <View className="flex-1">
                 <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">
                   COLLECTION ALBUM
                 </Text>
@@ -563,13 +583,27 @@ export default function Collection() {
                   My Beverages
                 </Text>
               </View>
-              <View className="bg-orange-600/20 px-4 py-2 rounded-xl">
-                <Text className="text-orange-600 text-2xl font-black">
-                  {collectedCount}
-                </Text>
-                <Text className="text-orange-600/70 text-[10px] font-bold">
-                  CARDS
-                </Text>
+
+              <View className="flex-row items-center gap-3">
+                <View className="bg-orange-600/20 px-4 py-2 rounded-xl">
+                  <Text className="text-orange-600 text-2xl font-black">
+                    {collectedCount}
+                  </Text>
+                  <Text className="text-orange-600/70 text-[10px] font-bold">
+                    CARDS
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  onPress={handleScanPress}
+                  className="bg-orange-600 p-3 rounded-xl"
+                >
+                  <MaterialCommunityIcons
+                    name="barcode-scan"
+                    size={28}
+                    color="black"
+                  />
+                </TouchableOpacity>
               </View>
             </View>
 
@@ -604,113 +638,139 @@ export default function Collection() {
         >
           {categories.map((category) => (
             <TouchableOpacity
-              key={category}
-              className="bg-white/[0.03] px-5 py-3 rounded-xl mr-3 border border-white/[0.08]"
+              key={category.key}
+              onPress={() => setSelectedFilter(category.key as any)}
+              className={`${
+                selectedFilter === category.key
+                  ? "bg-orange-600"
+                  : "bg-white/[0.03]"
+              } px-5 py-3 rounded-xl mr-3 border ${
+                selectedFilter === category.key
+                  ? "border-orange-600"
+                  : "border-white/[0.08]"
+              }`}
             >
-              <Text className="text-white text-sm font-bold">{category}</Text>
+              <Text
+                className={`${
+                  selectedFilter === category.key ? "text-black" : "text-white"
+                } text-sm font-bold`}
+              >
+                {category.label}
+              </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
 
-        {/* Trading Cards Grid */}
         <View className="px-4">
           <Text className="text-white text-lg font-black mb-3">
             Your Collection Cards
           </Text>
 
-          <View className="flex-row flex-wrap">
-            {collection.map((item) => (
-              <View key={item.id} className="w-1/2 p-2">
-                <TouchableOpacity
-                  className="bg-white/[0.03] rounded-2xl overflow-hidden border-2"
-                  style={{ borderColor: getRarityColor(item.rarity) }}
-                >
-                  <View
-                    className="px-3 py-2"
-                    style={{
-                      backgroundColor: `${getRarityColor(item.rarity)}20`,
-                    }}
+          {filteredCollection.length === 0 ? (
+            <View className="bg-white/[0.03] rounded-2xl p-8 border border-white/[0.08] items-center">
+              <FontAwesome5 name="wine-bottle" size={64} color="#f54a00" className="mb-6"/>
+              <Text className="text-white text-lg font-black mb-1">
+                No items yet
+              </Text>
+              <Text className="text-white/50 text-sm text-center">
+                Start scanning beverages to build your collection!
+              </Text>
+            </View>
+          ) : (
+            <View className="flex-row flex-wrap">
+              {filteredCollection.map((item, index) => (
+                <View key={index} className="w-1/2 p-2">
+                  <TouchableOpacity
+                    className="bg-white/[0.03] rounded-2xl overflow-hidden border-2"
+                    style={{ borderColor: getRarityColor(item.rarity) }}
                   >
-                    <Text
-                      className="text-xs font-black tracking-wide"
-                      style={{ color: getRarityColor(item.rarity) }}
+                    <View
+                      className="px-3 py-2"
+                      style={{
+                        backgroundColor: `${getRarityColor(item.rarity)}20`,
+                      }}
                     >
-                      {item.rarity.toUpperCase()}
-                    </Text>
-                  </View>
-
-                  <View className="aspect-square bg-white/[0.05] items-center justify-center">
-                    {item.image_url ? (
-                      <Image
-                        source={{ uri: item.image_url }}
-                        className="w-full h-full"
-                        resizeMode="cover"
-                      />
-                    ) : (
-                      <Text className="text-6xl">🍺</Text>
-                    )}
-                  </View>
-
-                  <View className="p-3">
-                    <Text className="text-white/50 text-[10px] font-bold tracking-wide mb-1">
-                      {item.company.toUpperCase()}
-                    </Text>
-                    <Text
-                      className="text-white text-sm font-black"
-                      numberOfLines={2}
-                    >
-                      {item.name}
-                    </Text>
-                    <View className="flex-row justify-between items-center mt-2">
-                      <Text className="text-white/50 text-[11px] font-semibold">
-                        {item.abv}% ABV
+                      <Text
+                        className="text-xs font-black tracking-wide"
+                        style={{ color: getRarityColor(item.rarity) }}
+                      >
+                        {item.rarity.toUpperCase()}
                       </Text>
                     </View>
-                  </View>
-                </TouchableOpacity>
-              </View>
-            ))}
 
-            {/* Empty Card Slots */}
-            {[...Array(6)].map((_, index) => (
-              <View key={`empty-${index}`} className="w-1/2 p-2">
-                <View className="bg-white/[0.03] rounded-2xl border border-dashed border-white/[0.08] aspect-square items-center justify-center">
-                  <Text className="text-5xl opacity-20">🔒</Text>
-                  <Text className="text-white/20 text-xs font-bold mt-2">
-                    Empty Slot
-                  </Text>
+                    <View className="aspect-square bg-white/[0.05] items-center justify-center ">
+                      {item.image_url ? (
+                        <Image
+                          source={{ uri: item.image_url }}
+                          style={{ width: "100%", height: "100%" }}
+                          contentFit="cover"
+                          cachePolicy="memory-disk"
+                          transition={200}
+                          onError={(error) =>
+                            console.log("Image load error:", error)
+                          }
+                          onLoad={() =>
+                            console.log("Image loaded:", item.image_url)
+                          }
+                        />
+                      ) : (
+                        <FontAwesome5
+                          name="wine-bottle"
+                          size={24}
+                          color="black"
+                        />
+                      )}
+                    </View>
+
+                    <View className="p-3">
+                      <Text className="text-white/50 text-[10px] font-bold tracking-wide mb-1">
+                        {item.type?.toUpperCase() || "BEVERAGE"}
+                      </Text>
+                      <Text
+                        className="text-white text-sm font-black"
+                        numberOfLines={2}
+                      >
+                        {item.name}
+                      </Text>
+                      <View className="flex-row justify-between items-center mt-2">
+                        <Text className="text-white/50 text-[11px] font-semibold">
+                          {item.abv}% ABV
+                        </Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
                 </View>
-              </View>
-            ))}
-          </View>
+              ))}
+            </View>
+          )}
         </View>
 
         {/* Stats Section */}
         <View className="px-4 mt-6">
           <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
             <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-3">
-              COLLECTION STATS
+              ALL COLLECTION STATS
             </Text>
             <View className="flex-row justify-around">
               <View className="items-center">
-                <Text className="text-white text-2xl font-black">
-                  {collection.filter((i) => i.rarity === "legendary").length}
+                <Text className="text-yellow-600 text-2xl font-black">
+                  {rarityCounts.legendary}
                 </Text>
                 <Text className="text-white/50 text-[10px] font-bold mt-1">
                   LEGENDARY
                 </Text>
               </View>
               <View className="items-center">
-                <Text className="text-purple-500 text-2xl font-black">
-                  {collection.filter((i) => i.rarity === "epic").length}
+                <Text className="text-purple-800 text-2xl font-black">
+                  {rarityCounts.epic}
                 </Text>
                 <Text className="text-white/50 text-[10px] font-bold mt-1">
                   EPIC
                 </Text>
               </View>
               <View className="items-center">
-                <Text className="text-blue-500 text-2xl font-black">
-                  {collection.filter((i) => i.rarity === "rare").length}
+                <Text className="text-blue-800 text-2xl font-black">
+                  {rarityCounts.rare}
                 </Text>
                 <Text className="text-white/50 text-[10px] font-bold mt-1">
                   RARE
@@ -718,7 +778,7 @@ export default function Collection() {
               </View>
               <View className="items-center">
                 <Text className="text-gray-400 text-2xl font-black">
-                  {collection.filter((i) => i.rarity === "common").length}
+                  {rarityCounts.common}
                 </Text>
                 <Text className="text-white/50 text-[10px] font-bold mt-1">
                   COMMON
@@ -729,29 +789,6 @@ export default function Collection() {
         </View>
       </ScrollView>
 
-      {/* Floating Action Buttons */}
-      <View
-        className="absolute left-32 right-32 flex-row gap-3 mb-20"
-        style={{ bottom: insets.bottom + 20 }}
-      >
-        <TouchableOpacity
-          onPress={handleScanPress}
-          className="flex-1 bg-orange-600 py-5 rounded-2xl items-center shadow-lg"
-        >
-          <View className="flex-row items-center">
-            <MaterialCommunityIcons
-              name="barcode-scan"
-              size={24}
-              color="black"
-            />
-            <Text className="text-black text-sm font-black tracking-widest ml-2">
-              SCAN
-            </Text>
-          </View>
-        </TouchableOpacity>
-      </View>
-
-      {/* Modal for main screen */}
       <InfoTooltip
         visible={modalState.visible}
         title={modalState.title}

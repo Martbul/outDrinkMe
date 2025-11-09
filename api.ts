@@ -1,6 +1,7 @@
 import {
   Achievement,
   AddDrinkingRequest,
+  AlcoholCollectionByType,
   AlcoholDbItem,
   CalendarResponse,
   DailyDrinkingPostResponse,
@@ -146,7 +147,10 @@ class ApiService {
     return response || [];
   }
 
-  async searchDbAlcoholCollection(searchQuery: string, token: string): Promise<AlcoholDbItem> {
+  async searchDbAlcoholCollection(
+    searchQuery: string,
+    token: string
+  ): Promise<AlcoholDbItem> {
     const response = await this.makeRequest<AlcoholDbItem>(
       `/api/v1/user/search-db-alcohol?alcohol_name=${encodeURIComponent(searchQuery)}`,
       {
@@ -158,8 +162,10 @@ class ApiService {
     return response;
   }
 
-  async getUserAlcoholCollection(token: string): Promise<AlcoholDbItem> {
-    const response = await this.makeRequest<AlcoholDbItem>(
+  async getUserAlcoholCollection(
+    token: string
+  ): Promise<AlcoholCollectionByType> {
+    const response = await this.makeRequest<AlcoholCollectionByType>(
       `/api/v1/user/alcohol-collection`,
       {
         method: "GET",
@@ -169,7 +175,6 @@ class ApiService {
 
     return response;
   }
-
 
   async getUserStats(token: string): Promise<UserStats> {
     return this.makeRequest<UserStats>("/api/v1/user/stats", {
@@ -282,18 +287,18 @@ class ApiService {
     );
 
     return response || [];
-  }  
-  
- async getFriendsDrunkThoughts(token: string): Promise<DrunkThought[]> {
-  const response = await this.makeRequest<DrunkThought[]>(
-    "/api/v1/user/drunk-friend-thoughts",
-    {
-      method: "GET",
-      token,
-    }
-  );
-  return response || [];
-}
+  }
+
+  async getFriendsDrunkThoughts(token: string): Promise<DrunkThought[]> {
+    const response = await this.makeRequest<DrunkThought[]>(
+      "/api/v1/user/drunk-friend-thoughts",
+      {
+        method: "GET",
+        token,
+      }
+    );
+    return response || [];
+  }
   async getYourMixData(token: string): Promise<YourMixPostData[]> {
     try {
       const response = await this.makeRequest<DailyDrinkingPostResponse[]>(
@@ -362,12 +367,12 @@ class ApiService {
     });
   }
 
-  async getDrunkThought(token: string, date?: string): Promise<string | null> {
+  async getDrunkThought(token: string, date?: string): Promise<any> {
     const url = date
       ? `/api/v1/user/drunk-thought?date=${encodeURIComponent(date)}`
       : `/api/v1/user/drunk-thought`;
 
-    const response = await this.makeRequest(url, {
+    const response = await this.makeRequest<any>(url, {
       method: "GET",
       token,
     });

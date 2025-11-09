@@ -145,8 +145,7 @@ export interface YourMixPostData {
   sourceType: "friend" | "other";
 }
 
-
-export interface DrunkThought  {
+export interface DrunkThought {
   id: string;
   user_id: string;
   username: string;
@@ -163,3 +162,15 @@ export interface AlcoholDbItem {
   rarity: string;
   abv: number;
 }
+
+export type AlcoholCollectionByType = {
+  beer: AlcoholDbItem[];
+  whiskey: AlcoholDbItem[];
+  wine: AlcoholDbItem[];
+  vodka: AlcoholDbItem[];
+  gin: AlcoholDbItem[];
+  liqueur: AlcoholDbItem[];
+  rum: AlcoholDbItem[];
+  tequila: AlcoholDbItem[];
+  rakiya: AlcoholDbItem[];
+};

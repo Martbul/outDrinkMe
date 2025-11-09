@@ -89,7 +89,6 @@ export default function DrunkThought({
           <Text style={styles.text} numberOfLines={3}>
             {thought}
           </Text>
-          <View style={styles.corner} />
           <Image source={{ uri: userImageUrl }} style={styles.imageCorner} />
         </View>
       </TouchableOpacity>
