@@ -174,3 +174,8 @@ export type AlcoholCollectionByType = {
   tequila: AlcoholDbItem[];
   rakiya: AlcoholDbItem[];
 };
+
+export interface SearchDbAlcoholResult {
+  item: AlcoholDbItem;
+  isNewlyAdded: boolean;
+}

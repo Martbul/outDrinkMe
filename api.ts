@@ -11,6 +11,7 @@ import {
   Friendship,
   Leaderboard,
   LeaderboardEntry,
+  SearchDbAlcoholResult,
   UpdateUserProfileReq,
   UserData,
   UserStats,
@@ -150,8 +151,8 @@ class ApiService {
   async searchDbAlcoholCollection(
     searchQuery: string,
     token: string
-  ): Promise<AlcoholDbItem> {
-    const response = await this.makeRequest<AlcoholDbItem>(
+  ): Promise<SearchDbAlcoholResult | null> {
+    const response = await this.makeRequest<SearchDbAlcoholResult | null>(
       `/api/v1/user/search-db-alcohol?alcohol_name=${encodeURIComponent(searchQuery)}`,
       {
         method: "GET",

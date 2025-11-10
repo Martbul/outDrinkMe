@@ -39,7 +39,7 @@ interface ModalState {
 }
 //! item already in collection error fix when scanning an item that the user already ahs
 //! refresh user collection after ading new item
-//! 
+//!
 export default function Collection() {
   const { getToken } = useAuth();
   const { alcoholCollection, refreshUserAlcoholCollection } = useApp();
@@ -51,7 +51,6 @@ export default function Collection() {
   const [currentScreen, setCurrentScreen] = useState<"collection" | "manual">(
     "collection"
   );
-  const [customBeverages, setCustomBeverages] = useState<CustomBeverage[]>([]);
   const [selectedFilter, setSelectedFilter] = useState<
     | "all"
     | "beer"
@@ -180,22 +179,55 @@ export default function Collection() {
   const handleBarCodeScanned = async ({ data }: { data: string }) => {
     const token = await getToken();
     if (!token) return;
+
     setScanned(true);
+    setLoading(true);
 
-    const productInfo = await fetchProductName(data);
+    try {
+      const productInfo = await fetchProductName(data);
 
-    if (!productInfo.found) {
-      showModal(
-        "Product Not Found",
-        `Barcode: ${data}\n\nThis product is not in our database.`,
-        [
+      if (!productInfo.found) {
+        showModal(
+          "Product Not Found",
+          `Barcode: ${data}\n\nThis product is not in our database.`,
+          [
+            {
+              text: "Add Manually",
+              onPress: () => {
+                closeModal();
+                setScanning(false);
+                setCurrentScreen("manual");
+                setFormData({ ...formData });
+              },
+              style: "primary",
+            },
+            {
+              text: "Cancel",
+              onPress: () => {
+                closeModal();
+                setScanned(false);
+              },
+              style: "secondary",
+            },
+          ]
+        );
+        return;
+      }
+
+      const result = await apiService.searchDbAlcoholCollection(
+        productInfo.name,
+        token
+      );
+
+      if (!result) {
+        showModal("Not Found", "This beverage is not in our database yet.", [
           {
             text: "Add Manually",
             onPress: () => {
               closeModal();
               setScanning(false);
               setCurrentScreen("manual");
-              setFormData({ ...formData });
+              setFormData({ name: productInfo.name });
             },
             style: "primary",
           },
@@ -207,40 +239,99 @@ export default function Collection() {
             },
             style: "secondary",
           },
+        ]);
+        return;
+      }
+
+      const { item, isNewlyAdded } = result;
+
+      if (isNewlyAdded) {
+        // Refresh collection after adding new item
+        await refreshUserAlcoholCollection();
+
+        showModal(
+          "Added to Collection!",
+          `${item.name} has been added to your collection!\n\nType: ${item.type}\nRarity: ${item.rarity}\nABV: ${item.abv}%`,
+          [
+            {
+              text: "View Collection",
+              onPress: () => {
+                closeModal();
+                setScanning(false);
+                setScanned(false);
+              },
+              style: "primary",
+            },
+            {
+              text: "Scan Another",
+              onPress: () => {
+                closeModal();
+                setScanned(false);
+              },
+              style: "secondary",
+            },
+          ]
+        );
+      } else {
+        showModal(
+          "Already in Collection",
+          `You already have ${item.name} in your collection!\n\nType: ${item.type}\nRarity: ${item.rarity}\nABV: ${item.abv}%`,
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                closeModal();
+                setScanned(false);
+                setScanning(false);
+              },
+              style: "secondary",
+            },
+            {
+              text: "Scan Another",
+              onPress: () => {
+                closeModal();
+                setScanned(false);
+              },
+              style: "primary",
+            },
+          ]
+        );
+      }
+    } catch (error) {
+      console.error("Error scanning barcode:", error);
+      showModal(
+        "Error",
+        "Something went wrong while processing the barcode. Please try again.",
+        [
+          {
+            text: "Try Again",
+            onPress: () => {
+              closeModal();
+              setScanned(false);
+            },
+            style: "primary",
+          },
+          {
+            text: "Cancel",
+            onPress: () => {
+              closeModal();
+              setScanning(false);
+              setScanned(false);
+            },
+            style: "secondary",
+          },
         ]
       );
-      return;
+    } finally {
+      setLoading(false);
     }
-
-    const alcoholItem = await apiService.searchDbAlcoholCollection(
-      productInfo.name,
-      token
-    );
-
-    console.log(alcoholItem);
   };
 
-  const handleAddToCollection = async (productInfo: any) => {
-    const newItem: ScanedAlcohol = {
-      name: productInfo.name,
-    };
+  const handleAddCustomBeverage = async () => {
+    const token = await getToken();
+    if (!token) return;
 
-    await refreshUserAlcoholCollection();
-
-    setScanned(false);
-    setScanning(false);
-
-    showModal("Success! 🎉", `${newItem.name}`, [
-      {
-        text: "Done",
-        onPress: closeModal,
-        style: "primary",
-      },
-    ]);
-  };
-
-  const handleAddCustomBeverage = () => {
-    if (!formData.name) {
+    if (!formData.name.trim()) {
       showModal("Missing Information", "Please fill in name of the alcohol.", [
         {
           text: "OK",
@@ -251,11 +342,108 @@ export default function Collection() {
       return;
     }
 
-    const newCustomBeverage: CustomBeverage = {
-      name: formData.name,
-    };
+    setLoading(true);
 
-    setCustomBeverages((prev) => [...prev, newCustomBeverage]);
+    try {
+      const result = await apiService.searchDbAlcoholCollection(
+        formData.name.trim(),
+        token
+      );
+
+      if (!result) {
+        showModal("Not Found", "This beverage is not in our database yet.", [
+          {
+            text: "OK",
+            onPress: closeModal,
+            style: "secondary",
+          },
+        ]);
+        return;
+      }
+
+      const { item, isNewlyAdded } = result;
+
+      console.log("------------------------------------------------")
+      console.log(item);
+      console.log(isNewlyAdded);
+
+      if (isNewlyAdded) {
+        // Refresh collection after adding new item
+        await refreshUserAlcoholCollection();
+
+        showModal(
+          "Added to Collection!",
+          `${item.name} has been added to your collection!\n\nType: ${item.type}\nRarity: ${item.rarity}\nABV: ${item.abv}%`,
+          [
+            {
+              text: "View Collection",
+              onPress: () => {
+                closeModal();
+                setCurrentScreen("collection");
+                setFormData({ name: "" }); // Reset form
+              },
+              style: "primary",
+            },
+            {
+              text: "Add Another",
+              onPress: () => {
+                closeModal();
+                setFormData({ name: "" }); // Reset form
+              },
+              style: "secondary",
+            },
+          ]
+        );
+      } else {
+        showModal(
+          "Already in Collection",
+          `You already have ${item.name} in your collection!\n\nType: ${item.type}\nRarity: ${item.rarity}\nABV: ${item.abv}%`,
+          [
+            {
+              text: "View Collection",
+              onPress: () => {
+                closeModal();
+                setCurrentScreen("collection");
+                setFormData({ name: "" }); // Reset form
+              },
+              style: "primary",
+            },
+            {
+              text: "Try Another",
+              onPress: () => {
+                closeModal();
+                setFormData({ name: "" }); // Reset form
+              },
+              style: "secondary",
+            },
+          ]
+        );
+      }
+    } catch (error) {
+      console.error("Error adding beverage:", error);
+      showModal(
+        "Error",
+        "Something went wrong while adding the beverage. Please try again.",
+        [
+          {
+            text: "Try Again",
+            onPress: closeModal,
+            style: "primary",
+          },
+          {
+            text: "Cancel",
+            onPress: () => {
+              closeModal();
+              setCurrentScreen("collection");
+              setFormData({ name: "" }); // Reset form
+            },
+            style: "secondary",
+          },
+        ]
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleScanForManual = async () => {
@@ -352,7 +540,7 @@ export default function Collection() {
     }
 
     const allItems = Object.values(alcoholCollection).flat() as AlcoholDbItem[];
-    console.log(allItems)
+    console.log(allItems);
     return {
       legendary: allItems.filter((i) => i.rarity === "Legendary").length,
       epic: allItems.filter((i) => i.rarity === "Epic").length,
@@ -395,10 +583,10 @@ export default function Collection() {
           <View className="px-4 pt-6 pb-4">
             <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
               <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">
-                ADD CUSTOM BEVERAGE
+                ADD
               </Text>
               <Text className="text-white text-[28px] font-black">
-                Build Your Database
+                Alcohol Manually
               </Text>
             </View>
           </View>
@@ -433,10 +621,15 @@ export default function Collection() {
               <TouchableOpacity
                 onPress={handleAddCustomBeverage}
                 className="bg-orange-600 py-4 rounded-xl items-center mb-3"
+                disabled={loading}
               >
-                <Text className="text-black text-base font-black tracking-widest">
-                  ADD TO DATABASE
-                </Text>
+                {loading ? (
+                  <ActivityIndicator size="small" color="black" />
+                ) : (
+                  <Text className="text-black text-base font-black tracking-widest">
+                    ADD TO COLLECTION
+                  </Text>
+                )}
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -444,22 +637,48 @@ export default function Collection() {
                 className="bg-white/[0.03] py-4 rounded-xl items-center border border-white/[0.08]"
               >
                 <Text className="text-white text-base font-black tracking-widest">
-                  BACK TO COLLECTION
+                  BACK
                 </Text>
               </TouchableOpacity>
             </View>
           </View>
         </ScrollView>
-        <InfoTooltip
-          visible={modalState.visible}
-          title={modalState.title}
-          description={modalState.description}
-          onClose={closeModal}
-        />
+
+        {/* Modal overlay for manual screen */}
+        {modalState.visible && modalState.buttons && (
+          <View
+            className="absolute inset-0 bg-black/80 justify-center items-center px-4"
+            style={{ zIndex: 9999 }}
+          >
+            <View className="bg-[#1a1a1a] rounded-2xl p-6 border-2 border-orange-600/30 w-full max-w-sm">
+              <Text className="text-white text-xl font-black mb-2">
+                {modalState.title}
+              </Text>
+              <Text className="text-white/70 text-sm leading-5 mb-6">
+                {modalState.description}
+              </Text>
+
+              <View className="space-y-3 gap-3">
+                {modalState.buttons.map((button, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    onPress={button.onPress}
+                    className={`${getButtonStyle(button.style)} py-4 rounded-xl items-center`}
+                  >
+                    <Text
+                      className={`${getButtonTextStyle(button.style)} text-base font-black tracking-widest`}
+                    >
+                      {button.text}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </View>
+        )}
       </View>
     );
   }
-
   if (scanning) {
     return (
       <View className="flex-1 bg-black">
@@ -534,7 +753,7 @@ export default function Collection() {
                 {modalState.description}
               </Text>
 
-              <View className="space-y-3">
+              <View className="space-y-3 gap-3">
                 {modalState.buttons.map((button, index) => (
                   <TouchableOpacity
                     key={index}
@@ -577,10 +796,10 @@ export default function Collection() {
             <View className="flex-row items-center justify-between mb-3">
               <View className="flex-1">
                 <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">
-                  COLLECTION ALBUM
+                  COLLECTION
                 </Text>
                 <Text className="text-white text-[28px] font-black">
-                  My Beverages
+                   Beverages
                 </Text>
               </View>
 
@@ -668,7 +887,12 @@ export default function Collection() {
 
           {filteredCollection.length === 0 ? (
             <View className="bg-white/[0.03] rounded-2xl p-8 border border-white/[0.08] items-center">
-              <FontAwesome5 name="wine-bottle" size={64} color="#f54a00" className="mb-6"/>
+              <FontAwesome5
+                name="wine-bottle"
+                size={64}
+                color="#f54a00"
+                className="mb-6"
+              />
               <Text className="text-white text-lg font-black mb-1">
                 No items yet
               </Text>
