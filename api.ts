@@ -202,6 +202,20 @@ class ApiService {
     });
   }
 
+  async removeDrinking(
+    token: string,
+    date: string
+  ): Promise<{ message: string }> {
+    console.log("devbug for remove drinking");
+    return await this.makeRequest(
+      `/api/v1/user/drink?date=${encodeURIComponent(date)}`,
+      {
+        method: "DELETE",
+        token,
+      }
+    );
+  }
+
   async getFriendsLeaderboard(token: string): Promise<Leaderboard> {
     return this.makeRequest<Leaderboard>("/api/v1/user/leaderboard/friends", {
       method: "GET",
