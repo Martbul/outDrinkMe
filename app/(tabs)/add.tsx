@@ -19,8 +19,9 @@ import Entypo from "@expo/vector-icons/Entypo";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import type { UserData } from "@/types/api.types";
+import { ImagePickerModal } from "@/components/imagePickerModal";
 
-export default function AddDrinksScreenV3() {
+export default function AddDrinks() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const {
@@ -320,6 +321,7 @@ function AdditionalInfoModal({
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [isFriendsListVisible, setFriendsListVisible] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [imagePickerModalVisible, setImagePickerModalVisible] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -421,46 +423,109 @@ function AdditionalInfoModal({
     }
   };
 
-  const handleImageUpload = async () => {
-    try {
-      const { status } =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const pickImageFromSource = async (source: "camera" | "library") => {
+      setImagePickerModalVisible(false);
 
-      if (status !== "granted") {
-        Alert.alert(
-          "Permission needed",
-          "Please grant permission to access your photos"
-        );
-        return;
-      }
+      try {
+        let result;
 
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 1,
-      });
+        if (source === "camera") {
+          const { status } = await ImagePicker.requestCameraPermissionsAsync();
 
-      if (!result.canceled && result.assets[0]) {
-        const localUri = result.assets[0].uri;
-        setImageUri(localUri); // Show preview immediately with local URI
+          if (status !== "granted") {
+            Alert.alert(
+              "Permission needed",
+              "Please grant permission to access your camera"
+            );
+            return;
+          }
 
-        // Upload to Cloudinary in background
-        const cloudinaryUrl = await uploadToCloudinary(localUri);
-
-        if (cloudinaryUrl) {
-          // Update with the Cloudinary URL (this is what will be saved to DB)
-          setImageUri(cloudinaryUrl);
+          result = await ImagePicker.launchCameraAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 1,
+          });
         } else {
-          // If upload failed, clear the image
-          setImageUri(null);
+          const { status } =
+            await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+          if (status !== "granted") {
+            Alert.alert(
+              "Permission needed",
+              "Please grant permission to access your photos"
+            );
+            return;
+          }
+
+          result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 1,
+          });
         }
+
+        if (!result.canceled && result.assets[0]) {
+          const localUri = result.assets[0].uri;
+          setImageUri(localUri);
+
+          const cloudinaryUrl = await uploadToCloudinary(localUri);
+
+          if (cloudinaryUrl) {
+            setImageUri(cloudinaryUrl);
+          } else {
+            setImageUri(null);
+          }
+        }
+      } catch (error) {
+        Alert.alert("Error", "Failed to pick image");
+        console.error(error);
       }
-    } catch (error) {
-      Alert.alert("Error", "Failed to pick image");
-      console.error(error);
-    }
-  };
+    };
+
+
+
+  // const handleImageUpload = async () => {
+  //   try {
+  //     const { status } =
+  //       await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+  //     if (status !== "granted") {
+  //       Alert.alert(
+  //         "Permission needed",
+  //         "Please grant permission to access your photos"
+  //       );
+  //       return;
+  //     }
+
+  //     const result = await ImagePicker.launchCameraAsync({
+  //       mediaTypes: ImagePicker.MediaTypeOptions.Images,
+  //       allowsEditing: true,
+  //       aspect: [4, 3],
+  //       quality: 1,
+  //     });
+
+  //     if (!result.canceled && result.assets[0]) {
+  //       const localUri = result.assets[0].uri;
+  //       setImageUri(localUri); // Show preview immediately with local URI
+
+  //       // Upload to Cloudinary in background
+  //       const cloudinaryUrl = await uploadToCloudinary(localUri);
+
+  //       if (cloudinaryUrl) {
+  //         // Update with the Cloudinary URL (this is what will be saved to DB)
+  //         setImageUri(cloudinaryUrl);
+  //       } else {
+  //         // If upload failed, clear the image
+  //         setImageUri(null);
+  //       }
+  //     }
+  //   } catch (error) {
+  //     Alert.alert("Error", "Failed to pick image");
+  //     console.error(error);
+  //   }
+  // };
 
   // const handleLocationSelect = async () => {
   //   try {
@@ -638,9 +703,9 @@ function AdditionalInfoModal({
         >
           <Pressable>
             <View className="bg-[#1a1a1a] rounded-2xl p-4 border-2 border-orange-600/30 shadow-2xl w-80">
-              {/* Image Upload Area with Loading Spinner */}
+              {/* Image Upload Area - UPDATED */}
               <TouchableOpacity
-                onPress={handleImageUpload}
+                onPress={() => setImagePickerModalVisible(true)} // CHANGED THIS LINE
                 disabled={isUploadingImage}
                 className="bg-[#2a2a2a] border-2 border-dashed border-orange-600/40 rounded-xl h-40 items-center justify-center mb-4 overflow-hidden"
               >
@@ -754,6 +819,12 @@ function AdditionalInfoModal({
                   Skip
                 </Text>
               </TouchableOpacity>
+              <ImagePickerModal
+                visible={imagePickerModalVisible}
+                onClose={() => setImagePickerModalVisible(false)}
+                onSelectCamera={() => pickImageFromSource("camera")}
+                onSelectLibrary={() => pickImageFromSource("library")}
+              />
             </View>
           </Pressable>
         </Animated.View>

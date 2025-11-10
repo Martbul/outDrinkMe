@@ -8,10 +8,10 @@ import { UserStats } from "@/types/api.types";
 
 export interface LevelInfo {
   level: number;
-  currentXP: number;
-  xpForCurrentLevel: number;
-  xpForNextLevel: number;
-  xpProgress: number;
+  totalXp: number;
+  currentLevelStartXp: number; // XP where current level started (was: xpForCurrentLevel)
+  nextLevelStartXp: number; // XP needed to reach next level (was: xpForNextLevel)
+  currentLevelProgress: number; // XP progress within current level (was: xpProgress)
   progressPercentage: number;
 }
 
@@ -64,21 +64,21 @@ export function getLevelInfo(totalXP: number | undefined): LevelInfo {
   }
 
   // Calculate XP thresholds
-  const xpForCurrentLevel = getTotalXPForLevel(currentLevel);
-  const xpForNextLevel = getTotalXPForLevel(currentLevel + 1);
+  const currentLevelStartXp = getTotalXPForLevel(currentLevel);
+  const nextLevelStartXp = getTotalXPForLevel(currentLevel + 1);
 
   // Calculate progress in current level
-  const xpProgress = safeTotalXP - xpForCurrentLevel;
-  const xpNeededForLevel = xpForNextLevel - xpForCurrentLevel;
+  const currentLevelProgress = safeTotalXP - currentLevelStartXp;
+  const xpNeededForLevel = nextLevelStartXp - currentLevelStartXp;
   const progressPercentage =
-    xpNeededForLevel > 0 ? (xpProgress / xpNeededForLevel) * 100 : 0;
+    xpNeededForLevel > 0 ? (currentLevelProgress / xpNeededForLevel) * 100 : 0;
 
   return {
     level: currentLevel,
-    currentXP: safeTotalXP,
-    xpForCurrentLevel,
-    xpForNextLevel,
-    xpProgress,
+    totalXp: safeTotalXP,
+    currentLevelStartXp,
+    nextLevelStartXp,
+    currentLevelProgress,
     progressPercentage: Math.min(Math.max(progressPercentage, 0), 100),
   };
 }
@@ -111,7 +111,7 @@ export function formatLevel(level: number, short: boolean = true): string {
  */
 export function getDaysToNextLevel(currentXP: number): number {
   const levelInfo = getLevelInfo(currentXP);
-  const xpNeeded = levelInfo.xpForNextLevel - currentXP;
+  const xpNeeded = levelInfo.nextLevelStartXp - currentXP;
   return Math.ceil(xpNeeded / 100);
 }
 

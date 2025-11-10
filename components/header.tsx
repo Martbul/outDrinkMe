@@ -15,9 +15,9 @@ export const Header = () => {
   const levelInfo = getLevelInfo(userData?.xp);
   const insets = useSafeAreaInsets();
 
-  const xpNeededForLevel =
-    levelInfo.xpForNextLevel - levelInfo.xpForCurrentLevel;
-  const levelInfoDescr = `Drink to get xp and level up!\nLevel Progress: ${Math.floor(levelInfo.xpProgress)}/${xpNeededForLevel} XP`;
+const xpNeededForThisLevel =
+  levelInfo.nextLevelStartXp - levelInfo.currentLevelStartXp;
+const levelInfoDescr = `Drink to get xp and level up!\nLevel Progress: ${Math.floor(levelInfo.currentLevelProgress)}/${xpNeededForThisLevel} XP`;
   const getInitials = () => {
     if (!userData) return "??";
     const first = userData.firstName?.[0] || "";

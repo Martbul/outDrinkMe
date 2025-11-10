@@ -84,7 +84,7 @@ const DayDetailModal = ({
   isLoadingThought,
 }: DayDetailModalProps) => {
   const { getToken } = useAuth();
-  const { refreshCalendar } = useApp();
+  const { refreshCalendar, refreshAll  } = useApp();
   const insets = useSafeAreaInsets();
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [showRemoveModal, setShowRemoveModal] = useState(false);
@@ -122,7 +122,7 @@ const DayDetailModal = ({
       }
       setShowRemoveModal(false);
       onClose(); // Close the day detail modal
-      refreshCalendar();
+      refreshAll();
     } catch (error) {
       console.error("Failed to remove drinking log:", error);
     } finally {

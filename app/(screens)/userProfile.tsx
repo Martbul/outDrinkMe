@@ -13,6 +13,7 @@ import {
   MaterialIcons,
   Octicons,
 } from "@expo/vector-icons";
+import { LevelsComponent } from "@/components/level";
 
 const ACHIEVEMENT_IMAGES = {
   lightning: require("../../assets/images/achievements/lightning.png"),
@@ -31,7 +32,7 @@ export default function UserProfileScreen() {
   const router = useRouter();
 
   const levelInfo = getLevelInfo(userData?.xp);
-
+  console.log(levelInfo);
   const groupedAchievements = useMemo(() => {
     if (!achievements) return { streaks: [], competition: [], social: [] };
 
@@ -196,7 +197,6 @@ export default function UserProfileScreen() {
           <ThisWeekGadget />
         </View>
 
-    
         {/* Achievements Section */}
         <View className="px-4 mb-4">
           <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
@@ -243,6 +243,19 @@ export default function UserProfileScreen() {
                 View All
               </Text>
             </TouchableOpacity>
+          </View>
+        </View>
+
+        <View className="flex-1 bg-black items-center justify-center p-4">
+          <View className="w-full max-w-2xl">
+            <LevelsComponent
+              currentLevel={levelInfo.level}
+              currentXP={levelInfo.currentLevelProgress}
+              xpForNextLevel={
+                levelInfo.nextLevelStartXp - levelInfo.currentLevelStartXp
+              } 
+              totalXP={levelInfo.totalXp}
+            />
           </View>
         </View>
 
