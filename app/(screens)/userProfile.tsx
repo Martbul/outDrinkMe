@@ -196,33 +196,7 @@ export default function UserProfileScreen() {
           <ThisWeekGadget />
         </View>
 
-        <View className="flex-row gap-3 px-4 mb-4">
-          <TouchableOpacity
-            onPress={() => router.push("/(screens)/store")}
-            className="flex-1 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08] items-center"
-          >
-            <MaterialCommunityIcons
-              name="store"
-              size={32}
-              color="white"
-              className="mb-2"
-            />
-            <Text className="text-white/50 text-[11px] font-bold tracking-widest uppercase">
-              Store
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => router.push("/(screens)/inventory")}
-            className="flex-1 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08] items-center"
-          >
-            <Octicons name="inbox" size={32} color="white" className="mb-2" />
-            <Text className="text-white/50 text-[11px] font-bold tracking-widest uppercase">
-              Inventory
-            </Text>
-          </TouchableOpacity>
-        </View>
-
+    
         {/* Achievements Section */}
         <View className="px-4 mb-4">
           <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">

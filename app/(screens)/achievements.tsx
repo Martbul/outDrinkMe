@@ -1,3 +1,4 @@
+import SecondaryHeader from "@/components/secondaryHeader";
 import { useApp } from "@/providers/AppProvider";
 import { ActivityIndicator, Image, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -17,7 +18,6 @@ export default function Achievements() {
     require("../../assets/images/achievements/100.png"),
   ];
 
-  // Calculate progress for locked achievements
   const getProgress = (achievement: any) => {
     if (!userStats) return 0;
 
@@ -83,13 +83,14 @@ export default function Achievements() {
 
   return (
     <ScrollView
-      className="flex-1 px-5 bg-white/[0.03]"
+      className="flex-1 px-5 bg-black"
       contentContainerStyle={{
         paddingTop: insets.top - 10,
-        paddingBottom: 100 + insets.bottom,
+        paddingBottom: 10 + insets.bottom,
       }}
     >
-      <View className="mb-8">
+      <SecondaryHeader title="Achievements"/>
+      <View className="mb-8 mt-3">
         <View className="bg-white/[0.03] backdrop-blur-xl rounded-2xl p-6 border border-white/[0.08]">
           <View className="flex-row items-start justify-between mb-6">
             <View className="flex-1">

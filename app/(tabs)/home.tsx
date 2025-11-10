@@ -33,14 +33,13 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
-  // Get 1-2 random thoughts
   const displayedThoughts = useMemo(() => {
     if (!friendsDrunkThoughts || friendsDrunkThoughts.length === 0) {
       return [];
     }
 
     const count = Math.min(
-      Math.floor(Math.random() * 2) + 1, // Random 1 or 2
+      Math.floor(Math.random() * 2) + 1,
       friendsDrunkThoughts.length
     );
 
@@ -160,7 +159,7 @@ export default function HomeScreen() {
             <AntDesign
               name="align-center"
               size={30}
-              color="#ff8c00"
+              color="#EA580C"
               className="mb-2"
             />
             <Text className="text-white/50 text-[12px] font-bold tracking-widest uppercase">
@@ -175,7 +174,7 @@ export default function HomeScreen() {
             <MaterialIcons
               name="query-stats"
               size={30}
-              color="#ff8c00"
+              color="#EA580C"
               className="mb-2"
             />
             <Text className="text-white/50 text-[12px] font-bold tracking-widest uppercase">
