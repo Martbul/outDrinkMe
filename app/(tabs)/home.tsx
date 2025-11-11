@@ -2,7 +2,7 @@ import { Header } from "@/components/header";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/providers/AppProvider";
 import { getCoefInfo } from "@/utils/levels";
-import { AntDesign, Feather, MaterialIcons } from "@expo/vector-icons";
+import { AntDesign, Feather, MaterialIcons, SimpleLineIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState, useMemo } from "react";
 import {
@@ -180,6 +180,27 @@ export default function HomeScreen() {
             <Text className="text-white/50 text-[12px] font-bold tracking-widest uppercase">
               Stats
             </Text>
+          </TouchableOpacity>
+        </View>
+
+        <View className="flex-row justify-between">
+          {/* First section - 80% width */}
+          <TouchableOpacity
+            className="w-[80%] bg-white/[0.03] rounded-2xl px-5 py-3 mb-4 border border-white/[0.08]"
+            onPress={() => router.push("/(screens)/buddies&discoverScreen")}
+          >
+            <View className="flex-row justify-between items-center">
+              
+                <Text className="text-white text-[28px] font-black">
+                    Buddies
+                </Text>
+                <Feather name="arrow-right" size={34} color="#EA580C" />
+            </View>
+          </TouchableOpacity>
+
+          {/* Second section - TouchableOpacity (20% width) */}
+          <TouchableOpacity className="w-[18%] bg-white/[0.03] rounded-2xl px-3 py-2 mb-4 border border-white/[0.08] flex-row justify-center items-center">
+            <SimpleLineIcons name="envelope-letter" size={24} color="#EA580C" />
           </TouchableOpacity>
         </View>
 

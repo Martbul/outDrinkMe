@@ -412,7 +412,7 @@ function AdditionalInfoModal({
 
       throw new Error(data.error?.message || "Upload failed");
     } catch (error) {
-      console.error("Cloudinary upload error:", error);
+      console.error("Upload error:", error);
       Alert.alert(
         "Upload Error",
         "Failed to upload image to Cloudinary. Please try again."
@@ -713,7 +713,7 @@ function AdditionalInfoModal({
                   <View className="items-center">
                     <ActivityIndicator size="large" color="#ff8c00" />
                     <Text className="text-white/70 text-sm mt-2 font-semibold">
-                      Uploading to Cloudinary...
+                      Uploading image...
                     </Text>
                   </View>
                 ) : imageUri ? (

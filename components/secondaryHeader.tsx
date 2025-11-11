@@ -9,7 +9,7 @@ export default function SecondaryHeader(props: {
   isLoading?: boolean;
 }) {
   return (
-    <View className="relative flex-row items-center px-4 py-6 border-b border-white/[0.08] bg-black">
+    <View className="relative flex-row items-center px-4 py-3 border-b border-white/[0.08] bg-black">
       <BackArrow />
       <Text className="flex-1 text-center text-white font-black text-2xl">
         {props.title}
