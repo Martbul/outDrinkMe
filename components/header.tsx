@@ -5,19 +5,21 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { getLevelInfo } from "@/utils/levels";
 import InfoTooltip from "./infoTooltip";
+import { useAds } from "@/providers/AdProvider";
 
 export const Header = () => {
   const { userData, userStats, updateUserProfile } = useApp();
-  const [showAdModal, setShowAdModal] = useState(false);
+  const { isAdLoaded, showRewardedAd } = useAds();
   const [isLevelTooltipVisible, setIsLevelTooltipVisible] =
     useState<boolean>(false);
 
   const levelInfo = getLevelInfo(userData?.xp);
   const insets = useSafeAreaInsets();
 
-const xpNeededForThisLevel =
-  levelInfo.nextLevelStartXp - levelInfo.currentLevelStartXp;
-const levelInfoDescr = `Drink to get xp and level up!\nLevel Progress: ${Math.floor(levelInfo.currentLevelProgress)}/${xpNeededForThisLevel} XP`;
+  const xpNeededForThisLevel =
+    levelInfo.nextLevelStartXp - levelInfo.currentLevelStartXp;
+  const levelInfoDescr = `Drink to get xp and level up!\nLevel Progress: ${Math.floor(levelInfo.currentLevelProgress)}/${xpNeededForThisLevel} XP`;
+
   const getInitials = () => {
     if (!userData) return "??";
     const first = userData.firstName?.[0] || "";
@@ -25,37 +27,28 @@ const levelInfoDescr = `Drink to get xp and level up!\nLevel Progress: ${Math.fl
     return (first + last).toUpperCase() || "??";
   };
 
-  const handleEarnGems = () => {
-    setShowAdModal(true);
-  };
+  const handleEarnGems = async () => {
+    // Show the ad and wait for result
+    const rewardEarned = await showRewardedAd();
 
-  const handleRewardEarned = async (gemAmount: number) => {
-    try {
-      const newGemCount = (userData?.gems || 0) + gemAmount;
+    if (rewardEarned) {
+      const gemAmount = 1;
+      try {
+        const newGemCount = (userData?.gems || 0) + gemAmount;
+        await updateUserProfile({ gems: newGemCount });
 
-      await updateUserProfile({ gems: newGemCount });
-
-      Alert.alert("Gems Earned! 💎", `You earned ${gemAmount} gems!`, [
-        { text: "Awesome!", style: "default" },
-      ]);
-
-      setShowAdModal(false);
-    } catch (error) {
-      console.error("Failed to update gems:", error);
-      Alert.alert("Error", "Failed to award gems. Please try again.");
-      setShowAdModal(false);
+        // Alert.alert("Gems Earned! 💎", `You earned ${gemAmount} gems!`, [
+        //   { text: "Awesome!", style: "default" },
+        // ]);
+      } catch (error) {
+        console.error("Failed to update gems:", error);
+        Alert.alert("Error", "Failed to award gems. Please try again.");
+      }
     }
   };
 
   return (
     <View className="bg-black" style={{ paddingTop: insets.top }}>
-      {/* {showAdModal && (
-        <AdRewardModal
-          onClose={() => setShowAdModal(false)}
-          onRewardEarned={handleRewardEarned}
-        />
-      )} */}
-
       <View className="flex-row justify-between items-center px-4 py-4">
         <View className="flex-row items-center flex-1">
           {userData?.imageUrl ? (
@@ -110,14 +103,17 @@ const levelInfoDescr = `Drink to get xp and level up!\nLevel Progress: ${Math.fl
 
           <TouchableOpacity
             className="flex-row items-center gap-1.5 bg-white/5 px-3 py-2 rounded-full"
-            // onPress={handleEarnGems}
+            onPress={handleEarnGems}
+            disabled={!isAdLoaded}
           >
             <View className="relative">
               <Text className="text-xl">💎</Text>
 
-              {/* <View className="absolute -bottom-0.5 -right-0.5 bg-orange-600 w-3 h-3 rounded-full justify-center items-center">
-                <Text className="text-white text-[8px] font-black">+</Text>
-              </View> */}
+              {isAdLoaded && (
+                <View className="absolute -bottom-0.5 -right-0.5 bg-orange-600 w-3 h-3 rounded-full justify-center items-center">
+                  <Text className="text-white text-[8px] font-black">+</Text>
+                </View>
+              )}
             </View>
             <Text className="text-white text-base font-bold">
               {userData?.gems || 0}

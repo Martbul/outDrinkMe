@@ -18,14 +18,9 @@ import { useAuth } from "@clerk/clerk-expo";
 import InfoTooltip from "@/components/infoTooltip";
 import { AlcoholDbItem } from "@/types/api.types";
 import { useApp } from "@/providers/AppProvider";
+import { categories, totalSlots } from "@/utils/collection";
+import { getRarityColor } from "@/utils/rarity";
 
-interface ScanedAlcohol {
-  name: string;
-}
-
-interface CustomBeverage {
-  name: string;
-}
 
 interface ModalState {
   visible: boolean;
@@ -37,9 +32,7 @@ interface ModalState {
     style?: "primary" | "secondary" | "danger";
   }>;
 }
-//! item already in collection error fix when scanning an item that the user already ahs
-//! refresh user collection after ading new item
-//!
+
 export default function Collection() {
   const { getToken } = useAuth();
   const { alcoholCollection, refreshUserAlcoholCollection } = useApp();
@@ -79,21 +72,6 @@ export default function Collection() {
   });
 
   const [formData, setFormData] = useState({ name: "" });
-
-  const categories = [
-    { key: "all", label: "All" },
-    { key: "beer", label: "Beer" },
-    { key: "whiskey", label: "Whiskey" },
-    { key: "wine", label: "Wine" },
-    { key: "vodka", label: "Vodka" },
-    { key: "gin", label: "Gin" },
-    { key: "liqueur", label: "Liqueur" },
-    { key: "rum", label: "Rum" },
-    { key: "tequila", label: "Tequila" },
-    { key: "rakiya", label: "Rakiya" },
-  ];
-
-  const totalSlots = 477;
 
   useEffect(() => {
     refreshUserAlcoholCollection();
@@ -137,17 +115,68 @@ export default function Collection() {
     });
   };
 
-  const getRarityColor = (rarity: string) => {
-    switch (rarity) {
-      case "Legendary":
-        return "#d08700";
-      case "Epic":
-        return "#6e11b0";
-      case "Rare":
-        return "#193cb8";
-      default:
-        return "#9CA3AF";
+
+  const handleRemoveItem = async (item: AlcoholDbItem) => {
+    const token = await getToken();
+    if (!token) return;
+
+    setLoading(true);
+    try {
+      // Call your API to remove the item
+      await apiService.removeFromAlcoholCollection(item.id, token);
+
+      // Refresh the collection
+      await refreshUserAlcoholCollection();
+
+      showModal(
+        "Removed from Collection",
+        `${item.name} has been removed from your collection.`,
+        [
+          {
+            text: "OK",
+            onPress: closeModal,
+            style: "primary",
+          },
+        ]
+      );
+    } catch (error) {
+      console.error("Error removing item:", error);
+      showModal(
+        "Error",
+        "Something went wrong while removing the item. Please try again.",
+        [
+          {
+            text: "OK",
+            onPress: closeModal,
+            style: "primary",
+          },
+        ]
+      );
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleLongPress = (item: AlcoholDbItem) => {
+    showModal(
+      "Remove from Collection?",
+      `Are you sure you want to remove ${item.name} from your collection?\n\nType: ${item.type}\nRarity: ${item.rarity}\nABV: ${item.abv}%`,
+      [
+        {
+          text: "Remove",
+          onPress: () => {
+            closeModal();
+            handleRemoveItem(item);
+          },
+          style: "danger",
+        },
+        {
+          text: "Cancel",
+          onPress: closeModal,
+          style: "secondary",
+        },
+      ]
+    );
   };
 
   const fetchProductName = async (barcode: string) => {
@@ -246,7 +275,6 @@ export default function Collection() {
       const { item, isNewlyAdded } = result;
 
       if (isNewlyAdded) {
-        // Refresh collection after adding new item
         await refreshUserAlcoholCollection();
 
         showModal(
@@ -363,12 +391,11 @@ export default function Collection() {
 
       const { item, isNewlyAdded } = result;
 
-      console.log("------------------------------------------------")
+      console.log("------------------------------------------------");
       console.log(item);
       console.log(isNewlyAdded);
 
       if (isNewlyAdded) {
-        // Refresh collection after adding new item
         await refreshUserAlcoholCollection();
 
         showModal(
@@ -380,7 +407,7 @@ export default function Collection() {
               onPress: () => {
                 closeModal();
                 setCurrentScreen("collection");
-                setFormData({ name: "" }); // Reset form
+                setFormData({ name: "" });
               },
               style: "primary",
             },
@@ -388,7 +415,7 @@ export default function Collection() {
               text: "Add Another",
               onPress: () => {
                 closeModal();
-                setFormData({ name: "" }); // Reset form
+                setFormData({ name: "" });
               },
               style: "secondary",
             },
@@ -404,7 +431,7 @@ export default function Collection() {
               onPress: () => {
                 closeModal();
                 setCurrentScreen("collection");
-                setFormData({ name: "" }); // Reset form
+                setFormData({ name: "" });
               },
               style: "primary",
             },
@@ -412,7 +439,7 @@ export default function Collection() {
               text: "Try Another",
               onPress: () => {
                 closeModal();
-                setFormData({ name: "" }); // Reset form
+                setFormData({ name: "" });
               },
               style: "secondary",
             },
@@ -435,7 +462,7 @@ export default function Collection() {
             onPress: () => {
               closeModal();
               setCurrentScreen("collection");
-              setFormData({ name: "" }); // Reset form
+              setFormData({ name: "" });
             },
             style: "secondary",
           },
@@ -644,7 +671,6 @@ export default function Collection() {
           </View>
         </ScrollView>
 
-        {/* Modal overlay for manual screen */}
         {modalState.visible && modalState.buttons && (
           <View
             className="absolute inset-0 bg-black/80 justify-center items-center px-4"
@@ -679,6 +705,7 @@ export default function Collection() {
       </View>
     );
   }
+
   if (scanning) {
     return (
       <View className="flex-1 bg-black">
@@ -790,7 +817,6 @@ export default function Collection() {
           />
         }
       >
-        {/* Album Header with Scan Button */}
         <View className="px-4 pt-1 pb-4">
           <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
             <View className="flex-row items-center justify-between mb-3">
@@ -799,7 +825,7 @@ export default function Collection() {
                   COLLECTION
                 </Text>
                 <Text className="text-white text-[28px] font-black">
-                   Beverages
+                  Beverages
                 </Text>
               </View>
 
@@ -826,7 +852,6 @@ export default function Collection() {
               </View>
             </View>
 
-            {/* Progress Bar */}
             <View className="mt-3">
               <View className="flex-row justify-between mb-2">
                 <Text className="text-white/50 text-xs font-semibold">
@@ -849,7 +874,6 @@ export default function Collection() {
           </View>
         </View>
 
-        {/* Category Tabs */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -905,6 +929,8 @@ export default function Collection() {
               {filteredCollection.map((item, index) => (
                 <View key={index} className="w-1/2 p-2">
                   <TouchableOpacity
+                    onLongPress={() => handleLongPress(item)}
+                    delayLongPress={500}
                     className="bg-white/[0.03] rounded-2xl overflow-hidden border-2"
                     style={{ borderColor: getRarityColor(item.rarity) }}
                   >
@@ -969,7 +995,6 @@ export default function Collection() {
           )}
         </View>
 
-        {/* Stats Section */}
         <View className="px-4 mt-6">
           <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
             <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-3">
@@ -1013,12 +1038,51 @@ export default function Collection() {
         </View>
       </ScrollView>
 
-      <InfoTooltip
-        visible={modalState.visible}
-        title={modalState.title}
-        description={modalState.description}
-        onClose={closeModal}
-      />
+      {/* Modal with buttons */}
+      {modalState.visible &&
+        modalState.buttons &&
+        modalState.buttons.length > 0 && (
+          <View
+            className="absolute inset-0 bg-black/80 justify-center items-center px-4"
+            style={{ zIndex: 9999 }}
+          >
+            <View className="bg-[#1a1a1a] rounded-2xl p-6 border-2 border-orange-600/30 w-full max-w-sm">
+              <Text className="text-white text-xl font-black mb-2">
+                {modalState.title}
+              </Text>
+              <Text className="text-white/70 text-sm leading-5 mb-6">
+                {modalState.description}
+              </Text>
+
+              <View className="space-y-3 gap-3">
+                {modalState.buttons.map((button, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    onPress={button.onPress}
+                    className={`${getButtonStyle(button.style)} py-4 rounded-xl items-center`}
+                  >
+                    <Text
+                      className={`${getButtonTextStyle(button.style)} text-base font-black tracking-widest`}
+                    >
+                      {button.text}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </View>
+        )}
+
+      {/* InfoTooltip for simple modals without buttons */}
+      {modalState.visible &&
+        (!modalState.buttons || modalState.buttons.length === 0) && (
+          <InfoTooltip
+            visible={modalState.visible}
+            title={modalState.title}
+            description={modalState.description}
+            onClose={closeModal}
+          />
+        )}
     </View>
   );
 }

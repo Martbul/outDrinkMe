@@ -1,12 +1,19 @@
 import { Modal, View, Text, TouchableOpacity } from "react-native";
 import { Feather } from "@expo/vector-icons";
 
+interface ImagePickerModalProps {
+  visible: boolean;
+  onClose: () => void; // Changed from (value: React.SetStateAction<boolean>) => void
+  onSelectCamera: () => void | Promise<void>; // Simplified
+  onSelectLibrary: () => void | Promise<void>; // Simplified
+}
+
 export const ImagePickerModal = ({
   visible,
   onClose,
   onSelectCamera,
   onSelectLibrary,
-}) => {
+}: ImagePickerModalProps) => {
   return (
     <Modal
       visible={visible}

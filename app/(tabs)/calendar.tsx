@@ -84,7 +84,7 @@ const DayDetailModal = ({
   isLoadingThought,
 }: DayDetailModalProps) => {
   const { getToken } = useAuth();
-  const { refreshCalendar, refreshAll  } = useApp();
+  const { refreshCalendar, refreshUserData,refreshAll } = useApp();
   const insets = useSafeAreaInsets();
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [showRemoveModal, setShowRemoveModal] = useState(false);
@@ -104,7 +104,9 @@ const DayDetailModal = ({
         await apiService.addDrinking(drinkingData, token, dateStr);
       }
       setShowForgotModal(false);
+      onClose();
       refreshCalendar();
+      refreshUserData();
     } catch (error) {
       console.error("Failed to log missed day:", error);
     } finally {
@@ -295,7 +297,6 @@ const DayDetailModal = ({
             )}
           </ScrollView>
 
-          {/* Action Buttons - Fixed at bottom */}
           {(() => {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
@@ -303,9 +304,7 @@ const DayDetailModal = ({
             selectedDate.setHours(0, 0, 0, 0);
             const isPastDate = selectedDate < today;
 
-            // Show "Forgot to Drink?" for past dates with no log
             const showForgotButton = !dayData.drank_today && isPastDate;
-            // Show "Haven't Drank?" for logged drinking days
             const showRemoveButton = dayData.drank_today;
 
             return showForgotButton || showRemoveButton ? (
@@ -322,7 +321,7 @@ const DayDetailModal = ({
                     <View className="flex-row items-center gap-2">
                       <Feather name="calendar" size={20} color="#ff8c00" />
                       <Text className="text-orange-600 text-base font-black tracking-wide">
-                        Forgot to Drink?
+                        Forgot to add Drinking?
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -348,7 +347,6 @@ const DayDetailModal = ({
         </View>
       </Modal>
 
-      {/* Forgot to Drink Confirmation Modal */}
       <CustomModal
         visible={showForgotModal}
         onClose={() => setShowForgotModal(false)}

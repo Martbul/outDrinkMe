@@ -184,7 +184,7 @@ export default function StatsPage() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          className="px-4 mb-4"
+          className="px-6 mb-4"
         >
           {periods.map((period) => (
             <TouchableOpacity

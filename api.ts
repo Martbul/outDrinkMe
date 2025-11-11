@@ -177,6 +177,21 @@ class ApiService {
     return response;
   }
 
+  async removeFromAlcoholCollection(
+    itemId: string,
+    token: string
+  ): Promise<any> {
+    const response = await this.makeRequest<any>(
+      `/api/v1/user/alcohol-collection?itemId=${encodeURIComponent(itemId)}`,
+      {
+        method: "DELETE",
+        token,
+      }
+    );
+
+    return response;
+  }
+
   async getUserStats(token: string): Promise<UserStats> {
     return this.makeRequest<UserStats>("/api/v1/user/stats", {
       method: "GET",
@@ -323,6 +338,8 @@ class ApiService {
           token,
         }
       );
+
+      console.log(response);
 
       const transformed = response.map((post) => ({
         id: post.ID,

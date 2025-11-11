@@ -92,8 +92,7 @@ export default function MixTimeline() {
               Start Your Journey
             </Text>
             <Text className="text-white/50 text-sm text-center font-semibold">
-              Share your first drink moment to begin building your drinking DNA
-              timeline
+              Share your first drink moment to begin building your drinking timeline
             </Text>
           </View>
         ) : (

@@ -191,6 +191,9 @@ export default function HomeScreen() {
             <Text className="text-white text-2xl font-black">
               #{userStats?.rank || 0}
             </Text>
+            <Text className="text-white/40 text-[11px] font-semibold mt-0.5">
+              global
+            </Text>
           </View>
 
           <View className="flex-1 bg-white/[0.03] rounded-xl p-4 border border-white/[0.08]">

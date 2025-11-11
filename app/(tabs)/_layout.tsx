@@ -29,10 +29,9 @@ export default function TabLayout() {
      return <Redirect href="/(auth)/google-sign-in" />;
    }
 
-
-  if (!isLoaded || !isReady || isInitialLoading) {
-    return <SplashScreen />;
-  }
+    if (isInitialLoading) {
+      return <SplashScreen />;
+    }
 
  
   return (
