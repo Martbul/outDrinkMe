@@ -35,6 +35,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
 import { Camera, CameraType, CameraView } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
+import MixVideo from "@/components/mixVideo";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -116,11 +117,16 @@ const FriendsScreen = () => {
 
   useEffect(() => {
     return () => {
+      // Cleanup: stop recording and clear timer when component unmounts
       if (recordingTimer.current) {
         clearInterval(recordingTimer.current);
       }
+      if (cameraRef.current && isRecording) {
+        cameraRef.current.stopRecording();
+      }
     };
-  }, []);
+  }, [isRecording]);
+
 
   const screens = [
     { key: "yourmix", title: "YOUR MIX" },
@@ -387,159 +393,282 @@ const FriendsScreen = () => {
     return null;
   };
 
-  const handleRecordVideo = () => {
-    if (hasPermission === false) {
-      Alert.alert(
-        "Permission Required",
-        "Please grant camera and microphone permissions to record videos."
-      );
-      return;
-    }
-    setShowRecordModal(true);
-  };
+//   const handleRecordVideo = () => {
+//     if (hasPermission === false) {
+//       Alert.alert(
+//         "Permission Required",
+//         "Please grant camera and microphone permissions to record videos."
+//       );
+//       return;
+//     }
+//     setShowRecordModal(true);
+//   };
 
-  const startRecording = async () => {
-    if (!cameraRef.current) return;
+// const startRecording = async () => {
+//   if (!cameraRef.current) return;
 
-    try {
-      setIsRecording(true);
-      setRecordingDuration(0);
+//   try {
+//     setIsRecording(true);
+//     setRecordingDuration(0);
 
-      // Start duration counter
-      recordingTimer.current = setInterval(() => {
-        setRecordingDuration((prev) => {
-          if (prev >= 59) {
-            stopRecording();
-            return 59;
-          }
-          return prev + 1;
-        });
-      }, 1000);
+//     // Start recording - this promise will resolve when stopRecording is called
+//     const videoPromise = cameraRef.current.recordAsync({
+//       maxDuration: 60,
+//     });
 
-      const video = await cameraRef.current.recordAsync({
-        maxDuration: 60,
-      });
+//     // Wait a bit before starting the timer to ensure recording has actually started
+//     await new Promise((resolve) => setTimeout(resolve, 100));
 
-      if (video) {
-        setRecordedVideo(video.uri);
-      }
-    } catch (error) {
-      console.error("Error recording video:", error);
-      Alert.alert("Error", "Failed to record video. Please try again.");
-      setIsRecording(false);
-    }
-  };
+//     // Start duration counter AFTER recording has begun
+//     recordingTimer.current = setInterval(() => {
+//       setRecordingDuration((prev) => {
+//         const newDuration = prev + 1;
+//         // Auto-stop at 59 seconds
+//         if (newDuration >= 60) {
+//           stopRecording();
+//           return 59;
+//         }
+//         return newDuration;
+//       });
+//     }, 1000);
 
-  const stopRecording = async () => {
-    if (!cameraRef.current || !isRecording) return;
+//     // Wait for recording to complete
+//     const video = await videoPromise;
 
-    try {
-      await cameraRef.current.stopRecording();
-      setIsRecording(false);
-      if (recordingTimer.current) {
-        clearInterval(recordingTimer.current);
-      }
-    } catch (error) {
-      console.error("Error stopping recording:", error);
-    }
-  };
+//     // Clear the timer when recording finishes
+//     if (recordingTimer.current) {
+//       clearInterval(recordingTimer.current);
+//       recordingTimer.current = null;
+//     }
 
-  const discardVideo = () => {
-    setRecordedVideo(null);
-    setCaption("");
-    setRecordingDuration(0);
-  };
+//     // Set the recorded video
+//     if (video && video.uri) {
+//       setRecordedVideo(video.uri);
+//       setIsRecording(false);
+//     }
+//   } catch (error: any) {
+//     console.error("Error recording video:", error);
 
-  const toggleCameraType = () => {
-    setCameraType((current) => (current === "back" ? "front" : "back"));
-  };
+//     // Clear timer on error
+//     if (recordingTimer.current) {
+//       clearInterval(recordingTimer.current);
+//       recordingTimer.current = null;
+//     }
 
-  const pickVideoFromGallery = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-        allowsEditing: true,
-        quality: 1,
-        videoMaxDuration: 60,
-      });
+//     setIsRecording(false);
 
-      if (!result.canceled && result.assets[0]) {
-        setRecordedVideo(result.assets[0].uri);
-      }
-    } catch (error) {
-      console.error("Error picking video:", error);
-      Alert.alert("Error", "Failed to pick video from gallery.");
-    }
-  };
+//     // Better error detection
+//     const errorMessage = error.message || "";
+//     const isStoppedEarly =
+//       errorMessage.includes("stopped") ||
+//       errorMessage.includes("data could be produced");
 
-  const uploadVideo = async () => {
-    if (!recordedVideo || !userData) return;
+//     // Only show alert for real errors, not when user stops quickly
+//     if (!isStoppedEarly) {
+//       Alert.alert("Error", "Failed to record video. Please try again.");
+//     }
+//   }
+// };
 
-    setIsUploading(true);
+// const stopRecording = async () => {
+//   if (!cameraRef.current || !isRecording) return;
 
-    try {
-      // Create FormData for video upload
-      const formData = new FormData();
-      formData.append("video", {
-        uri: recordedVideo,
-        type: "video/mp4",
-        name: `video_${Date.now()}.mp4`,
-      } as any);
-      formData.append("caption", caption);
-      formData.append("userId", userData.id);
-      formData.append("duration", recordingDuration.toString());
+//   try {
+//     // Stop the recording - this will cause the recordAsync promise to resolve
+//     await cameraRef.current.stopRecording();
 
-      // Replace with your actual API endpoint
-      const response = await fetch("YOUR_API_ENDPOINT/videos", {
-        method: "POST",
-        body: formData,
-        headers: {
-          "Content-Type": "multipart/form-data",
-          // Add your auth headers here
-        },
-      });
+//     // Clear the timer
+//     if (recordingTimer.current) {
+//       clearInterval(recordingTimer.current);
+//       recordingTimer.current = null;
+//     }
+//   } catch (error) {
+//     console.error("Error stopping recording:", error);
 
-      if (!response.ok) {
-        throw new Error("Upload failed");
-      }
+//     // Clean up state even if stop fails
+//     if (recordingTimer.current) {
+//       clearInterval(recordingTimer.current);
+//       recordingTimer.current = null;
+//     }
+//     setIsRecording(false);
+//   }
+// };
 
-      const newVideo = await response.json();
+// const discardVideo = () => {
+//   // Clear timer if exists
+//   if (recordingTimer.current) {
+//     clearInterval(recordingTimer.current);
+//     recordingTimer.current = null;
+//   }
 
-      // Add new video to the feed
-      setVideos((prev) => [
-        {
-          id: newVideo.id || Date.now().toString(),
-          videoUrl: newVideo.videoUrl || recordedVideo,
-          userId: userData.id,
-          username: userData.username || "You",
-          userImageUrl: userData.imageUrl,
-          caption: caption,
-          likes: 0,
-          comments: 0,
-          duration: recordingDuration,
-          createdAt: new Date().toISOString(),
-        },
-        ...prev,
-      ]);
+//   setRecordedVideo(null);
+//   setCaption("");
+//   setRecordingDuration(0);
+//   setIsRecording(false);
+// };
 
-      // Reset states and close modal
-      setRecordedVideo(null);
-      setCaption("");
-      setRecordingDuration(0);
-      setShowRecordModal(false);
+//   const toggleCameraType = () => {
+//     setCameraType((current) => (current === "back" ? "front" : "back"));
+//   };
 
-      Alert.alert("Success", "Video posted successfully!");
-    } catch (error) {
-      console.error("Error uploading video:", error);
-      Alert.alert("Error", "Failed to upload video. Please try again.");
-    } finally {
-      setIsUploading(false);
-    }
-  };
+//   const pickVideoFromGallery = async () => {
+//     try {
+//       const result = await ImagePicker.launchImageLibraryAsync({
+//         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+//         allowsEditing: true,
+//         quality: 1,
+//         videoMaxDuration: 60,
+//       });
 
-  const closeRecordModal = () => {
+//       if (!result.canceled && result.assets[0]) {
+//         setRecordedVideo(result.assets[0].uri);
+//       }
+//     } catch (error) {
+//       console.error("Error picking video:", error);
+//       Alert.alert("Error", "Failed to pick video from gallery.");
+//     }
+//   };
+
+ const uploadVideo = async () => {
+   if (!recordedVideo || !userData) return;
+
+   setIsUploading(true);
+
+   try {
+     // Step 1: Upload video to Cloudinary
+     const cloudinaryFormData = new FormData();
+
+     // Create the file object for Cloudinary
+     const videoFile = {
+       uri: recordedVideo,
+       type: "video/mp4",
+       name: `video_${Date.now()}.mp4`,
+     };
+
+     const CLOUDINARY_CLOUD_NAME =
+       process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
+     const CLOUDINARY_VIDEO_UPLOAD_PRESET =
+       process.env.EXPO_PUBLIC_CLOUDINARY_VIDEO_UPLOAD_PRESET;
+
+     // Validate credentials
+     if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_VIDEO_UPLOAD_PRESET) {
+       throw new Error(
+         "Cloudinary credentials are not configured. Please check your .env file."
+       );
+     }
+
+     cloudinaryFormData.append("file", videoFile as any);
+     cloudinaryFormData.append("upload_preset", CLOUDINARY_VIDEO_UPLOAD_PRESET);
+     cloudinaryFormData.append("resource_type", "video");
+
+     // Optional: Add folder organization
+     cloudinaryFormData.append("folder", "user_videos");
+
+     // Optional: Add tags for better organization
+     cloudinaryFormData.append("tags", `user_${userData.id},video_post`);
+
+     console.log("Uploading video to Cloudinary...");
+
+     const cloudinaryResponse = await fetch(
+       `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`,
+       {
+         method: "POST",
+         body: cloudinaryFormData,
+         headers: {
+           Accept: "application/json",
+         },
+       }
+     );
+
+     if (!cloudinaryResponse.ok) {
+       const errorData = await cloudinaryResponse.json();
+       throw new Error(
+         `Cloudinary upload failed: ${errorData.error?.message || "Unknown error"}`
+       );
+     }
+
+     const cloudinaryData = await cloudinaryResponse.json();
+
+     console.log("Cloudinary upload successful:", {
+       url: cloudinaryData.secure_url,
+       publicId: cloudinaryData.public_id,
+       duration: cloudinaryData.duration,
+     });
+
+     // Step 2: Save video metadata to your backend
+     const videoMetadata = {
+       videoUrl: cloudinaryData.secure_url, // Cloudinary URL
+       thumbnailUrl: cloudinaryData.secure_url.replace(
+         "/upload/",
+         "/upload/so_0/"
+       ), // Generate thumbnail
+       publicId: cloudinaryData.public_id, // For deletion later
+       userId: userData.id,
+       username: userData.username,
+       caption: caption,
+       duration: Math.round(cloudinaryData.duration || recordingDuration),
+       width: cloudinaryData.width,
+       height: cloudinaryData.height,
+       format: cloudinaryData.format,
+       createdAt: new Date().toISOString(),
+     };
+
+     // Replace with your actual API endpoint
+    //  const response = await fetch("YOUR_API_ENDPOINT/videos", {
+    //    method: "POST",
+    //    headers: {
+    //      "Content-Type": "application/json",
+    //      // Add your auth headers here
+    //      // 'Authorization': `Bearer ${yourAuthToken}`,
+    //    },
+    //    body: JSON.stringify(videoMetadata),
+    //  });
+
+    //  if (!response.ok) {
+    //    throw new Error("Failed to save video metadata to backend");
+    //  }
+
+    //  const savedVideo = await response.json();
+
+     // Step 3: Add new video to the local feed
+     setVideos((prev) => [
+       {
+         id: savedVideo.id || Date.now().toString(),
+         videoUrl: cloudinaryData.secure_url,
+         userId: userData.id,
+         username: userData.username || "You",
+         userImageUrl: userData.imageUrl,
+         caption: caption,
+         likes: 0,
+         comments: 0,
+         duration: Math.round(cloudinaryData.duration || recordingDuration),
+         createdAt: new Date().toISOString(),
+       },
+       ...prev,
+     ]);
+
+     // Reset states and close modal
+     setRecordedVideo(null);
+     setCaption("");
+     setRecordingDuration(0);
+     setShowRecordModal(false);
+
+     Alert.alert("Success", "Video posted successfully!");
+   } catch (error) {
+     console.error("Error uploading video:", error);
+     Alert.alert(
+       "Upload Failed",
+       error instanceof Error
+         ? error.message
+         : "Failed to upload video. Please try again."
+     );
+   } finally {
+     setIsUploading(false);
+   }
+ };
+  const closeRecordModal = async () => {
     if (isRecording) {
-      stopRecording();
+      await stopRecording();
     }
     discardVideo();
     setShowRecordModal(false);
@@ -732,27 +861,27 @@ const FriendsScreen = () => {
   //   </View>
   // );
 
-  const renderVideoFeedScreen = () => (
-    <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
-      <FlatList
-        data={videos}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{
-          paddingHorizontal: 16,
-          paddingTop: 8,
-          paddingBottom: 100,
-        }}
-        renderItem={renderVideoFeedItem}
-        ListEmptyComponent={renderEmptyVideoComponent}
-        showsVerticalScrollIndicator={false}
-        snapToInterval={SCREEN_HEIGHT * 0.7 + 16}
-        snapToAlignment="start"
-        decelerationRate="fast"
-        onViewableItemsChanged={onVideoViewableItemsChanged}
-        viewabilityConfig={videoViewabilityConfig}
-      />
-    </View>
-  );
+  // const renderVideoFeedScreen = () => (
+  //   <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
+  //     <FlatList
+  //       data={videos}
+  //       keyExtractor={(item) => item.id}
+  //       contentContainerStyle={{
+  //         paddingHorizontal: 16,
+  //         paddingTop: 8,
+  //         paddingBottom: 100,
+  //       }}
+  //       renderItem={renderVideoFeedItem}
+  //       ListEmptyComponent={renderEmptyVideoComponent}
+  //       showsVerticalScrollIndicator={false}
+  //       snapToInterval={SCREEN_HEIGHT * 0.7 + 16}
+  //       snapToAlignment="start"
+  //       decelerationRate="fast"
+  //       onViewableItemsChanged={onVideoViewableItemsChanged}
+  //       viewabilityConfig={videoViewabilityConfig}
+  //     />
+  //   </View>
+  // );
 
   const renderYourMixScreen = () => (
     <View style={{ width: SCREEN_WIDTH }}>
@@ -782,28 +911,14 @@ const FriendsScreen = () => {
     </View>
   );
 
-  const renderOtherScreen = () => (
-    <View style={{ width: SCREEN_WIDTH }} className="px-4 py-8">
-      <View className="bg-white/[0.03] rounded-2xl p-8 border border-white/[0.08] items-center">
-        <View className="w-24 h-24 rounded-2xl bg-orange-600/20 items-center justify-center mb-4">
-          <Feather name="compass" size={48} color="#ff8c00" />
-        </View>
-        <Text className="text-white text-xl font-black mb-2">Other Screen</Text>
-        <Text className="text-white/50 text-sm text-center font-semibold px-4">
-          This is the second screen. Swipe left to go back to Your Mix.
-        </Text>
-      </View>
-    </View>
-  );
+ 
 
   const renderPageItem = ({ item }: { item: (typeof screens)[0] }) => {
     if (item.key === "yourmix") {
       return renderYourMixScreen();
     } else if (item.key === "videos") {
-      return renderVideoFeedScreen();
-    } else {
-      return renderOtherScreen();
-    }
+      return MixVideo();
+   
   };
 
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
