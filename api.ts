@@ -1,3 +1,4 @@
+import { VideoPost } from "./components/mixVideo";
 import {
   Achievement,
   AddDrinkingRequest,
@@ -391,16 +392,80 @@ class ApiService {
     }
   }
 
-  async addMixVideo(videoUrl: string,caption:string,duration:number,  token: string): Promise<any> {
-    return this.makeRequest<any>("/api/v1/user/mix-video", {
+  async addMixVideo(
+    videoUrl: string,
+    caption: string,
+    duration: number,
+    token: string
+  ): Promise<any> {
+    const response = await this.makeRequest<any>("/api/v1/user/mix-video", {
       method: "POST",
       token,
       body: JSON.stringify({
         video_url: videoUrl,
         caption: caption,
-        duration:duration
+        duration: duration,
       }),
     });
+
+    // If response has an error property, throw it
+    if (response?.error) {
+      throw new Error(response.error);
+    }
+
+    return response;
+  }
+
+  async getMixVideos(token: string): Promise<VideoPost[]> {
+    try {
+      const response = await this.makeRequest<any[]>(
+        "/api/v1/user/mix-videos",
+        {
+          method: "GET",
+          token,
+        }
+      );
+
+
+      const transformed = response.map((video) => ({
+        id: video.id, 
+        videoUrl: video.video_url,
+        userId: video.user_id, 
+        username: video.username, 
+        userImageUrl: video.user_image_url, 
+        caption: video.caption || "",
+        chips: video.chips || 0, 
+        duration: video.duration, 
+        createdAt: video.created_at, 
+      }));
+
+      console.log("Transformed videos:", transformed); // Debug log
+
+      return transformed;
+    } catch (error) {
+      console.error("Failed to fetch mix videos:", error);
+      return [];
+    }
+  }
+
+  async addChipsToVideo(token: string, videoId: string): Promise<boolean> {
+    try {
+      await this.makeRequest<{ message: string }>(
+        "/api/v1/user/mix-video-chips",
+        {
+          method: "POST",
+          token,
+          body: JSON.stringify({
+            video_id: videoId,
+          }),
+        }
+      );
+
+      return true;
+    } catch (error) {
+      console.error("Failed to add chips to video:", error);
+      return false;
+    }
   }
 
   async addFriend(friendId: string, token: string): Promise<Friendship> {

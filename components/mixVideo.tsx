@@ -32,16 +32,21 @@ interface MixVideoProps {
   onRecordPress: () => void;
   onRefresh?: () => void;
   isRefreshing?: boolean;
+  onLikeVideo?: (videoId: string) => Promise<boolean>;
 }
 
 const VideoFeedCard = ({
   item,
   isActive,
+  onLikeVideo,
 }: {
   item: VideoPost;
   isActive: boolean;
+  onLikeVideo?: (videoId: string) => Promise<boolean>;
 }) => {
   const [isLiked, setIsLiked] = useState(false);
+  const [isLiking, setIsLiking] = useState(false);
+  const [currentChips, setCurrentChips] = useState(item.chips);
 
   // Create video player with expo-video
   const player = useVideoPlayer(item.videoUrl, (player) => {
@@ -57,6 +62,34 @@ const VideoFeedCard = ({
       player.pause();
     }
   }, [isActive, player]);
+
+  const handleLike = async () => {
+    if (isLiking || !onLikeVideo) return;
+
+    setIsLiking(true);
+    const newLikedState = !isLiked;
+
+    // Optimistic update
+    setIsLiked(newLikedState);
+    setCurrentChips((prev) => (newLikedState ? prev + 1 : prev - 1));
+
+    try {
+      const success = await onLikeVideo(item.id);
+
+      if (!success) {
+        // Revert on failure
+        setIsLiked(!newLikedState);
+        setCurrentChips((prev) => (newLikedState ? prev - 1 : prev + 1));
+      }
+    } catch (error) {
+      // Revert on error
+      setIsLiked(!newLikedState);
+      setCurrentChips((prev) => (newLikedState ? prev - 1 : prev + 1));
+      console.error("Error liking video:", error);
+    } finally {
+      setIsLiking(false);
+    }
+  };
 
   return (
     <View
@@ -117,26 +150,29 @@ const VideoFeedCard = ({
             player.play();
           }
         }}
-      >
-       
-      </TouchableOpacity>
+      ></TouchableOpacity>
 
       {/* Action Buttons - Right Side */}
       <View className="absolute right-4 bottom-20 items-center space-y-6">
         {/* Like Button */}
         <TouchableOpacity
           className="items-center"
-          onPress={() => setIsLiked(!isLiked)}
+          onPress={handleLike}
+          disabled={isLiking}
         >
           <View className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-sm items-center justify-center border border-white/10">
-            <Ionicons
-              name={isLiked ? "heart" : "heart-outline"}
-              size={28}
-              color={isLiked ? "#ff8c00" : "white"}
-            />
+            {isLiking ? (
+              <ActivityIndicator size="small" color="#ff8c00" />
+            ) : (
+              <Ionicons
+                name={isLiked ? "heart" : "heart-outline"}
+                size={28}
+                color={isLiked ? "#ff8c00" : "white"}
+              />
+            )}
           </View>
           <Text className="text-white text-xs font-bold mt-1">
-            {item.chips + (isLiked ? 1 : 0)}
+            {currentChips}
           </Text>
         </TouchableOpacity>
 
@@ -167,7 +203,6 @@ const VideoFeedCard = ({
           </Text>
         </View>
       )}
-
     </View>
   );
 };
@@ -199,11 +234,77 @@ const EmptyVideoComponent = ({
   </View>
 );
 
+// export default function MixVideo({
+//   videos,
+//   onRecordPress,
+//   onRefresh,
+//   isRefreshing = false,
+//   onLikeVideo,
+// }: MixVideoProps) {
+//   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+
+//   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
+//     if (viewableItems.length > 0) {
+//       setCurrentVideoIndex(viewableItems[0].index || 0);
+//     }
+//   }).current;
+
+//   const viewabilityConfig = useRef({
+//     itemVisiblePercentThreshold: 80,
+//   }).current;
+
+//   const renderVideoItem = ({
+//     item,
+//     index,
+//   }: {
+//     item: VideoPost;
+//     index: number;
+//   }) => (
+//     <VideoFeedCard
+//       item={item}
+//       isActive={index === currentVideoIndex}
+//       onLikeVideo={onLikeVideo}
+//     />
+//   );
+//   const contentContainerStyle = React.useMemo(
+//     () => ({
+//       paddingHorizontal: 16,
+//       paddingTop: 8,
+//       paddingBottom: 100,
+//     }),
+//     []
+//   );
+//   return (
+//     <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
+//       <FlatList
+//         data={videos}
+//         keyExtractor={(item) => item.id}
+//         contentContainerStyle={contentContainerStyle}
+//         renderItem={renderVideoItem}
+//         ListEmptyComponent={
+//           <EmptyVideoComponent onRecordPress={onRecordPress} />
+//         }
+//         showsVerticalScrollIndicator={false}
+//         snapToInterval={SCREEN_HEIGHT * 0.7 + 16}
+//         snapToAlignment="start"
+//         decelerationRate="fast"
+//         onViewableItemsChanged={onViewableItemsChanged}
+//         viewabilityConfig={viewabilityConfig}
+//         refreshing={isRefreshing}
+//         onRefresh={onRefresh}
+//       />
+//     </View>
+//   );
+// }
+
+
+
 export default function MixVideo({
   videos,
   onRecordPress,
   onRefresh,
   isRefreshing = false,
+  onLikeVideo,
 }: MixVideoProps) {
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
 
@@ -223,18 +324,27 @@ export default function MixVideo({
   }: {
     item: VideoPost;
     index: number;
-  }) => <VideoFeedCard item={item} isActive={index === currentVideoIndex} />;
-
+  }) => (
+    <VideoFeedCard
+      item={item}
+      isActive={index === currentVideoIndex}
+      onLikeVideo={onLikeVideo}
+    />
+  );
+  const contentContainerStyle = React.useMemo(
+    () => ({
+      paddingHorizontal: 16,
+      paddingTop: 8,
+      paddingBottom: 100,
+    }),
+    []
+  );
   return (
     <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
       <FlatList
         data={videos}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={{
-          paddingHorizontal: 16,
-          paddingTop: 8,
-          paddingBottom: 100,
-        }}
+        contentContainerStyle={contentContainerStyle}
         renderItem={renderVideoItem}
         ListEmptyComponent={
           <EmptyVideoComponent onRecordPress={onRecordPress} />

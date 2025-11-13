@@ -43,7 +43,7 @@ export default function VideoRecorder({
   const [caption, setCaption] = useState("");
   const [isUploading, setIsUploading] = useState(false);
 
-  // Video player for preview - only initialize when needed
+  // Video player for preview - only initialize when we have a video
   const player = useVideoPlayer(recordedVideo || "", (player) => {
     if (recordedVideo) {
       player.loop = true;
@@ -70,8 +70,14 @@ export default function VideoRecorder({
         clearInterval(recordingTimer.current);
         recordingTimer.current = null;
       }
-      if (player) {
-        player.pause();
+      // Only pause if player exists and is playing
+      try {
+        if (player && player.playing) {
+          player.pause();
+        }
+      } catch (e) {
+        // Ignore errors from already released players
+        console.log("Player already released");
       }
     }
 
@@ -82,8 +88,14 @@ export default function VideoRecorder({
       if (cameraRef.current && isRecording) {
         cameraRef.current.stopRecording();
       }
-      if (player) {
-        player.pause();
+      // Safe cleanup for player
+      try {
+        if (player && player.playing) {
+          player.pause();
+        }
+      } catch (e) {
+        // Ignore errors from already released players
+        console.log("Player cleanup: already released");
       }
     };
   }, [visible, isRecording]);
@@ -97,7 +109,6 @@ export default function VideoRecorder({
 
       const videoPromise = cameraRef.current.recordAsync({
         maxDuration: 60,
-        
       });
 
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -167,8 +178,13 @@ export default function VideoRecorder({
   };
 
   const discardVideo = () => {
-    if (player) {
-      player.pause();
+    // Safe pause before discarding
+    try {
+      if (player && player.playing) {
+        player.pause();
+      }
+    } catch (e) {
+      console.log("Player already released during discard");
     }
 
     if (recordingTimer.current) {
@@ -191,7 +207,7 @@ export default function VideoRecorder({
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
         allowsEditing: true,
-        quality: 0.8, // Reduce quality to save memory
+        quality: 0.8,
         videoMaxDuration: 60,
       });
 
@@ -255,7 +271,6 @@ export default function VideoRecorder({
               </View>
             ) : (
               <View style={{ flex: 1 }}>
-                {/* CameraView with no children */}
                 <CameraView
                   mode="video"
                   ref={cameraRef}
@@ -263,9 +278,7 @@ export default function VideoRecorder({
                   facing={cameraType}
                 />
 
-                {/* Overlay UI with absolute positioning */}
                 <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-                  {/* Top Controls */}
                   <View className="absolute top-12 left-4 right-4 flex-row justify-between items-center">
                     <TouchableOpacity
                       onPress={handleClose}
@@ -293,7 +306,6 @@ export default function VideoRecorder({
                     </TouchableOpacity>
                   </View>
 
-                  {/* Bottom Controls */}
                   <View className="absolute bottom-8 left-0 right-0 items-center">
                     <View className="flex-row items-center justify-center space-x-8 px-8">
                       <TouchableOpacity
@@ -335,7 +347,6 @@ export default function VideoRecorder({
           </>
         ) : (
           <View className="flex-1">
-            {/* Video Preview */}
             <View className="flex-1 bg-black">
               {recordedVideo && (
                 <VideoView
@@ -347,7 +358,6 @@ export default function VideoRecorder({
               )}
             </View>
 
-            {/* Post Options */}
             <View
               className="bg-zinc-900 p-6"
               style={{ paddingBottom: insets.bottom + 24 }}
