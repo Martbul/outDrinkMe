@@ -144,3 +144,38 @@ export interface YourMixPostData {
   mentionedBuddies: UserData[];
   sourceType: "friend" | "other";
 }
+
+export interface DrunkThought {
+  id: string;
+  user_id: string;
+  username: string;
+  user_image_url: string;
+  thought: string;
+  created_at: string; // ISO 8601 date string from JSON
+}
+
+export interface AlcoholDbItem {
+  id: string;
+  name: string;
+  type: string;
+  image_url: string;
+  rarity: string;
+  abv: number;
+}
+
+export type AlcoholCollectionByType = {
+  beer: AlcoholDbItem[];
+  whiskey: AlcoholDbItem[];
+  wine: AlcoholDbItem[];
+  vodka: AlcoholDbItem[];
+  gin: AlcoholDbItem[];
+  liqueur: AlcoholDbItem[];
+  rum: AlcoholDbItem[];
+  tequila: AlcoholDbItem[];
+  rakiya: AlcoholDbItem[];
+};
+
+export interface SearchDbAlcoholResult {
+  item: AlcoholDbItem;
+  isNewlyAdded: boolean;
+}

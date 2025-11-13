@@ -1,50 +1,82 @@
-# Welcome to your Expo app 👋
+# outDrinkMe
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A gamified drinking tracking app with social features, achievements, and leaderboards.  
+Track your drinking habits, compete with friends, and unlock achievements!
 
-## Get started
+---
 
-1. Install dependencies
+## Features
 
-   ```bash
-   npm install
-   ```
+### Core Functionality
+- Daily Tracking: Log your drinking with a hold-to-confirm mechanism  
+- Streak System: Build and maintain your drinking streaks  
+- Calendar View: Visualize your drinking history  
+- Statistics: View detailed stats for week, month, year, and all-time  
 
-2. Start the app
+### Social Features
+- Friend System: Add, discover, and manage friends  
+- Leaderboards: Compete on friends and global leaderboards  
+- User Profiles: View detailed profiles and stats  
+- Discovery: Find new drinking buddies  
 
-   ```bash
-   npx expo start
-   ```
+### Gamification
+- Achievements: 8 unique badges to unlock  
+- XP System: Earn 100 XP per drinking day  
+- Level Progression: Exponential leveling system (1–20+)  
+- Coefficient: Dynamic ranking based on performance  
 
-In the output, you'll find options to open the app in a
+### User Experience
+- Dark Mode: Sleek orange and black theme  
+- Smooth Animations: Polished UI/UX  
+- Haptic Feedback: Responsive touch interactions  
+- Safe Area Support: Optimized for all devices  
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+---
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## Tech Stack
 
-## Get a fresh project
+- Framework: React Native (Expo 54)  
+- Language: TypeScript 5.9  
+- Styling: NativeWind (Tailwind for React Native)  
+- Navigation: Expo Router  
+- Authentication: Clerk  
+- State Management: React Context + Custom Hooks  
+- CI/CD: GitHub Actions + EAS Build  
 
-When you're ready, run:
+---
+
+## Prerequisites
+
+- Node.js >= 20.0.0  
+- npm >= 10.0.0  
+- Expo CLI  
+- EAS CLI (for builds)  
+- Android Studio (for Android development)  
+- Xcode (for iOS development, macOS only)  
+
+---
+
+## Installation
 
 ```bash
-npm run reset-project
-```
+# 1. Clone the repository
+git clone https://github.com/your-username/outDrinkMe.git
+cd outDrinkMe
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+# 2. Install dependencies
+npm install
+# or
+make install
 
-## Learn more
+# 3. Set up environment variables
+cp .env.example .env.development
 
-To learn more about developing your project with Expo, look at the following resources:
+# Edit with your credentials
+# Required variables:
+# - EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY
+# - EXPO_PUBLIC_OUTDRINKME_API_URL
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+# 4. Start the development server
+npm run start:dev
+# or
+make dev

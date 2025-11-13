@@ -22,7 +22,6 @@ import CustomModal, {
 interface CalendarDayProps {
   day: number;
   drank: boolean;
-  // image_background: string;
   onPress: (day: number, drank: boolean) => void;
   isToday: boolean;
   isSelected: boolean;
@@ -84,40 +83,54 @@ const DayDetailModal = ({
   drunkThought,
   isLoadingThought,
 }: DayDetailModalProps) => {
-    const { getToken } = useAuth();
-const {refreshCalendar } = useApp()
+  const { getToken } = useAuth();
+  const { refreshCalendar, refreshUserData,refreshAll } = useApp();
   const insets = useSafeAreaInsets();
   const [showForgotModal, setShowForgotModal] = useState(false);
+  const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!dayData || !selectedDay) return null;
 
-const handleForgotDrink = async () => {
-  setIsSubmitting(true);
-  try {
-    // Format date as YYYY-MM-DD
-    const dateStr = dayData.date.split("T")[0];
-
-    const token = await getToken();
-    if (token) {
-      const drinkingData: AddDrinkingRequest = {
-        drank_today: true,
-      };
-      await apiService.addDrinking(drinkingData, token, dateStr);
+  const handleForgotDrink = async () => {
+    setIsSubmitting(true);
+    try {
+      const dateStr = dayData.date.split("T")[0];
+      const token = await getToken();
+      if (token) {
+        const drinkingData: AddDrinkingRequest = {
+          drank_today: true,
+        };
+        await apiService.addDrinking(drinkingData, token, dateStr);
+      }
+      setShowForgotModal(false);
+      onClose();
+      refreshCalendar();
+      refreshUserData();
+    } catch (error) {
+      console.error("Failed to log missed day:", error);
+    } finally {
+      setIsSubmitting(false);
     }
+  };
 
-    // Show success feedback
-    setShowForgotModal(false);
-    //! REFRESH
-    refreshCalendar()
-    // Optionally refresh data or show toast
-  } catch (error) {
-    console.error("Failed to log missed day:", error);
-  } finally {
-    setIsSubmitting(false);
-  }
-};
-
+  const handleRemoveDrinking = async () => {
+    setIsSubmitting(true);
+    try {
+      const dateStr = dayData.date.split("T")[0];
+      const token = await getToken();
+      if (token) {
+        await apiService.removeDrinking(token, dateStr);
+      }
+      setShowRemoveModal(false);
+      onClose(); // Close the day detail modal
+      refreshAll();
+    } catch (error) {
+      console.error("Failed to remove drinking log:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <>
@@ -284,39 +297,56 @@ const handleForgotDrink = async () => {
             )}
           </ScrollView>
 
-          {/* Forgot to Drink Button - Fixed at bottom */}
           {(() => {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             const selectedDate = new Date(dayData.date);
             selectedDate.setHours(0, 0, 0, 0);
             const isPastDate = selectedDate < today;
-            const shouldShowButton = !dayData.drank_today && isPastDate;
 
-            return shouldShowButton ? (
+            const showForgotButton = !dayData.drank_today && isPastDate;
+            const showRemoveButton = dayData.drank_today;
+
+            return showForgotButton || showRemoveButton ? (
               <View
                 className="absolute bottom-0 left-0 right-0 px-4 pb-4 bg-black border-t border-white/[0.08]"
                 style={{ paddingBottom: insets.bottom + 16 }}
               >
-                <TouchableOpacity
-                  onPress={() => setShowForgotModal(true)}
-                  className="bg-white/[0.03] rounded-2xl py-4 items-center border border-orange-600/30"
-                  activeOpacity={0.8}
-                >
-                  <View className="flex-row items-center gap-2">
-                    <Feather name="calendar" size={20} color="#ff8c00" />
-                    <Text className="text-orange-600 text-base font-black tracking-wide">
-                      Forgot to Drink?
-                    </Text>
-                  </View>
-                </TouchableOpacity>
+                {showForgotButton && (
+                  <TouchableOpacity
+                    onPress={() => setShowForgotModal(true)}
+                    className="bg-white/[0.03] rounded-2xl py-4 items-center border border-orange-600/30"
+                    activeOpacity={0.8}
+                  >
+                    <View className="flex-row items-center gap-2">
+                      <Feather name="calendar" size={20} color="#ff8c00" />
+                      <Text className="text-orange-600 text-base font-black tracking-wide">
+                        Forgot to add Drinking?
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+
+                {showRemoveButton && (
+                  <TouchableOpacity
+                    onPress={() => setShowRemoveModal(true)}
+                    className="bg-white/[0.03] rounded-2xl py-4 items-center border border-red-600/30"
+                    activeOpacity={0.8}
+                  >
+                    <View className="flex-row items-center gap-2">
+                      <Feather name="x-circle" size={20} color="#dc2626" />
+                      <Text className="text-red-600 text-base font-black tracking-wide">
+                        Haven't Drank?
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
               </View>
             ) : null;
           })()}
         </View>
       </Modal>
 
-      {/* Forgot to Drink Confirmation Modal */}
       <CustomModal
         visible={showForgotModal}
         onClose={() => setShowForgotModal(false)}
@@ -336,7 +366,6 @@ const handleForgotDrink = async () => {
         }
       >
         <View className="bg-white/[0.03] rounded-2xl p-6 border border-white/[0.08]">
-          {/* Icon */}
           <View className="items-center mb-4">
             <View className="w-20 h-20 rounded-full bg-orange-600/20 items-center justify-center mb-4">
               <Text className="text-5xl">🍺</Text>
@@ -346,7 +375,6 @@ const handleForgotDrink = async () => {
             </Text>
           </View>
 
-          {/* Date Display */}
           <View className="bg-white/[0.05] rounded-xl p-4 mb-4 border border-white/[0.08]">
             <Text className="text-white/50 text-xs font-semibold text-center mb-1">
               LOGGING FOR
@@ -361,7 +389,6 @@ const handleForgotDrink = async () => {
             </Text>
           </View>
 
-          {/* Warning */}
           <View className="bg-orange-600/10 rounded-xl p-4 border border-orange-600/20">
             <View className="flex-row gap-3">
               <Feather name="info" size={20} color="#ff8c00" />
@@ -374,8 +401,71 @@ const handleForgotDrink = async () => {
                   {new Date(dayData.date).toLocaleDateString("en-US", {
                     month: "short",
                     day: "numeric",
-                  })}{" "}
+                  })}
                   and update your streak accordingly.
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      </CustomModal>
+
+      <CustomModal
+        visible={showRemoveModal}
+        onClose={() => setShowRemoveModal(false)}
+        title="Remove Log?"
+        footer={
+          <View className="gap-3">
+            <ModalPrimaryButton
+              onPress={handleRemoveDrinking}
+              title="Yes, Remove Log"
+              loading={isSubmitting}
+            />
+            <ModalSecondaryButton
+              onPress={() => setShowRemoveModal(false)}
+              title="Cancel"
+            />
+          </View>
+        }
+      >
+        <View className="bg-white/[0.03] rounded-2xl p-6 border border-white/[0.08]">
+          <View className="items-center mb-4">
+            <View className="w-20 h-20 rounded-full bg-red-600/20 items-center justify-center mb-4">
+              <Feather name="x-circle" size={48} color="#dc2626" />
+            </View>
+            <Text className="text-white text-xl font-black text-center mb-2">
+              Remove Drinking Log?
+            </Text>
+          </View>
+
+          <View className="bg-white/[0.05] rounded-xl p-4 mb-4 border border-white/[0.08]">
+            <Text className="text-white/50 text-xs font-semibold text-center mb-1">
+              REMOVING FOR
+            </Text>
+            <Text className="text-white text-lg font-bold text-center">
+              {new Date(dayData.date).toLocaleDateString("en-US", {
+                weekday: "long",
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </Text>
+          </View>
+
+          <View className="bg-red-600/10 rounded-xl p-4 border border-red-600/20">
+            <View className="flex-row gap-3">
+              <Feather name="alert-triangle" size={20} color="#dc2626" />
+              <View className="flex-1">
+                <Text className="text-red-600 text-sm font-bold mb-1">
+                  Warning
+                </Text>
+                <Text className="text-white/70 text-sm leading-relaxed">
+                  This will remove your drinking log for{" "}
+                  {new Date(dayData.date).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                  })}{" "}
+                  and may affect your streak.
                 </Text>
               </View>
             </View>
@@ -388,9 +478,7 @@ const handleForgotDrink = async () => {
 
 const CalendarScreen = () => {
   const { getToken } = useAuth();
-
   const { userStats, calendar, isLoading, refreshCalendar } = useApp();
-
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
@@ -433,15 +521,11 @@ const CalendarScreen = () => {
     setModalVisible(true);
     setDayDrunkThought(null);
 
-    // Fetch drunk thought for this specific date if the day was logged
     if (dayData && dayData.drank_today) {
       setIsLoadingThought(true);
       try {
-        // Format date as YYYY-MM-DD
         const dateStr = dayData.date.split("T")[0];
-
-        // Call API to get drunk thought for this date
-        const token = await getToken(); // You'll need to get this from useAuth
+        const token = await getToken();
         if (token) {
           const response = await apiService.getDrunkThought(token, dateStr);
           setDayDrunkThought(response);
@@ -495,14 +579,12 @@ const CalendarScreen = () => {
   const renderCalendar = () => {
     const daysInMonth = getDaysInMonth(currentMonth, currentYear);
     const firstDay = getFirstDayOfMonth(currentMonth, currentYear);
-
     const days = [];
 
     for (let i = 0; i < firstDay; i++) {
       days.push(<View key={`empty-${i}`} className="w-11 h-11 m-1" />);
     }
 
-    // Add actual day cells
     for (let day = 1; day <= daysInMonth; day++) {
       const dayData = getDayData(day);
       const isToday = isTodayInCalendar(day);
@@ -522,8 +604,8 @@ const CalendarScreen = () => {
 
     return days;
   };
-  const insets = useSafeAreaInsets();
 
+  const insets = useSafeAreaInsets();
   const activeDays = calendar?.days?.filter((d) => d.drank_today).length || 0;
   const daysInMonth = getDaysInMonth(currentMonth, currentYear);
   const completionRate =
@@ -625,7 +707,6 @@ const CalendarScreen = () => {
           </View>
         </View>
 
-        {/* Monthly Stats - Matching Home Style */}
         <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
           <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-2">
             THIS MONTH
@@ -649,7 +730,6 @@ const CalendarScreen = () => {
           </View>
         </View>
 
-        {/* Additional Monthly Stats */}
         <View className="bg-white/[0.03] rounded-2xl p-5 mb-24 border border-white/[0.08]">
           <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-2">
             YOUR STATS

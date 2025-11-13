@@ -29,10 +29,9 @@ export default function TabLayout() {
      return <Redirect href="/(auth)/google-sign-in" />;
    }
 
-
-  if (!isLoaded || !isReady || isInitialLoading) {
-    return <SplashScreen />;
-  }
+    if (isInitialLoading) {
+      return <SplashScreen />;
+    }
 
  
   return (
@@ -80,7 +79,7 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="buddies"
+          name="mix"
           options={{
             title: "Mix",
             tabBarIcon: ({ focused }) => (
@@ -118,9 +117,9 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="achievements"
+          name="collection"
           options={{
-            title: "Awards",
+            title: "Collect",
             tabBarIcon: ({ focused }) => (
               <View
                 style={{

@@ -2,27 +2,68 @@ import { Header } from "@/components/header";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/providers/AppProvider";
 import { getCoefInfo } from "@/utils/levels";
-import { Feather } from "@expo/vector-icons";
+import {
+  AntDesign,
+  Feather,
+  Ionicons,
+  MaterialIcons,
+  SimpleLineIcons,
+} from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   ScrollView,
   Text,
   TouchableOpacity,
   View,
   ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import ThisWeekGadget from "@/components/thisWeekGadget";
 import InfoTooltip from "@/components/infoTooltip";
+import DrunkThought from "@/components/drunkThought";
 
 export default function HomeScreen() {
   const [isCoefTooltipVisible, setIsCoefTooltipVisible] =
     useState<boolean>(false);
+  const [refreshing, setRefreshing] = useState(false);
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  const { userStats, isLoading } = useApp();
+  const { userStats, friendsDrunkThoughts, isLoading, refreshAll } = useApp();
   const coefInfo = getCoefInfo(userStats);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refreshAll();
+    setRefreshing(false);
+  };
+
+  const displayedThoughts = useMemo(() => {
+    if (!friendsDrunkThoughts || friendsDrunkThoughts.length === 0) {
+      return [];
+    }
+
+    const count = Math.min(
+      Math.floor(Math.random() * 2) + 1,
+      friendsDrunkThoughts.length
+    );
+
+    const result = [];
+    const usedIndices = new Set<number>();
+
+    while (result.length < count) {
+      const randomIndex = Math.floor(
+        Math.random() * friendsDrunkThoughts.length
+      );
+      if (!usedIndices.has(randomIndex)) {
+        usedIndices.add(randomIndex);
+        result.push(friendsDrunkThoughts[randomIndex]);
+      }
+    }
+
+    return result;
+  }, [friendsDrunkThoughts]);
 
   if (isLoading && !userStats) {
     return (
@@ -38,6 +79,15 @@ export default function HomeScreen() {
   return (
     <View className="flex-1 bg-black">
       <Header />
+
+      {displayedThoughts.map((thought) => (
+        <DrunkThought
+          key={thought.id}
+          thought={thought.thought}
+          userImageUrl={thought.user_image_url}
+        />
+      ))}
+
       <ScrollView
         className="flex-1"
         contentContainerStyle={{
@@ -46,6 +96,14 @@ export default function HomeScreen() {
           paddingBottom: 100 + insets.bottom,
         }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#EA580C"
+            colors={["#EA580C"]}
+          />
+        }
       >
         <View className="items-center mb-6">
           <View className="relative w-[120px] h-[120px] rounded-full bg-orange-600/15 border-4 border-orange-600 justify-center items-center mb-3">
@@ -76,6 +134,43 @@ export default function HomeScreen() {
             {coefInfo.title}
           </Text>
         </View>
+        <ThisWeekGadget />
+
+        <View className="flex-row gap-3 mb-4">
+          <View className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]">
+            <View className="w-10 h-10 rounded-xl bg-orange-600/20 items-center justify-center mb-2">
+              <MaterialIcons name="leaderboard" size={20} color="#EA580C" />
+            </View>
+            <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">
+              RANK
+            </Text>
+            <Text className="text-white text-2xl font-black">
+              #{userStats?.rank || 0}
+            </Text>
+          </View>
+          <View className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]">
+            <View className="w-10 h-10 rounded-xl bg-orange-600/20 items-center justify-center mb-2">
+              <Ionicons name="calendar" size={20} color="#EA580C" />
+            </View>
+            <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">
+              TOTAL
+            </Text>
+            <Text className="text-white text-2xl font-black">
+              {userStats?.total_days_drank || 0}
+            </Text>
+          </View>
+          <View className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]">
+            <View className="w-10 h-10 rounded-xl bg-orange-600/20 items-center justify-center mb-2">
+              <Ionicons name="trophy" size={20} color="#EA580C" />
+            </View>
+            <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">
+              WINS
+            </Text>
+            <Text className="text-white text-2xl font-black">
+              {userStats?.total_weeks_won || 0}
+            </Text>
+          </View>
+        </View>
 
         <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
           <View className="flex-row justify-between items-center">
@@ -97,119 +192,542 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        <ThisWeekGadget />
-        {/* <BannerAd unitId={TestIds.BANNER} size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER} requestOptions={{requestNonPersonalizedAdsOnly:true, networkExtras:{collapsible:"bottom"}}} /> */}
+        <View className="flex-row gap-3 mb-4">
+          <TouchableOpacity
+            onPress={() => router.push("/(screens)/mixTimeline")}
+            className="flex-1 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]"
+          >
+            <View className="w-12 h-12 rounded-xl bg-orange-600/20 items-center justify-center mb-3">
+              <AntDesign name="align-center" size={24} color="#EA580C" />
+            </View>
+            <Text className="text-white text-base font-bold">Mix Timeline</Text>
+            <Text className="text-white/40 text-xs font-semibold mt-1">
+              View your history
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => router.push("/(screens)/stats")}
+            className="flex-1 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]"
+          >
+            <View className="w-12 h-12 rounded-xl bg-orange-600/20 items-center justify-center mb-3">
+              <MaterialIcons name="query-stats" size={24} color="#EA580C" />
+            </View>
+            <Text className="text-white text-base font-bold">Statistics</Text>
+            <Text className="text-white/40 text-xs font-semibold mt-1">
+              Detailed insights
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         <View className="flex-row gap-3 mb-4">
-          <View className="flex-1 bg-white/[0.03] rounded-xl p-4 border border-white/[0.08]">
-            <Text className="text-white/50 text-[10px] font-bold tracking-[1.5px] mb-1.5">
-              RANK
-            </Text>
-            <Text className="text-white text-2xl font-black">
-              #{userStats?.rank || 0}
-            </Text>
-            {/* <Text className="text-white/40 text-[11px] font-semibold mt-0.5">
-              of {leaderboard?.total_users || 0}
-            </Text> */}
-          </View>
+          <TouchableOpacity
+            className="flex-1 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]"
+            onPress={() => router.push("/(screens)/buddies&discoverScreen")}
+          >
+            <View className="flex-row items-center justify-between">
+              <View>
+                <Text className="text-white text-2xl font-black">Buddies</Text>
+                <Text className="text-white/40 text-xs font-semibold mt-1">
+                  {/* //!TODO: Check server resp[onse for user stats cause it shows wrong friend count] */}
+                  {userStats?.friends_count || 0} friends
+                </Text>
+              </View>
+              <View className="w-12 h-12 rounded-xl bg-orange-600/20 items-center justify-center">
+                <Ionicons name="people" size={24} color="#EA580C" />
+              </View>
+            </View>
+          </TouchableOpacity>
 
-          <View className="flex-1 bg-white/[0.03] rounded-xl p-4 border border-white/[0.08]">
-            <Text className="text-white/50 text-[10px] font-bold tracking-[1.5px] mb-1.5">
-              TOTAL
-            </Text>
-            <Text className="text-white text-2xl font-black">
-              {userStats?.total_days_drank || 0}
-            </Text>
-            <Text className="text-white/40 text-[11px] font-semibold mt-0.5">
-              days
-            </Text>
-          </View>
-
-          <View className="flex-1 bg-white/[0.03] rounded-xl p-4 border border-white/[0.08]">
-            <Text className="text-white/50 text-[10px] font-bold tracking-[1.5px] mb-1.5">
-              WINS
-            </Text>
-            <Text className="text-white text-2xl font-black">
-              {userStats?.total_weeks_won || 0}
-            </Text>
-            <Text className="text-white/40 text-[11px] font-semibold mt-0.5">
-              weeks
-            </Text>
-          </View>
+          <TouchableOpacity className="w-20 bg-white/[0.03] rounded-2xl border border-white/[0.08] items-center justify-center">
+            <View className="w-12 h-12 rounded-xl bg-orange-600/20 items-center justify-center">
+              <SimpleLineIcons
+                name="envelope-letter"
+                size={24}
+                color="#EA580C"
+              />
+            </View>
+          </TouchableOpacity>
         </View>
 
-        {/* Additional Stats */}
         <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
-          <Text className="text-white/50 text-[11px] font-bold tracking-[1.5px] mb-2">
-            YOUR STATS
+          <Text className="text-white text-lg font-black mb-4">
+            Your Progress
           </Text>
 
-          <View className="flex-row justify-between items-center py-3 border-b border-white/[0.05]">
-            <Text className="text-white/50 text-[13px] font-semibold">
-              This Month
-            </Text>
-            <Text className="text-white text-[15px] font-bold">
-              {userStats?.days_this_month || 0} days
-            </Text>
-          </View>
+          <View className="space-y-3">
+            <View className="flex-row justify-between items-center py-2.5 border-b border-white/[0.05]">
+              <View className="flex-row items-center">
+                <View className="w-8 h-8 rounded-lg bg-orange-600/20 items-center justify-center mr-3">
+                  <Ionicons name="calendar-outline" size={16} color="#EA580C" />
+                </View>
+                <Text className="text-white/60 text-sm font-semibold">
+                  This Month
+                </Text>
+              </View>
+              <Text className="text-white text-lg font-black">
+                {userStats?.days_this_month || 0}
+              </Text>
+            </View>
 
-          <View className="flex-row justify-between items-center py-3 border-b border-white/[0.05]">
-            <Text className="text-white/50 text-[13px] font-semibold">
-              This Year
-            </Text>
-            <Text className="text-white text-[15px] font-bold">
-              {userStats?.days_this_year || 0} days
-            </Text>
-          </View>
+            <View className="flex-row justify-between items-center py-2.5 border-b border-white/[0.05]">
+              <View className="flex-row items-center">
+                <View className="w-8 h-8 rounded-lg bg-orange-600/20 items-center justify-center mr-3">
+                  <Ionicons
+                    name="stats-chart-outline"
+                    size={16}
+                    color="#EA580C"
+                  />
+                </View>
+                <Text className="text-white/60 text-sm font-semibold">
+                  This Year
+                </Text>
+              </View>
+              <Text className="text-white text-lg font-black">
+                {userStats?.days_this_year || 0}
+              </Text>
+            </View>
 
-          <View className="flex-row justify-between items-center py-3 border-b border-white/[0.05]">
-            <Text className="text-white/50 text-[13px] font-semibold">
-              Longest Streak
-            </Text>
-            <Text className="text-white text-[15px] font-bold">
-              {userStats?.longest_streak || 0} days
-            </Text>
-          </View>
+            <View className="flex-row justify-between items-center py-2.5 border-b border-white/[0.05]">
+              <View className="flex-row items-center">
+                <View className="w-8 h-8 rounded-lg bg-orange-600/20 items-center justify-center mr-3">
+                  <Ionicons name="flame-outline" size={16} color="#EA580C" />
+                </View>
+                <Text className="text-white/60 text-sm font-semibold">
+                  Longest Streak
+                </Text>
+              </View>
+              <Text className="text-white text-lg font-black">
+                {userStats?.longest_streak || 0}
+              </Text>
+            </View>
 
-          <View className="flex-row justify-between items-center py-3 border-b border-white/[0.05]">
-            <Text className="text-white/50 text-[13px] font-semibold">
-              Achievements
-            </Text>
-            <Text className="text-white text-[15px] font-bold">
-              {userStats?.achievements_count || 0}
-            </Text>
-          </View>
-
-          <View className="flex-row justify-between items-center py-3">
-            <Text className="text-white/50 text-[13px] font-semibold">
-              Friends
-            </Text>
-            <Text className="text-white text-[15px] font-bold">
-              {userStats?.friends_count || 0}
-            </Text>
+            <View className="flex-row justify-between items-center py-2.5">
+              <View className="flex-row items-center">
+                <View className="w-8 h-8 rounded-lg bg-orange-600/20 items-center justify-center mr-3">
+                  <Ionicons name="ribbon-outline" size={16} color="#EA580C" />
+                </View>
+                <Text className="text-white/60 text-sm font-semibold">
+                  Achievements
+                </Text>
+              </View>
+              <Text className="text-white text-lg font-black">
+                {userStats?.achievements_count || 0}
+              </Text>
+            </View>
           </View>
         </View>
-
         <TouchableOpacity
-          className={`rounded-2xl py-5 items-center mb-4 ${
+          className={`rounded-2xl py-6 items-center mb-4 shadow-lg ${
             userStats?.today_status
-              ? "bg-orange-600/50"
-              : "bg-orange-600 shadow-lg shadow-orange-600/30"
+              ? "bg-white/[0.05] border border-white/[0.08]"
+              : "bg-orange-600 shadow-orange-600/40"
           }`}
           onPress={() => router.push("/(tabs)/add")}
           disabled={isLoading}
+          style={{
+            shadowColor: userStats?.today_status ? "transparent" : "#EA580C",
+            shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: 0.3,
+            shadowRadius: 16,
+            elevation: 8,
+          }}
         >
           {isLoading ? (
-            <ActivityIndicator color="#000000" />
+            <ActivityIndicator
+              color={userStats?.today_status ? "#EA580C" : "#000000"}
+            />
           ) : (
-            <Text className="text-black text-base font-black tracking-[1.5px]">
-              {userStats?.today_status
-                ? "CONGRATS MY ALCOHOLIC"
-                : "DRINK TODAY"}
-            </Text>
+            <View className="items-center">
+              {userStats?.today_status ? (
+                <>
+                  <Ionicons name="checkmark-circle" size={32} color="#EA580C" />
+                  <Text className="text-white text-base font-black tracking-wider mt-2">
+                    LOGGED TODAY
+                  </Text>
+                  <Text className="text-white/40 text-xs font-semibold mt-1">
+                    Great job, alcoholic!
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="add-circle" size={32} color="#000000" />
+                  <Text className="text-black text-lg font-black tracking-wider mt-2">
+                    LOG TODAY'S DRINKS
+                  </Text>
+                  <Text className="text-black/60 text-xs font-semibold mt-1">
+                    Keep your streak alive
+                  </Text>
+                </>
+              )}
+            </View>
           )}
         </TouchableOpacity>
       </ScrollView>
     </View>
   );
 }
+
+// const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+// export default function HomeScreen() {
+//   const [isCoefTooltipVisible, setIsCoefTooltipVisible] =
+//     useState<boolean>(false);
+//   const [refreshing, setRefreshing] = useState(false);
+//   const insets = useSafeAreaInsets();
+//   const router = useRouter();
+
+//   const { userStats, friendsDrunkThoughts, isLoading, refreshAll } = useApp();
+//   const coefInfo = getCoefInfo(userStats);
+
+//   const onRefresh = async () => {
+//     setRefreshing(true);
+//     await refreshAll();
+//     setRefreshing(false);
+//   };
+
+//   const displayedThoughts = useMemo(() => {
+//     if (!friendsDrunkThoughts || friendsDrunkThoughts.length === 0) {
+//       return [];
+//     }
+
+//     const count = Math.min(
+//       Math.floor(Math.random() * 2) + 1,
+//       friendsDrunkThoughts.length
+//     );
+
+//     const result = [];
+//     const usedIndices = new Set<number>();
+
+//     while (result.length < count) {
+//       const randomIndex = Math.floor(
+//         Math.random() * friendsDrunkThoughts.length
+//       );
+//       if (!usedIndices.has(randomIndex)) {
+//         usedIndices.add(randomIndex);
+//         result.push(friendsDrunkThoughts[randomIndex]);
+//       }
+//     }
+
+//     return result;
+//   }, [friendsDrunkThoughts]);
+
+//   if (isLoading && !userStats) {
+//     return (
+//       <View className="flex-1 bg-black justify-center items-center">
+//         <ActivityIndicator size="large" color="#EA580C" />
+//         <Text className="text-white/50 text-sm mt-4">
+//           Loading your stats...
+//         </Text>
+//       </View>
+//     );
+//   }
+
+//   return (
+//     <View className="flex-1 bg-black">
+//       <Header />
+
+//       {displayedThoughts.map((thought) => (
+//         <DrunkThought
+//           key={thought.id}
+//           thought={thought.thought}
+//           userImageUrl={thought.user_image_url}
+//         />
+//       ))}
+
+//       <ScrollView
+//         className="flex-1"
+//         contentContainerStyle={{
+//           paddingHorizontal: 16,
+//           paddingTop: 16,
+//           paddingBottom: 100 + insets.bottom,
+//         }}
+//         showsVerticalScrollIndicator={false}
+//         refreshControl={
+//           <RefreshControl
+//             refreshing={refreshing}
+//             onRefresh={onRefresh}
+//             tintColor="#EA580C"
+//             colors={["#EA580C"]}
+//           />
+//         }
+//       >
+//         {/* Hero Section - Coefficient & Streak */}
+//         <View className="bg-gradient-to-br from-orange-600/20 to-orange-600/5 rounded-3xl p-6 mb-4 border border-orange-600/30">
+//           <View className="flex-row items-center justify-between">
+//             {/* Coefficient Circle */}
+//             <View className="items-center">
+//               <View className="relative w-28 h-28 rounded-full bg-black/40 border-4 border-orange-600 justify-center items-center mb-2">
+//                 <Text className="text-orange-600 text-4xl font-black">
+//                   {coefInfo.coef}
+//                 </Text>
+
+//                 <TouchableOpacity
+//                   onPress={() => setIsCoefTooltipVisible(!isCoefTooltipVisible)}
+//                   className="absolute w-7 h-7 rounded-full items-center justify-center"
+//                   style={{ zIndex: 10, right: -8, bottom: -8 }}
+//                 >
+//                   <Feather name="help-circle" size={20} color="#666666" />
+//                 </TouchableOpacity>
+
+//                 {isCoefTooltipVisible && (
+//                   <InfoTooltip
+//                     title="Coefficient"
+//                     visible={isCoefTooltipVisible}
+//                     description="Your drinking coefficient calculated from your drunk performance. Higher number means more fun nights!"
+//                     onClose={() => setIsCoefTooltipVisible(false)}
+//                     position="bottom"
+//                   />
+//                 )}
+//               </View>
+//               <Text className="text-white text-xs font-bold tracking-wide">
+//                 {coefInfo.title}
+//               </Text>
+//             </View>
+
+//             {/* Streak Display */}
+//             <View className="flex-1 ml-5">
+//               <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-1">
+//                 CURRENT STREAK
+//               </Text>
+//               <View className="flex-row items-end">
+//                 <Text className="text-white text-5xl font-black leading-none">
+//                   {userStats?.current_streak || 0}
+//                 </Text>
+//                 <Text className="text-white/60 text-xl font-black ml-2 mb-1">
+//                   days
+//                 </Text>
+//               </View>
+//               <Text className="text-orange-600 text-2xl mt-1">🔥</Text>
+//               {userStats && userStats.current_streak > 0 && (
+//                 <View className="bg-orange-600 px-3 py-1 rounded-full mt-2 self-start">
+//                   <Text className="text-black text-[10px] font-black tracking-wider">
+//                     ACTIVE
+//                   </Text>
+//                 </View>
+//               )}
+//             </View>
+//           </View>
+//         </View>
+
+//         {/* Quick Stats Grid */}
+//         <View className="flex-row gap-3 mb-4">
+//           <View className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]">
+//             <View className="w-10 h-10 rounded-xl bg-orange-600/20 items-center justify-center mb-2">
+//               <MaterialIcons name="leaderboard" size={20} color="#EA580C" />
+//             </View>
+//             <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">
+//               RANK
+//             </Text>
+//             <Text className="text-white text-2xl font-black">
+//               #{userStats?.rank || 0}
+//             </Text>
+//           </View>
+
+//           <View className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]">
+//             <View className="w-10 h-10 rounded-xl bg-orange-600/20 items-center justify-center mb-2">
+//               <Ionicons name="calendar" size={20} color="#EA580C" />
+//             </View>
+//             <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">
+//               TOTAL
+//             </Text>
+//             <Text className="text-white text-2xl font-black">
+//               {userStats?.total_days_drank || 0}
+//             </Text>
+//           </View>
+
+//           <View className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]">
+//             <View className="w-10 h-10 rounded-xl bg-orange-600/20 items-center justify-center mb-2">
+//               <Ionicons name="trophy" size={20} color="#EA580C" />
+//             </View>
+//             <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">
+//               WINS
+//             </Text>
+//             <Text className="text-white text-2xl font-black">
+//               {userStats?.total_weeks_won || 0}
+//             </Text>
+//           </View>
+//         </View>
+
+//         {/* This Week Widget */}
+//         <ThisWeekGadget />
+
+//         {/* Action Cards */}
+//         <View className="flex-row gap-3 mb-4">
+//           <TouchableOpacity
+//             onPress={() => router.push("/(screens)/mixTimeline")}
+//             className="flex-1 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]"
+//           >
+//             <View className="w-12 h-12 rounded-xl bg-orange-600/20 items-center justify-center mb-3">
+//               <AntDesign name="align-center" size={24} color="#EA580C" />
+//             </View>
+//             <Text className="text-white text-base font-bold">Mix Timeline</Text>
+//             <Text className="text-white/40 text-xs font-semibold mt-1">
+//               View your history
+//             </Text>
+//           </TouchableOpacity>
+
+//           <TouchableOpacity
+//             onPress={() => router.push("/(screens)/stats")}
+//             className="flex-1 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]"
+//           >
+//             <View className="w-12 h-12 rounded-xl bg-orange-600/20 items-center justify-center mb-3">
+//               <MaterialIcons name="query-stats" size={24} color="#EA580C" />
+//             </View>
+//             <Text className="text-white text-base font-bold">Statistics</Text>
+//             <Text className="text-white/40 text-xs font-semibold mt-1">
+//               Detailed insights
+//             </Text>
+//           </TouchableOpacity>
+//         </View>
+
+//         {/* Buddies & Messages Row */}
+//         <View className="flex-row gap-3 mb-4">
+//           <TouchableOpacity
+//             className="flex-1 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]"
+//             onPress={() => router.push("/(screens)/buddies&discoverScreen")}
+//           >
+//             <View className="flex-row items-center justify-between">
+//               <View>
+//                 <Text className="text-white text-2xl font-black">Buddies</Text>
+//                 <Text className="text-white/40 text-xs font-semibold mt-1">
+//                   {userStats?.friends_count || 0} friends
+//                 </Text>
+//               </View>
+//               <View className="w-12 h-12 rounded-xl bg-orange-600/20 items-center justify-center">
+//                 <Ionicons name="people" size={24} color="#EA580C" />
+//               </View>
+//             </View>
+//           </TouchableOpacity>
+
+//           <TouchableOpacity className="w-20 bg-white/[0.03] rounded-2xl border border-white/[0.08] items-center justify-center">
+//             <View className="w-12 h-12 rounded-xl bg-orange-600/20 items-center justify-center">
+//               <SimpleLineIcons
+//                 name="envelope-letter"
+//                 size={24}
+//                 color="#EA580C"
+//               />
+//             </View>
+//           </TouchableOpacity>
+//         </View>
+
+//         {/* Extended Stats Card */}
+//         <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
+//           <Text className="text-white text-lg font-black mb-4">
+//             Your Progress
+//           </Text>
+
+//           <View className="space-y-3">
+//             <View className="flex-row justify-between items-center py-2.5 border-b border-white/[0.05]">
+//               <View className="flex-row items-center">
+//                 <View className="w-8 h-8 rounded-lg bg-orange-600/20 items-center justify-center mr-3">
+//                   <Ionicons name="calendar-outline" size={16} color="#EA580C" />
+//                 </View>
+//                 <Text className="text-white/60 text-sm font-semibold">
+//                   This Month
+//                 </Text>
+//               </View>
+//               <Text className="text-white text-lg font-black">
+//                 {userStats?.days_this_month || 0}
+//               </Text>
+//             </View>
+
+//             <View className="flex-row justify-between items-center py-2.5 border-b border-white/[0.05]">
+//               <View className="flex-row items-center">
+//                 <View className="w-8 h-8 rounded-lg bg-orange-600/20 items-center justify-center mr-3">
+//                   <Ionicons
+//                     name="stats-chart-outline"
+//                     size={16}
+//                     color="#EA580C"
+//                   />
+//                 </View>
+//                 <Text className="text-white/60 text-sm font-semibold">
+//                   This Year
+//                 </Text>
+//               </View>
+//               <Text className="text-white text-lg font-black">
+//                 {userStats?.days_this_year || 0}
+//               </Text>
+//             </View>
+
+//             <View className="flex-row justify-between items-center py-2.5 border-b border-white/[0.05]">
+//               <View className="flex-row items-center">
+//                 <View className="w-8 h-8 rounded-lg bg-orange-600/20 items-center justify-center mr-3">
+//                   <Ionicons name="flame-outline" size={16} color="#EA580C" />
+//                 </View>
+//                 <Text className="text-white/60 text-sm font-semibold">
+//                   Longest Streak
+//                 </Text>
+//               </View>
+//               <Text className="text-white text-lg font-black">
+//                 {userStats?.longest_streak || 0}
+//               </Text>
+//             </View>
+
+//             <View className="flex-row justify-between items-center py-2.5">
+//               <View className="flex-row items-center">
+//                 <View className="w-8 h-8 rounded-lg bg-orange-600/20 items-center justify-center mr-3">
+//                   <Ionicons name="ribbon-outline" size={16} color="#EA580C" />
+//                 </View>
+//                 <Text className="text-white/60 text-sm font-semibold">
+//                   Achievements
+//                 </Text>
+//               </View>
+//               <Text className="text-white text-lg font-black">
+//                 {userStats?.achievements_count || 0}
+//               </Text>
+//             </View>
+//           </View>
+//         </View>
+
+//         {/* Main CTA Button */}
+//         <TouchableOpacity
+//           className={`rounded-2xl py-6 items-center mb-4 shadow-lg ${
+//             userStats?.today_status
+//               ? "bg-white/[0.05] border border-white/[0.08]"
+//               : "bg-orange-600 shadow-orange-600/40"
+//           }`}
+//           onPress={() => router.push("/(tabs)/add")}
+//           disabled={isLoading}
+//           style={{
+//             shadowColor: userStats?.today_status ? "transparent" : "#EA580C",
+//             shadowOffset: { width: 0, height: 8 },
+//             shadowOpacity: 0.3,
+//             shadowRadius: 16,
+//             elevation: 8,
+//           }}
+//         >
+//           {isLoading ? (
+//             <ActivityIndicator
+//               color={userStats?.today_status ? "#EA580C" : "#000000"}
+//             />
+//           ) : (
+//             <View className="items-center">
+//               {userStats?.today_status ? (
+//                 <>
+//                   <Ionicons name="checkmark-circle" size={32} color="#EA580C" />
+//                   <Text className="text-white text-base font-black tracking-wider mt-2">
+//                     LOGGED TODAY
+//                   </Text>
+//                   <Text className="text-white/40 text-xs font-semibold mt-1">
+//                     Great job, alcoholic! 🍺
+//                   </Text>
+//                 </>
+//               ) : (
+//                 <>
+//                   <Ionicons name="add-circle" size={32} color="#000000" />
+//                   <Text className="text-black text-lg font-black tracking-wider mt-2">
+//                     LOG TODAY'S DRINKS
+//                   </Text>
+//                   <Text className="text-black/60 text-xs font-semibold mt-1">
+//                     Keep your streak alive
+//                   </Text>
+//                 </>
+//               )}
+//             </View>
+//           )}
+//         </TouchableOpacity>
+//       </ScrollView>
+//     </View>
+//   );
+// }

@@ -1,13 +1,18 @@
+import { VideoPost } from "./components/mixVideo";
 import {
   Achievement,
   AddDrinkingRequest,
+  AlcoholCollectionByType,
+  AlcoholDbItem,
   CalendarResponse,
   DailyDrinkingPostResponse,
   DaysStat,
+  DrunkThought,
   FriendDiscoveryDisplayProfileResponse,
   Friendship,
   Leaderboard,
   LeaderboardEntry,
+  SearchDbAlcoholResult,
   UpdateUserProfileReq,
   UserData,
   UserStats,
@@ -143,6 +148,51 @@ class ApiService {
 
     return response || [];
   }
+
+  async searchDbAlcoholCollection(
+    searchQuery: string,
+    token: string
+  ): Promise<SearchDbAlcoholResult | null> {
+    const response = await this.makeRequest<SearchDbAlcoholResult | null>(
+      `/api/v1/user/search-db-alcohol?alcohol_name=${encodeURIComponent(searchQuery)}`,
+      {
+        method: "GET",
+        token,
+      }
+    );
+
+    return response;
+  }
+
+  async getUserAlcoholCollection(
+    token: string
+  ): Promise<AlcoholCollectionByType> {
+    const response = await this.makeRequest<AlcoholCollectionByType>(
+      `/api/v1/user/alcohol-collection`,
+      {
+        method: "GET",
+        token,
+      }
+    );
+
+    return response;
+  }
+
+  async removeFromAlcoholCollection(
+    itemId: string,
+    token: string
+  ): Promise<any> {
+    const response = await this.makeRequest<any>(
+      `/api/v1/user/alcohol-collection?itemId=${encodeURIComponent(itemId)}`,
+      {
+        method: "DELETE",
+        token,
+      }
+    );
+
+    return response;
+  }
+
   async getUserStats(token: string): Promise<UserStats> {
     return this.makeRequest<UserStats>("/api/v1/user/stats", {
       method: "GET",
@@ -155,7 +205,7 @@ class ApiService {
     token: string,
     date?: string
   ): Promise<{ message: string }> {
-  console.log("devbug for add drinking")
+    console.log("devbug for add drinking");
     console.log(data, token);
     const url = date
       ? `/api/v1/user/drink?date=${encodeURIComponent(date)}`
@@ -166,6 +216,20 @@ class ApiService {
       token,
       body: JSON.stringify(data),
     });
+  }
+
+  async removeDrinking(
+    token: string,
+    date: string
+  ): Promise<{ message: string }> {
+    console.log("devbug for remove drinking");
+    return await this.makeRequest(
+      `/api/v1/user/drink?date=${encodeURIComponent(date)}`,
+      {
+        method: "DELETE",
+        token,
+      }
+    );
   }
 
   async getFriendsLeaderboard(token: string): Promise<Leaderboard> {
@@ -256,6 +320,16 @@ class ApiService {
     return response || [];
   }
 
+  async getFriendsDrunkThoughts(token: string): Promise<DrunkThought[]> {
+    const response = await this.makeRequest<DrunkThought[]>(
+      "/api/v1/user/drunk-friend-thoughts",
+      {
+        method: "GET",
+        token,
+      }
+    );
+    return response || [];
+  }
   async getYourMixData(token: string): Promise<YourMixPostData[]> {
     try {
       const response = await this.makeRequest<DailyDrinkingPostResponse[]>(
@@ -266,7 +340,8 @@ class ApiService {
         }
       );
 
-      // Transform PascalCase to camelCase
+      console.log(response);
+
       const transformed = response.map((post) => ({
         id: post.ID,
         userId: post.UserID,
@@ -280,11 +355,116 @@ class ApiService {
         sourceType: post.SourceType,
       }));
 
-      console.log("Your Mix data:", transformed);
       return transformed;
     } catch (error) {
       console.error("Failed to fetch Your Mix:", error);
       return [];
+    }
+  }
+
+  async getMixTimeline(token: string): Promise<YourMixPostData[]> {
+    try {
+      const response = await this.makeRequest<DailyDrinkingPostResponse[]>(
+        "/api/v1/user/mix-timeline",
+        {
+          method: "GET",
+          token,
+        }
+      );
+
+      const transformed = response.map((post) => ({
+        id: post.ID,
+        userId: post.UserID,
+        userImageUrl: post.UserImageURL,
+        date: post.Date,
+        drankToday: post.DrankToday,
+        loggedAt: post.LoggedAt,
+        imageUrl: post.ImageURL,
+        locationText: post.LocationText,
+        mentionedBuddies: post.MentionedBuddies || [],
+        sourceType: post.SourceType,
+      }));
+
+      return transformed;
+    } catch (error) {
+      console.error("Failed to fetch Mix Timeline:", error);
+      return [];
+    }
+  }
+
+  async addMixVideo(
+    videoUrl: string,
+    caption: string,
+    duration: number,
+    token: string
+  ): Promise<any> {
+    const response = await this.makeRequest<any>("/api/v1/user/mix-video", {
+      method: "POST",
+      token,
+      body: JSON.stringify({
+        video_url: videoUrl,
+        caption: caption,
+        duration: duration,
+      }),
+    });
+
+    // If response has an error property, throw it
+    if (response?.error) {
+      throw new Error(response.error);
+    }
+
+    return response;
+  }
+
+  async getMixVideos(token: string): Promise<VideoPost[]> {
+    try {
+      const response = await this.makeRequest<any[]>(
+        "/api/v1/user/mix-videos",
+        {
+          method: "GET",
+          token,
+        }
+      );
+
+
+      const transformed = response.map((video) => ({
+        id: video.id, 
+        videoUrl: video.video_url,
+        userId: video.user_id, 
+        username: video.username, 
+        userImageUrl: video.user_image_url, 
+        caption: video.caption || "",
+        chips: video.chips || 0, 
+        duration: video.duration, 
+        createdAt: video.created_at, 
+      }));
+
+      console.log("Transformed videos:", transformed); // Debug log
+
+      return transformed;
+    } catch (error) {
+      console.error("Failed to fetch mix videos:", error);
+      return [];
+    }
+  }
+
+  async addChipsToVideo(token: string, videoId: string): Promise<boolean> {
+    try {
+      await this.makeRequest<{ message: string }>(
+        "/api/v1/user/mix-video-chips",
+        {
+          method: "POST",
+          token,
+          body: JSON.stringify({
+            video_id: videoId,
+          }),
+        }
+      );
+
+      return true;
+    } catch (error) {
+      console.error("Failed to add chips to video:", error);
+      return false;
     }
   }
 
@@ -296,18 +476,16 @@ class ApiService {
     });
   }
 
-  async getDrunkThought(token: string, date?: string): Promise<string | null> {
-    // Add date query param only if provided
+  async getDrunkThought(token: string, date?: string): Promise<any> {
     const url = date
       ? `/api/v1/user/drunk-thought?date=${encodeURIComponent(date)}`
       : `/api/v1/user/drunk-thought`;
 
-    const response = await this.makeRequest(url, {
+    const response = await this.makeRequest<any>(url, {
       method: "GET",
       token,
     });
 
-    // Backend returns { drunk_thought: string | null }
     return response?.drunk_thought ?? null;
   }
 
@@ -391,41 +569,3 @@ class ApiService {
 }
 
 export const apiService = new ApiService();
-
-// async acceptFriendRequest(
-//   friendshipId: string,
-//   token: string
-// ): Promise<Friendship> {
-//   return this.makeRequest<Friendship>(
-//     `/api/v1/user/friends/request/${friendshipId}/accept`,
-//     {
-//       method: "POST",
-//       token,
-//     }
-//   );
-// }
-
-// async rejectFriendRequest(
-//   friendshipId: string,
-//   token: string
-// ): Promise<void> {
-//   return this.makeRequest<void>(
-//     `/api/v1/user/friends/request/${friendshipId}/reject`,
-//     {
-//       method: "POST",
-//       token,
-//     }
-//   );
-// }
-
-// async getPendingFriendRequests(token: string): Promise<FriendRequest[]> {
-//   const response = await this.makeRequest<{ requests: FriendRequest[] }>(
-//     "/api/v1/user/friends/requests/pending",
-//     {
-//       method: "GET",
-//       token,
-//     }
-//   );
-
-//   return response.requests || [];
-// }

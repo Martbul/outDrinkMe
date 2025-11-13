@@ -18,6 +18,9 @@ import {
   UpdateUserProfileReq,
   FriendDiscoveryDisplayProfileResponse,
   YourMixPostData,
+  DrunkThought,
+  AlcoholDbItem,
+  AlcoholCollectionByType,
 } from "../types/api.types";
 import { apiService } from "@/api";
 import { Alert } from "react-native";
@@ -33,8 +36,11 @@ interface AppContextType {
   friends: UserData[] | [];
   discovery: UserData[] | [];
   yourMixData: YourMixPostData[] | [];
+  mixTimelineData: YourMixPostData[] | [];
   friendDiscoveryProfile: FriendDiscoveryDisplayProfileResponse | null;
   drunkThought: string | null;
+  friendsDrunkThoughts: DrunkThought[] | [];
+  alcoholCollection: AlcoholCollectionByType | null;
 
   // Refresh Functions
   refreshUserData: () => Promise<void>;
@@ -46,7 +52,10 @@ interface AppContextType {
   refreshFriends: () => Promise<void>;
   refreshDiscovery: () => Promise<void>;
   refreshYourMixData: () => Promise<void>;
+  refreshMixTimelineData: () => Promise<void>;
   refreshDrunkThought: () => Promise<void>;
+  refreshFriendsDrunkThoughs: () => Promise<void>;
+  refreshUserAlcoholCollection: () => Promise<void>;
   refreshAll: () => Promise<void>;
 
   // Actions
@@ -89,9 +98,16 @@ export function AppProvider({ children }: AppProviderProps) {
   const [friends, setFriends] = useState<UserData[] | []>([]);
   const [discovery, setDiscovery] = useState<UserData[] | []>([]);
   const [yourMixData, setYourMixData] = useState<YourMixPostData[] | []>([]);
+  const [mixTimelineData, setMixTimelineData] = useState<
+    YourMixPostData[] | []
+  >([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [drunkThought, setDrunkThought] = useState<string | null>(null);
-
+  const [friendsDrunkThoughts, setFriendsDrunkThoughts] = useState<
+    DrunkThought[] | []
+  >([]);
+  const [alcoholCollection, setAlcoholCollection] =
+    useState<AlcoholCollectionByType | null>(null);
   const [friendDiscoveryProfile, setFriendDiscoveryProfile] =
     useState<FriendDiscoveryDisplayProfileResponse | null>(null);
 
@@ -264,6 +280,19 @@ export function AppProvider({ children }: AppProviderProps) {
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
 
+  const refreshMixTimelineData = useCallback(async () => {
+    if (!isSignedIn) return;
+
+    await withLoadingAndError(
+      async () => {
+        const token = await getToken();
+        if (!token) throw new Error("No auth token");
+        return await apiService.getMixTimeline(token);
+      },
+      (data) => setMixTimelineData(data)
+    );
+  }, [isSignedIn, getToken, withLoadingAndError]);
+
   const refreshDrunkThought = useCallback(async () => {
     if (!isSignedIn) return;
 
@@ -277,6 +306,31 @@ export function AppProvider({ children }: AppProviderProps) {
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
 
+  const refreshFriendsDrunkThoughs = useCallback(async () => {
+    if (!isSignedIn) return;
+
+    await withLoadingAndError(
+      async () => {
+        const token = await getToken();
+        if (!token) throw new Error("No auth token");
+        return await apiService.getFriendsDrunkThoughts(token);
+      },
+      (data) => setFriendsDrunkThoughts(data)
+    );
+  }, [isSignedIn, getToken, withLoadingAndError]);
+
+  const refreshUserAlcoholCollection = useCallback(async () => {
+    if (!isSignedIn) return;
+
+    await withLoadingAndError(
+      async () => {
+        const token = await getToken();
+        if (!token) throw new Error("No auth token");
+        return await apiService.getUserAlcoholCollection(token);
+      },
+      (data) => setAlcoholCollection(data)
+    );
+  }, [isSignedIn, getToken, withLoadingAndError]);
   // ============================================
   // Refresh All - Using Parallel Execution
   // ============================================
@@ -300,8 +354,11 @@ export function AppProvider({ children }: AppProviderProps) {
         apiService.getFriends(token),
         apiService.getDiscovery(token),
         apiService.getYourMixData(token),
+        apiService.getMixTimeline(token),
         apiService.getWeeklyStats(token),
         apiService.getDrunkThought(token),
+        apiService.getFriendsDrunkThoughts(token),
+        apiService.getUserAlcoholCollection(token),
       ]);
 
       // Extract successful results and handle failures
@@ -314,8 +371,11 @@ export function AppProvider({ children }: AppProviderProps) {
         friendsResult,
         discoveryResult,
         yourMixDataResult,
+        mixTimelineDataResult,
         weeklyResult,
         drunkThoughtResult,
+        friendsDrunkThoughtsResult,
+        userAlcoholCollectionResult,
       ] = results;
 
       if (userResult.status === "fulfilled") {
@@ -366,8 +426,18 @@ export function AppProvider({ children }: AppProviderProps) {
       if (yourMixDataResult.status === "fulfilled") {
         setYourMixData(yourMixDataResult.value);
       } else {
-        console.error("Failed to your-mix data:", yourMixDataResult.reason);
+        console.error("Failed to mix timeline data:", yourMixDataResult.reason);
         setYourMixData([]);
+      }
+
+      if (mixTimelineDataResult.status === "fulfilled") {
+        setMixTimelineData(mixTimelineDataResult.value);
+      } else {
+        console.error(
+          "Failed to mix timeline data:",
+          mixTimelineDataResult.reason
+        );
+        setMixTimelineData([]);
       }
 
       if (weeklyResult.status === "fulfilled") {
@@ -383,6 +453,25 @@ export function AppProvider({ children }: AppProviderProps) {
         console.error(
           "Failed to fetch drunk thought:",
           drunkThoughtResult.reason
+        );
+      }
+
+      if (friendsDrunkThoughtsResult.status === "fulfilled") {
+        setFriendsDrunkThoughts(friendsDrunkThoughtsResult.value);
+      } else {
+        setFriendsDrunkThoughts([]);
+        console.error(
+          "Failed to fetch friends drunk thoughts:",
+          friendsDrunkThoughtsResult.reason
+        );
+      }
+      if (userAlcoholCollectionResult.status === "fulfilled") {
+        setAlcoholCollection(userAlcoholCollectionResult.value);
+      } else {
+        setAlcoholCollection(null);
+        console.error(
+          "Failed to fetchuser alcohol collection:",
+          userAlcoholCollectionResult.reason
         );
       }
 
@@ -679,8 +768,11 @@ export function AppProvider({ children }: AppProviderProps) {
     friends,
     discovery,
     yourMixData,
+    mixTimelineData,
     friendDiscoveryProfile,
     drunkThought,
+    friendsDrunkThoughts,
+    alcoholCollection,
 
     // Refresh Functions
     refreshUserData,
@@ -692,7 +784,10 @@ export function AppProvider({ children }: AppProviderProps) {
     refreshFriends,
     refreshDiscovery,
     refreshYourMixData,
+    refreshMixTimelineData,
     refreshDrunkThought,
+    refreshFriendsDrunkThoughs,
+    refreshUserAlcoholCollection,
     refreshAll,
 
     // Actions
