@@ -1,12 +1,19 @@
-import React, { useEffect, useRef } from "react";
+import { drunkQuotes } from "@/utils/drinkQuotes";
+import React, { useEffect, useRef, useState } from "react";
 import { View, Text, Animated, StyleSheet, Image } from "react-native";
 
 export default function SplashScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const loadingAnim = useRef(new Animated.Value(0)).current;
+  const [quote, setQuote] = useState("");
+
 
   useEffect(() => {
+    const randomIndex = Math.floor(Math.random() * drunkQuotes.length);
+    setQuote(drunkQuotes[randomIndex]);
+
+  
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -21,7 +28,6 @@ export default function SplashScreen() {
       }),
     ]).start();
 
-    // Loading bar animation
     Animated.loop(
       Animated.sequence([
         Animated.timing(loadingAnim, {
@@ -72,7 +78,7 @@ export default function SplashScreen() {
               ]}
             />
           </View>
-          <Text style={styles.loadingText}>Serving you drinks...</Text>
+          <Text style={styles.quoteText}>{quote}</Text>
         </View>
       </Animated.View>
     </View>
@@ -129,5 +135,13 @@ const styles = StyleSheet.create({
     color: "rgba(255, 255, 255, 0.5)",
     fontSize: 14,
     fontWeight: "600",
+  },
+  quoteText: {
+    color: "rgba(255, 255, 255, 0.6)",
+    fontSize: 14,
+    fontStyle: "italic",
+    textAlign: "center",
+    paddingHorizontal: 20,
+    marginTop: 10,
   },
 });
