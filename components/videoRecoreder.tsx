@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   TextInput,
   Alert,
+  StyleSheet,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Camera, CameraType, CameraView } from "expo-camera";
@@ -42,7 +43,7 @@ export default function VideoRecorder({
   const [caption, setCaption] = useState("");
   const [isUploading, setIsUploading] = useState(false);
 
-  // Video player for preview - always call the hook
+  // Video player for preview - only initialize when needed
   const player = useVideoPlayer(recordedVideo || "", (player) => {
     if (recordedVideo) {
       player.loop = true;
@@ -61,7 +62,19 @@ export default function VideoRecorder({
     })();
   }, []);
 
+  // Cleanup on unmount and when modal closes
   useEffect(() => {
+    if (!visible) {
+      // Clean up when modal closes
+      if (recordingTimer.current) {
+        clearInterval(recordingTimer.current);
+        recordingTimer.current = null;
+      }
+      if (player) {
+        player.pause();
+      }
+    }
+
     return () => {
       if (recordingTimer.current) {
         clearInterval(recordingTimer.current);
@@ -69,8 +82,11 @@ export default function VideoRecorder({
       if (cameraRef.current && isRecording) {
         cameraRef.current.stopRecording();
       }
+      if (player) {
+        player.pause();
+      }
     };
-  }, [isRecording]);
+  }, [visible, isRecording]);
 
   const startRecording = async () => {
     if (!cameraRef.current) return;
@@ -81,6 +97,7 @@ export default function VideoRecorder({
 
       const videoPromise = cameraRef.current.recordAsync({
         maxDuration: 60,
+        
       });
 
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -150,6 +167,10 @@ export default function VideoRecorder({
   };
 
   const discardVideo = () => {
+    if (player) {
+      player.pause();
+    }
+
     if (recordingTimer.current) {
       clearInterval(recordingTimer.current);
       recordingTimer.current = null;
@@ -170,7 +191,7 @@ export default function VideoRecorder({
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
         allowsEditing: true,
-        quality: 1,
+        quality: 0.8, // Reduce quality to save memory
         videoMaxDuration: 60,
       });
 
@@ -233,12 +254,17 @@ export default function VideoRecorder({
                 </TouchableOpacity>
               </View>
             ) : (
-              <>
+              <View style={{ flex: 1 }}>
+                {/* CameraView with no children */}
                 <CameraView
+                  mode="video"
                   ref={cameraRef}
-                  style={{ flex: 1 }}
+                  style={StyleSheet.absoluteFill}
                   facing={cameraType}
-                >
+                />
+
+                {/* Overlay UI with absolute positioning */}
+                <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
                   {/* Top Controls */}
                   <View className="absolute top-12 left-4 right-4 flex-row justify-between items-center">
                     <TouchableOpacity
@@ -303,8 +329,8 @@ export default function VideoRecorder({
                         : "Tap to record (max 60s)"}
                     </Text>
                   </View>
-                </CameraView>
-              </>
+                </View>
+              </View>
             )}
           </>
         ) : (

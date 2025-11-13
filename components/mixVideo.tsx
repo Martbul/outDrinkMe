@@ -22,8 +22,7 @@ export interface VideoPost {
   username: string;
   userImageUrl?: string;
   caption?: string;
-  likes: number;
-  comments: number;
+  chips: number;
   duration: number;
   createdAt: string;
 }
@@ -137,11 +136,11 @@ const VideoFeedCard = ({
             />
           </View>
           <Text className="text-white text-xs font-bold mt-1">
-            {item.likes + (isLiked ? 1 : 0)}
+            {item.chips + (isLiked ? 1 : 0)}
           </Text>
         </TouchableOpacity>
 
-        {/* Comment Button */}
+        {/* Comment Button
         <TouchableOpacity className="items-center">
           <View className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-sm items-center justify-center border border-white/10">
             <Ionicons name="chatbubble-outline" size={24} color="white" />
@@ -149,7 +148,7 @@ const VideoFeedCard = ({
           <Text className="text-white text-xs font-bold mt-1">
             {item.comments}
           </Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         {/* Share Button */}
         {/* <TouchableOpacity className="items-center">

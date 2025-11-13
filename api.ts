@@ -391,6 +391,18 @@ class ApiService {
     }
   }
 
+  async addMixVideo(videoUrl: string,caption:string,duration:number,  token: string): Promise<any> {
+    return this.makeRequest<any>("/api/v1/user/mix-video", {
+      method: "POST",
+      token,
+      body: JSON.stringify({
+        video_url: videoUrl,
+        caption: caption,
+        duration:duration
+      }),
+    });
+  }
+
   async addFriend(friendId: string, token: string): Promise<Friendship> {
     return this.makeRequest<Friendship>("/api/v1/user/friends", {
       method: "POST",

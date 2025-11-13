@@ -1,6 +1,6 @@
 import { useApp } from "@/providers/AppProvider";
 import type { YourMixPostData } from "@/types/api.types";
-import { Ionicons, } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
@@ -20,6 +20,8 @@ import { RefreshControl } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import MixVideo, { VideoPost } from "@/components/mixVideo";
 import VideoRecorder from "@/components/videoRecoreder";
+import { apiService } from "@/api";
+import { useAuth } from "@clerk/clerk-expo";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -32,8 +34,7 @@ const mockVideos: VideoPost[] = [
     username: "john_doe",
     userImageUrl: "https://i.pravatar.cc/150?img=1",
     caption: "First video post! 🎉",
-    likes: 42,
-    comments: 8,
+    chips: 42,
     duration: 45,
     createdAt: new Date().toISOString(),
   },
@@ -45,14 +46,14 @@ const mockVideos: VideoPost[] = [
     username: "jane_smith",
     userImageUrl: "https://i.pravatar.cc/150?img=2",
     caption: "Check this out!",
-    likes: 128,
-    comments: 23,
+    chips: 128,
     duration: 30,
     createdAt: new Date().toISOString(),
   },
 ];
 
 const MixScreen = () => {
+  const { getToken } = useAuth();
   const { userData, yourMixData, isLoading, refreshYourMixData } = useApp();
   const [activeTab, setActiveTab] = useState(0);
   const scrollX = useRef(new Animated.Value(0)).current;
@@ -279,7 +280,9 @@ const MixScreen = () => {
   ) => {
     if (!userData) return;
 
-    //!TODO: Using the same folder as for the images(set them to be different and rebuild development)
+    const token = await getToken();
+    if (!token) return;
+
     try {
       const CLOUDINARY_CLOUD_NAME =
         process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
@@ -319,16 +322,28 @@ const MixScreen = () => {
 
       const cloudinaryData = await cloudinaryResponse.json();
 
+      const saveResponse = await apiService.addMixVideo(
+          cloudinaryData.secure_url,
+        caption,
+        Math.round(cloudinaryData.duration || duration),
+        token
+      );
+
+      if (!saveResponse.ok) {
+        throw new Error("Failed to save video to server");
+      }
+
+      const savedVideo = await saveResponse.json();
+
       setVideos((prev) => [
         {
-          id: Date.now().toString(),
+          id: savedVideo.id || Date.now().toString(),
           videoUrl: cloudinaryData.secure_url,
           userId: userData.id,
           username: userData.username || "You",
           userImageUrl: userData.imageUrl,
           caption: caption,
-          likes: 0,
-          comments: 0,
+          chips: 0,
           duration: Math.round(cloudinaryData.duration || duration),
           createdAt: new Date().toISOString(),
         },
