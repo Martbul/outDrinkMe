@@ -4,7 +4,7 @@ import { tokenCache } from "@clerk/clerk-expo/token-cache";
 import { useFonts } from "expo-font";
 import { TailwindProvider } from "tailwindcss-react-native";
 import { AppProvider } from "@/providers/AppProvider";
-import { NauseaProvider } from "@/providers/NauseaProvider"; // Add this
+// import { NauseaProvider } from "@/providers/NauseaProvider"; // Add this
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import ErrorBoundary from "@/components/errorBoundary";
 import SplashScreen from "@/components/spashScreen";
@@ -56,11 +56,11 @@ export default function RootLayout() {
           <ClerkLoaded>
             <AppProvider>
               <AdsProvider>
-                <NauseaProvider>
+                {/* <NauseaProvider> */}
                   <TailwindProvider>
                     <Slot />
                   </TailwindProvider>
-                </NauseaProvider>
+                {/* </NauseaProvider> */}
               </AdsProvider>
             </AppProvider>
           </ClerkLoaded>

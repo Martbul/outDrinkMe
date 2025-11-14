@@ -1,4 +1,3 @@
-import { VideoPost } from "./components/mixVideo";
 import {
   Achievement,
   AddDrinkingRequest,
@@ -16,6 +15,7 @@ import {
   UpdateUserProfileReq,
   UserData,
   UserStats,
+  VideoPost,
   YourMixPostData,
 } from "./types/api.types";
 
@@ -398,7 +398,7 @@ class ApiService {
     duration: number,
     token: string
   ): Promise<any> {
-    const response = await this.makeRequest<any>("/api/v1/user/mix-video", {
+    const response = await this.makeRequest<any>("/api/v1/user/mix-videos", {
       method: "POST",
       token,
       body: JSON.stringify({

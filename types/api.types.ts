@@ -179,3 +179,31 @@ export interface SearchDbAlcoholResult {
   item: AlcoholDbItem;
   isNewlyAdded: boolean;
 }
+
+export interface VideoPost {
+  id: string;
+  videoUrl: string;
+  userId: string;
+  username: string;
+  userImageUrl?: string;
+  caption?: string;
+  chips: number;
+  duration: number;
+  createdAt: string;
+  thumbnailUrl?: string;
+}
+
+export interface VideoUploadData {
+  uri: string;
+  caption: string;
+  duration: number;
+}
+
+export interface CloudinaryUploadResponse {
+  secure_url: string;
+  duration: number;
+  public_id: string;
+  format: string;
+  width: number;
+  height: number;
+}

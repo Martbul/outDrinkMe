@@ -8,24 +8,19 @@ import {
   Image,
   Dimensions,
   ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
+import { VideoPost } from "@/types/api.types";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
-export interface VideoPost {
-  id: string;
-  videoUrl: string;
-  userId: string;
-  username: string;
-  userImageUrl?: string;
-  caption?: string;
-  chips: number;
-  duration: number;
-  createdAt: string;
-}
+const VIDEO_HEIGHT = SCREEN_HEIGHT * 0.75; // 75% of screen height
+const VIDEO_WIDTH = SCREEN_WIDTH;
+
+
 
 interface MixVideoProps {
   videos: VideoPost[];
@@ -340,7 +335,7 @@ export default function MixVideo({
     []
   );
   return (
-    <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
+    <View style={{ width: SCREEN_WIDTH, height: VIDEO_HEIGHT }}>
       <FlatList
         data={videos}
         keyExtractor={(item) => item.id}
@@ -350,13 +345,26 @@ export default function MixVideo({
           <EmptyVideoComponent onRecordPress={onRecordPress} />
         }
         showsVerticalScrollIndicator={false}
-        snapToInterval={SCREEN_HEIGHT * 0.7 + 16}
+        snapToInterval={VIDEO_HEIGHT}
         snapToAlignment="start"
         decelerationRate="fast"
         onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={viewabilityConfig}
+        viewabilityConfig={{ itemVisiblePercentThreshold: 80 }}
         refreshing={isRefreshing}
         onRefresh={onRefresh}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            tintColor="#ff8c00"
+            colors={["#ff8c00"]}
+          />
+        }
+        getItemLayout={(data, index) => ({
+          length: VIDEO_HEIGHT,
+          offset: VIDEO_HEIGHT * index,
+          index,
+        })}
       />
     </View>
   );

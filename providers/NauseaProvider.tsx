@@ -1,230 +1,245 @@
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useRef,
-  ReactNode,
-} from "react";
-import { Animated } from "react-native";
-import { Accelerometer } from "expo-sensors";
+// import React, {
+//   createContext,
+//   useContext,
+//   useEffect,
+//   useRef,
+//   ReactNode,
+//   useState,
+// } from "react";
+// import { Animated, StyleSheet, Dimensions } from "react-native";
+// import { Accelerometer } from "expo-sensors";
 
-const SHAKE_THRESHOLD = 3; // Sensitivity threshold for shake detection
-const NAUSEA_DURATION = 10000; // 10 seconds
+// const SHAKE_THRESHOLD = 3;
+// const NAUSEA_DURATION = 10000;
+// const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
-interface NauseaContextType {
-  isNauseous: boolean;
-}
+// interface NauseaContextType {
+//   isNauseous: boolean;
+// }
 
-const NauseaContext = createContext<NauseaContextType>({
-  isNauseous: false,
-});
+// const NauseaContext = createContext<NauseaContextType>({
+//   isNauseous: false,
+// });
 
-interface NauseaProviderProps {
-  children: ReactNode;
-}
+// interface NauseaProviderProps {
+//   children: ReactNode;
+// }
 
-export function NauseaProvider({ children }: NauseaProviderProps) {
-  const isNauseousRef = useRef(false);
-  const rotateAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-  const translateXAnim = useRef(new Animated.Value(0)).current;
-  const translateYAnim = useRef(new Animated.Value(0)).current;
-  const chaosAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
+// export function NauseaProvider({ children }: NauseaProviderProps) {
+//   const [isNauseous, setIsNauseous] = useState(false);
+//   const waveAnim1 = useRef(new Animated.Value(0)).current;
+//   const waveAnim2 = useRef(new Animated.Value(0)).current;
+//   const waveAnim3 = useRef(new Animated.Value(0)).current;
+//   const opacityAnim = useRef(new Animated.Value(0)).current;
+//   const nauseaTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+//   const animationRef = useRef<Animated.CompositeAnimation | null>(null);
 
-  useEffect(() => {
-    let subscription: any;
-    let lastUpdate = 0;
-    let lastX = 0;
-    let lastY = 0;
-    let lastZ = 0;
+//   useEffect(() => {
+//     let subscription: any;
+//     let lastUpdate = 0;
+//     let lastX = 0;
+//     let lastY = 0;
+//     let lastZ = 0;
 
-    const subscribe = async () => {
-      // Set update interval for accelerometer
-      Accelerometer.setUpdateInterval(100);
+//     const subscribe = async () => {
+//       Accelerometer.setUpdateInterval(100);
 
-      subscription = Accelerometer.addListener(({ x, y, z }) => {
-        const currentTime = Date.now();
+//       subscription = Accelerometer.addListener(({ x, y, z }) => {
+//         const currentTime = Date.now();
 
-        if (currentTime - lastUpdate > 100) {
-          const diffTime = currentTime - lastUpdate;
-          lastUpdate = currentTime;
+//         if (currentTime - lastUpdate > 100) {
+//           const diffTime = currentTime - lastUpdate;
+//           lastUpdate = currentTime;
 
-          // Calculate acceleration difference
-          const deltaX = Math.abs(x - lastX);
-          const deltaY = Math.abs(y - lastY);
-          const deltaZ = Math.abs(z - lastZ);
+//           const deltaX = Math.abs(x - lastX);
+//           const deltaY = Math.abs(y - lastY);
+//           const deltaZ = Math.abs(z - lastZ);
 
-          const speed = ((deltaX + deltaY + deltaZ) / diffTime) * 10000;
+//           const speed = ((deltaX + deltaY + deltaZ) / diffTime) * 10000;
 
-          if (speed > SHAKE_THRESHOLD && !isNauseousRef.current) {
-            triggerNauseaEffect();
-          }
+//           if (speed > SHAKE_THRESHOLD && !isNauseous) {
+//             triggerNauseaEffect();
+//           }
 
-          lastX = x;
-          lastY = y;
-          lastZ = z;
-        }
-      });
-    };
+//           lastX = x;
+//           lastY = y;
+//           lastZ = z;
+//         }
+//       });
+//     };
 
-    subscribe();
+//     subscribe();
 
-    return () => {
-      subscription?.remove();
-      // Clean up any running animations
-      if (chaosAnimationRef.current) {
-        chaosAnimationRef.current.stop();
-      }
-    };
-  }, []);
+//     return () => {
+//       subscription?.remove();
+//       if (nauseaTimeoutRef.current) {
+//         clearTimeout(nauseaTimeoutRef.current);
+//       }
+//       if (animationRef.current) {
+//         animationRef.current.stop();
+//       }
+//     };
+//   }, [isNauseous]);
 
-  const triggerNauseaEffect = () => {
-    if (isNauseousRef.current) return; // Don't trigger if already active
+//   const triggerNauseaEffect = () => {
+//     if (isNauseous) return;
 
-    isNauseousRef.current = true;
+//     setIsNauseous(true);
 
-    // Create chaotic animations
-    const createChaosAnimation = () => {
-      return Animated.parallel([
-        // Rotation chaos
-        Animated.loop(
-          Animated.sequence([
-            Animated.timing(rotateAnim, {
-              toValue: 1,
-              duration: 400,
-              useNativeDriver: true,
-            }),
-            Animated.timing(rotateAnim, {
-              toValue: -1,
-              duration: 400,
-              useNativeDriver: true,
-            }),
-            Animated.timing(rotateAnim, {
-              toValue: 0,
-              duration: 400,
-              useNativeDriver: true,
-            }),
-          ])
-        ),
-        // Scale pulsing
-        Animated.loop(
-          Animated.sequence([
-            Animated.timing(scaleAnim, {
-              toValue: 1.05,
-              duration: 300,
-              useNativeDriver: true,
-            }),
-            Animated.timing(scaleAnim, {
-              toValue: 0.95,
-              duration: 300,
-              useNativeDriver: true,
-            }),
-          ])
-        ),
-        // Horizontal wobble
-        Animated.loop(
-          Animated.sequence([
-            Animated.timing(translateXAnim, {
-              toValue: 10,
-              duration: 200,
-              useNativeDriver: true,
-            }),
-            Animated.timing(translateXAnim, {
-              toValue: -10,
-              duration: 200,
-              useNativeDriver: true,
-            }),
-            Animated.timing(translateXAnim, {
-              toValue: 0,
-              duration: 200,
-              useNativeDriver: true,
-            }),
-          ])
-        ),
-        // Vertical wobble
-        Animated.loop(
-          Animated.sequence([
-            Animated.timing(translateYAnim, {
-              toValue: 8,
-              duration: 250,
-              useNativeDriver: true,
-            }),
-            Animated.timing(translateYAnim, {
-              toValue: -8,
-              duration: 250,
-              useNativeDriver: true,
-            }),
-            Animated.timing(translateYAnim, {
-              toValue: 0,
-              duration: 250,
-              useNativeDriver: true,
-            }),
-          ])
-        ),
-      ]);
-    };
+//     // Fade in overlay
+//     Animated.timing(opacityAnim, {
+//       toValue: 1,
+//       duration: 800,
+//       useNativeDriver: true,
+//     }).start();
 
-    const chaosAnimation = createChaosAnimation();
-    chaosAnimationRef.current = chaosAnimation;
-    chaosAnimation.start();
+//     // Create wave animations with different frequencies
+//     const waveAnimation = Animated.parallel([
+//       Animated.loop(
+//         Animated.sequence([
+//           Animated.timing(waveAnim1, {
+//             toValue: 1,
+//             duration: 2500,
+//             useNativeDriver: true,
+//           }),
+//           Animated.timing(waveAnim1, {
+//             toValue: 0,
+//             duration: 2500,
+//             useNativeDriver: true,
+//           }),
+//         ])
+//       ),
+//       Animated.loop(
+//         Animated.sequence([
+//           Animated.timing(waveAnim2, {
+//             toValue: 1,
+//             duration: 3200,
+//             useNativeDriver: true,
+//           }),
+//           Animated.timing(waveAnim2, {
+//             toValue: 0,
+//             duration: 3200,
+//             useNativeDriver: true,
+//           }),
+//         ])
+//       ),
+//       Animated.loop(
+//         Animated.sequence([
+//           Animated.timing(waveAnim3, {
+//             toValue: 1,
+//             duration: 4000,
+//             useNativeDriver: true,
+//           }),
+//           Animated.timing(waveAnim3, {
+//             toValue: 0,
+//             duration: 4000,
+//             useNativeDriver: true,
+//           }),
+//         ])
+//       ),
+//     ]);
 
-    // Stop after NAUSEA_DURATION
-    setTimeout(() => {
-      chaosAnimation.stop();
+//     animationRef.current = waveAnimation;
+//     waveAnimation.start();
 
-      // Reset all animations
-      Animated.parallel([
-        Animated.timing(rotateAnim, {
-          toValue: 0,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(scaleAnim, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(translateXAnim, {
-          toValue: 0,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(translateYAnim, {
-          toValue: 0,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        isNauseousRef.current = false;
-        chaosAnimationRef.current = null;
-      });
-    }, NAUSEA_DURATION);
-  };
+//     // Stop after duration
+//     nauseaTimeoutRef.current = setTimeout(() => {
+//       if (animationRef.current) {
+//         animationRef.current.stop();
+//       }
 
-  const rotate = rotateAnim.interpolate({
-    inputRange: [-1, 1],
-    outputRange: ["-5deg", "5deg"],
-  });
+//       Animated.parallel([
+//         Animated.timing(opacityAnim, {
+//           toValue: 0,
+//           duration: 1000,
+//           useNativeDriver: true,
+//         }),
+//         Animated.timing(waveAnim1, {
+//           toValue: 0,
+//           duration: 1000,
+//           useNativeDriver: true,
+//         }),
+//         Animated.timing(waveAnim2, {
+//           toValue: 0,
+//           duration: 1000,
+//           useNativeDriver: true,
+//         }),
+//         Animated.timing(waveAnim3, {
+//           toValue: 0,
+//           duration: 1000,
+//           useNativeDriver: true,
+//         }),
+//       ]).start(() => {
+//         setIsNauseous(false);
+//       });
+//     }, NAUSEA_DURATION);
+//   };
 
-  return (
-    <NauseaContext.Provider value={{ isNauseous: isNauseousRef.current }}>
-      <Animated.View
-        style={{
-          flex: 1,
-          transform: [
-            { rotate },
-            { scale: scaleAnim },
-            { translateX: translateXAnim },
-            { translateY: translateYAnim },
-          ],
-        }}
-      >
-        {children}
-      </Animated.View>
-    </NauseaContext.Provider>
-  );
-}
+//   // Create multiple wave layers with different patterns
+//   const renderWaveLayer = (
+//     animValue: Animated.Value,
+//     color: string,
+//     opacity: number
+//   ) => {
+//     const translateX = animValue.interpolate({
+//       inputRange: [0, 1],
+//       outputRange: [0, 30],
+//     });
 
-export function useNausea() {
-  return useContext(NauseaContext);
-}
+//     const translateY = animValue.interpolate({
+//       inputRange: [0, 0.5, 1],
+//       outputRange: [0, 20, 0],
+//     });
+
+//     const scaleX = animValue.interpolate({
+//       inputRange: [0, 0.5, 1],
+//       outputRange: [1, 1.03, 1],
+//     });
+
+//     const scaleY = animValue.interpolate({
+//       inputRange: [0, 0.5, 1],
+//       outputRange: [1, 0.97, 1],
+//     });
+
+//     return (
+//       <Animated.View
+//         style={[
+//           StyleSheet.absoluteFill,
+//           {
+//             backgroundColor: color,
+//             opacity: opacity,
+//             transform: [{ translateX }, { translateY }, { scaleX }, { scaleY }],
+//           },
+//         ]}
+//       />
+//     );
+//   };
+
+//   return (
+//     <NauseaContext.Provider value={{ isNauseous }}>
+//       <Animated.View style={styles.container}>
+//         {children}
+//         {isNauseous && (
+//           <Animated.View
+//             style={[StyleSheet.absoluteFill, { opacity: opacityAnim }]}
+//             pointerEvents="none"
+//           >
+//             {renderWaveLayer(waveAnim1, "rgba(255, 255, 255, 0.15)", 0.5)}
+//             {renderWaveLayer(waveAnim2, "rgba(200, 200, 255, 0.1)", 0.4)}
+//             {renderWaveLayer(waveAnim3, "rgba(255, 255, 255, 0.1)", 0.3)}
+//           </Animated.View>
+//         )}
+//       </Animated.View>
+//     </NauseaContext.Provider>
+//   );
+// }
+
+// export function useNausea() {
+//   return useContext(NauseaContext);
+// }
+
+// const styles = StyleSheet.create({
+//   container: {
+//     flex: 1,
+//   },
+// });
