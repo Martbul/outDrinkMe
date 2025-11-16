@@ -426,17 +426,16 @@ class ApiService {
         }
       );
 
-
       const transformed = response.map((video) => ({
-        id: video.id, 
+        id: video.id,
         videoUrl: video.video_url,
-        userId: video.user_id, 
-        username: video.username, 
-        userImageUrl: video.user_image_url, 
+        userId: video.user_id,
+        username: video.username,
+        userImageUrl: video.user_image_url,
         caption: video.caption || "",
-        chips: video.chips || 0, 
-        duration: video.duration, 
-        createdAt: video.created_at, 
+        chips: video.chips || 0,
+        duration: video.duration,
+        createdAt: video.created_at,
       }));
 
       console.log("Transformed videos:", transformed); // Debug log
@@ -544,6 +543,14 @@ class ApiService {
       current_streak: stats.current_streak,
       longest_streak: stats.longest_streak,
     };
+  }
+
+  async submitFeedback(category: string, feedbackText: string, token: string) {
+    return this.makeRequest(`/api/v1/user/feedback`, {
+      method: "POST",
+      token,
+      body: JSON.stringify({ category, feedback_text: feedbackText }),
+    });
   }
 
   async getBattleStatus(token: string): Promise<{

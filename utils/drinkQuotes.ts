@@ -12,4 +12,8 @@ export const drunkQuotes = [
   "Everything you want is waiting for you on the other side of a drunk cig",
   "Wish you were beer",
   "Hangovers only last for a day, memories last for a lifetime",
+  "Rumor syas I'm sober\nRumor ends tonight",
+  "Told myself to stop drinking\nBut I'm not going to listen to an alcoholic",
+  "All roads lead to a pint",
+  
 ];

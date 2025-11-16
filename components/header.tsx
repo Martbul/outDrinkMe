@@ -103,17 +103,20 @@ export const Header = () => {
 
           <TouchableOpacity
             className="flex-row items-center gap-1.5 bg-white/5 px-3 py-2 rounded-full"
-            onPress={handleEarnGems}
+            onPress={() => router.push("/(screens)/store")}
             disabled={!isAdLoaded}
           >
             <View className="relative">
               <Text className="text-xl">💎</Text>
 
-              {isAdLoaded && (
+              {/* {isAdLoaded && (
                 <View className="absolute -bottom-0.5 -right-0.5 bg-orange-600 w-3 h-3 rounded-full justify-center items-center">
                   <Text className="text-white text-[8px] font-black">+</Text>
                 </View>
-              )}
+              )} */}
+              <View className="absolute -bottom-0.5 -right-0.5 bg-orange-600 w-3 h-3 rounded-full justify-center items-center">
+                <Text className="text-white text-[8px] font-black">+</Text>
+              </View>
             </View>
             <Text className="text-white text-base font-bold">
               {userData?.gems || 0}
