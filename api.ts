@@ -2,7 +2,6 @@ import {
   Achievement,
   AddDrinkingRequest,
   AlcoholCollectionByType,
-  AlcoholDbItem,
   CalendarResponse,
   DailyDrinkingPostResponse,
   DaysStat,
@@ -12,6 +11,7 @@ import {
   Leaderboard,
   LeaderboardEntry,
   SearchDbAlcoholResult,
+  StoreItem,
   UpdateUserProfileReq,
   UserData,
   UserStats,
@@ -572,6 +572,28 @@ class ApiService {
       leader,
       difference: leader.days_this_week - user.days_this_week,
     };
+  }
+
+  async getUserInventory(token: string): Promise<any> {
+    return this.makeRequest<any>("/api/v1/user/inventory", {
+      method: "GET",
+      token,
+    });
+  }
+
+  async getStore(token: string): Promise<any> {
+    return this.makeRequest<any>("/api/v1/store", {
+      method: "GET",
+      token,
+    });
+  }
+  
+  async purchaseStoreItem(itemId: string, token: string): Promise<any> {
+    return this.makeRequest<any>("/api/v1/store/purchase/item", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ item_id: itemId }),
+    });
   }
 }
 

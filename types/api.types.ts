@@ -207,3 +207,76 @@ export interface CloudinaryUploadResponse {
   width: number;
   height: number;
 }
+
+export interface StoreCategory {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  icon?: string;
+  display_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StoreItem {
+  id: string;
+  category_id?: string;
+  name: string;
+  description?: string;
+  item_type:string
+  image_url?: string;
+  base_price: number;
+  is_active: boolean;
+  stock_quantity?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ItemWithDeal extends StoreItem {
+  has_deal: boolean;
+  discount_percentage?: number;
+  discounted_price?: number;
+  deal_end_date?: string;
+}
+
+
+
+export interface InventoryItem {
+  id: string;
+  user_id: string;
+  item_id: string;
+  quantity: number;
+  is_equipped: boolean;
+  acquired_at: string;
+  expires_at?: string;
+}
+
+export interface EquippedItem {
+  id: string;
+  user_id: string;
+  item_type: string;
+  item_id: string;
+  equipped_at: string;
+}
+
+export interface PurchaseRequest {
+  item_id: string;
+}
+
+export interface EquipItemRequest {
+  item_id: string;
+}
+
+export interface PurchaseResponse {
+  message: string;
+}
+
+export interface ErrorResponse {
+  error: string;
+}
+
+export type StoreItems= {
+  [itemType: string]: StoreItem[];
+};

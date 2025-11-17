@@ -43,7 +43,8 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  const { userStats, friendsDrunkThoughts, isLoading, refreshAll } = useApp();
+  const { userStats, friends, friendsDrunkThoughts, isLoading, refreshAll } =
+    useApp();
   const coefInfo = getCoefInfo(userStats);
 
   const onRefresh = async () => {
@@ -277,7 +278,7 @@ export default function HomeScreen() {
               <View>
                 <Text className="text-white text-2xl font-black">Buddies</Text>
                 <Text className="text-white/40 text-xs font-semibold mt-1">
-                  {userStats?.friends_count || 0} friends
+                  {friends.length || 0} friends
                 </Text>
               </View>
               <View className="w-12 h-12 rounded-xl bg-orange-600/20 items-center justify-center">
@@ -286,7 +287,10 @@ export default function HomeScreen() {
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity className="w-20 bg-white/[0.03] rounded-2xl border border-white/[0.08] items-center justify-center">
+          <TouchableOpacity
+            onPress={() => router.push("/(screens)/store")}
+            className="w-20 bg-white/[0.03] rounded-2xl border border-white/[0.08] items-center justify-center"
+          >
             <View className="w-12 h-12 rounded-xl bg-orange-600/20 items-center justify-center">
               <SimpleLineIcons
                 name="envelope-letter"

@@ -1,12 +1,10 @@
 import { useApp } from "@/providers/AppProvider";
-import type { UserData, YourMixPostData } from "@/types/api.types";
+import type { UserData } from "@/types/api.types";
 import { FontAwesome6, Ionicons, Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Animated,
-  Easing,
   FlatList,
   Image,
   Text,
@@ -14,7 +12,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import Header from "@/components/header";
 import { RefreshControl } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import SecondaryHeader from "@/components/secondaryHeader";
