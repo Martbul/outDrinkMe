@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,16 +9,47 @@ import {
   Dimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  FadeInLeft,
+  FadeInRight,
+  ZoomIn,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+  
+  Easing,
+} from "react-native-reanimated";
 import SecondaryHeader from "@/components/secondaryHeader";
 import { useApp } from "@/providers/AppProvider";
 import { FontAwesome5, Ionicons } from "@expo/vector-icons";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
+// Animated components
+const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
+
 export default function MixTimeline() {
   const insets = useSafeAreaInsets();
-  const { mixTimelineData } = useApp();
+  const { userData,mixTimelineData } = useApp();
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // Pulse animation for badges
+  const pulseScale = useSharedValue(1);
+
+  useEffect(() => {
+    pulseScale.value = withRepeat(
+      withTiming(1.05, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
+      -1,
+      true
+    );
+  }, []);
+
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulseScale.value }],
+  }));
 
   // Format date to readable format
   const formatDate = (dateString: string) => {
@@ -66,89 +97,45 @@ export default function MixTimeline() {
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
       <SecondaryHeader title="Mix Timeline" />
 
-      {/* Hero Section */}
-      {/* <View className="px-4 pb-2">
-        <View className="bg-white/[0.03] rounded-2xl p-5 border border-[#00d4ff]/30">
-          <Text className="text-[#00d4ff] text-[11px] font-bold tracking-widest mb-2">
-            YOUR DRINK DNA
-          </Text>
-          <Text className="text-white text-[24px] font-black mb-1">
-            Beverage Timeline
-          </Text>
-          <Text className="text-white/50 text-sm font-semibold">
-            Every drink tells your story
-          </Text>
-        </View>
-      </View> */}
-
       <ScrollView
         className="flex-1 px-4"
         contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
         showsVerticalScrollIndicator={false}
       >
         {mixTimelineData.length === 0 ? (
-          <View className="bg-white/[0.03] rounded-2xl p-8 border border-white/[0.08] items-center mb-4">
+          <Animated.View
+            entering={FadeInDown.duration(600).springify()}
+            className="bg-white/[0.03] rounded-2xl p-8 border border-white/[0.08] items-center mb-4"
+          >
             <Text className="text-white text-xl font-black mb-2">
               Start Your Journey
             </Text>
             <Text className="text-white/50 text-sm text-center font-semibold">
-              Share your first drink moment to begin building your drinking timeline
+              Share your first drink moment to begin building your drinking
+              timeline
             </Text>
-          </View>
+          </Animated.View>
         ) : (
           <View className="relative">
-            {/* Curved Swerving Line */}
-            <View
-              className="absolute top-0 left-0 right-0"
-              style={{
-                height: (imageHeight + spacing) * mixTimelineData.length,
-              }}
-            >
-              {/* <Svg
-                width={SCREEN_WIDTH - 32}
-                height={(imageHeight + spacing) * mixTimelineData.length}
-              >
-                <Path
-                  d={mixTimelineData
-                    .map((_, index) => {
-                      const isLeft = index % 2 === 0;
-                      const y = index * (imageHeight + spacing) + 30;
-                      const nextY = (index + 1) * (imageHeight + spacing) + 30;
-                      const x = isLeft
-                        ? (SCREEN_WIDTH - 32) * 0.15
-                        : (SCREEN_WIDTH - 32) * 0.85;
-                      const nextX = !isLeft
-                        ? (SCREEN_WIDTH - 32) * 0.15
-                        : (SCREEN_WIDTH - 32) * 0.85;
-
-                      if (index === 0) {
-                        return `M ${x} ${y}`;
-                      }
-
-                      const controlY = y + (nextY - y) / 2;
-                      return `Q ${x} ${controlY}, ${nextX} ${nextY}`;
-                    })
-                    .join(" ")}
-                  stroke="#00d4ff"
-                  strokeWidth="2"
-                  fill="none"
-                  opacity="0.3"
-                />
-              </Svg> */}
-            </View>
-
             {mixTimelineData.map((item, index) => {
               const isLeft = index % 2 === 0;
               const imageWidth = (SCREEN_WIDTH - 32) * 0.7;
+              const delay = index * 100; // Stagger animations
 
               return (
-                <View
+                <Animated.View
                   key={item.id}
+                  entering={
+                    isLeft
+                      ? FadeInLeft.delay(delay).duration(500).springify()
+                      : FadeInRight.delay(delay).duration(500).springify()
+                  }
                   className="mb-8 relative"
                   style={{ marginBottom: spacing }}
                 >
                   {/* Date Badge */}
-                  <View
+                  <Animated.View
+                    entering={ZoomIn.delay(delay + 200).duration(400)}
                     className="absolute z-10"
                     style={{
                       left: isLeft
@@ -157,12 +144,15 @@ export default function MixTimeline() {
                       top: 0,
                     }}
                   >
-                    <View className="bg-orange-600 px-3 py-1 rounded-full">
+                    <Animated.View
+                      style={pulseStyle}
+                      className="bg-orange-600 px-3 py-1 rounded-full"
+                    >
                       <Text className="text-black text-xs font-bold">
                         {formatDate(item.date)}
                       </Text>
-                    </View>
-                  </View>
+                    </Animated.View>
+                  </Animated.View>
 
                   {/* Image Preview */}
                   <View
@@ -171,15 +161,24 @@ export default function MixTimeline() {
                       marginLeft: isLeft ? 0 : (SCREEN_WIDTH - 32) * 0.3,
                     }}
                   >
-                    <TouchableOpacity
+                    <AnimatedTouchable
                       onPress={() => setExpandedId(item.id)}
                       activeOpacity={0.7}
                       className="relative"
+                      entering={FadeIn.delay(delay + 100).duration(500)}
                     >
-                      <View
-                        className="relative rounded-2xl overflow-hidden border-2 border-orange-600"
+                      {/* Outer glow effect */}
+                      <View className="absolute -inset-1 rounded-[18px] blur-xl" />
+
+                      <Animated.View
+                        className="relative rounded-2xl overflow-hidden border-2 border-orange-600 bg-black"
                         style={{
                           width: imageWidth,
+                          shadowColor: "#ea580c",
+                          shadowOffset: { width: 0, height: 8 },
+                          shadowOpacity: 0.3,
+                          shadowRadius: 16,
+                          elevation: 10,
                         }}
                       >
                         <Image
@@ -191,19 +190,61 @@ export default function MixTimeline() {
                           resizeMode="cover"
                         />
 
-                        {/* Gradient Overlay */}
-                        <View className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-
-                        {/* Time Ago Badge */}
-                        <View className="absolute bottom-3 left-3 bg-black/60 px-2 py-1 rounded-full">
-                          <Text className="text-white text-xs font-semibold">
-                            {getTimeAgo(item.loggedAt)}
-                          </Text>
+                        {/* Multi-layer gradient overlay */}
+                        <View className="absolute inset-0">
+                          <View className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-80" />
+                          <View className="absolute inset-0 bg-gradient-to-br from-orange-900/10 via-transparent to-transparent" />
                         </View>
-                      </View>
-                    </TouchableOpacity>
+
+                        {/* Bottom info section */}
+                        <View className="absolute bottom-0 left-0 right-0 p-3">
+                          <View className="flex-row items-center justify-between">
+                            {/* Time Ago Badge */}
+                            <Animated.View
+                              entering={FadeIn.delay(delay + 300).duration(400)}
+                              className="bg-white/10 backdrop-blur-xl px-3 py-1.5 rounded-full border border-white/20"
+                            >
+                              <Text className="text-white text-xs font-bold">
+                                {getTimeAgo(item.loggedAt)}
+                              </Text>
+                            </Animated.View>
+
+                            {/* Buddies indicator */}
+                            {item.mentionedBuddies.length > 0 && (
+                              <Animated.View
+                                entering={FadeIn.delay(delay + 350).duration(
+                                  400
+                                )}
+                                className="flex-row items-center gap-1 bg-white/10 backdrop-blur-xl px-2.5 py-1.5 rounded-full border border-white/20"
+                              >
+                                <FontAwesome5
+                                  name="users"
+                                  size={10}
+                                  color="white"
+                                />
+                                <Text className="text-white text-xs font-bold">
+                                  {item.mentionedBuddies.length}
+                                </Text>
+                              </Animated.View>
+                            )}
+                          </View>
+                        </View>
+
+                        {/* Tap to expand hint */}
+                        <Animated.View
+                          entering={FadeIn.delay(delay + 400).duration(400)}
+                          className="absolute top-3 right-3 bg-black/40 backdrop-blur-xl p-1.5 rounded-full border border-white/20"
+                        >
+                          <Ionicons
+                            name="expand-outline"
+                            size={14}
+                            color="white"
+                          />
+                        </Animated.View>
+                      </Animated.View>
+                    </AnimatedTouchable>
                   </View>
-                </View>
+                </Animated.View>
               );
             })}
           </View>
@@ -226,9 +267,15 @@ export default function MixTimeline() {
             }}
           >
             {expandedItem && (
-              <View className="bg-[#0a0a0a] rounded-3xl overflow-hidden border border-orange-600 ">
+              <Animated.View
+                entering={ZoomIn.duration(400).springify()}
+                className="bg-[#0a0a0a] rounded-3xl overflow-hidden border border-orange-600"
+              >
                 {/* Close Button */}
-                <View className="absolute top-4 right-4 z-20">
+                <Animated.View
+                  entering={FadeIn.delay(200).duration(300)}
+                  className="absolute top-4 right-4 z-20"
+                >
                   <TouchableOpacity
                     onPress={() => setExpandedId(null)}
                     className="bg-white/10 p-2 rounded-full"
@@ -236,10 +283,13 @@ export default function MixTimeline() {
                   >
                     <Ionicons name="close-outline" size={24} color="white" />
                   </TouchableOpacity>
-                </View>
+                </Animated.View>
 
                 {/* Full Image */}
-                <View className="p-4 pb-0">
+                <Animated.View
+                  entering={FadeInDown.delay(100).duration(400)}
+                  className="p-4 pb-0"
+                >
                   <View className="rounded-2xl overflow-hidden">
                     <Image
                       source={{ uri: expandedItem.imageUrl }}
@@ -250,31 +300,37 @@ export default function MixTimeline() {
                       resizeMode="cover"
                     />
                   </View>
-                </View>
+                </Animated.View>
 
                 {/* Details */}
-                <View className="p-6 space-y-4">
+                <Animated.View
+                  entering={FadeInDown.delay(200).duration(400)}
+                  className="p-6 space-y-4"
+                >
                   {/* User Info */}
                   <View className="flex-row items-center gap-3 mb-4">
-                    <Image
+                    <Animated.Image
+                      entering={ZoomIn.delay(300).duration(400)}
                       source={{ uri: expandedItem.userImageUrl }}
                       className="w-12 h-12 rounded-full border-2 border-orange-600"
                     />
-                    <View>
+                    <Animated.View
+                      entering={FadeInLeft.delay(350).duration(400)}
+                    >
                       <Text className="text-white font-bold">
-                        {expandedItem.sourceType === "friend"
-                          ? "Friend"
-                          : "Community"}
+                        {userData?.username}
                       </Text>
                       <Text className="text-white/50 text-sm">
                         {formatTime(expandedItem.loggedAt)}
                       </Text>
-                    </View>
+                    </Animated.View>
                   </View>
 
-                  {/* Mentioned Buddies */}
                   {expandedItem.mentionedBuddies.length > 0 && (
-                    <View className="bg-white/[0.05] rounded-xl p-3">
+                    <Animated.View
+                      entering={FadeInDown.delay(400).duration(400)}
+                      className="bg-white/[0.05] rounded-xl p-3"
+                    >
                       <View className="flex-row items-center gap-2 mb-3">
                         <FontAwesome5 name="user" size={24} color="white" />
                         <Text className="text-white/50 text-xs font-semibold">
@@ -282,9 +338,12 @@ export default function MixTimeline() {
                         </Text>
                       </View>
                       <View className="flex-row flex-wrap gap-2">
-                        {expandedItem.mentionedBuddies.map((buddy) => (
-                          <View
+                        {expandedItem.mentionedBuddies.map((buddy, idx) => (
+                          <Animated.View
                             key={buddy.id}
+                            entering={FadeIn.delay(450 + idx * 50).duration(
+                              300
+                            )}
                             className="flex-row items-center gap-2 bg-white/[0.05] rounded-full pl-1 pr-3 py-1"
                           >
                             <Image
@@ -294,15 +353,13 @@ export default function MixTimeline() {
                             <Text className="text-white text-sm font-medium">
                               {buddy.firstName}
                             </Text>
-                          </View>
+                          </Animated.View>
                         ))}
                       </View>
-                    </View>
+                    </Animated.View>
                   )}
-
-              
-                </View>
-              </View>
+                </Animated.View>
+              </Animated.View>
             )}
           </ScrollView>
         </View>

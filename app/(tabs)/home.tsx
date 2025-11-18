@@ -6,6 +6,7 @@ import {
   AntDesign,
   Feather,
   Ionicons,
+  MaterialCommunityIcons,
   MaterialIcons,
   SimpleLineIcons,
 } from "@expo/vector-icons";
@@ -227,9 +228,13 @@ export default function HomeScreen() {
               <Text className="text-white/50 text-[11px] font-bold tracking-[1.5px] mb-2">
                 CURRENT STREAK
               </Text>
-              <Text className="text-white text-[32px] font-black">
-                {userStats?.current_streak || 0} Days 🔥
-              </Text>
+
+              <View className="flex-row items-center">
+                <Text className="text-white text-[32px] font-black">
+                  {userStats?.current_streak || 0} Days
+                </Text>
+                <MaterialCommunityIcons name="fire" size={56} color="#EA580C" />
+              </View>
             </View>
             {userStats && userStats.current_streak > 0 && (
               <View className="bg-orange-600/20 px-3.5 py-1.5 rounded-lg">

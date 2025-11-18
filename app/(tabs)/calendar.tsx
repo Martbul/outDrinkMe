@@ -11,7 +11,7 @@ import {
   View,
 } from "react-native";
 import Header from "@/components/header";
-import { AntDesign, Feather } from "@expo/vector-icons";
+import { AntDesign, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { apiService } from "@/api";
 import { useAuth } from "@clerk/clerk-expo";
 import CustomModal, {
@@ -84,7 +84,7 @@ const DayDetailModal = ({
   isLoadingThought,
 }: DayDetailModalProps) => {
   const { getToken } = useAuth();
-  const { refreshCalendar, refreshUserData,refreshAll } = useApp();
+  const { refreshCalendar, refreshUserData, refreshAll } = useApp();
   const insets = useSafeAreaInsets();
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [showRemoveModal, setShowRemoveModal] = useState(false);
@@ -242,11 +242,20 @@ const DayDetailModal = ({
                       Current streak
                     </Text>
                   </View>
-                  <View className="bg-orange-600/20 px-3.5 py-1.5 rounded-lg">
-                    <Text className="text-orange-600 text-[11px] font-black tracking-wider">
-                      🔥 ACTIVE
-                    </Text>
-                  </View>
+                  {userStats.current_streak > 0 && (
+                    <View className="bg-orange-600/20 px-3.5 py-1.5 rounded-lg">
+                      <View className="flex-row items-center">
+                        <MaterialCommunityIcons
+                          name="fire"
+                          size={22}
+                          color="#EA580C"
+                        />
+                        <Text className="text-orange-600 text-[11px] font-black tracking-wider">
+                          ACTIVE
+                        </Text>
+                      </View>
+                    </View>
+                  )}
                 </View>
               </View>
             )}

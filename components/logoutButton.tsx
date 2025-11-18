@@ -72,7 +72,7 @@ export default function LogoutButton() {
 
           <View className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]">
             <Text className="text-white/50 text-xs leading-5">
-              Your data will be safe and waiting for you when you return. Keep the streak alive! 🔥
+              Your data will be safe and waiting for you when you return. Keep the streak alive!
             </Text>
           </View>
         </View>

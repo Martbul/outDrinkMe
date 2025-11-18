@@ -10,6 +10,7 @@ import { getCoefInfo, getLevelInfo } from "@/utils/levels";
 import { FriendButton } from "@/components/friendButton";
 import SplashScreen from "@/components/spashScreen";
 import BackHeader from "@/components/backHeader";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 const ACHIEVEMENT_IMAGES = {
   lightning: require("../../assets/images/achievements/lightning.png"),
@@ -96,14 +97,12 @@ const UserInfoScreen = () => {
   const renderAchievementCategory = (
     title: string,
     achievements: any[],
-    icon: string
   ) => {
     if (achievements.length === 0) return null;
 
     return (
       <View className="mb-6">
         <View className="flex-row items-center mb-3">
-          <Text className="text-2xl mr-2">{icon}</Text>
           <Text className="text-white text-base font-bold">{title}</Text>
           <View className="ml-auto bg-white/[0.05] px-2.5 py-1 rounded-full">
             <Text className="text-white/50 text-xs font-bold">
@@ -215,9 +214,16 @@ const UserInfoScreen = () => {
                 <Text className="text-white/50 text-[11px] font-bold tracking-[1.5px] mb-2">
                   CURRENT STREAK
                 </Text>
-                <Text className="text-white text-[32px] font-black">
-                  {friendDiscoveryProfile?.stats?.current_streak || 0} Days 🔥
-                </Text>
+                <View className="flex-row items-center">
+                  <Text className="text-white text-[32px] font-black">
+                    {friendDiscoveryProfile?.stats?.current_streak || 0} Days
+                  </Text>
+                  <MaterialCommunityIcons
+                    name="fire"
+                    size={48}
+                    color="#EA580C"
+                  />
+                </View>
               </View>
               {friendDiscoveryProfile?.stats &&
                 friendDiscoveryProfile.stats.current_streak > 0 && (
@@ -384,17 +390,17 @@ const UserInfoScreen = () => {
             {renderAchievementCategory(
               "Streaks & Days",
               groupedAchievements.streaks,
-              "🔥"
+          
             )}
             {renderAchievementCategory(
               "Competition",
               groupedAchievements.competition,
-              "👑"
+             
             )}
             {renderAchievementCategory(
               "Social",
               groupedAchievements.social,
-              "🎯"
+         
             )}
           </View>
         </View>

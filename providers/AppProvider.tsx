@@ -23,6 +23,7 @@ import {
   AlcoholCollectionByType,
   InventoryItem,
   StoreItems,
+  InventoryItems,
 } from "../types/api.types";
 import { apiService } from "@/api";
 import { Alert } from "react-native";
@@ -31,7 +32,7 @@ interface AppContextType {
   // Data
   userData: UserData | null;
   userStats: UserStats | null;
-  userInventory: InventoryItem[] | [];
+  userInventory: InventoryItems | null;
   storeItems: StoreItems | null;
   leaderboard: Leaderboard | null;
   achievements: Achievement[] | null;
@@ -97,7 +98,9 @@ export function AppProvider({ children }: AppProviderProps) {
   // State
   const [userData, setUserData] = useState<UserData | null>(null);
   const [userStats, setUserStats] = useState<UserStats | null>(null);
-  const [userInventory, setUserInventory] = useState<InventoryItem[] | []>([]);
+  const [userInventory, setUserInventory] = useState<InventoryItems | null>(
+    null
+  );
   const [storeItems, setStoreItems] = useState<StoreItems | null>(null);
   const [leaderboard, setLeaderboard] = useState<Leaderboard | null>(null);
   const [achievements, setAchievements] = useState<Achievement[] | null>(null);
@@ -518,7 +521,7 @@ export function AppProvider({ children }: AppProviderProps) {
       if (inventoryResult.status === "fulfilled") {
         setUserInventory(inventoryResult.value);
       } else {
-        setUserInventory([]);
+        setUserInventory(null);
         console.error(
           "Failed to fetch user inventory:",
           inventoryResult.reason

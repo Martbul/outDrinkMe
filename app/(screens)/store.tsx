@@ -9,7 +9,7 @@ import {
   RefreshControl,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import SecondaryHeader from "@/components/secondaryHeader";
 import { useAds } from "@/providers/AdProvider";
 import { handleEarnGems } from "@/utils/adsReward";
@@ -20,62 +20,11 @@ import PurchaseConfirmationModal, {
 } from "@/components/purchaseModal";
 import { apiService } from "@/api";
 import { useAuth } from "@clerk/clerk-expo";
+import { ColorTheme, Deal, Flag, GemPack, ProDeal, Smoking } from "@/types/api.types";
 
-interface Deal {
-  id: number;
-  title: string;
-  type: string;
-  discount: string;
-  originalPrice: number;
-  price: number;
-  multiplier?: string;
-  image: any;
-  isDark?: boolean;
-  featured?: boolean;
-}
 
-interface ProDeal {
-  id: number;
-  title: string;
-  subtitle: string;
-  discount: string;
-  originalPrice: number;
-  price: number;
-  image: any;
-}
 
-interface Flag {
-  id: number;
-  title: string;
-  price: number;
-  image: any;
-}
-
-interface Smoking {
-  id: number;
-  title: string;
-  price: number;
-  image: any;
-}
-
-interface ColorTheme {
-  id: number;
-  name: string;
-  color: string;
-  bgColor: string;
-  borderColor: string;
-  price: number;
-}
-
-interface GemPack {
-  id: number;
-  amount: number;
-  price: string;
-  image: any;
-  bonus?: number;
-}
-
-export default function LiftoffStoreScreen() {
+export default function StoreScreen() {
   const { getToken } = useAuth();
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
@@ -92,6 +41,9 @@ export default function LiftoffStoreScreen() {
   const [selectedStoreItem, setSelectedStoreItem] = useState<StoreItem | null>(
     null
   );
+    const [showReferralModal, setShowReferralModal] = useState(false);
+
+  const [pendingTransaction, setPendingTransaction] = useState(false);
   const [selectedGemItem, setSelectedGemItem] =
     useState<GemPurchaseItem | null>(null);
 
@@ -137,24 +89,45 @@ export default function LiftoffStoreScreen() {
   };
 
   const handleConfirmPurchase = async () => {
-    const token = await getToken();
-    if (!token) return;
-    if (purchaseType === "gem" && selectedGemItem) {
-      // Handle gem purchase logic here
-      console.log("Purchasing gems:", selectedGemItem);
-      // TODO: Implement actual gem purchase API call
-    } else if (purchaseType === "store" && selectedStoreItem) {
-      // Handle store item purchase logic here
-      await apiService
-        .purchaseStoreItem(selectedStoreItem.id, token)
-        .then(refreshUserData);
-      console.log("Purchasing store item:", selectedStoreItem);
-      // TODO: Implement actual store item purchase API call
-    }
+    setPendingTransaction(true);
 
-    setShowPurchaseModal(false);
-    setSelectedStoreItem(null);
-    setSelectedGemItem(null);
+    try {
+      const token = await getToken();
+      if (!token) {
+        console.error("No authentication token available");
+        setPendingTransaction(false);
+        return;
+      }
+
+      if (purchaseType === "gem" && selectedGemItem) {
+        // Handle gem purchase logic here
+        console.log("Purchasing gems:", selectedGemItem);
+        // TODO: Implement actual gem purchase API call
+      } else if (purchaseType === "store" && selectedStoreItem) {
+        // Handle store item purchase logic here
+        console.log("Purchasing store item:", selectedStoreItem);
+
+        await apiService.purchaseStoreItem(selectedStoreItem.id, token);
+
+        // Refresh user data after successful purchase
+        await refreshUserData();
+
+        console.log("Purchase completed successfully");
+      }
+
+      // Close modal and reset state on success
+      setShowPurchaseModal(false);
+      setSelectedStoreItem(null);
+      setSelectedGemItem(null);
+    } catch (error) {
+      console.error("Purchase failed:", error);
+
+      // Optionally show an error message to the user
+      // You might want to add a toast/alert here
+      alert("Purchase failed. Please try again.");
+    } finally {
+      setPendingTransaction(false);
+    }
   };
 
   const onRefresh = async () => {
@@ -232,7 +205,7 @@ export default function LiftoffStoreScreen() {
       title: item.name,
       price: item.base_price,
       image: { uri: item.image_url },
-      storeItem: item, // Keep reference to original store item
+      storeItem: item, 
     })
   );
 
@@ -242,7 +215,7 @@ export default function LiftoffStoreScreen() {
       title: device.name,
       price: device.base_price,
       image: { uri: device.image_url },
-      storeItem: device, // Keep reference to original store item
+      storeItem: device, 
     })
   );
 
@@ -317,6 +290,10 @@ export default function LiftoffStoreScreen() {
     },
   ];
 
+  // const ReferralModal = () = {
+
+  // }
+
   const DealCard = ({ deal }: { deal: Deal }) => (
     <TouchableOpacity
       className={`rounded-2xl p-4 border mr-3 ${
@@ -373,11 +350,8 @@ export default function LiftoffStoreScreen() {
         {deal.originalPrice}
       </Text>
       <View className="bg-orange-600/20 rounded-xl py-2 px-3 flex-row items-center justify-center border border-orange-600/40">
-        <MaterialCommunityIcons
-          name="diamond-stone"
-          size={18}
-          color="#EA580C"
-        />
+        <Ionicons name="diamond" size={18} color="#EA580C" />
+
         <Text className="text-orange-600 text-lg font-black ml-1">
           {deal.price}
         </Text>
@@ -425,11 +399,8 @@ export default function LiftoffStoreScreen() {
         {deal.originalPrice}
       </Text>
       <View className="bg-orange-600/20 rounded-xl py-2 px-3 flex-row items-center justify-center border border-orange-600/40">
-        <MaterialCommunityIcons
-          name="diamond-stone"
-          size={18}
-          color="#EA580C"
-        />
+        <Ionicons name="diamond" size={18} color="#EA580C" />
+
         <Text className="text-orange-600 text-lg font-black ml-1">
           {deal.price}
         </Text>
@@ -456,11 +427,9 @@ export default function LiftoffStoreScreen() {
       </View>
 
       <View className="bg-orange-600/20 rounded-xl py-2 px-3 flex-row items-center justify-center border border-orange-600/40 w-full">
-        <MaterialCommunityIcons
-          name="diamond-stone"
-          size={16}
-          color="#EA580C"
-        />
+  
+        <Ionicons name="diamond" size={18} color="#EA580C" />
+
         <Text className="text-orange-600 text-lg font-black ml-1">
           {device.price}
         </Text>
@@ -486,11 +455,9 @@ export default function LiftoffStoreScreen() {
         />
       </View>
       <View className="bg-orange-600/20 rounded-xl py-2 px-3 flex-row items-center justify-center border border-orange-600/40 mt-3">
-        <MaterialCommunityIcons
-          name="diamond-stone"
-          size={16}
-          color="#EA580C"
-        />
+        
+        <Ionicons name="diamond" size={18} color="#EA580C" />
+
         <Text className="text-orange-600 text-lg font-black ml-1">
           {item.price}
         </Text>
@@ -519,11 +486,8 @@ export default function LiftoffStoreScreen() {
         Theme Color
       </Text>
       <View className="bg-orange-600/20 rounded-xl py-2 px-3 flex-row items-center justify-center border border-orange-600/40">
-        <MaterialCommunityIcons
-          name="diamond-stone"
-          size={14}
-          color="#EA580C"
-        />
+        <Ionicons name="diamond" size={18} color="#EA580C" />
+
         <Text className="text-orange-600 text-base font-black ml-1">
           {theme.price}
         </Text>
@@ -546,11 +510,7 @@ export default function LiftoffStoreScreen() {
         </View>
       )}
       <View className="bg-orange-600/20 rounded-2xl w-20 h-20 items-center justify-center mb-3 border border-orange-600/40">
-        <MaterialCommunityIcons
-          name="diamond-stone"
-          size={48}
-          color="#EA580C"
-        />
+        <Ionicons name="diamond" size={48} color="#EA580C" />
       </View>
       <View className="bg-orange-600/20 rounded-xl py-2 px-3 flex-row items-center justify-center border border-orange-600/40 w-full mb-2">
         <Text className="text-orange-600 text-xl font-black">
@@ -584,7 +544,6 @@ export default function LiftoffStoreScreen() {
           />
         }
       >
-        {/* Gems Balance Header */}
         <View className="mx-4 mt-4 ">
           <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
             <View className="flex-row items-center justify-between">
@@ -593,11 +552,7 @@ export default function LiftoffStoreScreen() {
                   YOUR BALANCE
                 </Text>
                 <View className="flex-row items-center">
-                  <MaterialCommunityIcons
-                    name="diamond-stone"
-                    size={32}
-                    color="#EA580C"
-                  />
+                  <Ionicons name="diamond" size={32} color="#EA580C" />
                   <Text className="text-white text-3xl font-black ml-2">
                     {userData?.gems || 0}
                   </Text>
@@ -612,12 +567,12 @@ export default function LiftoffStoreScreen() {
             </View>
           </View>
         </View>
-
-        {/* Referral Bonus */}
+{/* 
         <View className="mx-4 mt-4">
           <TouchableOpacity
             className="bg-orange-600/10 rounded-2xl p-5 border-2 border-orange-600/50"
             activeOpacity={0.8}
+            onPress={() => setShowReferralModal(true)}
           >
             <View className="flex-row items-center justify-between">
               <View className="flex-1">
@@ -627,21 +582,20 @@ export default function LiftoffStoreScreen() {
                       REFERRAL BONUS
                     </Text>
                   </View>
+                  <Text className="text-[#ff8c00] text-[11px] font-bold tracking-widest">
+                    UNLIMITED
+                  </Text>
                 </View>
                 <Text className="text-white text-xl font-black mb-1">
                   Invite Friends
                 </Text>
                 <Text className="text-white/70 text-sm font-semibold mb-3">
-                  Get 3 gems for each friend who joins!
+                  You and your friend BOTH get 15 gems!
                 </Text>
                 <View className="flex-row items-center">
-                  <MaterialCommunityIcons
-                    name="diamond-stone"
-                    size={20}
-                    color="#EA580C"
-                  />
+                  <Ionicons name="diamond" size={22} color="#EA580C" />
                   <Text className="text-[#ff8c00] text-2xl font-black ml-1">
-                    +3
+                    +15
                   </Text>
                   <Text className="text-white/50 text-sm font-semibold ml-2">
                     per friend
@@ -658,9 +612,8 @@ export default function LiftoffStoreScreen() {
               </View>
             </View>
           </TouchableOpacity>
-        </View>
+        </View> */}
 
-        {/* Smoking Section */}
         <View className="mt-6">
           <View className="mx-4 mb-4 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
             <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">
@@ -715,7 +668,10 @@ export default function LiftoffStoreScreen() {
                 )
               }
             >
-              <View className="flex-row items-center justify-between">
+              <View
+                className="flex-row items-center justify-between"
+                ref={getMoreGemsSectionRef}
+              >
                 <View className="flex-1">
                   <View className="flex-row items-center mb-2">
                     <View className="bg-[#ff8c00] px-2 py-1 rounded-lg mr-2">
@@ -734,11 +690,8 @@ export default function LiftoffStoreScreen() {
                     Watch a short ad to get 1 gem instantly!
                   </Text>
                   <View className="flex-row items-center">
-                    <MaterialCommunityIcons
-                      name="diamond-stone"
-                      size={20}
-                      color="#EA580C"
-                    />
+                    <Ionicons name="diamond" size={22} color="#EA580C" />
+
                     <Text className="text-[#ff8c00] text-2xl font-black ml-1">
                       +1
                     </Text>
@@ -763,7 +716,7 @@ export default function LiftoffStoreScreen() {
         )}
 
         {/* Get More Gems Section */}
-        <View className="mt-6 mb-6" ref={getMoreGemsSectionRef}>
+        {/* <View className="mt-6 mb-6" ref={getMoreGemsSectionRef}>
           <View className="mx-4 mb-4 bg-gradient-to-r from-orange-600/20 to-yellow-600/20 rounded-2xl p-5 border border-orange-600/40">
             <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">
               SPECIAL OFFER
@@ -785,21 +738,27 @@ export default function LiftoffStoreScreen() {
               <GemPackCard key={pack.id} pack={pack} />
             ))}
           </ScrollView>
-        </View>
+        </View> */}
       </ScrollView>
       <PurchaseConfirmationModal
         visible={showPurchaseModal}
+        isPending={pendingTransaction}
         itemType={purchaseType}
         gemItem={selectedGemItem}
         storeItem={selectedStoreItem}
         currentGems={userData?.gems || 0}
         onConfirm={handleConfirmPurchase}
         onCancel={() => {
+          setPendingTransaction(false);
           setShowPurchaseModal(false);
           setSelectedStoreItem(null);
           setSelectedGemItem(null);
         }}
       />
+      {/* <ReferralModal
+        visible={showReferralModal}
+        onClose={() => setShowReferralModal(false)}
+      /> */}
     </View>
   );
 }

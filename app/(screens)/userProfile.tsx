@@ -33,7 +33,15 @@ const ACHIEVEMENT_IMAGES = {
 };
 
 export default function UserProfileScreen() {
-  const { userData, userStats, achievements, isLoading, refreshAll } = useApp();
+  const {
+    userData,
+    userStats,
+    achievements,
+    userInventory,
+    storeItems,
+    isLoading,
+    refreshAll,
+  } = useApp();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedTab, setSelectedTab] = useState<
     "overview" | "achievements" | "inventory"
@@ -84,14 +92,12 @@ export default function UserProfileScreen() {
   const renderAchievementCategory = (
     title: string,
     achievements: any[],
-    icon: string
   ) => {
     if (achievements.length === 0) return null;
 
     return (
       <View className="mb-6">
         <View className="flex-row items-center mb-3">
-          <Text className="text-2xl mr-2">{icon}</Text>
           <Text className="text-white text-base font-bold">{title}</Text>
           <View className="ml-auto bg-orange-600/20 px-2.5 py-1 rounded-lg border border-orange-600/40">
             <Text className="text-orange-600 text-xs font-black">
@@ -286,15 +292,13 @@ export default function UserProfileScreen() {
 
         {renderAchievementCategory(
           "Streaks & Days",
-          groupedAchievements.streaks,
-          "🔥"
+          groupedAchievements.streaks
         )}
         {renderAchievementCategory(
           "Competition",
-          groupedAchievements.competition,
-          "👑"
+          groupedAchievements.competition
         )}
-        {renderAchievementCategory("Social", groupedAchievements.social, "🎯")}
+        {renderAchievementCategory("Social", groupedAchievements.social)}
 
         <TouchableOpacity
           className="bg-white/[0.05] py-3 rounded-xl border border-white/[0.08] mt-2"
@@ -309,233 +313,333 @@ export default function UserProfileScreen() {
     </View>
   );
 
-  // TODO: FIX THE INVENTORY
-  const renderInventoryTab = () => (
-    <View className="px-4 mb-4">
-      {/* Equipped Items Section */}
-      <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08] mb-4">
-        <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-4">
-          EQUIPPED ITEMS
-        </Text>
+  const renderInventoryTab = () => {
+    // const equippedFlag = userInventory?.flag?.find(
+    //   (item: any) => item.is_equipped
+    // );
+    // const equippedSmoking = userInventory?.smoking?.find(
+    //   (item: any) => item.is_equipped
+    // );
 
-        {/* Profile Border */}
-        <View className="bg-black/20 rounded-xl p-4 mb-3">
-          <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center flex-1">
-              <View className="w-12 h-12 bg-gradient-to-br from-orange-600 to-yellow-600 rounded-xl items-center justify-center mr-3">
-                <MaterialCommunityIcons
-                  name="border-all"
-                  size={24}
-                  color="white"
-                />
-              </View>
-              <View className="flex-1">
-                <Text className="text-white text-sm font-bold mb-1">
-                  Profile Border
-                </Text>
-                <Text className="text-white/50 text-xs font-semibold">
-                  Default Border
-                </Text>
-              </View>
-            </View>
-            <TouchableOpacity
-              className="bg-orange-600/20 px-3 py-1.5 rounded-lg"
-              activeOpacity={0.7}
-            >
-              <Text className="text-orange-600 text-xs font-black">CHANGE</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Flag */}
-        <View className="bg-black/20 rounded-xl p-4 mb-3">
-          <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center flex-1">
-              <View className="w-12 h-12 bg-white/[0.05] rounded-xl items-center justify-center mr-3">
-                <MaterialCommunityIcons name="flag" size={24} color="#EA580C" />
-              </View>
-              <View className="flex-1">
-                <Text className="text-white text-sm font-bold mb-1">
-                  Pride Flag
-                </Text>
-                <Text className="text-white/50 text-xs font-semibold">
-                  Not equipped
-                </Text>
-              </View>
-            </View>
-            <TouchableOpacity
-              className="bg-orange-600/20 px-3 py-1.5 rounded-lg"
-              activeOpacity={0.7}
-            >
-              <Text className="text-orange-600 text-xs font-black">EQUIP</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Smoking Device */}
-        <View className="bg-black/20 rounded-xl p-4">
-          <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center flex-1">
-              <View className="w-12 h-12 bg-white/[0.05] rounded-xl items-center justify-center mr-3">
-                <MaterialCommunityIcons
-                  name="smoking"
-                  size={24}
-                  color="#EA580C"
-                />
-              </View>
-              <View className="flex-1">
-                <Text className="text-white text-sm font-bold mb-1">
-                  Smoking Device
-                </Text>
-                <Text className="text-white/50 text-xs font-semibold">
-                  Not equipped
-                </Text>
-              </View>
-            </View>
-            <TouchableOpacity
-              className="bg-orange-600/20 px-3 py-1.5 rounded-lg"
-              activeOpacity={0.7}
-            >
-              <Text className="text-orange-600 text-xs font-black">EQUIP</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-
-      {/* Owned Items Sections */}
-      <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08] mb-4">
-        <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-4">
-          FLAGS COLLECTION
-        </Text>
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingRight: 16 }}
-        >
-          {/* Example owned flags - replace with actual data */}
-          {[1, 2, 3].map((item) => (
-            <TouchableOpacity
-              key={item}
-              className="bg-black/20 rounded-xl p-3 mr-3 items-center"
-              style={{ width: 100 }}
-              activeOpacity={0.7}
-            >
-              <View className="w-16 h-10 bg-white/[0.05] rounded-lg mb-2 items-center justify-center">
-                <MaterialCommunityIcons name="flag" size={20} color="#EA580C" />
-              </View>
-              <Text
-                className="text-white text-xs font-bold text-center"
-                numberOfLines={1}
-              >
-                Flag {item}
-              </Text>
-            </TouchableOpacity>
-          ))}
-
-          <TouchableOpacity
-            className="bg-orange-600/20 rounded-xl p-3 items-center justify-center border border-orange-600/40"
-            style={{ width: 100 }}
-            activeOpacity={0.7}
-            onPress={() => router.push("/(screens)/store")}
-          >
-            <Ionicons name="add-circle" size={32} color="#EA580C" />
-            <Text className="text-orange-600 text-xs font-black mt-2">
-              GET MORE
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
-
-      <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08] mb-4">
-        <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-4">
-          SMOKING DEVICES
-        </Text>
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingRight: 16 }}
-        >
-          {/* Example owned devices - replace with actual data */}
-          {[1, 2].map((item) => (
-            <TouchableOpacity
-              key={item}
-              className="bg-black/20 rounded-xl p-3 mr-3 items-center"
-              style={{ width: 100 }}
-              activeOpacity={0.7}
-            >
-              <View className="w-16 h-16 bg-white/[0.05] rounded-lg mb-2 items-center justify-center">
-                <MaterialCommunityIcons
-                  name="smoking"
-                  size={24}
-                  color="#EA580C"
-                />
-              </View>
-              <Text
-                className="text-white text-xs font-bold text-center"
-                numberOfLines={1}
-              >
-                Device {item}
-              </Text>
-            </TouchableOpacity>
-          ))}
-
-          <TouchableOpacity
-            className="bg-orange-600/20 rounded-xl p-3 items-center justify-center border border-orange-600/40"
-            style={{ width: 100 }}
-            activeOpacity={0.7}
-            onPress={() => router.push("/(screens)/store")}
-          >
-            <Ionicons name="add-circle" size={32} color="#EA580C" />
-            <Text className="text-orange-600 text-xs font-black mt-2">
-              GET MORE
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
-
-      <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
-        <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-4">
-          CONSUMABLES
-        </Text>
-
-        <View className="bg-black/20 rounded-xl p-4">
-          <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center flex-1">
-              <View className="w-12 h-12 bg-orange-600/20 rounded-xl items-center justify-center mr-3 border border-orange-600/40">
-                <Text className="text-orange-600 text-lg font-black">2x</Text>
-              </View>
-              <View className="flex-1">
-                <Text className="text-white text-sm font-bold mb-1">
-                  Double-XP Shake
-                </Text>
-                <Text className="text-white/50 text-xs font-semibold">
-                  3 remaining
-                </Text>
-              </View>
-            </View>
-            <TouchableOpacity
-              className="bg-orange-600 px-3 py-1.5 rounded-lg"
-              activeOpacity={0.7}
-            >
-              <Text className="text-black text-xs font-black">USE</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <TouchableOpacity
-          className="bg-white/[0.05] py-3 rounded-xl border border-white/[0.08] mt-3"
-          activeOpacity={0.7}
-          onPress={() => router.push("/(screens)/store")}
-        >
-          <Text className="text-white/70 text-sm font-bold text-center uppercase tracking-widest">
-            Get More Items
+    return (
+      <View className="px-4 mb-4">
+        {/* Equipped Items Section */}
+        {/* <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08] mb-4">
+          <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-4">
+            EQUIPPED ITEMS
           </Text>
-        </TouchableOpacity>
+
+          <View className="bg-black/20 rounded-xl p-4 mb-3">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center flex-1">
+                <View className="w-12 h-12 bg-gradient-to-br from-orange-600 to-yellow-600 rounded-xl items-center justify-center mr-3">
+                  <MaterialCommunityIcons
+                    name="border-all"
+                    size={24}
+                    color="white"
+                  />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-white text-sm font-bold mb-1">
+                    Profile Border
+                  </Text>
+                  <Text className="text-white/50 text-xs font-semibold">
+                    Default Border
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                className="bg-orange-600/20 px-3 py-1.5 rounded-lg"
+                activeOpacity={0.7}
+              >
+                <Text className="text-orange-600 text-xs font-black">
+                  CHANGE
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View className="bg-black/20 rounded-xl p-4 mb-3">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center flex-1">
+                <View className="w-12 h-12 bg-white/[0.05] rounded-xl items-center justify-center mr-3">
+                  <MaterialCommunityIcons
+                    name="flag"
+                    size={24}
+                    color="#EA580C"
+                  />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-white text-sm font-bold mb-1">
+                    Flag
+                  </Text>
+                  <Text className="text-white/50 text-xs font-semibold">
+                    {equippedFlag ? "Equipped" : "Not equipped"}
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                className="bg-orange-600/20 px-3 py-1.5 rounded-lg"
+                activeOpacity={0.7}
+              >
+                <Text className="text-orange-600 text-xs font-black">
+                  {equippedFlag ? "CHANGE" : "EQUIP"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View className="bg-black/20 rounded-xl p-4">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center flex-1">
+                <View className="w-12 h-12 bg-white/[0.05] rounded-xl items-center justify-center mr-3">
+                  <MaterialCommunityIcons
+                    name="smoking"
+                    size={24}
+                    color="#EA580C"
+                  />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-white text-sm font-bold mb-1">
+                    Smoking
+                  </Text>
+                  <Text className="text-white/50 text-xs font-semibold">
+                    {equippedSmoking ? "Equipped" : "Not equipped"}
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                className="bg-orange-600/20 px-3 py-1.5 rounded-lg"
+                activeOpacity={0.7}
+              >
+                <Text className="text-orange-600 text-xs font-black">
+                  {equippedSmoking ? "CHANGE" : "EQUIP"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View> */}
+
+        {/* Owned Flags Section */}
+        <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08] mb-4">
+          <View className="flex-row justify-between items-center mb-4">
+            <Text className="text-orange-600 text-[11px] font-bold tracking-widest">
+              FLAGS
+            </Text>
+            <View className="bg-orange-600/20 px-2.5 py-1 rounded-lg border border-orange-600/40">
+              <Text className="text-orange-600 text-xs font-black">
+                {userInventory?.flag?.length || 0}
+              </Text>
+            </View>
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingRight: 16 }}
+          >
+            {userInventory?.flag && userInventory.flag.length > 0 ? (
+              <>
+                {userInventory.flag.map((item: any) => {
+                  // Find the store item details to get image and name
+                  const storeItem = storeItems?.flag?.find(
+                    (si: any) => si.id === item.item_id
+                  );
+
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      className={`bg-black/20 rounded-xl p-3 mr-3 items-center border ${
+                        item.is_equipped
+                          ? "border-orange-600/50"
+                          : "border-transparent"
+                      }`}
+                      style={{ width: 120 }}
+                      activeOpacity={0.7}
+                    >
+                      {item.is_equipped && (
+                        <View className="absolute top-2 right-2 bg-orange-600 rounded-full w-5 h-5 items-center justify-center border-2 border-black z-10">
+                          <Ionicons name="checkmark" size={12} color="white" />
+                        </View>
+                      )}
+                      {storeItem?.image_url ? (
+                        <Image
+                          source={{ uri: storeItem.image_url }}
+                          style={{ width: 100, height: 50 }}
+                          resizeMode="contain"
+                        />
+                      ) : (
+                        <View className="w-16 h-10 bg-white/[0.05] rounded-lg mb-2 items-center justify-center">
+                          <MaterialCommunityIcons
+                            name="flag"
+                            size={20}
+                            color="#EA580C"
+                          />
+                        </View>
+                      )}
+                      <Text
+                        className="text-white text-xs font-bold text-center mt-2"
+                        numberOfLines={2}
+                      >
+                        {storeItem?.name || "Flag"}
+                      </Text>
+                      {item.quantity > 1 && (
+                        <View className="bg-orange-600/20 px-2 py-0.5 rounded-lg mt-1 border border-orange-600/40">
+                          <Text className="text-orange-600 text-[10px] font-black">
+                            x{item.quantity}
+                          </Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+                <TouchableOpacity
+                  className="bg-orange-600/20 rounded-xl p-3 items-center justify-center border border-orange-600/40"
+                  style={{ width: 100 }}
+                  activeOpacity={0.7}
+                  onPress={() => router.push("/(screens)/store")}
+                >
+                  <Ionicons name="add-circle" size={32} color="#EA580C" />
+                  <Text className="text-orange-600 text-xs font-black mt-2">
+                    GET MORE
+                  </Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <View className="flex-1 items-center justify-center py-6">
+                <MaterialCommunityIcons
+                  name="flag-outline"
+                  size={48}
+                  color="#666"
+                />
+                <Text className="text-white/50 text-sm font-semibold mt-3 mb-4">
+                  No flags owned yet
+                </Text>
+                <TouchableOpacity
+                  className="bg-orange-600 px-4 py-2 rounded-xl"
+                  activeOpacity={0.7}
+                  onPress={() => router.push("/(screens)/store")}
+                >
+                  <Text className="text-black text-xs font-black">
+                    VISIT STORE
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </ScrollView>
+        </View>
+
+        {/* Owned Smoking Devices Section */}
+        <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08] mb-4">
+          <View className="flex-row justify-between items-center mb-4">
+            <Text className="text-orange-600 text-[11px] font-bold tracking-widest">
+              SMOKING
+            </Text>
+            <View className="bg-orange-600/20 px-2.5 py-1 rounded-lg border border-orange-600/40">
+              <Text className="text-orange-600 text-xs font-black">
+                {userInventory?.smoking?.length || 0}
+              </Text>
+            </View>
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingRight: 16 }}
+          >
+            {userInventory?.smoking && userInventory.smoking.length > 0 ? (
+              <>
+                {userInventory.smoking.map((item: any) => {
+                  // Find the store item details to get image and name
+                  const storeItem = storeItems?.smoking?.find(
+                    (si: any) => si.id === item.item_id
+                  );
+
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      className={`bg-black/20 rounded-xl p-3 mr-3 items-center border ${
+                        item.is_equipped
+                          ? "border-orange-600/50"
+                          : "border-transparent"
+                      }`}
+                      style={{ width: 100 }}
+                      activeOpacity={0.7}
+                    >
+                      {item.is_equipped && (
+                        <View className="absolute top-2 right-2 bg-orange-600 rounded-full w-5 h-5 items-center justify-center border-2 border-black z-10">
+                          <Ionicons name="checkmark" size={12} color="white" />
+                        </View>
+                      )}
+                      {storeItem?.image_url ? (
+                        <Image
+                          source={{ uri: storeItem.image_url }}
+                          style={{ width: 60, height: 60 }}
+                          resizeMode="contain"
+                        />
+                      ) : (
+                        <View className="w-16 h-16 bg-white/[0.05] rounded-lg mb-2 items-center justify-center">
+                          <MaterialCommunityIcons
+                            name="smoking"
+                            size={24}
+                            color="#EA580C"
+                          />
+                        </View>
+                      )}
+                      <Text
+                        className="text-white text-xs font-bold text-center mt-2"
+                        numberOfLines={2}
+                      >
+                        {storeItem?.name || "Device"}
+                      </Text>
+                      {item.quantity > 1 && (
+                        <View className="bg-orange-600/20 px-2 py-0.5 rounded-lg mt-1 border border-orange-600/40">
+                          <Text className="text-orange-600 text-[10px] font-black">
+                            x{item.quantity}
+                          </Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+                <TouchableOpacity
+                  className="bg-orange-600/20 rounded-xl p-3 items-center justify-center border border-orange-600/40"
+                  style={{ width: 100 }}
+                  activeOpacity={0.7}
+                  onPress={() => router.push("/(screens)/store")}
+                >
+                  <Ionicons name="add-circle" size={32} color="#EA580C" />
+                  <Text className="text-orange-600 text-xs font-black mt-2">
+                    GET MORE
+                  </Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <View className="flex-1 items-center justify-center py-6">
+                <MaterialCommunityIcons
+                  name="smoking-off"
+                  size={48}
+                  color="#666"
+                />
+                <Text className="text-white/50 text-sm font-semibold mt-3 mb-4">
+                  No smoking devices owned yet
+                </Text>
+                <TouchableOpacity
+                  className="bg-orange-600 px-4 py-2 rounded-xl"
+                  activeOpacity={0.7}
+                  onPress={() => router.push("/(screens)/store")}
+                >
+                  <Text className="text-black text-xs font-black">
+                    VISIT STORE
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </ScrollView>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <View className="flex-1 bg-black">
@@ -588,11 +692,8 @@ export default function UserProfileScreen() {
           <View className="flex-row gap-2">
             <View className="bg-white/[0.03] rounded-xl px-3 py-2 border border-white/[0.08]">
               <View className="flex-row items-center">
-                <MaterialCommunityIcons
-                  name="diamond-stone"
-                  size={16}
-                  color="#EA580C"
-                />
+                <Ionicons name="diamond" size={16} color="#EA580C" />
+
                 <Text className="text-orange-600 text-sm font-black ml-1">
                   {userData?.gems || 0}
                 </Text>

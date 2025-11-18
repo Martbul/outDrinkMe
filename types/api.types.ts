@@ -225,7 +225,7 @@ export interface StoreItem {
   category_id?: string;
   name: string;
   description?: string;
-  item_type:string
+  item_type: string;
   image_url?: string;
   base_price: number;
   is_active: boolean;
@@ -241,12 +241,11 @@ export interface ItemWithDeal extends StoreItem {
   deal_end_date?: string;
 }
 
-
-
 export interface InventoryItem {
   id: string;
   user_id: string;
   item_id: string;
+  item_type: string;
   quantity: number;
   is_equipped: boolean;
   acquired_at: string;
@@ -277,6 +276,64 @@ export interface ErrorResponse {
   error: string;
 }
 
-export type StoreItems= {
+export type StoreItems = {
   [itemType: string]: StoreItem[];
 };
+
+export type InventoryItems = {
+  [itemType: string]: InventoryItem[];
+};
+
+export interface Deal {
+  id: number;
+  title: string;
+  type: string;
+  discount: string;
+  originalPrice: number;
+  price: number;
+  multiplier?: string;
+  image: any;
+  isDark?: boolean;
+  featured?: boolean;
+}
+
+export interface ProDeal {
+  id: number;
+  title: string;
+  subtitle: string;
+  discount: string;
+  originalPrice: number;
+  price: number;
+  image: any;
+}
+
+export interface Flag {
+  id: number;
+  title: string;
+  price: number;
+  image: any;
+}
+
+export interface Smoking {
+  id: number;
+  title: string;
+  price: number;
+  image: any;
+}
+
+export interface ColorTheme {
+  id: number;
+  name: string;
+  color: string;
+  bgColor: string;
+  borderColor: string;
+  price: number;
+}
+
+export interface GemPack {
+  id: number;
+  amount: number;
+  price: string;
+  image: any;
+  bonus?: number;
+}

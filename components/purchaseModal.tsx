@@ -1,6 +1,24 @@
-import React from "react";
-import { View, Text, TouchableOpacity, Modal, Image } from "react-native";
+import React, { useEffect } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Modal,
+  Image,
+  ActivityIndicator,
+} from "react-native";
 import { MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  ZoomIn,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+  Easing,
+} from "react-native-reanimated";
 
 export interface StoreItem {
   id: string;
@@ -26,6 +44,7 @@ export interface GemPurchaseItem {
 
 interface PurchaseConfirmationModalProps {
   visible: boolean;
+  isPending: boolean;
   itemType: "gem" | "store";
   gemItem?: GemPurchaseItem | null;
   storeItem?: StoreItem | null;
@@ -34,8 +53,11 @@ interface PurchaseConfirmationModalProps {
   onCancel: () => void;
 }
 
+const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
+
 export default function PurchaseConfirmationModal({
   visible,
+  isPending,
   itemType,
   gemItem,
   storeItem,
@@ -43,6 +65,38 @@ export default function PurchaseConfirmationModal({
   onConfirm,
   onCancel,
 }: PurchaseConfirmationModalProps) {
+  // Sparkle animation for gem icon
+  const sparkleRotation = useSharedValue(0);
+  const sparkleScale = useSharedValue(1);
+
+  useEffect(() => {
+    if (visible) {
+      sparkleRotation.value = withRepeat(
+        withTiming(100, { duration: 1000, easing: Easing.linear }),
+        -1,
+        false
+      );
+      sparkleScale.value = withRepeat(
+        withSequence(
+          withTiming(0.7, {
+            duration: 100,
+            easing: Easing.inOut(Easing.ease),
+          }),
+          withTiming(0.5, { duration: 400, easing: Easing.inOut(Easing.ease) })
+        ),
+        -1,
+        true
+      );
+    }
+  }, [visible]);
+
+  const sparkleStyle = useAnimatedStyle(() => ({
+    transform: [
+      { rotate: `${sparkleRotation.value}deg` },
+      { scale: sparkleScale.value },
+    ],
+  }));
+
   if (itemType === "gem" && gemItem) {
     return (
       <Modal
@@ -51,84 +105,115 @@ export default function PurchaseConfirmationModal({
         animationType="fade"
         onRequestClose={onCancel}
       >
-        <View className="flex-1 bg-black/80 justify-center items-center px-4">
-          <View className="bg-[#1a1a1a] rounded-3xl w-full max-w-md border-2 border-white/10 overflow-hidden">
-            {/* Header */}
-            <View className="bg-gradient-to-r from-orange-600/20 to-yellow-600/20 p-6 border-b border-white/10">
-              <View className="flex-row items-center justify-between mb-2">
-                <Text className="text-orange-600 text-xs font-bold tracking-widest">
-                  CONFIRM PURCHASE
-                </Text>
-                <TouchableOpacity
-                  onPress={onCancel}
-                  className="bg-white/10 rounded-full p-1"
-                >
-                  <Ionicons name="close" size={20} color="white" />
-                </TouchableOpacity>
-              </View>
-              <Text className="text-white text-2xl font-black">Buy Gems</Text>
-            </View>
+        <View className="flex-1 bg-black/90 justify-center items-center px-6">
+          <Animated.View
+            entering={ZoomIn.duration(50).easing(Easing.out(Easing.cubic))}
+            className="bg-[#1a1a1a] rounded-3xl w-full max-w-sm border border-orange-600/30 overflow-hidden"
+            style={{
+              shadowColor: "#ea580c",
+              shadowOffset: { width: 0, height: 10 },
+              shadowOpacity: 0.3,
+              shadowRadius: 20,
+            }}
+          >
+            {/* Close Button */}
+            <Animated.View
+              entering={FadeIn.delay(200).duration(200)}
+              className="absolute top-3 right-3 z-20"
+            >
+              <TouchableOpacity
+                onPress={onCancel}
+                className="bg-white/10 rounded-full p-1.5"
+                activeOpacity={0.7}
+              >
+                <Ionicons name="close" size={18} color="white" />
+              </TouchableOpacity>
+            </Animated.View>
 
-            {/* Gem Display */}
+            {/* Content */}
             <View className="p-6">
-              <View className="bg-black/40 rounded-2xl p-6 items-center mb-4 border border-white/5">
-                <View className="items-center">
-                  <View className="bg-orange-600/20 rounded-3xl w-24 h-24 items-center justify-center mb-4 border-2 border-orange-600/40">
-                    <MaterialCommunityIcons
-                      name="diamond-stone"
-                      size={56}
-                      color="#EA580C"
-                    />
-                  </View>
-                  <View className="flex-row items-center bg-orange-600/20 rounded-xl py-3 px-6 border border-orange-600/40">
-                    <Text className="text-orange-600 text-3xl font-black">
-                      {gemItem.baseAmount}
+              {/* Title */}
+              <Animated.View entering={FadeInDown.delay(100).duration(200)}>
+                <Text className="text-orange-600 text-[10px] font-bold tracking-widest mb-1">
+                  PURCHASE GEMS
+                </Text>
+                <Text className="text-white text-xl font-black mb-4">
+                  Confirm Your Order
+                </Text>
+              </Animated.View>
+
+              {/* Gem Display */}
+              <Animated.View
+                entering={ZoomIn.delay(100).duration(300).springify()}
+                className="bg-gradient-to-br from-orange-600/10 to-yellow-600/10 rounded-2xl p-5 items-center mb-4 border border-orange-600/20"
+              >
+                <Animated.View
+                  style={sparkleStyle}
+                  className="bg-orange-600/20 rounded-full w-20 h-20 items-center justify-center mb-3 border border-orange-600/40"
+                >
+                  <Ionicons name="diamond" size={44} color="#EA580C" />
+                </Animated.View>
+                <View className="flex-row items-center bg-black/40 rounded-xl py-2 px-4 border border-orange-600/30">
+                  <Text className="text-orange-600 text-2xl font-black">
+                    {gemItem.baseAmount}
+                  </Text>
+                  {gemItem.bonus && (
+                    <Text className="text-yellow-500 text-lg font-black ml-2">
+                      +{gemItem.bonus}
                     </Text>
-                    {gemItem.bonus && (
-                      <Text className="text-[#ff8c00] text-xl font-black ml-2">
-                        +{gemItem.bonus}
-                      </Text>
-                    )}
-                  </View>
+                  )}
+                  <Text className="text-white/50 text-xs font-bold ml-2">
+                    GEMS
+                  </Text>
                 </View>
-              </View>
+              </Animated.View>
 
               {/* Price Display */}
-              <View className="bg-white/5 rounded-2xl p-4 mb-4 border border-white/10">
+              <Animated.View
+                entering={FadeInDown.delay(300).duration(400)}
+                className="bg-white/5 rounded-xl p-3 mb-5 border border-white/10"
+              >
                 <View className="flex-row items-center justify-between">
-                  <Text className="text-white/70 text-sm font-semibold">
-                    Price:
+                  <Text className="text-white/60 text-sm font-semibold">
+                    Total Price
                   </Text>
-                  <Text className="text-white text-lg font-black">
+                  <Text className="text-white text-xl font-black">
                     {gemItem.price}
                   </Text>
                 </View>
-              </View>
+              </Animated.View>
 
               {/* Action Buttons */}
               <View className="flex-row gap-3">
-                <TouchableOpacity
+                <AnimatedTouchable
+                  entering={FadeInDown.delay(350).duration(400)}
                   onPress={onCancel}
-                  className="flex-1 bg-white/5 rounded-xl py-4 border border-white/10"
+                  className="flex-1 bg-white/5 rounded-xl py-3 border border-white/10"
                   activeOpacity={0.7}
                 >
-                  <Text className="text-white text-center text-base font-bold">
+                  <Text className="text-white text-center text-sm font-bold">
                     Cancel
                   </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
+                </AnimatedTouchable>
+                <AnimatedTouchable
+                  entering={FadeInDown.delay(400).duration(400)}
                   onPress={onConfirm}
-                  className="flex-1 rounded-xl py-4 bg-orange-600"
+                  className="flex-1 rounded-xl py-3 bg-gradient-to-r from-orange-600 to-orange-500"
                   activeOpacity={0.7}
+                  style={{
+                    shadowColor: "#ea580c",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.4,
+                    shadowRadius: 8,
+                  }}
                 >
-                  <Text className="text-center text-base font-black text-white">
+                  <Text className="text-center text-sm font-black text-white">
                     Buy Now
                   </Text>
-                </TouchableOpacity>
+                </AnimatedTouchable>
               </View>
             </View>
-          </View>
+          </Animated.View>
         </View>
       </Modal>
     );
@@ -146,147 +231,169 @@ export default function PurchaseConfirmationModal({
         animationType="fade"
         onRequestClose={onCancel}
       >
-        <View className="flex-1 bg-black/80 justify-center items-center px-4">
-          <View className="bg-[#1a1a1a] rounded-3xl w-full max-w-md border-2 border-white/10 overflow-hidden">
-            {/* Header */}
-            <View className="bg-gradient-to-r from-orange-600/20 to-yellow-600/20 p-6 border-b border-white/10">
-              <View className="flex-row items-center justify-between mb-2">
-                <Text className="text-orange-600 text-xs font-bold tracking-widest">
-                  CONFIRM PURCHASE
-                </Text>
-                <TouchableOpacity
-                  onPress={onCancel}
-                  className="bg-white/10 rounded-full p-1"
-                >
-                  <Ionicons name="close" size={20} color="white" />
-                </TouchableOpacity>
-              </View>
-              <Text className="text-white text-2xl font-black">
-                {storeItem.name}
-              </Text>
-            </View>
+        <View className="flex-1 bg-black/90 justify-center items-center px-6">
+          <Animated.View
+            entering={ZoomIn.duration(250).easing(Easing.out(Easing.cubic))}
+            className="bg-black rounded-3xl w-full max-w-sm border border-orange-600/30 overflow-hidden"
+            style={{
+              shadowColor: "#ea580c",
+              shadowOffset: { width: 0, height: 10 },
+              shadowOpacity: 0.3,
+              shadowRadius: 20,
+            }}
+          >
+            {/* Close Button */}
+            <Animated.View
+              entering={FadeIn.delay(200).duration(300)}
+              className="absolute top-3 right-3 z-20"
+            >
+              <TouchableOpacity
+                onPress={onCancel}
+                className="bg-white/10 rounded-full p-1.5"
+                activeOpacity={0.7}
+              >
+                <Ionicons name="close" size={18} color="white" />
+              </TouchableOpacity>
+            </Animated.View>
 
-            {/* Item Display */}
+            {/* Content */}
             <View className="p-6">
-              <View className="bg-black/40 rounded-2xl p-6 items-center mb-4 border border-white/5">
-                <View className="items-center">
-                  <Image
-                    source={{ uri: storeItem.image_url }}
-                    style={{
-                      width: storeItem.item_type === "flag" ? 120 : 80,
-                      height: 80,
-                    }}
-                    resizeMode="contain"
-                  />
-                  <Text className="text-white text-lg font-bold mt-3">
-                    {storeItem.name}
-                  </Text>
-                </View>
-              </View>
+              {/* Title */}
+              <Animated.View entering={FadeInDown.delay(100).duration(400)}>
+                <Text className="text-orange-600 text-[10px] font-bold tracking-widest mb-1">
+                  PURCHASE ITEM
+                </Text>
+                <Text className="text-white text-xl font-black mb-4">
+                  {storeItem.name}
+                </Text>
+              </Animated.View>
 
-              {/* Price Display */}
-              <View className="bg-white/5 rounded-2xl p-4 mb-4 border border-white/10">
-                <View className="flex-row items-center justify-between mb-3">
-                  <Text className="text-white/70 text-sm font-semibold">
-                    Price:
+              {/* Item Display */}
+              <Animated.View
+                entering={ZoomIn.delay(200).duration(400).springify()}
+                className="bg-gradient-to-br from-orange-600/10 to-yellow-600/10 rounded-2xl p-4 items-center mb-4 border border-orange-600/20"
+              >
+                <Image
+                  source={{ uri: storeItem.image_url }}
+                  style={{
+                    width: storeItem.item_type === "flag" ? 100 : 70,
+                    height: 70,
+                  }}
+                  resizeMode="contain"
+                />
+              </Animated.View>
+
+              {/* Price Info */}
+              <Animated.View
+                entering={FadeInDown.delay(300).duration(400)}
+                className="bg-white/5 rounded-xl p-3 mb-4 border border-white/10"
+              >
+                <View className="flex-row items-center justify-between mb-2">
+                  <Text className="text-white/60 text-xs font-semibold">
+                    Price
                   </Text>
                   <View className="flex-row items-center">
-                    <MaterialCommunityIcons
-                      name="diamond-stone"
-                      size={20}
-                      color="#EA580C"
-                    />
-                    <Text className="text-orange-600 text-xl font-black ml-1">
+                    <Ionicons name="diamond" size={18} color="#EA580C" />
+
+                    <Text className="text-orange-600 text-lg font-black ml-1">
                       {storeItem.base_price}
                     </Text>
                   </View>
                 </View>
 
-                <View className="h-px bg-white/10 mb-3" />
+                <View className="h-px bg-white/10 mb-2" />
 
-                <View className="flex-row items-center justify-between mb-2">
-                  <Text className="text-white/70 text-sm font-semibold">
-                    Current Balance:
+                <View className="flex-row items-center justify-between mb-1">
+                  <Text className="text-white/60 text-xs font-semibold">
+                    Your Balance
                   </Text>
                   <View className="flex-row items-center">
-                    <MaterialCommunityIcons
-                      name="diamond-stone"
-                      size={18}
-                      color="#EA580C"
-                    />
-                    <Text className="text-white text-base font-bold ml-1">
+                    <Ionicons name="diamond" size={16} color="#EA580C" />
+
+                    <Text className="text-white text-sm font-bold ml-1">
                       {currentGems}
                     </Text>
                   </View>
                 </View>
 
-                {hasEnoughGems && (
+                {/* {hasEnoughGems && (
                   <View className="flex-row items-center justify-between">
-                    <Text className="text-white/70 text-sm font-semibold">
-                      After Purchase:
+                    <Text className="text-white/60 text-xs font-semibold">
+                      After Purchase
                     </Text>
                     <View className="flex-row items-center">
-                      <MaterialCommunityIcons
-                        name="diamond-stone"
-                        size={18}
-                        color={hasEnoughGems ? "#EA580C" : "#EF4444"}
-                      />
-                      <Text
-                        className={`text-base font-bold ml-1 ${
-                          hasEnoughGems ? "text-white" : "text-red-500"
-                        }`}
-                      >
-                        {hasEnoughGems ? remainingGems : "Not enough"}
+                                                          <Ionicons name="diamond" size={16} color="#EA580C" />
+
+                      <Text className="text-white text-sm font-bold ml-1">
+                        {remainingGems}
                       </Text>
                     </View>
                   </View>
-                )}
-              </View>
+                )} */}
+              </Animated.View>
 
               {/* Warning if not enough gems */}
               {!hasEnoughGems && (
-                <View className="bg-red-500/10 rounded-xl p-4 mb-4 border border-red-500/30">
+                <Animated.View
+                  entering={FadeInDown.delay(350).duration(400)}
+                  className="bg-red-500/10 rounded-xl p-3 mb-4 border border-red-500/30"
+                >
                   <View className="flex-row items-center">
-                    <Ionicons name="warning" size={20} color="#EF4444" />
-                    <Text className="text-red-500 text-sm font-bold ml-2 flex-1">
-                      You need {storeItem.base_price - currentGems} more gems to
-                      make this purchase
+                    <Ionicons name="warning" size={16} color="#EF4444" />
+                    <Text className="text-red-400 text-xs font-semibold ml-2 flex-1">
+                      Need {storeItem.base_price - currentGems} more gems
                     </Text>
                   </View>
-                </View>
+                </Animated.View>
               )}
 
               {/* Action Buttons */}
               <View className="flex-row gap-3">
-                <TouchableOpacity
+                <AnimatedTouchable
+                  entering={FadeInDown.delay(400).duration(400)}
                   onPress={onCancel}
-                  className="flex-1 bg-white/5 rounded-xl py-4 border border-white/10"
+                  className="flex-1 bg-white/5 rounded-xl py-3 border border-white/10"
                   activeOpacity={0.7}
                 >
-                  <Text className="text-white text-center text-base font-bold">
+                  <Text className="text-white text-center text-sm font-bold">
                     Cancel
                   </Text>
-                </TouchableOpacity>
+                </AnimatedTouchable>
 
-                <TouchableOpacity
+                <AnimatedTouchable
+                  entering={FadeInDown.delay(450).duration(400)}
                   onPress={onConfirm}
-                  disabled={!hasEnoughGems}
-                  className={`flex-1 rounded-xl py-4 ${
+                  disabled={!hasEnoughGems || isPending}
+                  className={`flex-1 rounded-xl py-3 ${
                     hasEnoughGems ? "bg-orange-600" : "bg-white/10"
                   }`}
                   activeOpacity={0.7}
+                  style={
+                    hasEnoughGems
+                      ? {
+                          shadowColor: "#ea580c",
+                          shadowOffset: { width: 0, height: 4 },
+                          shadowOpacity: 0.4,
+                          shadowRadius: 8,
+                        }
+                      : {}
+                  }
                 >
-                  <Text
-                    className={`text-center text-base font-black ${
-                      hasEnoughGems ? "text-white" : "text-white/30"
-                    }`}
-                  >
-                    Confirm
-                  </Text>
-                </TouchableOpacity>
+                  {isPending ? (
+                    <ActivityIndicator color="white" size="small" />
+                  ) : (
+                    <Text
+                      className={`text-center text-sm font-black ${
+                        hasEnoughGems ? "text-white" : "text-white/30"
+                      }`}
+                    >
+                      Confirm
+                    </Text>
+                  )}
+                </AnimatedTouchable>
               </View>
             </View>
-          </View>
+          </Animated.View>
         </View>
       </Modal>
     );

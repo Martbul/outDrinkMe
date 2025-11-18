@@ -6,6 +6,7 @@ import { router } from "expo-router";
 import { getLevelInfo } from "@/utils/levels";
 import InfoTooltip from "./infoTooltip";
 import { useAds } from "@/providers/AdProvider";
+import { Entypo, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
 export const Header = () => {
   const { userData, userStats, updateUserProfile } = useApp();
@@ -94,8 +95,8 @@ export const Header = () => {
         </View>
 
         <View className="flex-row items-center gap-4">
-          <View className="flex-row items-center gap-1.5 bg-white/5 px-3 py-2 rounded-full">
-            <Text className="text-xl">🔥</Text>
+          <View className="flex-row items-center  bg-white/5 px-3 py-2 rounded-full">
+            <MaterialCommunityIcons name="fire" size={34} color="#EA580C" />
             <Text className="text-white text-base font-bold">
               {userStats?.current_streak || 0}
             </Text>
@@ -106,15 +107,15 @@ export const Header = () => {
             onPress={() => router.push("/(screens)/store")}
           >
             <View className="relative">
-              <Text className="text-xl">💎</Text>
+              <Ionicons name="diamond" size={24} color="#EA580C" />
 
               {/* {isAdLoaded && (
                 <View className="absolute -bottom-0.5 -right-0.5 bg-orange-600 w-3 h-3 rounded-full justify-center items-center">
                   <Text className="text-white text-[8px] font-black">+</Text>
                 </View>
               )} */}
-              <View className="absolute -bottom-0.5 -right-0.5 bg-orange-600 w-3 h-3 rounded-full justify-center items-center">
-                <Text className="text-white text-[8px] font-black">+</Text>
+              <View className="absolute -bottom-0.5 -right-1 bg-orange-600 rounded-full justify-center items-center">
+                <Entypo name="plus" size={10} color="black" />
               </View>
             </View>
             <Text className="text-white text-base font-bold">
