@@ -5,6 +5,7 @@ import { getCoefInfo } from "@/utils/levels";
 import {
   AntDesign,
   Feather,
+  FontAwesome6,
   Ionicons,
   MaterialCommunityIcons,
   MaterialIcons,
@@ -347,7 +348,11 @@ export default function HomeScreen() {
             <View className="flex-row justify-between items-center py-2.5 border-b border-white/[0.05]">
               <View className="flex-row items-center">
                 <View className="w-8 h-8 rounded-lg bg-orange-600/20 items-center justify-center mr-3">
-                  <Ionicons name="flame-outline" size={16} color="#EA580C" />
+                  <MaterialCommunityIcons
+                    name="fire"
+                    size={18}
+                    color="#EA580C"
+                  />
                 </View>
                 <Text className="text-white/60 text-sm font-semibold">
                   Longest Streak
@@ -402,7 +407,7 @@ export default function HomeScreen() {
                     LOGGED TODAY
                   </Text>
                   <Text className="text-white/40 text-xs font-semibold mt-1">
-                    Great job, alcoholic!
+                    Great job, my alcoholic!
                   </Text>
                 </>
               ) : (
@@ -421,7 +426,6 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Floating Feedback Button */}
       <TouchableOpacity
         onPress={() => setFeedbackModalVisible(true)}
         className="absolute bg-orange-600 rounded-full shadow-lg"
@@ -439,10 +443,9 @@ export default function HomeScreen() {
           elevation: 8,
         }}
       >
-        <Ionicons name="chatbubble-ellipses" size={24} color="#000000" />
+        <FontAwesome6 name="wrench" size={26} color="black" />
       </TouchableOpacity>
 
-      {/* Feedback Modal */}
       <Modal
         visible={feedbackModalVisible}
         transparent

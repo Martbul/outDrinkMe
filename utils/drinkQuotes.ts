@@ -2,7 +2,7 @@ export const drunkQuotes = [
   "Finish your drink, there are sober kids in Aftica",
   "It's Saturday, guess what rhymes with Saturday - ALCOHOL",
   "I'd like to see AI get insanely hammered on Monday at 10AM",
-  "Nobody will remember your name,job or salary, but they will remember how good drinker you were",
+  "Nobody will remember your name, job or salary, but they will remember how good drinker you were",
   "So glad I can't get pregnant, 9 month without alcohol is crazy",
   "It's funny how 8 cups of water a day seems impossible, but 7 beers and 10 shots in an hour goes down like a fat kid on a seesaw",
   "You don't need fun to have alcohol",

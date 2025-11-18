@@ -8,19 +8,24 @@ import {
   Image,
   Dimensions,
   ActivityIndicator,
-  RefreshControl,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
-import { VideoPost } from "@/types/api.types";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
-const VIDEO_HEIGHT = SCREEN_HEIGHT * 0.75; // 75% of screen height
-const VIDEO_WIDTH = SCREEN_WIDTH;
-
-
+export interface VideoPost {
+  id: string;
+  videoUrl: string;
+  userId: string;
+  username: string;
+  userImageUrl?: string;
+  caption?: string;
+  chips: number;
+  duration: number;
+  createdAt: string;
+}
 
 interface MixVideoProps {
   videos: VideoPost[];
@@ -292,8 +297,6 @@ const EmptyVideoComponent = ({
 //   );
 // }
 
-
-
 export default function MixVideo({
   videos,
   onRecordPress,
@@ -335,7 +338,7 @@ export default function MixVideo({
     []
   );
   return (
-    <View style={{ width: SCREEN_WIDTH, height: VIDEO_HEIGHT }}>
+    <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
       <FlatList
         data={videos}
         keyExtractor={(item) => item.id}
@@ -345,26 +348,13 @@ export default function MixVideo({
           <EmptyVideoComponent onRecordPress={onRecordPress} />
         }
         showsVerticalScrollIndicator={false}
-        snapToInterval={VIDEO_HEIGHT}
+        snapToInterval={SCREEN_HEIGHT * 0.7 + 16}
         snapToAlignment="start"
         decelerationRate="fast"
         onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={{ itemVisiblePercentThreshold: 80 }}
+        viewabilityConfig={viewabilityConfig}
         refreshing={isRefreshing}
         onRefresh={onRefresh}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={onRefresh}
-            tintColor="#ff8c00"
-            colors={["#ff8c00"]}
-          />
-        }
-        getItemLayout={(data, index) => ({
-          length: VIDEO_HEIGHT,
-          offset: VIDEO_HEIGHT * index,
-          index,
-        })}
       />
     </View>
   );
