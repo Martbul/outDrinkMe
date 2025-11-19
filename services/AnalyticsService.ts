@@ -1,8 +1,8 @@
 import { AppState, Platform } from "react-native";
+import DeviceInfo from "react-native-device-info";
+// import * as Application from "expo-application";
 import Constants from "expo-constants";
-import * as Device from "expo-device";
 import { v4 as uuidv4 } from "uuid";
-import * as Application from "expo-application";
 
 interface DeviceInfo {
   app_version: string;
@@ -64,18 +64,16 @@ class AnalyticsService {
   private async getDeviceInfo(): Promise<DeviceInfo> {
     try {
       const version =
-        Application.nativeApplicationVersion ||
+      //   Application.nativeApplicationVersion ||
         Constants.expoConfig?.version ||
         "1.0.0";
-      // Use Expo Device module for device info
-      const deviceModel = Device.modelName || Device.deviceName || "unknown";
-      const osVersion = Device.osVersion || Platform.Version.toString();
+      const model = await DeviceInfo.getModel();
 
       return {
         app_version: version,
         platform: Platform.OS,
-        os_version: osVersion,
-        device_model: deviceModel,
+        os_version: Platform.Version.toString(),
+        device_model: model,
       };
     } catch (error) {
       console.error("[Analytics] Failed to get device info:", error);
@@ -153,30 +151,6 @@ class AnalyticsService {
     } catch (error) {
       console.error("[Analytics] Disconnect failed:", error);
     }
-  }
-
-  async getActiveUsers(): Promise<number | null> {
-    if (!this.authToken) return null;
-
-    try {
-      const response = await fetch(
-        `${this.baseUrl}/api/v1/analytics/presence/active`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${this.authToken}`,
-          },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        return data.active_users;
-      }
-    } catch (error) {
-      console.error("[Analytics] Get active users failed:", error);
-    }
-    return null;
   }
 
   // ============= SESSION TRACKING =============
@@ -295,52 +269,6 @@ class AnalyticsService {
     }
   }
 
-  async getTopScreens(days: number = 7, limit: number = 20) {
-    if (!this.authToken) return null;
-
-    try {
-      const response = await fetch(
-        `${this.baseUrl}/api/v1/analytics/screens/top?days=${days}&limit=${limit}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${this.authToken}`,
-          },
-        }
-      );
-
-      if (response.ok) {
-        return await response.json();
-      }
-    } catch (error) {
-      console.error("[Analytics] Failed to get top screens:", error);
-    }
-    return null;
-  }
-
-  async getScreenFlow(days: number = 7) {
-    if (!this.authToken) return null;
-
-    try {
-      const response = await fetch(
-        `${this.baseUrl}/api/v1/analytics/screens/flow?days=${days}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${this.authToken}`,
-          },
-        }
-      );
-
-      if (response.ok) {
-        return await response.json();
-      }
-    } catch (error) {
-      console.error("[Analytics] Failed to get screen flow:", error);
-    }
-    return null;
-  }
-
   // ============= EVENT TRACKING =============
 
   async trackEvent(
@@ -426,24 +354,21 @@ class AnalyticsService {
   // ============= CRASH REPORTING =============
 
   private setupCrashHandlers() {
-    // Only set up crash handlers if ErrorUtils is available
-    if (typeof ErrorUtils !== "undefined") {
-      const originalHandler = ErrorUtils.getGlobalHandler();
+    const originalHandler = ErrorUtils.getGlobalHandler();
 
-      ErrorUtils.setGlobalHandler((error, isFatal) => {
-        this.reportCrash(error, isFatal);
-        if (originalHandler) {
-          originalHandler(error, isFatal);
-        }
-      });
-    }
+    ErrorUtils.setGlobalHandler((error, isFatal) => {
+      this.reportCrash(error, isFatal);
+      if (originalHandler) {
+        originalHandler(error, isFatal);
+      }
+    });
 
     // Unhandled promise rejections
     const rejectionHandler = (event: any) => {
       this.reportCrash(event.reason, false);
     };
 
-    if (typeof global !== "undefined" && global.addEventListener) {
+    if (global.addEventListener) {
       global.addEventListener("unhandledRejection", rejectionHandler);
     }
   }
@@ -477,83 +402,6 @@ class AnalyticsService {
     } catch (reportError) {
       console.error("[Analytics] Failed to report crash:", reportError);
     }
-  }
-
-  async getCrashRate(days: number = 7) {
-    if (!this.authToken) return null;
-
-    try {
-      const response = await fetch(
-        `${this.baseUrl}/api/v1/analytics/crash-rate?days=${days}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${this.authToken}`,
-          },
-        }
-      );
-
-      if (response.ok) {
-        return await response.json();
-      }
-    } catch (error) {
-      console.error("[Analytics] Failed to get crash rate:", error);
-    }
-    return null;
-  }
-
-  // ============= METRICS =============
-
-  async getDAU(date?: string) {
-    if (!this.authToken) return null;
-
-    try {
-      const url = date
-        ? `${this.baseUrl}/api/v1/analytics/metrics/dau?date=${date}`
-        : `${this.baseUrl}/api/v1/analytics/metrics/dau`;
-
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${this.authToken}`,
-        },
-      });
-
-      if (response.ok) {
-        return await response.json();
-      }
-    } catch (error) {
-      console.error("[Analytics] Failed to get DAU:", error);
-    }
-    return null;
-  }
-
-  async getRetention(cohortDate?: string, dayN?: number) {
-    if (!this.authToken) return null;
-
-    try {
-      const params = new URLSearchParams();
-      if (cohortDate) params.append("cohort_date", cohortDate);
-      if (dayN) params.append("day_n", dayN.toString());
-
-      const url = `${this.baseUrl}/api/v1/analytics/metrics/retention${
-        params.toString() ? "?" + params.toString() : ""
-      }`;
-
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${this.authToken}`,
-        },
-      });
-
-      if (response.ok) {
-        return await response.json();
-      }
-    } catch (error) {
-      console.error("[Analytics] Failed to get retention:", error);
-    }
-    return null;
   }
 
   // ============= CONVENIENCE METHODS =============
