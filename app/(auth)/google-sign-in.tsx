@@ -12,41 +12,67 @@ import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { openPrivacy, openTerms } from "@/utils/links";
-import * as Linking from "expo-linking";
+import { usePostHog } from "posthog-react-native";
 
 WebBrowser.maybeCompleteAuthSession();
 
 export default function SignInScreen() {
+  const posthog = usePostHog();
   const router = useRouter();
   const [isLoading, setIsLoading] = React.useState(false);
   const insets = useSafeAreaInsets();
 
   const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
 
+  const onGoogleSignIn = React.useCallback(async () => {
+    if (isLoading) return;
 
-   const onGoogleSignIn = React.useCallback(async () => {
-     if (isLoading) return;
+    // 3. Track Intent: User clicked the button
+    posthog.capture("auth_attempt_started", {
+      strategy: "oauth_google",
+    });
 
-     try {
-       setIsLoading(true);
+    try {
+      setIsLoading(true);
 
-       // Let Clerk handle the redirect automatically
-       const { createdSessionId, setActive } = await startOAuthFlow();
+      const { createdSessionId, setActive } = await startOAuthFlow();
 
-       if (createdSessionId) {
-         await setActive!({ session: createdSessionId });
-         router.replace("/(tabs)/add");
-       }
-     } catch (err: any) {
-       console.error("OAuth error:", err);
-       Alert.alert(
-         "Sign In Error",
-         err.errors?.[0]?.message || "Failed to sign in with Google"
-       );
-     } finally {
-       setIsLoading(false);
-     }
-   }, [isLoading, startOAuthFlow, router]);
+      if (createdSessionId) {
+        // 4. Track Success: This is your key Activation Metric
+        posthog.capture("auth_success", {
+          strategy: "oauth_google",
+        });
+
+        await setActive!({ session: createdSessionId });
+        router.replace("/(tabs)/add");
+      } else {
+        // Handle case where flow finished but no session (e.g. cancelled)
+        posthog.capture("auth_cancelled", { strategy: "oauth_google" });
+      }
+    } catch (err: any) {
+      console.error("OAuth error:", err);
+
+      // 5. Track Errors: Debug why people aren't signing up
+      posthog.capture("auth_failed", {
+        error_message: err.errors?.[0]?.message || err.message,
+        strategy: "oauth_google",
+      });
+
+      Alert.alert(
+        "Sign In Error",
+        err.errors?.[0]?.message || "Failed to sign in with Google"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isLoading, startOAuthFlow, router, posthog]);
+
+  // 6. Wrapper for tracking legal clicks
+  const handleLegalClick = (type: "terms" | "privacy") => {
+    posthog.capture("legal_link_clicked", { type });
+    if (type === "terms") openTerms();
+    else openPrivacy();
+  };
 
   return (
     <View
@@ -94,11 +120,17 @@ export default function SignInScreen() {
       <View className="mt-12 px-8">
         <Text className="text-gray-600 text-xs text-center leading-5">
           By continuing, you agree to our{" "}
-          <Text className="text-orange-500 font-semibold" onPress={openTerms}>
+          <Text
+            className="text-orange-500 font-semibold"
+            onPress={() => handleLegalClick("terms")}
+          >
             Terms of Service
           </Text>{" "}
           and{" "}
-          <Text className="text-orange-500 font-semibold" onPress={openPrivacy}>
+          <Text
+            className="text-orange-500 font-semibold"
+            onPress={() => handleLegalClick("privacy")}
+          >
             Privacy Policy
           </Text>
         </Text>

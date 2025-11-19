@@ -12,7 +12,7 @@ import {
   SimpleLineIcons,
 } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
   ScrollView,
   Text,
@@ -30,8 +30,11 @@ import InfoTooltip from "@/components/infoTooltip";
 import DrunkThought from "@/components/drunkThought";
 import { useAuth } from "@clerk/clerk-expo";
 import { apiService } from "@/api";
+import { useAnalytics } from "@/utils/analytics";
+import { useFocusEffect } from "@react-navigation/native";
 
 export default function HomeScreen() {
+  const analytics = useAnalytics();
   const { getToken } = useAuth();
   const [isCoefTooltipVisible, setIsCoefTooltipVisible] =
     useState<boolean>(false);
@@ -47,13 +50,14 @@ export default function HomeScreen() {
 
   const { userStats, friends, friendsDrunkThoughts, isLoading, refreshAll } =
     useApp();
+
   const coefInfo = getCoefInfo(userStats);
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await refreshAll();
-    setRefreshing(false);
-  };
+   const onRefresh = async () => {
+     setRefreshing(true);
+     await refreshAll();
+     setRefreshing(false);
+   };
 
   const displayedThoughts = useMemo(() => {
     if (!friendsDrunkThoughts || friendsDrunkThoughts.length === 0) {

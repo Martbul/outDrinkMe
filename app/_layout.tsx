@@ -1,10 +1,9 @@
-import { Slot } from "expo-router";
-import { ClerkProvider, ClerkLoaded } from "@clerk/clerk-expo";
+import { Slot, usePathname } from "expo-router"; // Added usePathname
+import { ClerkProvider, ClerkLoaded, useUser } from "@clerk/clerk-expo";
 import { tokenCache } from "@clerk/clerk-expo/token-cache";
 import { useFonts } from "expo-font";
 import { TailwindProvider } from "tailwindcss-react-native";
 import { AppProvider } from "@/providers/AppProvider";
-// import { NauseaProvider } from "@/providers/NauseaProvider"; // Add this
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import ErrorBoundary from "@/components/errorBoundary";
 import SplashScreen from "@/components/spashScreen";
@@ -13,6 +12,47 @@ import { useEffect } from "react";
 import MobileAds from "react-native-google-mobile-ads";
 import { AdsProvider } from "@/providers/AdProvider";
 import "../global.css";
+import { PostHogProvider, usePostHog } from "posthog-react-native";
+
+// --- NEW: Screen Tracker Component ---
+function PostHogScreenTracker() {
+  const posthog = usePostHog();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (posthog && pathname) {
+      posthog.screen(pathname);
+    }
+  }, [posthog, pathname]);
+
+  return null;
+}
+// -------------------------------------
+
+// 1. Created a new Inner component to handle logic that needs User/PostHog context
+function AuthenticatedAppContent() {
+  const posthog = usePostHog();
+  const { user } = useUser();
+
+  useEffect(() => {
+    if (user && posthog) {
+      posthog.identify(user.id, {
+        email: user.primaryEmailAddress?.emailAddress ?? "",
+        name: user.fullName ?? "",
+        username: user.username ?? "",
+        created_at: user.createdAt ? user.createdAt.toISOString() : "",
+      });
+    }
+  }, [user, posthog]);
+
+  useEffect(() => {
+    posthog?.capture("app_opened", {
+      timestamp: new Date().toISOString(),
+    });
+  }, [posthog]);
+
+  return <Slot />;
+}
 
 export default function RootLayout() {
   useEffect(() => {
@@ -46,6 +86,7 @@ export default function RootLayout() {
     return <SplashScreen />;
   }
 
+  // 2. Reorganized Providers: Providers wrap the content, not the other way around
   return (
     <ErrorBoundary>
       <SafeAreaProvider>
@@ -54,15 +95,24 @@ export default function RootLayout() {
           publishableKey={clerkPublishableKey}
         >
           <ClerkLoaded>
-            <AppProvider>
-              <AdsProvider>
-                {/* <NauseaProvider> */}
+            <PostHogProvider
+              apiKey="phc_uKyX8lafavzA3k7eDokargFjl00Cx4Upqgb2bizdC1D"
+              options={{
+                host: "https://us.i.posthog.com",
+                // flushAt: 1, // Send every event immediately (remove this in production!)
+              }}
+            >
+              {/* Added Screen Tracker Here */}
+              <PostHogScreenTracker />
+
+              <AppProvider>
+                <AdsProvider>
                   <TailwindProvider>
-                    <Slot />
+                    <AuthenticatedAppContent />
                   </TailwindProvider>
-                {/* </NauseaProvider> */}
-              </AdsProvider>
-            </AppProvider>
+                </AdsProvider>
+              </AppProvider>
+            </PostHogProvider>
           </ClerkLoaded>
         </ClerkProvider>
       </SafeAreaProvider>
