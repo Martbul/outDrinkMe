@@ -21,7 +21,7 @@ export default function SecondaryHeader(props: {
           <Spinner size="sm" variant="dots" />
         ) : props.secondActionTitle ? (
           <TouchableOpacity onPress={props.secondOnPressAction}>
-            <Text className="text-[#ff8c00] font-black text-base uppercase tracking-widest">
+            <Text className="text-[#EA580C] font-black text-base uppercase tracking-widest">
               {props.secondActionTitle}
             </Text>
           </TouchableOpacity>

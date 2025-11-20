@@ -18,6 +18,7 @@ import CustomModal, {
   ModalPrimaryButton,
   ModalSecondaryButton,
 } from "@/components/customModal";
+import { usePostHog } from "posthog-react-native";
 
 interface CalendarDayProps {
   day: number;
@@ -83,6 +84,8 @@ const DayDetailModal = ({
   drunkThought,
   isLoadingThought,
 }: DayDetailModalProps) => {
+  const posthog = usePostHog();
+
   const { getToken } = useAuth();
   const { refreshCalendar, refreshUserData, refreshAll } = useApp();
   const insets = useSafeAreaInsets();
@@ -102,13 +105,15 @@ const DayDetailModal = ({
           drank_today: true,
         };
         await apiService.addDrinking(drinkingData, token, dateStr);
+        posthog?.capture("retroactive_log_added", { date: dateStr });
       }
       setShowForgotModal(false);
       onClose();
       refreshCalendar();
       refreshUserData();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to log missed day:", error);
+      posthog?.capture("retroactive_log_error", { error: error.message });
     } finally {
       setIsSubmitting(false);
     }
@@ -121,12 +126,16 @@ const DayDetailModal = ({
       const token = await getToken();
       if (token) {
         await apiService.removeDrinking(token, dateStr);
+        posthog?.capture("retroactive_log_removed", { date: dateStr });
       }
       setShowRemoveModal(false);
-      onClose(); // Close the day detail modal
+      onClose();
       refreshAll();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to remove drinking log:", error);
+      posthog?.capture("retroactive_remove_error", {
+        error: error.message,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -487,6 +496,8 @@ const DayDetailModal = ({
 
 const CalendarScreen = () => {
   const { getToken } = useAuth();
+  const posthog = usePostHog();
+
   const { userStats, calendar, isLoading, refreshCalendar } = useApp();
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
@@ -513,6 +524,10 @@ const CalendarScreen = () => {
 
   useEffect(() => {
     refreshCalendar(currentYear, currentMonth);
+    posthog?.capture("calendar_month_viewed", {
+      month: currentMonth,
+      year: currentYear,
+    });
   }, [currentMonth, currentYear]);
 
   const getDaysInMonth = (month: number, year: number) => {
@@ -525,6 +540,11 @@ const CalendarScreen = () => {
   };
 
   const handleDayPress = async (day: number, dayData: DayData | null) => {
+    posthog?.capture("calendar_day_pressed", {
+      day,
+      has_data: !!dayData,
+      was_logged: dayData?.drank_today ?? null,
+    });
     setSelectedDay(day);
     setSelectedDayData(dayData);
     setModalVisible(true);

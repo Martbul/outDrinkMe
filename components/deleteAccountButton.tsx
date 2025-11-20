@@ -48,7 +48,7 @@ export default function DeleteAccountButton() {
   return (
     <>
       <TouchableOpacity
-        className="flex-row justify-between items-center"
+        className="bg-red-900/20 rounded-xl p-4 border border-red-900/40 flex-row justify-between items-center"
         onPress={() => setShowModal(true)}
         disabled={isLoading}
       >
@@ -56,8 +56,15 @@ export default function DeleteAccountButton() {
           <ActivityIndicator size="small" color="#EF4444" />
         ) : (
           <>
-            <Text className="text-red-500 font-bold">Delete Account</Text>
-            <Feather name="trash-2" size={24} color="#EF4444" />
+            <View>
+              <Text className="text-red-500 text-base font-bold mb-1">
+                Delete Account
+              </Text>
+              <Text className="text-red-500/70 text-xs font-semibold">
+                This action cannot be undone
+              </Text>
+            </View>
+            <Feather name="trash-2" size={20} color="#EF4444" />
           </>
         )}
       </TouchableOpacity>
@@ -89,7 +96,7 @@ export default function DeleteAccountButton() {
           {/* Warning Box */}
           <View className="bg-red-900/10 rounded-2xl p-5 border border-red-900/30 mb-4">
             <Text className="text-red-500 text-xl font-black mb-3">
-              ⚠️ Permanent Deletion
+              Permanent Deletion
             </Text>
             <Text className="text-red-500/70 text-base leading-6 mb-3">
               This action cannot be undone. All your data will be permanently

@@ -1,4 +1,3 @@
-// app/user-info.tsx (or your screen file)
 import React, { useEffect, useMemo } from "react";
 import { View, Text, ScrollView, Image } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
