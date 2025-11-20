@@ -1,4 +1,4 @@
-name: Production Build 
+name: Production Build
 
 on:
   workflow_dispatch:
@@ -7,9 +7,10 @@ jobs:
   build-android-production:
     name: Build Android Production
     runs-on: ubuntu-latest
+    environment: Production
     
     steps:
-      - name: Checkout code
+      - name: Setup Repo
         uses: actions/checkout@v4
       
       - name: Setup Node.js 20
@@ -23,9 +24,16 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-          
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+
+      - name: Restore Gradle Cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
         
       - name: Install dependencies
         run: npm ci
@@ -33,30 +41,27 @@ jobs:
       - name: Setup EAS CLI
         run: npm install -g eas-cli
         
-      - name: Create .env.production file
+      - name: Create .env file
         run: |
-          cat > .env << EOF
-          EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-          EXPO_PUBLIC_OUTDRINKME_API_URL=${{ secrets.EXPO_PUBLIC_OUTDRINKME_API_URL }}
-          EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME=${{ secrets.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME }}
-          EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET=${{ secrets.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET }}
-          EXPO_PUBLIC_ENV=production
-          EOF
+          touch .env
+          echo "EXPO_PUBLIC_ENV=production" >> .env
+          echo "EXPO_PUBLIC_OUTDRINKME_API_URL=${{ secrets.EXPO_PUBLIC_OUTDRINKME_API_URL }}" >> .env
+          echo "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY }}" >> .env
+          echo "EXPO_PUBLIC_POSTHOG_API_KEY=${{ secrets.EXPO_PUBLIC_POSTHOG_API_KEY }}" >> .env
+          echo "EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME=${{ secrets.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME }}" >> .env
+          echo "EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET=${{ secrets.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET }}" >> .env
+          echo "EXPO_PUBLIC_CLOUDINARY_VIDEO_UPLOAD_PRESET=${{ secrets.EXPO_PUBLIC_CLOUDINARY_VIDEO_UPLOAD_PRESET }}" >> .env
           
-          # Debug output (without exposing secrets)
-          echo "Production environment configured:"
-          echo "   EXPO_PUBLIC_ENV=production"
-          echo "   EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_***"
-          echo "   EXPO_PUBLIC_OUTDRINKME_API_URL=${{ secrets.EXPO_PUBLIC_OUTDRINKME_API_URL }}"
-          echo "   EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME=${{ secrets.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME }}"
-          echo "   EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET=***"
+          echo " .env created with Production secrets"
       
+      # Generates the Keystore file from your Repository Secret (Base64)
       - name: Setup Android Keystore
         run: |
           mkdir -p credentials/android
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > credentials/android/keystore.jks
           echo "Keystore created at credentials/android/keystore.jks"
           
+      # Creates the credentials.json so EAS Local knows how to sign the app
       - name: Create credentials.json
         run: |
           cat > credentials.json << 'EOF'
@@ -72,38 +77,28 @@ jobs:
           }
           EOF
           echo "Credentials file created"
-          
-      - name: Authenticate with EAS
-        run: |
-          eas whoami
-          echo "Authenticated with EAS"
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         
       - name: Build Android Production AAB
-        run: eas build --platform android --profile production --local --non-interactive
+        # --output ensures we know exactly where the file is
+        run: eas build --platform android --profile production --local --non-interactive --output=./app-release.aab
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          # Pass environment variables directly to build process
-          EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-          EXPO_PUBLIC_OUTDRINKME_API_URL: ${{ secrets.EXPO_PUBLIC_OUTDRINKME_API_URL }}
-          EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME: ${{ secrets.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME }}
-          EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET: ${{ secrets.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET }}
-          EXPO_PUBLIC_ENV: production
+          # Fixes Gradle memory issues
+          GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4g -XX:+HeapDumpOnOutOfMemoryError"
         
       - name: Upload AAB artifact
         uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: android-production-${{ github.sha }}
-          path: '**/*.aab'
+          name: android-production-build
+          path: ./app-release.aab
           retention-days: 90
       
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
-          files: '**/*.aab'
+          files: ./app-release.aab
           draft: false
           prerelease: false
           generate_release_notes: true
@@ -113,7 +108,7 @@ jobs:
       - name: Cleanup credentials
         if: always()
         run: |
-          rm -f credentials/android/keystore.jks
+          rm -rf credentials
           rm -f credentials.json
           rm -f .env
           echo "Sensitive files cleaned up"
@@ -122,17 +117,7 @@ jobs:
         if: success()
         run: |
           echo "### Production Build Successful!" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Platform:** Android" >> $GITHUB_STEP_SUMMARY
-          echo "**Build Type:** AAB (Production)" >> $GITHUB_STEP_SUMMARY
+          echo "**Build Type:** AAB (Play Store)" >> $GITHUB_STEP_SUMMARY
           echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Download the AAB from the artifacts above " >> $GITHUB_STEP_SUMMARY
-      
-      - name: Notify on failure
-        if: failure()
-        run: |
-          echo "### Production Build Failed!" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Check the logs above for details." >> $GITHUB_STEP_SUMMARY
+          echo "Download the AAB from the artifacts section above." >> $GITHUB_STEP_SUMMARY

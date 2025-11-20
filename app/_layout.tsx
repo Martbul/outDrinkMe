@@ -71,6 +71,7 @@ export default function RootLayout() {
   });
 
   const clerkPublishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  const posthogApiKey = process.env.EXPO_PUBLIC_POSTHOG_API_KEY;
 
   if (!clerkPublishableKey) {
     console.error("Missing Clerk Publishable Key!");
@@ -81,6 +82,16 @@ export default function RootLayout() {
       </View>
     );
   }
+
+   if (!posthogApiKey) {
+     console.error("Missing Clerk Publishable Key!");
+     return (
+       <View className="flex-1 bg-black items-center justify-center">
+         <Text className="text-white text-xl">Configuration Error</Text>
+         <Text className="text-white/50 mt-2">Missing Posthog Key</Text>
+       </View>
+     );
+   }
 
   if (!loaded) {
     return <SplashScreen />;
@@ -96,7 +107,7 @@ export default function RootLayout() {
         >
           <ClerkLoaded>
             <PostHogProvider
-              apiKey="phc_uKyX8lafavzA3k7eDokargFjl00Cx4Upqgb2bizdC1D"
+              apiKey={posthogApiKey}
               options={{
                 host: "https://us.i.posthog.com",
                 // flushAt: 1, // Send every event immediately (remove this in production!)
