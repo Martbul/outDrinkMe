@@ -12,7 +12,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import SecondaryHeader from "@/components/secondaryHeader";
 import { useRouter } from "expo-router";
-import { Feather } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import DeleteAccountButton from "@/components/deleteAccountButton";
 import { openPrivacy, openTerms } from "@/utils/links";
 
@@ -74,93 +74,124 @@ export default function EditProfileScreen() {
             </TouchableOpacity> */}
           </View>
         </View>
-
         <View className="gap-4 mb-6">
-          <View>
-            <Text className="text-white/50 text-[11px] font-bold tracking-widest uppercase mb-2">
-              Username
-            </Text>
+          <View className="mb-4">
+            <View className="flex-row items-center mb-2">
+              <Feather name="at-sign" size={14} color="#EA580C" />
+              <Text className="text-white/70 text-xs font-bold tracking-wider ml-2">
+                USERNAME
+              </Text>
+            </View>
             <TextInput
               value={formData.username}
               onChangeText={(text) =>
                 setFormData({ ...formData, username: text })
               }
               placeholder="Enter username"
-              placeholderTextColor="#6B7280"
+              placeholderTextColor="#666666"
               autoCapitalize="none"
-              className="bg-white/[0.03] border border-white/[0.08] rounded-2xl px-4 py-4 text-white text-base"
+              className="bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3.5 text-white text-base font-semibold"
             />
           </View>
-          <View>
-            <Text className="text-white/50 text-[11px] font-bold tracking-widest uppercase mb-2">
-              First Name
-            </Text>
-            <TextInput
+  
+          
+           <View className="mb-4">
+             <View className="flex-row items-center mb-2">
+               <Feather name="user" size={14} color="#EA580C" />
+               <Text className="text-white/70 text-xs font-bold tracking-wider ml-2">
+                 FIRST NAME
+               </Text>
+             </View>
+             <TextInput
               value={formData.firstName}
               onChangeText={(text) =>
                 setFormData({ ...formData, firstName: text })
               }
               placeholder="Enter first name"
-              placeholderTextColor="#6B7280"
-              className="bg-white/[0.03] border border-white/[0.08] rounded-2xl px-4 py-4 text-white text-base"
+              placeholderTextColor="#666666"
+              className="bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3.5 text-white text-base font-semibold"
             />
           </View>
 
-          <View>
-            <Text className="text-white/50 text-[11px] font-bold tracking-widest uppercase mb-2">
-              Last Name
-            </Text>
+          {/* Last Name */}
+          <View className="mb-4">
+            <View className="flex-row items-center mb-2">
+              <Feather name="user" size={14} color="#EA580C" />
+              <Text className="text-white/70 text-xs font-bold tracking-wider ml-2">
+                LAST NAME
+              </Text>
+            </View>
             <TextInput
               value={formData.lastName}
               onChangeText={(text) =>
                 setFormData({ ...formData, lastName: text })
               }
               placeholder="Enter last name"
-              placeholderTextColor="#6B7280"
-              className="bg-white/[0.03] border border-white/[0.08] rounded-2xl px-4 py-4 text-white text-base"
+              placeholderTextColor="#666666"
+              className="bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3.5 text-white text-base font-semibold"
             />
           </View>
 
+
           <View>
-            <Text className="text-white/50 text-[11px] font-bold tracking-widest uppercase mb-2">
-              Email
-            </Text>
-            <Text className="bg-white/[0.03] border border-white/[0.08] rounded-2xl px-4 py-4 text-white text-base">
-              {userData?.email}
+            <View className="flex-row items-center mb-2">
+              <Feather name="mail" size={14} color="#EA580C" />
+              <Text className="text-white/70 text-xs font-bold tracking-wider ml-2">
+                EMAIL 
+              </Text>
+            </View>
+            <View className="bg-white/[0.03] border border-white/[0.05] rounded-xl px-4 py-3.5 flex-row items-center">
+              <Text className="text-white/50 text-base font-semibold flex-1">
+                {userData?.email}
+              </Text>
+             <Ionicons name="lock-closed" size={16} color="#666" />
+            </View>
+            <Text className="text-white/40 text-xs font-semibold mt-1.5">
+             Email cannot be changed 
             </Text>
           </View>
         </View>
 
-        <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08] mb-6">
-          <Text className="text-white/50 text-[11px] font-bold tracking-widest uppercase mb-4">
-            Terms
+        <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08] mb-4">
+          <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-4">
+            LEGAL
           </Text>
-
           <TouchableOpacity
             className="flex-row justify-between items-center py-3 border-b border-white/[0.05]"
             onPress={openPrivacy}
           >
-            <Text className="text-white text-base font-semibold">
-              Privacy Policy
-            </Text>
-            <Feather name="arrow-right" size={24} color="#999999" />
+            <View className="flex-row items-center flex-1">
+              <View className="w-8 h-8 rounded-lg bg-orange-600/20 items-center justify-center mr-3">
+                <Feather name="shield" size={16} color="#EA580C" />
+              </View>
+              <Text className="text-white text-base font-bold">
+                Privacy Policy
+              </Text>
+            </View>
+            <Feather name="external-link" size={18} color="#999999" />
           </TouchableOpacity>
-
           <TouchableOpacity
-            className="flex-row justify-between items-center py-3 border-b border-white/[0.05]"
+            className="flex-row justify-between items-center py-3"
             onPress={openTerms}
           >
-            <Text className="text-white text-base font-semibold">
-              Terms of Service
-            </Text>
-            <Feather name="arrow-right" size={24} color="#999999" />
+            <View className="flex-row items-center flex-1">
+              <View className="w-8 h-8 rounded-lg bg-orange-600/20 items-center justify-center mr-3">
+                <Feather name="file-text" size={16} color="#EA580C" />
+              </View>
+              <Text className="text-white text-base font-bold">
+                Terms of Service
+              </Text>
+            </View>
+            <Feather name="external-link" size={18} color="#999999" />
           </TouchableOpacity>
         </View>
-
         <View className="bg-red-900/10 rounded-2xl p-5 border border-red-900/30 mb-6">
-          <Text className="text-white/50 text-[11px] font-bold tracking-widest uppercase mb-4">
-            Danger Zone
-          </Text>
+          <View className="flex-row items-center mb-4">
+            <Ionicons name="warning" size={18} color="#EF4444" />
+            <Text className="text-red-500 text-[11px] font-bold tracking-widest ml-2">
+              DANGER ZONE
+            </Text>
+          </View>
           <DeleteAccountButton />
         </View>
       </ScrollView>

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -31,8 +31,11 @@ import {
   ProDeal,
   Smoking,
 } from "@/types/api.types";
+import { usePostHog } from "posthog-react-native";
 
 export default function StoreScreen() {
+    const posthog = usePostHog();
+
   const { getToken } = useAuth();
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
@@ -60,8 +63,16 @@ export default function StoreScreen() {
 
   const scrollViewRef = useRef<ScrollView>(null);
   const getMoreGemsSectionRef = useRef<View>(null);
+useEffect(() => {
+  posthog?.capture("store_viewed", {
+    user_gem_balance: userData?.gems || 0,
+  });
+}, [userData?.gems]);
 
   const handleGetMorePress = () => {
+    // Track intent to buy gems
+    posthog?.capture("store_scroll_to_gems");
+
     getMoreGemsSectionRef.current?.measureLayout(
       scrollViewRef.current as any,
       (x, y, width, height) => {
@@ -69,20 +80,35 @@ export default function StoreScreen() {
       }
     );
   };
+
   const closeSuccessfulPurchaseModal = () => {
     setShowReferralModal(false);
   };
 
   // Handle store item purchase
   const handleStoreItemPress = (item: StoreItem) => {
+    // 4. Track Item Selection (Intent)
+    posthog?.capture("store_item_selected", {
+      item_id: item.id,
+      item_name: item.name,
+      item_price: item.base_price,
+      item_category: item.item_type || "unknown",
+    });
+
     setSelectedStoreItem(item);
     setSelectedGemItem(null);
     setPurchaseType("store");
     setShowPurchaseModal(true);
   };
-
   // Handle gem pack purchase
   const handleGemPackPress = (pack: GemPack) => {
+    // 5. Track Gem Pack Selection
+    posthog?.capture("store_gem_pack_selected", {
+      pack_id: pack.id,
+      gem_amount: pack.amount,
+      price_string: pack.price,
+    });
+
     let finalAmount;
     if (pack.bonus) {
       finalAmount = pack.amount + pack.bonus;
@@ -105,6 +131,13 @@ export default function StoreScreen() {
   const handleConfirmPurchase = async () => {
     setPendingTransaction(true);
 
+    // 6. Track transaction start
+    posthog?.capture("purchase_initiated", {
+      type: purchaseType,
+      item_id:
+        purchaseType === "store" ? selectedStoreItem?.id : selectedGemItem?.id,
+    });
+
     try {
       const token = await getToken();
       if (!token) {
@@ -122,6 +155,16 @@ export default function StoreScreen() {
 
         await apiService.purchaseStoreItem(selectedStoreItem.id, token);
 
+        // 7. Track Successful Purchase (The most important revenue metric)
+        posthog?.capture("purchase_completed", {
+          type: "store_item",
+          item_id: selectedStoreItem.id,
+          item_name: selectedStoreItem.name,
+          cost_gems: selectedStoreItem.base_price,
+          user_balance_after:
+            (userData?.gems || 0) - selectedStoreItem.base_price,
+        });
+
         await Promise.all([refreshUserData(), refreshUserInventory()]);
 
         console.log("Purchase completed successfully");
@@ -135,9 +178,18 @@ export default function StoreScreen() {
       setTimeout(() => {
         setSuccessfulPurchaseModalVisible(false);
       }, 1600);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Purchase failed:", error);
 
+      // 8. Track Failed Purchase (Critical for debugging lost revenue)
+      posthog?.capture("purchase_failed", {
+        type: purchaseType,
+        error_message: error.message,
+        item_id:
+          purchaseType === "store"
+            ? selectedStoreItem?.id
+            : selectedGemItem?.id,
+      });
 
       alert("Purchase failed. Please try again.");
     } finally {

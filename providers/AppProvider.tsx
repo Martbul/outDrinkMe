@@ -8,7 +8,7 @@ import React, {
   ReactNode,
 } from "react";
 import { useAuth } from "@clerk/clerk-expo";
-import {
+import type {
   UserStats,
   Leaderboard,
   Achievement,
@@ -27,6 +27,7 @@ import {
 } from "../types/api.types";
 import { apiService } from "@/api";
 import { Alert } from "react-native";
+import { usePostHog } from "posthog-react-native";
 
 interface AppContextType {
   // Data
@@ -94,8 +95,8 @@ interface AppProviderProps {
 
 export function AppProvider({ children }: AppProviderProps) {
   const { getToken, isSignedIn } = useAuth();
+  const posthog = usePostHog();
 
-  // State
   const [userData, setUserData] = useState<UserData | null>(null);
   const [userStats, setUserStats] = useState<UserStats | null>(null);
   const [userInventory, setUserInventory] = useState<InventoryItems | null>(
@@ -122,11 +123,8 @@ export function AppProvider({ children }: AppProviderProps) {
   const [friendDiscoveryProfile, setFriendDiscoveryProfile] =
     useState<FriendDiscoveryDisplayProfileResponse | null>(null);
 
-  // Global loading and error
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Track if initial load has happened
   const hasInitialized = useRef(false);
 
   // ============================================
@@ -136,7 +134,9 @@ export function AppProvider({ children }: AppProviderProps) {
   const withLoadingAndError = useCallback(
     async <T,>(
       apiCall: () => Promise<T>,
-      onSuccess?: (data: T) => void
+      onSuccess?: (data: T) => void,
+      // Added context string to track where the error came from
+      actionName: string = "unknown_action"
     ): Promise<T | null> => {
       try {
         setIsLoading(true);
@@ -154,12 +154,19 @@ export function AppProvider({ children }: AppProviderProps) {
           err instanceof Error ? err.message : "Unknown error";
         setError(errorMessage);
         console.error("API Error:", err);
+
+        // 3. Track ALL API Errors globally here
+        posthog?.capture("api_error", {
+          action: actionName,
+          error_message: errorMessage,
+        });
+
         return null;
       } finally {
         setIsLoading(false);
       }
     },
-    []
+    [posthog]
   );
 
   // ============================================
@@ -168,30 +175,42 @@ export function AppProvider({ children }: AppProviderProps) {
 
   const refreshUserData = useCallback(async () => {
     if (!isSignedIn) return;
-
     await withLoadingAndError(
       async () => {
         const token = await getToken();
         if (!token) throw new Error("No auth token");
         return await apiService.fetchUser(token);
       },
-      (data) => setUserData(data)
-    );
-  }, [isSignedIn, getToken, withLoadingAndError]);
-
-  const refreshUserStats = useCallback(async () => {
-    if (!isSignedIn) return;
-
-    await withLoadingAndError(
-      async () => {
-        const token = await getToken();
-        if (!token) throw new Error("No auth token");
-        return await apiService.getUserStats(token);
+      (data) => {
+        setUserData(data);
+        posthog?.identify(data.id, {
+          username: data.username,
+          email: data.email,
+          gems: data.gems,
+          xp: data.xp,
+          allDaysDrinkingCount: data.allDaysDrinkingCount,
+        });
       },
-      (data) => setUserStats(data)
+      "refresh_user_data"
     );
-  }, [isSignedIn, getToken, withLoadingAndError]);
+  }, [isSignedIn, getToken, withLoadingAndError, posthog]);
 
+
+   const refreshUserStats = useCallback(async () => {
+     if (!isSignedIn) return;
+
+     await withLoadingAndError(
+       async () => {
+         const token = await getToken();
+         if (!token) throw new Error("No auth token");
+         return await apiService.getUserStats(token);
+       },
+       (data) => setUserStats(data),
+       "refresh_user_stats"
+     );
+   }, [isSignedIn, getToken, withLoadingAndError]);
+
+ 
   const refreshLeaderboard = useCallback(async () => {
     if (!isSignedIn) return;
 
@@ -201,7 +220,8 @@ export function AppProvider({ children }: AppProviderProps) {
         if (!token) throw new Error("No auth token");
         return await apiService.getFriendsLeaderboard(token);
       },
-      (data) => setLeaderboard(data)
+      (data) => setLeaderboard(data),
+      "refresh_leaderboard"
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
 
@@ -214,10 +234,10 @@ export function AppProvider({ children }: AppProviderProps) {
         if (!token) throw new Error("No auth token");
         return await apiService.getAchievements(token);
       },
-      (data) => setAchievements(data)
+      (data) => setAchievements(data),
+      "refresh_achievements"
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
-
   const refreshCalendar = useCallback(
     async (year?: number, month?: number) => {
       if (!isSignedIn) return;
@@ -233,7 +253,8 @@ export function AppProvider({ children }: AppProviderProps) {
             return await apiService.getCurrentMonthCalendar(token);
           }
         },
-        (data) => setCalendar(data)
+        (data) => setCalendar(data),
+        "refresh_calendar"
       );
     },
     [isSignedIn, getToken, withLoadingAndError]
@@ -248,7 +269,8 @@ export function AppProvider({ children }: AppProviderProps) {
         if (!token) throw new Error("No auth token");
         return await apiService.getWeeklyStats(token);
       },
-      (data) => setWeeklyStats(data)
+      (data) => setWeeklyStats(data),
+      "refresh_weekly_stats"
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
 
@@ -261,7 +283,8 @@ export function AppProvider({ children }: AppProviderProps) {
         if (!token) throw new Error("No auth token");
         return await apiService.getFriends(token);
       },
-      (data) => setFriends(data)
+      (data) => setFriends(data),
+      "refresh_friends"
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
 
@@ -274,7 +297,8 @@ export function AppProvider({ children }: AppProviderProps) {
         if (!token) throw new Error("No auth token");
         return await apiService.getDiscovery(token);
       },
-      (data) => setDiscovery(data)
+      (data) => setDiscovery(data),
+      "refresh_discovery"
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
 
@@ -287,7 +311,8 @@ export function AppProvider({ children }: AppProviderProps) {
         if (!token) throw new Error("No auth token");
         return await apiService.getYourMixData(token);
       },
-      (data) => setYourMixData(data)
+      (data) => setYourMixData(data),
+      "refresh_your_mix_data"
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
 
@@ -300,7 +325,8 @@ export function AppProvider({ children }: AppProviderProps) {
         if (!token) throw new Error("No auth token");
         return await apiService.getMixTimeline(token);
       },
-      (data) => setMixTimelineData(data)
+      (data) => setMixTimelineData(data),
+      "refresh_mix_timeline_data"
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
 
@@ -313,7 +339,8 @@ export function AppProvider({ children }: AppProviderProps) {
         if (!token) throw new Error("No auth token");
         return await apiService.getDrunkThought(token);
       },
-      (data) => setDrunkThought(data || null)
+      (data) => setDrunkThought(data || null),
+      "refresh_drunk_thought"
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
 
@@ -326,7 +353,8 @@ export function AppProvider({ children }: AppProviderProps) {
         if (!token) throw new Error("No auth token");
         return await apiService.getFriendsDrunkThoughts(token);
       },
-      (data) => setFriendsDrunkThoughts(data)
+      (data) => setFriendsDrunkThoughts(data),
+      "refresh_friends_drunk_thoughts"
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
 
@@ -339,7 +367,8 @@ export function AppProvider({ children }: AppProviderProps) {
         if (!token) throw new Error("No auth token");
         return await apiService.getUserAlcoholCollection(token);
       },
-      (data) => setAlcoholCollection(data)
+      (data) => setAlcoholCollection(data),
+      "refresh_user_alcohol_collection"
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
 
@@ -352,7 +381,8 @@ export function AppProvider({ children }: AppProviderProps) {
         if (!token) throw new Error("No auth token");
         return await apiService.getUserInventory(token);
       },
-      (data) => setUserInventory(data)
+      (data) => setUserInventory(data),
+      "refresh_user_inventory"
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
 
@@ -365,9 +395,11 @@ export function AppProvider({ children }: AppProviderProps) {
         if (!token) throw new Error("No auth token");
         return await apiService.getStore(token);
       },
-      (data) => setStoreItems(data)
+      (data) => setStoreItems(data),
+      "refresh_store"
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
+
 
   // ============================================
   // Refresh All - Using Parallel Execution
@@ -538,12 +570,19 @@ export function AppProvider({ children }: AppProviderProps) {
       // Collect any errors
       const failedCalls = results.filter((r) => r.status === "rejected");
       if (failedCalls.length > 0) {
+        posthog?.capture("bulk_refresh_partial_failure", {
+          fail_count: failedCalls.length,
+        });
         setError(
           `${failedCalls.length} API call(s) failed. Some data may be incomplete.`
         );
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      posthog?.capture("bulk_refresh_fatal_error", {
+        error: errorMessage,
+      });
+
       setError(errorMessage);
       console.error("RefreshAll Error:", err);
     } finally {
@@ -555,7 +594,6 @@ export function AppProvider({ children }: AppProviderProps) {
   // ============================================
   // Actions
   // ============================================
-
   const addDrinking = useCallback(
     async (
       drinkToday: boolean,
@@ -563,35 +601,36 @@ export function AppProvider({ children }: AppProviderProps) {
       locationText?: string,
       mentionedBuddies?: UserData[] | []
     ) => {
-      if (!isSignedIn) {
-        throw new Error("Must be signed in to log drinking");
-      }
+      if (!isSignedIn) throw new Error("Must be signed in");
 
-      const result = await withLoadingAndError(async () => {
-        const token = await getToken();
-        if (!token) throw new Error("No auth token");
+      const result = await withLoadingAndError(
+        async () => {
+          const token = await getToken();
+          if (!token) throw new Error("No auth token");
 
-        await apiService.addDrinking(
-          {
-            drank_today: drinkToday,
-            image_url: imageUri,
-            location_text: locationText,
-            mentioned_buddies: mentionedBuddies,
-          },
-          token
-        );
+          await apiService.addDrinking(
+            {
+              drank_today: drinkToday,
+              image_url: imageUri,
+              location_text: locationText,
+              mentioned_buddies: mentionedBuddies,
+            },
+            token
+          );
 
-        // Refresh relevant data after logging
-        const [userData, stats, board, cal, weekly] = await Promise.all([
-          apiService.fetchUser(token),
-          apiService.getUserStats(token),
-          apiService.getFriendsLeaderboard(token),
-          apiService.getCurrentMonthCalendar(token),
-          apiService.getWeeklyStats(token),
-        ]);
-
-        return { userData, stats, board, cal, weekly };
-      });
+          // Data refreshes...
+          const [userData, stats, board, cal, weekly] = await Promise.all([
+            apiService.fetchUser(token),
+            apiService.getUserStats(token),
+            apiService.getFriendsLeaderboard(token),
+            apiService.getCurrentMonthCalendar(token),
+            apiService.getWeeklyStats(token),
+          ]);
+          return { userData, stats, board, cal, weekly };
+        },
+        undefined,
+        "add_drinking"
+      ); // pass action name
 
       if (result) {
         setUserData(result.userData);
@@ -610,17 +649,21 @@ export function AppProvider({ children }: AppProviderProps) {
         throw new Error("Must be signed in to log drinking");
       }
 
-      const result = await withLoadingAndError(async () => {
-        const token = await getToken();
-        if (!token) throw new Error("No auth token");
+      const result = await withLoadingAndError(
+        async () => {
+          const token = await getToken();
+          if (!token) throw new Error("No auth token");
 
-        const newDrunkThought = await apiService.addDrunkThought(
-          drunkThought,
-          token
-        );
+          const newDrunkThought = await apiService.addDrunkThought(
+            drunkThought,
+            token
+          );
 
-        return newDrunkThought;
-      });
+          return newDrunkThought;
+        },
+        undefined,
+        "add_drunk_thought"
+      );
 
       if (result) {
         setDrunkThought(result.drunk_thought);
@@ -628,86 +671,94 @@ export function AppProvider({ children }: AppProviderProps) {
     },
     [isSignedIn, getToken, withLoadingAndError]
   );
-
   const addFriend = useCallback(
     async (friendId: string) => {
-      if (!isSignedIn) {
-        throw new Error("Must be signed in to log drinking");
-      }
+      if (!isSignedIn) throw new Error("Must be signed in");
 
-      const result = await withLoadingAndError(async () => {
-        const token = await getToken();
-        if (!token) throw new Error("No auth token");
+      const result = await withLoadingAndError(
+        async () => {
+          const token = await getToken();
+          if (!token) throw new Error("No auth token");
 
-        await apiService.addFriend(friendId, token);
+          await apiService.addFriend(friendId, token);
 
-        const [friends, discovery] = await Promise.all([
-          apiService.getFriends(token),
-          apiService.getDiscovery(token),
-        ]);
+          // 7. Track Social Graph Change
+          posthog?.capture("friend_added", { friend_id: friendId });
 
-        return { friends, discovery };
-      });
+          const [friends, discovery] = await Promise.all([
+            apiService.getFriends(token),
+            apiService.getDiscovery(token),
+          ]);
+          return { friends, discovery };
+        },
+        undefined,
+        "add_friend"
+      );
 
       if (result) {
         setFriends(result.friends);
         setDiscovery(result.discovery);
       }
     },
-    [isSignedIn, getToken, withLoadingAndError]
+    [isSignedIn, getToken, withLoadingAndError, posthog]
   );
-
   const removeFriend = useCallback(
     async (friendId: string) => {
-      if (!isSignedIn) {
-        throw new Error("Must be signed in to log drinking");
-      }
+      if (!isSignedIn) throw new Error("Must be signed in");
 
-      const result = await withLoadingAndError(async () => {
-        const token = await getToken();
-        if (!token) throw new Error("No auth token");
+      const result = await withLoadingAndError(
+        async () => {
+          const token = await getToken();
+          if (!token) throw new Error("No auth token");
 
-        await apiService.removeFriend(friendId, token);
+          await apiService.removeFriend(friendId, token);
 
-        const [friends, discovery] = await Promise.all([
-          apiService.getFriends(token),
-          apiService.getDiscovery(token),
-        ]);
+          // 8. Track Churn signal
+          posthog?.capture("friend_removed", { friend_id: friendId });
 
-        return { friends, discovery };
-      });
+          const [friends, discovery] = await Promise.all([
+            apiService.getFriends(token),
+            apiService.getDiscovery(token),
+          ]);
+          return { friends, discovery };
+        },
+        undefined,
+        "remove_friend"
+      );
 
       if (result) {
         setFriends(result.friends);
         setDiscovery(result.discovery);
       }
     },
-    [isSignedIn, getToken, withLoadingAndError]
+    [isSignedIn, getToken, withLoadingAndError, posthog]
   );
-
   const searchUsers = useCallback(
     async (searchQuery: string): Promise<UserData[]> => {
-      if (!searchQuery.trim()) {
-        Alert.alert("Error", "Please enter a username to search");
-        return [];
-      }
+      if (!searchQuery.trim()) return [];
+      if (!isSignedIn) throw new Error("Must be signed in");
 
-      if (!isSignedIn) {
-        throw new Error("Must be signed in to search friends");
-      }
+      const result = await withLoadingAndError(
+        async () => {
+          const token = await getToken();
+          if (!token) throw new Error("No auth token");
 
-      const result = await withLoadingAndError(async () => {
-        const token = await getToken();
-        if (!token) throw new Error("No auth token");
+          // 9. Track Search Engagement
+          posthog?.capture("user_search_performed", {
+            query_length: searchQuery.length,
+          });
 
-        const users = await apiService.searchUsers(searchQuery, token);
-        return users;
-      });
+          return await apiService.searchUsers(searchQuery, token);
+        },
+        undefined,
+        "search_users"
+      );
 
       return result || [];
     },
-    [isSignedIn, getToken, withLoadingAndError]
+    [isSignedIn, getToken, withLoadingAndError, posthog]
   );
+
 
   const updateUserProfile = useCallback(
     async (updateReq: UpdateUserProfileReq): Promise<any> => {
@@ -715,16 +766,20 @@ export function AppProvider({ children }: AppProviderProps) {
         throw new Error("Must be signed in to search friends");
       }
 
-      let result = await withLoadingAndError(async () => {
-        const token = await getToken();
-        if (!token) throw new Error("No auth token");
+      let result = await withLoadingAndError(
+        async () => {
+          const token = await getToken();
+          if (!token) throw new Error("No auth token");
 
-        await apiService.updateUserProfile(updateReq, token);
+          await apiService.updateUserProfile(updateReq, token);
 
-        const [user] = await Promise.all([apiService.fetchUser(token)]);
+          const [user] = await Promise.all([apiService.fetchUser(token)]);
 
-        return { user };
-      });
+          return { user };
+        },
+        undefined,
+        "update_user_uprofe"
+      );
       if (result) {
         setUserData(result.user);
       }
@@ -738,18 +793,22 @@ export function AppProvider({ children }: AppProviderProps) {
         throw new Error("Must be signed in to search friends");
       }
 
-      let result = await withLoadingAndError(async () => {
-        const token = await getToken();
-        if (!token) throw new Error("No auth token");
+      let result = await withLoadingAndError(
+        async () => {
+          const token = await getToken();
+          if (!token) throw new Error("No auth token");
 
-        const friendDiscover =
-          await apiService.getFriendDiscoveryDisplayProfile(
-            friendDiscoveryId,
-            token
-          );
+          const friendDiscover =
+            await apiService.getFriendDiscoveryDisplayProfile(
+              friendDiscoveryId,
+              token
+            );
 
-        return friendDiscover;
-      });
+          return friendDiscover;
+        },
+        undefined,
+        "chech_discovry"
+      );
       if (result) {
         setFriendDiscoveryProfile(result);
       }
@@ -758,37 +817,34 @@ export function AppProvider({ children }: AppProviderProps) {
   );
 
   const deleteUserAccount = useCallback(async (): Promise<boolean> => {
-    if (!isSignedIn) {
-      throw new Error("Must be signed in to delete account");
-    }
+    if (!isSignedIn) throw new Error("Must be signed in");
 
-    const result = await withLoadingAndError(async () => {
-      const token = await getToken();
-      if (!token) throw new Error("No auth token");
+    const result = await withLoadingAndError(
+      async () => {
+        const token = await getToken();
+        if (!token) throw new Error("No auth token");
 
-      const success = await apiService.deleteUserAccount(token);
-      return success;
-    });
+        // 10. Track Account Deletion (Crucial Business Metric)
+        posthog?.capture("account_deleted_initiated");
+
+        return await apiService.deleteUserAccount(token);
+      },
+      undefined,
+      "delete_account"
+    );
 
     if (result === true) {
+      posthog?.reset(); // Reset PostHog session on deletion
       setUserData(null);
-      setUserStats(null);
-      setLeaderboard(null);
-      setAchievements(null);
-      setCalendar(null);
-      setWeeklyStats(null);
+      // ... (reset other state)
       setFriends([]);
       setDiscovery([]);
-      setFriendDiscoveryProfile(null);
       setError(null);
-
       hasInitialized.current = false;
-
       return true;
     }
-
     return false;
-  }, [isSignedIn, getToken, withLoadingAndError]);
+  }, [isSignedIn, getToken, withLoadingAndError, posthog]);
 
   // ============================================
   // Initial Load

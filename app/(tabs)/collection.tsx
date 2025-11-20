@@ -20,6 +20,7 @@ import { AlcoholDbItem } from "@/types/api.types";
 import { useApp } from "@/providers/AppProvider";
 import { categories, totalSlots } from "@/utils/collection";
 import { getRarityColor } from "@/utils/rarity";
+import { usePostHog } from "posthog-react-native";
 
 interface ModalState {
   visible: boolean;
@@ -33,6 +34,8 @@ interface ModalState {
 }
 
 export default function Collection() {
+  const posthog = usePostHog();
+
   const { getToken } = useAuth();
   const { alcoholCollection, refreshUserAlcoholCollection } = useApp();
   const insets = useSafeAreaInsets();
@@ -58,6 +61,7 @@ export default function Collection() {
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = async () => {
+    posthog?.capture("collection_refreshed"); //? dublicate with the provider refresh???
     setRefreshing(true);
     await refreshUserAlcoholCollection();
     setRefreshing(false);
@@ -74,6 +78,15 @@ export default function Collection() {
 
   useEffect(() => {
     refreshUserAlcoholCollection();
+    // 4. Track Collection View (High level stats)
+    // Since alcoholCollection might not be loaded yet, we depend on it
+    if (alcoholCollection) {
+      const totalItems = Object.values(alcoholCollection).flat().length;
+      posthog?.capture("collection_viewed", {
+        total_items_collected: totalItems,
+        completion_percentage: (totalItems / totalSlots) * 100,
+      });
+    }
   }, []);
 
   const getFilteredCollection = (): AlcoholDbItem[] => {
@@ -122,9 +135,13 @@ export default function Collection() {
     try {
       // Call your API to remove the item
       await apiService.removeFromAlcoholCollection(item.id, token);
-
-      // Refresh the collection
       await refreshUserAlcoholCollection();
+
+      posthog?.capture("collection_item_removed", {
+        item_name: item.name,
+        item_type: item.type,
+        item_rarity: item.rarity,
+      });
 
       showModal(
         "Removed from Collection",
@@ -209,11 +226,14 @@ export default function Collection() {
 
     setScanned(true);
     setLoading(true);
+    posthog?.capture("barcode_scan_attempted", { barcode: data });
 
     try {
       const productInfo = await fetchProductName(data);
 
       if (!productInfo.found) {
+        posthog?.capture("barcode_lookup_failed", { barcode: data });
+
         showModal(
           "Product Not Found",
           `Barcode: ${data}\n\nThis product is not in our database.`,
@@ -247,6 +267,9 @@ export default function Collection() {
       );
 
       if (!result) {
+        posthog?.capture("barcode_found_but_missing_in_db", {
+          product_name: productInfo.name,
+        });
         showModal("Not Found", "This beverage is not in our database yet.", [
           {
             text: "Add Manually",
@@ -275,6 +298,13 @@ export default function Collection() {
       if (isNewlyAdded) {
         await refreshUserAlcoholCollection();
 
+        posthog?.capture("collection_item_added", {
+          method: "scan",
+          item_name: item.name,
+          item_rarity: item.rarity,
+          item_type: item.type,
+        });
+
         showModal(
           "Added to Collection!",
           `${item.name} has been added to your collection!\n\nType: ${item.type}\nRarity: ${item.rarity}\nABV: ${item.abv}%`,
@@ -299,6 +329,10 @@ export default function Collection() {
           ]
         );
       } else {
+        posthog?.capture("collection_item_already_owned", {
+          method: "scan",
+          item_name: item.name,
+        });
         showModal(
           "Already in Collection",
           `You already have ${item.name} in your collection!\n\nType: ${item.type}\nRarity: ${item.rarity}\nABV: ${item.abv}%`,
@@ -377,6 +411,10 @@ export default function Collection() {
       );
 
       if (!result) {
+        posthog?.capture("manual_add_not_found", {
+          search_term: formData.name,
+        });
+
         showModal("Not Found", "This beverage is not in our database yet.", [
           {
             text: "OK",
@@ -395,7 +433,12 @@ export default function Collection() {
 
       if (isNewlyAdded) {
         await refreshUserAlcoholCollection();
-
+        posthog?.capture("collection_item_added", {
+          method: "manual_search",
+          item_name: item.name,
+          item_rarity: item.rarity,
+          item_type: item.type,
+        });
         showModal(
           "Added to Collection!",
           `${item.name} has been added to your collection!\n\nType: ${item.type}\nRarity: ${item.rarity}\nABV: ${item.abv}%`,
@@ -496,6 +539,8 @@ export default function Collection() {
     setFormData({ ...formData });
     setScanning(false);
     setScanned(false);
+    posthog?.capture("manual_form_barcode_filled", { barcode: data });
+
     showModal("Barcode Scanned", `Barcode: ${data}`, [
       {
         text: "OK",
@@ -507,6 +552,8 @@ export default function Collection() {
 
   const handleScanPress = async () => {
     const permissionResult = await requestPermission();
+    posthog?.capture("scan_button_clicked");
+
     if (!permissionResult?.granted) {
       showModal(
         "Permission Needed",
@@ -830,7 +877,6 @@ export default function Collection() {
               <View className="flex-row items-center gap-3">
                 <View className="bg-orange-600/20 px-4 py-2 rounded-xl">
                   <View className="flex items-center">
-                  
                     <Text className="text-orange-600 text-2xl font-black">
                       {collectedCount}
                     </Text>
@@ -924,8 +970,7 @@ export default function Collection() {
                 No items yet
               </Text>
               <Text className="text-white/50 text-sm text-center font-semibold px-4">
-                Start drinking more & scan the alcohol to build your
-                collection!
+                Start drinking more & scan the alcohol to build your collection!
               </Text>
             </View>
           ) : (

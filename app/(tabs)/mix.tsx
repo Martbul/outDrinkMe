@@ -22,10 +22,12 @@ import MixVideo, { VideoPost } from "@/components/mixVideo";
 import VideoRecorder from "@/components/videoRecoreder";
 import { apiService } from "@/api";
 import { useAuth } from "@clerk/clerk-expo";
+import { usePostHog } from "posthog-react-native";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const MixScreen = () => {
+    const posthog = usePostHog();
   const { getToken } = useAuth();
   const { userData, yourMixData, isLoading, refreshYourMixData } = useApp();
   const [activeTab, setActiveTab] = useState(0);
@@ -40,6 +42,13 @@ const MixScreen = () => {
     { key: "yourmix", title: "YOUR MIX" },
     { key: "videos", title: "VIDEO FEED" },
   ];
+
+    useEffect(() => {
+      posthog?.capture("mix_tab_viewed", {
+        tab_name: activeTab === 0 ? "your_mix" : "video_feed",
+        mix_count: yourMixData.length,
+      });
+    }, [activeTab, yourMixData.length]);
 
   // Load videos from backend
   // const loadMixVideos = async () => {
@@ -60,20 +69,15 @@ const MixScreen = () => {
   // Handle like/unlike video
   const handleLikeVideo = async (videoId: string): Promise<boolean> => {
     const token = await getToken();
-    if (!token) {
-      console.error("No auth token available");
-      return false;
-    }
+    if (!token) return false;
 
     try {
       const success = await apiService.addChipsToVideo(token, videoId);
-
       if (success) {
-        // Optionally update local state to reflect the change
-        // This is handled optimistically in the MixVideo component
+        // 4. Track Engagement (Likes)
+        posthog?.capture("video_liked", { video_id: videoId });
         console.log(`Successfully added chips to video ${videoId}`);
       }
-
       return success;
     } catch (error) {
       console.error("Error adding chips to video:", error);
@@ -105,6 +109,12 @@ const MixScreen = () => {
 
     const handlePress = () => {
       if (isAnimating) return;
+         posthog?.capture("mix_card_flipped", {
+           mix_id: item.id,
+           flip_state_from: flipState, // 0=Image, 1=Buddies, 2=Location
+           has_buddies: hasBuddies,
+           has_location: hasLocation,
+         });
       setIsAnimating(true);
 
       const calculateNextState = (current: number) => {
@@ -167,9 +177,12 @@ const MixScreen = () => {
             </View>
             <TouchableOpacity
               className="absolute top-3 left-3"
-              onPress={() =>
-                router.push(`/(screens)/userInfo?userId=${item.userId}`)
-              }
+              onPress={() => {
+                posthog?.capture("mix_profile_clicked", {
+                  target_user_id: item.userId,
+                });
+                router.push(`/(screens)/userInfo?userId=${item.userId}`);
+              }}
             >
               {item.userImageUrl && (
                 <View className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-sm border-2 border-white/[0.15] overflow-hidden">
@@ -201,7 +214,10 @@ const MixScreen = () => {
                   className="items-center"
                   style={{ width: 75 }}
                 >
-                  <TouchableOpacity className="w-16 h-16 rounded-full bg-orange-600/20 border-2 border-orange-600/40 items-center justify-center mb-2 overflow-hidden">
+                  <View
+                    className="w-16 h-16 rounded-full bg-orange-600/20 border-2 border-orange-600/40 items-center justify-center mb-2 overflow-hidden"
+                  
+                  >
                     {buddy.imageUrl ? (
                       <Image
                         source={{ uri: buddy.imageUrl }}
@@ -215,7 +231,7 @@ const MixScreen = () => {
                           "?"}
                       </Text>
                     )}
-                  </TouchableOpacity>
+                  </View>
                   <Text
                     className="text-white text-xs text-center font-semibold"
                     numberOfLines={2}

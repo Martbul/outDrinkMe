@@ -347,6 +347,8 @@ function AdditionalInfoModal({
   handleUpload,
   onClose,
 }: InfoTooltipProps) {
+  const posthog = usePostHog();
+
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [locationText, setLocationText] = useState("");
@@ -377,6 +379,12 @@ function AdditionalInfoModal({
     setMentionedBuddies((prev) => {
       const isAlreadySelected = prev.some((f) => f.id === friend.id);
 
+      // 8. Track friend selection toggles (Social Engagement)
+      posthog?.capture("buddy_selection_toggled", {
+        friend_id: friend.id,
+        action: isAlreadySelected ? "removed" : "added",
+      });
+
       if (isAlreadySelected) {
         return prev.filter((f) => f.id !== friend.id);
       } else {
@@ -389,30 +397,26 @@ function AdditionalInfoModal({
     return mentionedBuddies.some((f) => f.id === friendId);
   };
 
-  // Upload to Cloudinary using REST API
   const uploadToCloudinary = async (
     localUri: string
   ): Promise<string | null> => {
     try {
       setIsUploadingImage(true);
+      // 9. Track upload start
+      posthog?.capture("image_upload_started");
 
-      // Your Cloudinary credentials
       const CLOUDINARY_CLOUD_NAME =
         process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
       const CLOUDINARY_UPLOAD_PRESET =
         process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
-      // Validate credentials
       if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
         throw new Error(
           "Cloudinary credentials are not configured. Please check your .env file."
         );
       }
 
-      // Create form data
       const formData = new FormData();
-
-      // Append the file
       formData.append("file", {
         uri: localUri,
         type: "image/jpeg",
@@ -420,11 +424,8 @@ function AdditionalInfoModal({
       } as any);
 
       formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-
-      // Optional: Add folder organization
       formData.append("folder", "drank-images");
 
-      // Upload to Cloudinary
       const response = await fetch(
         `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
         {
@@ -440,12 +441,17 @@ function AdditionalInfoModal({
 
       if (data.secure_url) {
         console.log("Upload successful:", data.secure_url);
-        return data.secure_url; // This is your public URL to save in DB
+        // 10. Track success
+        posthog?.capture("image_upload_success");
+        return data.secure_url;
       }
 
       throw new Error(data.error?.message || "Upload failed");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Upload error:", error);
+      // 11. Track upload failures
+      posthog?.capture("image_upload_failed", { error: error.message });
+
       Alert.alert(
         "Upload Error",
         "Failed to upload image to Cloudinary. Please try again."
@@ -458,6 +464,7 @@ function AdditionalInfoModal({
 
   const pickImageFromSource = async (source: "camera" | "library") => {
     setImagePickerModalVisible(false);
+    posthog?.capture("image_picker_opened", { source });
 
     try {
       let result;
@@ -518,6 +525,8 @@ function AdditionalInfoModal({
   };
 
   const handleSkip = async () => {
+    posthog?.capture("drink_details_skipped");
+
     setImageUri(null);
     setLocationText("");
     setMentionedBuddies([]);
@@ -525,20 +534,27 @@ function AdditionalInfoModal({
     onClose();
   };
 
-  const handleDone = async () => {
-    if (isUploadingImage) {
-      Alert.alert("Please wait", "Image is still uploading...");
-      return;
-    }
+ const handleDone = async () => {
+   if (isUploadingImage) {
+     Alert.alert("Please wait", "Image is still uploading...");
+     return;
+   }
 
-    // imageUri now contains the Cloudinary public URL
-    await handleUpload(true, imageUri, locationText, mentionedBuddies);
+   // 14. Track completion details
+   posthog?.capture("drink_details_completed", {
+     has_image: !!imageUri,
+     has_location: !!locationText,
+     buddy_count: mentionedBuddies.length,
+   });
 
-    // Reset state after successful upload
-    setImageUri(null);
-    setLocationText("");
-    setMentionedBuddies([]);
-  };
+   // imageUri now contains the Cloudinary public URL
+   await handleUpload(true, imageUri, locationText, mentionedBuddies);
+
+   // Reset state after successful upload
+   setImageUri(null);
+   setLocationText("");
+   setMentionedBuddies([]);
+ };
 
   const renderEmptyFriendComponent = () => {
     if (isLoading) {
