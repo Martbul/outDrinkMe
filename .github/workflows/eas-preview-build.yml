@@ -1,4 +1,4 @@
-name: Development Build
+name: Preview Build (APK)
 
 on:
   workflow_dispatch:
@@ -6,7 +6,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    environment: Development 
+    environment: Production 
     steps:
       - name: Setup Repo
         uses: actions/checkout@v4
@@ -39,27 +39,29 @@ jobs:
       - name: Setup EAS
         run: npm install -g eas-cli
 
-      # Map the INDIVIDUAL secrets from the Development Environment
+      # Map the INDIVIDUAL secrets from the PRODUCTION Environment
       - name: Create .env
         run: |
           touch .env
-          echo "EXPO_PUBLIC_ENV=development" >> .env
+          echo "EXPO_PUBLIC_ENV=production" >> .env
           echo "EXPO_PUBLIC_OUTDRINKME_API_URL=${{ secrets.EXPO_PUBLIC_OUTDRINKME_API_URL }}" >> .env
           echo "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY }}" >> .env
           echo "EXPO_PUBLIC_POSTHOG_API_KEY=${{ secrets.EXPO_PUBLIC_POSTHOG_API_KEY }}" >> .env
           echo "EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME=${{ secrets.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME }}" >> .env
           echo "EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET=${{ secrets.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET }}" >> .env
+          # If VIDEO preset doesn't exist in Prod secrets, this will just be empty, which is fine
           echo "EXPO_PUBLIC_CLOUDINARY_VIDEO_UPLOAD_PRESET=${{ secrets.EXPO_PUBLIC_CLOUDINARY_VIDEO_UPLOAD_PRESET }}" >> .env
 
-      - name: Build Android Dev
-        run: eas build --platform android --profile development --local --non-interactive --output=./app-dev.apk
+      - name: Build Android Preview
+        # Ensure eas.json has profile: preview { "android": { "buildType": "apk" } }
+        run: eas build --platform android --profile preview --local --non-interactive --output=./app-preview.apk
         env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }} # Reads from Global Repository Secrets
-          GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4g -XX:+HeapDumpOnOutOfMemoryError"
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4g"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: outdrinkme-dev
-          path: ./app-dev.apk
+          name: outdrinkme-preview
+          path: ./app-preview.apk

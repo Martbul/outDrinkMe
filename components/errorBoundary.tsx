@@ -1,89 +1,11 @@
-// import React from "react";
-// import { View, Text } from "react-native";
-
-// interface Props {
-//   children: React.ReactNode;
-// }
-
-// interface State {
-//   hasError: boolean;
-//   error?: Error;
-// }
-
-// class ErrorBoundary extends React.Component<Props, State> {
-//   constructor(props: Props) {
-//     super(props);
-//     this.state = { hasError: false };
-//   }
-
-//   static getDerivedStateFromError(error: Error): State {
-//     return { hasError: true, error };
-//   }
-
-//   componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
-//     console.log("Error caught:", error, errorInfo);
-//     // You can also log to a crash reporting service here
-//     // Example: Sentry.captureException(error, { extra: errorInfo });
-//   }
-
-//   render() {
-//     if (this.state.hasError) {
-//       return (
-//         <View
-//           style={{
-//             flex: 1,
-//             justifyContent: "center",
-//             alignItems: "center",
-//             padding: 20,
-//             backgroundColor: "#f5f5f5",
-//           }}
-//         >
-//           <Text
-//             style={{
-//               fontSize: 18,
-//               fontWeight: "bold",
-//               marginBottom: 10,
-//               textAlign: "center",
-//             }}
-//           >
-//             Something went wrong
-//           </Text>
-//           <Text
-//             style={{
-//               textAlign: "center",
-//               color: "#666",
-//               marginBottom: 20,
-//             }}
-//           >
-//             The app encountered an error. Please restart the app.
-//           </Text>
-//           {__DEV__ && this.state.error && (
-//             <Text
-//               style={{
-//                 fontSize: 12,
-//                 color: "#999",
-//                 textAlign: "center",
-//                 fontFamily: "monospace",
-//               }}
-//             >
-//               {this.state.error.message}
-//             </Text>
-//           )}
-//         </View>
-//       );
-//     }
-
-//     return this.props.children;
-//   }
-// }
-
-// export default ErrorBoundary;
-
 import React, { Component, ReactNode } from "react";
 import { View, Text, TouchableOpacity, ScrollView } from "react-native";
+import { usePostHog, PostHog } from "posthog-react-native"; // 1. Import PostHog types and hook
 
+// 2. Add posthog to the Props interface
 interface Props {
   children: ReactNode;
+  posthog?: PostHog;
 }
 
 interface State {
@@ -92,7 +14,8 @@ interface State {
   errorInfo: React.ErrorInfo | null;
 }
 
-class ErrorBoundary extends Component<Props, State> {
+// 3. Keep the logic in the Class Component
+class ErrorBoundaryClasses extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = {
@@ -111,21 +34,27 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // Log detailed error information
     console.error("=== ERROR BOUNDARY CAUGHT ===");
     console.error("Error:", error);
-    console.error("Error name:", error.name);
-    console.error("Error message:", error.message);
-    console.error("Error stack:", error.stack);
-    console.error("Component Stack:", errorInfo.componentStack);
+
+    // 4. Use the injected prop to capture the event
+    this.props.posthog?.capture("app_error", {
+      error_message: error.message,
+      error_name: error.name,
+      error_stack: error.stack ?? null,
+      component_stack: errorInfo.componentStack ?? null,
+      timestamp: new Date().toISOString(),
+    });
 
     this.setState({
       error,
       errorInfo,
     });
-
-    // You can also send to an external logging service here
   }
+
+  handleReset = () => {
+    this.setState({ hasError: false, error: null, errorInfo: null });
+  };
 
   render() {
     if (this.state.hasError) {
@@ -150,9 +79,7 @@ class ErrorBoundary extends Component<Props, State> {
           </ScrollView>
 
           <TouchableOpacity
-            onPress={() =>
-              this.setState({ hasError: false, error: null, errorInfo: null })
-            }
+            onPress={this.handleReset}
             className="bg-orange-600 px-6 py-3 rounded-lg"
           >
             <Text className="text-white font-bold">Try Again</Text>
@@ -165,4 +92,14 @@ class ErrorBoundary extends Component<Props, State> {
   }
 }
 
+// 5. Create a Functional Wrapper to access the Hook
+const ErrorBoundary = ({ children }: { children: ReactNode }) => {
+  const posthog = usePostHog();
+
+  return (
+    <ErrorBoundaryClasses posthog={posthog}>{children}</ErrorBoundaryClasses>
+  );
+};
+
+// 6. Export the Wrapper
 export default ErrorBoundary;

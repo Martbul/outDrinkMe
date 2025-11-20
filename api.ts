@@ -1,9 +1,7 @@
-import { VideoPost } from "./components/mixVideo";
 import {
   Achievement,
   AddDrinkingRequest,
   AlcoholCollectionByType,
-  AlcoholDbItem,
   CalendarResponse,
   DailyDrinkingPostResponse,
   DaysStat,
@@ -13,9 +11,11 @@ import {
   Leaderboard,
   LeaderboardEntry,
   SearchDbAlcoholResult,
+  StoreItem,
   UpdateUserProfileReq,
   UserData,
   UserStats,
+  VideoPost,
   YourMixPostData,
 } from "./types/api.types";
 
@@ -398,7 +398,7 @@ class ApiService {
     duration: number,
     token: string
   ): Promise<any> {
-    const response = await this.makeRequest<any>("/api/v1/user/mix-video", {
+    const response = await this.makeRequest<any>("/api/v1/user/mix-videos", {
       method: "POST",
       token,
       body: JSON.stringify({
@@ -426,17 +426,16 @@ class ApiService {
         }
       );
 
-
       const transformed = response.map((video) => ({
-        id: video.id, 
+        id: video.id,
         videoUrl: video.video_url,
-        userId: video.user_id, 
-        username: video.username, 
-        userImageUrl: video.user_image_url, 
+        userId: video.user_id,
+        username: video.username,
+        userImageUrl: video.user_image_url,
         caption: video.caption || "",
-        chips: video.chips || 0, 
-        duration: video.duration, 
-        createdAt: video.created_at, 
+        chips: video.chips || 0,
+        duration: video.duration,
+        createdAt: video.created_at,
       }));
 
       console.log("Transformed videos:", transformed); // Debug log
@@ -546,6 +545,14 @@ class ApiService {
     };
   }
 
+  async submitFeedback(category: string, feedbackText: string, token: string) {
+    return this.makeRequest(`/api/v1/user/feedback`, {
+      method: "POST",
+      token,
+      body: JSON.stringify({ category, feedback_text: feedbackText }),
+    });
+  }
+
   async getBattleStatus(token: string): Promise<{
     user: LeaderboardEntry;
     leader: LeaderboardEntry;
@@ -565,6 +572,28 @@ class ApiService {
       leader,
       difference: leader.days_this_week - user.days_this_week,
     };
+  }
+
+  async getUserInventory(token: string): Promise<any> {
+    return this.makeRequest<any>("/api/v1/user/inventory", {
+      method: "GET",
+      token,
+    });
+  }
+
+  async getStore(token: string): Promise<any> {
+    return this.makeRequest<any>("/api/v1/store", {
+      method: "GET",
+      token,
+    });
+  }
+  
+  async purchaseStoreItem(itemId: string, token: string): Promise<any> {
+    return this.makeRequest<any>("/api/v1/store/purchase/item", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ item_id: itemId }),
+    });
   }
 }
 

@@ -297,8 +297,6 @@ const EmptyVideoComponent = ({
 //   );
 // }
 
-
-
 export default function MixVideo({
   videos,
   onRecordPress,

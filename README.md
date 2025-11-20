@@ -80,3 +80,21 @@ cp .env.example .env.development
 npm run start:dev
 # or
 make dev
+
+
+
+commands: 
+# Development builds (for testing)
+eas build --profile development --platform android
+eas build --profile development --platform ios
+
+# Preview builds (internal testing)
+eas build --profile preview --platform android
+
+# Production builds
+eas build --profile production --platform android
+eas build --profile production --platform ios
+
+# Submit to stores
+eas submit --platform android --profile production
+eas submit --platform ios --profile production

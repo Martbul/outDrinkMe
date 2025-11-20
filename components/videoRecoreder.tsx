@@ -1,4 +1,3 @@
-// components/videoRecorder.tsx
 import React, { useRef, useState, useEffect } from "react";
 import {
   View,
@@ -9,12 +8,19 @@ import {
   TextInput,
   Alert,
   StyleSheet,
+  Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Camera, CameraType, CameraView } from "expo-camera";
 import { useVideoPlayer, VideoView } from "expo-video";
 import * as ImagePicker from "expo-image-picker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+
+const VIDEO_QUALITY = "1080p";
+const VIDEO_MAX_DURATION = 60;
+const ASPECT_RATIO = 9 / 16;
 
 interface VideoRecorderProps {
   visible: boolean;
@@ -208,7 +214,7 @@ export default function VideoRecorder({
         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
         allowsEditing: true,
         quality: 0.8,
-        videoMaxDuration: 60,
+        videoMaxDuration: VIDEO_MAX_DURATION,
       });
 
       if (!result.canceled && result.assets[0]) {

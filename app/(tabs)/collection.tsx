@@ -21,7 +21,6 @@ import { useApp } from "@/providers/AppProvider";
 import { categories, totalSlots } from "@/utils/collection";
 import { getRarityColor } from "@/utils/rarity";
 
-
 interface ModalState {
   visible: boolean;
   title: string;
@@ -114,7 +113,6 @@ export default function Collection() {
       buttons: [],
     });
   };
-
 
   const handleRemoveItem = async (item: AlcoholDbItem) => {
     const token = await getToken();
@@ -825,17 +823,21 @@ export default function Collection() {
                   COLLECTION
                 </Text>
                 <Text className="text-white text-[28px] font-black">
-                  Beverages
+                  Alcohols
                 </Text>
               </View>
 
               <View className="flex-row items-center gap-3">
                 <View className="bg-orange-600/20 px-4 py-2 rounded-xl">
-                  <Text className="text-orange-600 text-2xl font-black">
-                    {collectedCount}
-                  </Text>
+                  <View className="flex items-center">
+                  
+                    <Text className="text-orange-600 text-2xl font-black">
+                      {collectedCount}
+                    </Text>
+                  </View>
+
                   <Text className="text-orange-600/70 text-[10px] font-bold">
-                    CARDS
+                    BOTTLES
                   </Text>
                 </View>
 
@@ -855,7 +857,7 @@ export default function Collection() {
             <View className="mt-3">
               <View className="flex-row justify-between mb-2">
                 <Text className="text-white/50 text-xs font-semibold">
-                  Album Progress
+                  Progress
                 </Text>
                 <Text className="text-orange-600 text-xs font-bold">
                   {completionPercentage.toFixed(1)}%
@@ -906,22 +908,24 @@ export default function Collection() {
 
         <View className="px-4">
           <Text className="text-white text-lg font-black mb-3">
-            Your Collection Cards
+            Your Collection
           </Text>
 
           {filteredCollection.length === 0 ? (
             <View className="bg-white/[0.03] rounded-2xl p-8 border border-white/[0.08] items-center">
-              <FontAwesome5
-                name="wine-bottle"
-                size={64}
-                color="#f54a00"
-                className="mb-6"
-              />
-              <Text className="text-white text-lg font-black mb-1">
+              <View className="w-24 h-24 rounded-2xl bg-orange-600/20 items-center justify-center mb-4">
+                <MaterialCommunityIcons
+                  name="bottle-tonic-skull"
+                  size={64}
+                  color="#EA580C"
+                />
+              </View>
+              <Text className="text-white text-xl font-black mb-2">
                 No items yet
               </Text>
-              <Text className="text-white/50 text-sm text-center">
-                Start scanning beverages to build your collection!
+              <Text className="text-white/50 text-sm text-center font-semibold px-4">
+                Start drinking more & scan the alcohol to build your
+                collection!
               </Text>
             </View>
           ) : (

@@ -29,7 +29,7 @@ export const LevelsComponent = ({
       {/* Header */}
       <View className="flex-row items-center mb-5">
         <View className="w-8 h-8 items-center justify-center mr-2">
-          <Feather name="award" size={24} color="#EA580C" />
+          <Feather name="star" size={26} color="#EA580C" />
         </View>
         <Text className="text-white text-xl font-black">Levels</Text>
       </View>

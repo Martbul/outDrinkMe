@@ -20,8 +20,12 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import type { UserData } from "@/types/api.types";
 import { ImagePickerModal } from "@/components/imagePickerModal";
+// 1. Import PostHog hook
+import { usePostHog } from "posthog-react-native";
 
 export default function AddDrinks() {
+  // 2. Initialize PostHog
+  const posthog = usePostHog();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const {
@@ -32,6 +36,7 @@ export default function AddDrinks() {
     drunkThought,
     addDrunkThought,
   } = useApp();
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0);
   const [isHolding, setIsHolding] = useState(false);
@@ -54,8 +59,6 @@ export default function AddDrinks() {
     }
   }, [drunkThought]);
 
-
-
   const handleUpload = async (
     drinkToday: boolean,
     imageUri?: string | null,
@@ -67,8 +70,24 @@ export default function AddDrinks() {
     setIsSubmitting(true);
     try {
       await addDrinking(drinkToday, imageUri, locationText, mentionedBuddies);
-    } catch (error) {
+
+      // 3. Track successful drink log
+      posthog.capture("drink_logged", {
+        has_image: !!imageUri,
+        has_location: !!locationText,
+        buddy_count: mentionedBuddies?.length || 0,
+        current_streak: userStats?.current_streak || 0,
+        is_first_time_today: !userStats?.today_status,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error: any) {
       Alert.alert("Error", "Failed to log. Please try again.");
+
+      // 4. Track errors
+      posthog.capture("error_logged", {
+        context: "drinking_log_failed",
+        error_message: error.message,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -91,6 +110,9 @@ export default function AddDrinks() {
         setIsHolding(false);
         setHoldProgress(0);
         setAfterDrinkLoggedModal(true);
+
+        // 5. Track that the hold interaction completed
+        posthog.capture("drink_button_hold_complete");
       }
     }, 30);
   };
@@ -117,8 +139,20 @@ export default function AddDrinks() {
       setIsSubmittingDrunkThought(true);
       try {
         await addDrunkThought(thoughtInput.trim());
-      } catch (error) {
+
+        // 6. Track drunk thought submission
+        posthog.capture("drunk_thought_shared", {
+          char_length: thoughtInput.length,
+          is_update: !!drunkThought,
+        });
+      } catch (error: any) {
         console.error("Failed to submit drunk thought:", error);
+
+        posthog.capture("error_logged", {
+          context: "drunk_thought_failed",
+          error_message: error.message,
+        });
+
         Alert.alert("Error", "Failed to save your thought. Try again!");
       } finally {
         setIsSubmittingDrunkThought(false);
@@ -306,7 +340,6 @@ interface InfoTooltipProps {
   onClose: () => void;
 }
 
-
 function AdditionalInfoModal({
   friends,
   visible,
@@ -318,7 +351,7 @@ function AdditionalInfoModal({
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [locationText, setLocationText] = useState("");
   const [mentionedBuddies, setMentionedBuddies] = useState<UserData[] | []>([]);
-  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  // const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [isFriendsListVisible, setFriendsListVisible] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [imagePickerModalVisible, setImagePickerModalVisible] = useState(false);
@@ -423,163 +456,72 @@ function AdditionalInfoModal({
     }
   };
 
-    const pickImageFromSource = async (source: "camera" | "library") => {
-      setImagePickerModalVisible(false);
+  const pickImageFromSource = async (source: "camera" | "library") => {
+    setImagePickerModalVisible(false);
 
-      try {
-        let result;
+    try {
+      let result;
 
-        if (source === "camera") {
-          const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (source === "camera") {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
 
-          if (status !== "granted") {
-            Alert.alert(
-              "Permission needed",
-              "Please grant permission to access your camera"
-            );
-            return;
-          }
-
-          result = await ImagePicker.launchCameraAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            aspect: [4, 3],
-            quality: 1,
-          });
-        } else {
-          const { status } =
-            await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-          if (status !== "granted") {
-            Alert.alert(
-              "Permission needed",
-              "Please grant permission to access your photos"
-            );
-            return;
-          }
-
-          result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            aspect: [4, 3],
-            quality: 1,
-          });
+        if (status !== "granted") {
+          Alert.alert(
+            "Permission needed",
+            "Please grant permission to access your camera"
+          );
+          return;
         }
 
-        if (!result.canceled && result.assets[0]) {
-          const localUri = result.assets[0].uri;
-          setImageUri(localUri);
+        result = await ImagePicker.launchCameraAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [4, 3],
+          quality: 1,
+        });
+      } else {
+        const { status } =
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-          const cloudinaryUrl = await uploadToCloudinary(localUri);
-
-          if (cloudinaryUrl) {
-            setImageUri(cloudinaryUrl);
-          } else {
-            setImageUri(null);
-          }
+        if (status !== "granted") {
+          Alert.alert(
+            "Permission needed",
+            "Please grant permission to access your photos"
+          );
+          return;
         }
-      } catch (error) {
-        Alert.alert("Error", "Failed to pick image");
-        console.error(error);
+
+        result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [4, 3],
+          quality: 1,
+        });
       }
-    };
 
+      if (!result.canceled && result.assets[0]) {
+        const localUri = result.assets[0].uri;
+        setImageUri(localUri);
 
+        const cloudinaryUrl = await uploadToCloudinary(localUri);
 
-  // const handleImageUpload = async () => {
-  //   try {
-  //     const { status } =
-  //       await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-  //     if (status !== "granted") {
-  //       Alert.alert(
-  //         "Permission needed",
-  //         "Please grant permission to access your photos"
-  //       );
-  //       return;
-  //     }
-
-  //     const result = await ImagePicker.launchCameraAsync({
-  //       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-  //       allowsEditing: true,
-  //       aspect: [4, 3],
-  //       quality: 1,
-  //     });
-
-  //     if (!result.canceled && result.assets[0]) {
-  //       const localUri = result.assets[0].uri;
-  //       setImageUri(localUri); // Show preview immediately with local URI
-
-  //       // Upload to Cloudinary in background
-  //       const cloudinaryUrl = await uploadToCloudinary(localUri);
-
-  //       if (cloudinaryUrl) {
-  //         // Update with the Cloudinary URL (this is what will be saved to DB)
-  //         setImageUri(cloudinaryUrl);
-  //       } else {
-  //         // If upload failed, clear the image
-  //         setImageUri(null);
-  //       }
-  //     }
-  //   } catch (error) {
-  //     Alert.alert("Error", "Failed to pick image");
-  //     console.error(error);
-  //   }
-  // };
-
-  // const handleLocationSelect = async () => {
-  //   try {
-  //     setIsLoadingLocation(true);
-
-  //     const { status } = await Location.requestForegroundPermissionsAsync();
-
-  //     if (status !== "granted") {
-  //       Alert.alert(
-  //         "Permission needed",
-  //         "Please grant permission to access your location"
-  //       );
-  //       setIsLoadingLocation(false);
-  //       return;
-  //     }
-
-  //     const location = await Location.getCurrentPositionAsync({
-  //       accuracy: Location.Accuracy.Balanced,
-  //     });
-
-  //     const [address] = await Location.reverseGeocodeAsync({
-  //       latitude: location.coords.latitude,
-  //       longitude: location.coords.longitude,
-  //     });
-
-  //     if (address) {
-  //       const formattedLocation = [
-  //         address.street,
-  //         address.city,
-  //         address.region,
-  //         address.country,
-  //       ]
-  //         .filter(Boolean)
-  //         .join(", ");
-
-  //       setLocationText(formattedLocation || "Location selected");
-  //     } else {
-  //       setLocationText(
-  //         `${location.coords.latitude.toFixed(4)}, ${location.coords.longitude.toFixed(4)}`
-  //       );
-  //     }
-  //   } catch (error) {
-  //     Alert.alert("Error", "Failed to get location");
-  //     console.error(error);
-  //   } finally {
-  //     setIsLoadingLocation(false);
-  //   }
-  // };
+        if (cloudinaryUrl) {
+          setImageUri(cloudinaryUrl);
+        } else {
+          setImageUri(null);
+        }
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to pick image");
+      console.error(error);
+    }
+  };
 
   const handleSkip = async () => {
     setImageUri(null);
     setLocationText("");
     setMentionedBuddies([]);
-    await handleUpload(true)
+    await handleUpload(true);
     onClose();
   };
 
@@ -703,9 +645,9 @@ function AdditionalInfoModal({
         >
           <Pressable>
             <View className="bg-[#1a1a1a] rounded-2xl p-4 border-2 border-orange-600/30 shadow-2xl w-80">
-              {/* Image Upload Area - UPDATED */}
+              {/* Image Upload Area */}
               <TouchableOpacity
-                onPress={() => setImagePickerModalVisible(true)} // CHANGED THIS LINE
+                onPress={() => setImagePickerModalVisible(true)}
                 disabled={isUploadingImage}
                 className="bg-[#2a2a2a] border-2 border-dashed border-orange-600/40 rounded-xl h-40 items-center justify-center mb-4 overflow-hidden"
               >
@@ -744,23 +686,6 @@ function AdditionalInfoModal({
                     Buddies
                   </Text>
                 </TouchableOpacity>
-
-                {/* <TouchableOpacity
-                  onPress={handleLocationSelect}
-                  disabled={isLoadingLocation}
-                  className="flex-1 bg-orange-600/20 border-2 border-orange-600/40 rounded-xl py-3 px-2 flex-row items-center justify-center"
-                >
-                  {isLoadingLocation ? (
-                    <ActivityIndicator size="small" color="#ff8c00" />
-                  ) : (
-                    <>
-                      <Feather name="map-pin" size={18} color="#ff8c00" />
-                      <Text className="text-orange-500 font-semibold ml-2">
-                        Location
-                      </Text>
-                    </>
-                  )}
-                </TouchableOpacity> */}
               </View>
 
               {locationText ? (

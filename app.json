@@ -13,10 +13,13 @@
       "bundleIdentifier": "com.martbul.outDrinkMe",
       "associatedDomains": [
         "applinks:clerk.martbul.com",
+        "applinks:clerk.martbul.com",
+        "applinks:clerk.martbul.com",
         "applinks:clerk.martbul.com"
       ],
       "infoPlist": {
-        "NSCameraUsageDescription": "OutDrinkMe needs camera access to scan beverage barcodes for your collection."
+        "NSCameraUsageDescription": "OutDrinkMe needs camera access to scan beverage barcodes for your collection.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -28,10 +31,6 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.martbul.outDrinkMe",
       "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",
         "android.permission.ACCESS_COARSE_LOCATION",
@@ -146,7 +145,8 @@
           "supportsBackgroundPlayback": true,
           "supportsPictureInPicture": true
         }
-      ]
+      ],
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true,

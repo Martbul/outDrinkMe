@@ -21,6 +21,9 @@ import {
   DrunkThought,
   AlcoholDbItem,
   AlcoholCollectionByType,
+  InventoryItem,
+  StoreItems,
+  InventoryItems,
 } from "../types/api.types";
 import { apiService } from "@/api";
 import { Alert } from "react-native";
@@ -29,6 +32,8 @@ interface AppContextType {
   // Data
   userData: UserData | null;
   userStats: UserStats | null;
+  userInventory: InventoryItems | null;
+  storeItems: StoreItems | null;
   leaderboard: Leaderboard | null;
   achievements: Achievement[] | null;
   calendar: CalendarResponse | null;
@@ -56,6 +61,8 @@ interface AppContextType {
   refreshDrunkThought: () => Promise<void>;
   refreshFriendsDrunkThoughs: () => Promise<void>;
   refreshUserAlcoholCollection: () => Promise<void>;
+  refreshUserInventory: () => Promise<void>;
+  refreshStore: () => Promise<void>;
   refreshAll: () => Promise<void>;
 
   // Actions
@@ -91,6 +98,10 @@ export function AppProvider({ children }: AppProviderProps) {
   // State
   const [userData, setUserData] = useState<UserData | null>(null);
   const [userStats, setUserStats] = useState<UserStats | null>(null);
+  const [userInventory, setUserInventory] = useState<InventoryItems | null>(
+    null
+  );
+  const [storeItems, setStoreItems] = useState<StoreItems | null>(null);
   const [leaderboard, setLeaderboard] = useState<Leaderboard | null>(null);
   const [achievements, setAchievements] = useState<Achievement[] | null>(null);
   const [calendar, setCalendar] = useState<CalendarResponse | null>(null);
@@ -331,6 +342,33 @@ export function AppProvider({ children }: AppProviderProps) {
       (data) => setAlcoholCollection(data)
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
+
+  const refreshUserInventory = useCallback(async () => {
+    if (!isSignedIn) return;
+
+    await withLoadingAndError(
+      async () => {
+        const token = await getToken();
+        if (!token) throw new Error("No auth token");
+        return await apiService.getUserInventory(token);
+      },
+      (data) => setUserInventory(data)
+    );
+  }, [isSignedIn, getToken, withLoadingAndError]);
+
+  const refreshStore = useCallback(async () => {
+    if (!isSignedIn) return;
+
+    await withLoadingAndError(
+      async () => {
+        const token = await getToken();
+        if (!token) throw new Error("No auth token");
+        return await apiService.getStore(token);
+      },
+      (data) => setStoreItems(data)
+    );
+  }, [isSignedIn, getToken, withLoadingAndError]);
+
   // ============================================
   // Refresh All - Using Parallel Execution
   // ============================================
@@ -359,6 +397,8 @@ export function AppProvider({ children }: AppProviderProps) {
         apiService.getDrunkThought(token),
         apiService.getFriendsDrunkThoughts(token),
         apiService.getUserAlcoholCollection(token),
+        apiService.getUserInventory(token),
+        apiService.getStore(token),
       ]);
 
       // Extract successful results and handle failures
@@ -376,6 +416,8 @@ export function AppProvider({ children }: AppProviderProps) {
         drunkThoughtResult,
         friendsDrunkThoughtsResult,
         userAlcoholCollectionResult,
+        inventoryResult,
+        storeResult,
       ] = results;
 
       if (userResult.status === "fulfilled") {
@@ -465,6 +507,7 @@ export function AppProvider({ children }: AppProviderProps) {
           friendsDrunkThoughtsResult.reason
         );
       }
+
       if (userAlcoholCollectionResult.status === "fulfilled") {
         setAlcoholCollection(userAlcoholCollectionResult.value);
       } else {
@@ -473,6 +516,23 @@ export function AppProvider({ children }: AppProviderProps) {
           "Failed to fetchuser alcohol collection:",
           userAlcoholCollectionResult.reason
         );
+      }
+
+      if (inventoryResult.status === "fulfilled") {
+        setUserInventory(inventoryResult.value);
+      } else {
+        setUserInventory(null);
+        console.error(
+          "Failed to fetch user inventory:",
+          inventoryResult.reason
+        );
+      }
+
+      if (storeResult.status === "fulfilled") {
+        setStoreItems(storeResult.value);
+      } else {
+        setStoreItems(null);
+        console.error("Failed to fetch store:", storeResult.reason);
       }
 
       // Collect any errors
@@ -761,6 +821,8 @@ export function AppProvider({ children }: AppProviderProps) {
     // Data
     userData,
     userStats,
+    userInventory,
+    storeItems,
     leaderboard,
     achievements,
     calendar,
@@ -788,6 +850,8 @@ export function AppProvider({ children }: AppProviderProps) {
     refreshDrunkThought,
     refreshFriendsDrunkThoughs,
     refreshUserAlcoholCollection,
+    refreshUserInventory,
+    refreshStore,
     refreshAll,
 
     // Actions
