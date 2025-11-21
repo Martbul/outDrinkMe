@@ -91,10 +91,10 @@ export default function SignInScreen() {
             Sign in to start tracking
           </Text>
         </View>
-        <View className="w-32 h-32 rounded-full bg-gray-900 border-2 border-gray-800 items-center justify-center mb-12">
+        <View className="w-32 h-32  bg-gray-900 border-2 border-gray-800 items-center justify-center mb-12">
           <Image
             source={require("../../assets/images/icon.png")}
-            className="w-56 h-56 rounded-full border-3 border-white"
+            className="w-56 h-56  border-3 border-white"
           />
         </View>
       </View>
