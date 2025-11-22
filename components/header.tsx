@@ -129,7 +129,7 @@ export const Header = () => {
               {userData?.gems || 0}
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity
+          {/* <TouchableOpacity
             className="flex-row items-center gap-1.5 bg-white/5 px-3 py-2 rounded-full"
             onPress={() => router.push("/(screens)/notifications")}
           >
@@ -150,7 +150,7 @@ export const Header = () => {
                 <Octicons name="dot-fill" size={18} color="#ff8c00" />
               </View>
             </View>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
       </View>
     </View>

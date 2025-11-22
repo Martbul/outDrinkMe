@@ -9,20 +9,14 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FontAwesome5, MaterialCommunityIcons } from "@expo/vector-icons";
-import { Header } from "@/components/header";
 import { useApp } from "@/providers/AppProvider";
-import SecondaryHeader from "@/components/secondaryHeader";
 import { CategoryRadarChart } from "@/components/radarChart";
+import NestedScreenHeader from "@/components/nestedScreenHeader";
 
 export default function StatsPage() {
   const insets = useSafeAreaInsets();
-  const {
-    userStats,
-    calendar,
-    alcoholCollection,
-    refreshAll,
-    isInitialLoading,
-  } = useApp();
+  const { userStats, alcoholCollection, refreshAll, isInitialLoading } =
+    useApp();
 
   const [selectedPeriod, setSelectedPeriod] = useState<
     "week" | "month" | "year" | "all_time"
@@ -83,7 +77,7 @@ export default function StatsPage() {
 
   const daysStat = getDaysStat();
 
- const radarChartData = Object.values(alcoholCollection || {}).flat();
+  const radarChartData = Object.values(alcoholCollection || {}).flat();
 
   const calculateCollectionStats = () => {
     if (!alcoholCollection) {
@@ -155,7 +149,8 @@ export default function StatsPage() {
 
   return (
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
-      <SecondaryHeader title="Stats" />
+      <NestedScreenHeader heading="Stats" secondaryHeading="YOUR" />
+
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
         showsVerticalScrollIndicator={false}

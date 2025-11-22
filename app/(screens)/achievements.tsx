@@ -1,4 +1,4 @@
-import SecondaryHeader from "@/components/secondaryHeader";
+import NestedScreenHeader from "@/components/nestedScreenHeader";
 import { useApp } from "@/providers/AppProvider";
 import { ActivityIndicator, Image, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -89,7 +89,8 @@ export default function Achievements() {
         paddingBottom: 10 + insets.bottom,
       }}
     >
-      <SecondaryHeader title="Achievements"/>
+      <NestedScreenHeader heading="Achievements" secondaryHeading="ALL" />
+
       <View className="mb-8 mt-3">
         <View className="bg-white/[0.03] backdrop-blur-xl rounded-2xl p-6 border border-white/[0.08]">
           <View className="flex-row items-start justify-between mb-6">

@@ -12,11 +12,10 @@ import {
   MaterialCommunityIcons,
   Ionicons,
 } from "@expo/vector-icons";
-import { Header } from "@/components/header";
 import { useApp } from "@/providers/AppProvider";
 import { Image } from "expo-image";
-import SecondaryHeader from "@/components/secondaryHeader";
 import { useRouter } from "expo-router";
+import NestedScreenHeader from "@/components/nestedScreenHeader";
 
 // Types for inventory items
 interface InventoryItem {
@@ -31,7 +30,7 @@ interface InventoryItem {
 }
 
 export default function InventoryScreen() {
-   const router = useRouter()
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { userData, refreshAll } = useApp();
   const [selectedCategory, setSelectedCategory] = useState<
@@ -135,7 +134,8 @@ export default function InventoryScreen() {
 
   return (
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
-    <SecondaryHeader title="Inventory"/>
+      <NestedScreenHeader heading="Inventory" secondaryHeading="YOUR" />
+
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
         showsVerticalScrollIndicator={false}
@@ -438,7 +438,10 @@ export default function InventoryScreen() {
         </View>
 
         <View className="px-4 mb-8">
-          <TouchableOpacity className="bg-gradient-to-br from-orange-600/30 to-orange-600/10 rounded-2xl p-5 border-2 border-orange-600/50" onPress={() => router.push("/(screens)/store")}>
+          <TouchableOpacity
+            className="bg-gradient-to-br from-orange-600/30 to-orange-600/10 rounded-2xl p-5 border-2 border-orange-600/50"
+            onPress={() => router.push("/(screens)/store")}
+          >
             <View className="flex-row items-center">
               <View className="bg-orange-600 w-12 h-12 rounded-full items-center justify-center mr-3">
                 <FontAwesome5 name="shopping-bag" size={24} color="black" />

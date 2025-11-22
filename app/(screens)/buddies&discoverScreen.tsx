@@ -1,3 +1,4 @@
+import NestedScreenHeader from "@/components/nestedScreenHeader";
 import { useApp } from "@/providers/AppProvider";
 import type { UserData } from "@/types/api.types";
 import { FontAwesome6, Ionicons, Feather } from "@expo/vector-icons";
@@ -14,7 +15,6 @@ import {
 } from "react-native";
 import { RefreshControl } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import SecondaryHeader from "@/components/secondaryHeader";
 
 const BuddiesDiscoverScreen = () => {
   const {
@@ -199,7 +199,7 @@ const BuddiesDiscoverScreen = () => {
             No buddies Yet
           </Text>
           <Text className="text-white/50 text-sm text-center font-semibold px-4">
-            Who's the one who can bring you back to drinking?
+            Who&apos;s the one who can bring you back to drinking?
           </Text>
         </View>
       );
@@ -367,7 +367,8 @@ const BuddiesDiscoverScreen = () => {
       className="flex-1 bg-black"
       style={{ paddingBottom: insets.bottom + 40 }}
     >
-      <SecondaryHeader title="Buddies" />
+      <NestedScreenHeader heading="Buddies" secondaryHeading="Your" />
+
       <TabSelection />
 
       {activeTab === "friends" && (

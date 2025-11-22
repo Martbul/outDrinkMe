@@ -8,10 +8,7 @@ import {
   RefreshControl,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
-import SecondaryHeader from "@/components/secondaryHeader";
-import { onBackPress } from "@/utils/navigation";
 import NestedScreenHeader from "@/components/nestedScreenHeader";
-const handleBack = () => console.log("Navigate back");
 // Mock notification data
 const MOCK_NOTIFICATIONS = [
   {

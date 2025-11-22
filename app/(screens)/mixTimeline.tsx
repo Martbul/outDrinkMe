@@ -21,7 +21,6 @@ import Animated, {
   withTiming,
   Easing,
 } from "react-native-reanimated";
-import SecondaryHeader from "@/components/secondaryHeader";
 import { useApp } from "@/providers/AppProvider";
 import { FontAwesome5, Ionicons } from "@expo/vector-icons";
 import NestedScreenHeader from "@/components/nestedScreenHeader";

@@ -1,9 +1,8 @@
 import React, { useEffect, useMemo } from "react";
 import { View, Text, ScrollView, Image } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { UserStats } from "@/types/api.types";
-import SecondaryHeader from "@/components/secondaryHeader";
 import { useApp } from "@/providers/AppProvider";
 import { getCoefInfo, getLevelInfo } from "@/utils/levels";
 import { FriendButton } from "@/components/friendButton";
