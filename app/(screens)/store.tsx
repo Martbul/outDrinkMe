@@ -24,10 +24,8 @@ import { apiService } from "@/api";
 import { useAuth } from "@clerk/clerk-expo";
 import {
   ColorTheme,
-  Deal,
   Flag,
   GemPack,
-  ProDeal,
   Smoking,
 } from "@/types/api.types";
 import { usePostHog } from "posthog-react-native";

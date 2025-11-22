@@ -12,8 +12,8 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  RefreshControl
 } from "react-native";
-import { RefreshControl } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const BuddiesDiscoverScreen = () => {
@@ -22,7 +22,6 @@ const BuddiesDiscoverScreen = () => {
     friends,
     discovery,
     isLoading,
-    error,
     addFriend,
     refreshFriends,
     refreshDiscovery,
