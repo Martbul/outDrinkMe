@@ -84,7 +84,7 @@ export default function RootLayout() {
   }
 
    if (!posthogApiKey) {
-     console.error("Missing Clerk Publishable Key!");
+     console.error("Missing Posthog Key!");
      return (
        <View className="flex-1 bg-black items-center justify-center">
          <Text className="text-white text-xl">Configuration Error</Text>

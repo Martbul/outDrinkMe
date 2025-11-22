@@ -10,11 +10,11 @@ import {
   StatusBar,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import SecondaryHeader from "@/components/secondaryHeader";
 import { useRouter } from "expo-router";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import DeleteAccountButton from "@/components/deleteAccountButton";
 import { openPrivacy, openTerms } from "@/utils/links";
+import NestedScreenHeader from "@/components/nestedScreenHeader";
 
 export default function EditProfileScreen() {
   const { userData, updateUserProfile } = useApp();
@@ -50,11 +50,13 @@ export default function EditProfileScreen() {
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
 
-      <SecondaryHeader
-        title="Edit Profile"
-        secondActionTitle={hasChanges && !isLoading ? "Save" : undefined}
-        secondOnPressAction={hasChanges ? handleSave : undefined}
-      />
+
+
+      {hasChanges && !isLoading ? (
+        <NestedScreenHeader heading="Profile" secondaryHeading="EDIT" buttonHeading="SAVE" buttonAction={handleSave}/>
+      ) : (
+        <NestedScreenHeader heading="Profile" secondaryHeading="EDIT" />
+      )}
 
       <ScrollView
         className="flex-1 px-4 pt-6"
@@ -93,16 +95,15 @@ export default function EditProfileScreen() {
               className="bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3.5 text-white text-base font-semibold"
             />
           </View>
-  
-          
-           <View className="mb-4">
-             <View className="flex-row items-center mb-2">
-               <Feather name="user" size={14} color="#EA580C" />
-               <Text className="text-white/70 text-xs font-bold tracking-wider ml-2">
-                 FIRST NAME
-               </Text>
-             </View>
-             <TextInput
+
+          <View className="mb-4">
+            <View className="flex-row items-center mb-2">
+              <Feather name="user" size={14} color="#EA580C" />
+              <Text className="text-white/70 text-xs font-bold tracking-wider ml-2">
+                FIRST NAME
+              </Text>
+            </View>
+            <TextInput
               value={formData.firstName}
               onChangeText={(text) =>
                 setFormData({ ...formData, firstName: text })
@@ -132,22 +133,21 @@ export default function EditProfileScreen() {
             />
           </View>
 
-
           <View>
             <View className="flex-row items-center mb-2">
               <Feather name="mail" size={14} color="#EA580C" />
               <Text className="text-white/70 text-xs font-bold tracking-wider ml-2">
-                EMAIL 
+                EMAIL
               </Text>
             </View>
             <View className="bg-white/[0.03] border border-white/[0.05] rounded-xl px-4 py-3.5 flex-row items-center">
               <Text className="text-white/50 text-base font-semibold flex-1">
                 {userData?.email}
               </Text>
-             <Ionicons name="lock-closed" size={16} color="#666" />
+              <Ionicons name="lock-closed" size={16} color="#666" />
             </View>
             <Text className="text-white/40 text-xs font-semibold mt-1.5">
-             Email cannot be changed 
+              Email cannot be changed
             </Text>
           </View>
         </View>

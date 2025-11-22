@@ -13,7 +13,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import SecondaryHeader from "@/components/secondaryHeader";
 import { useAds } from "@/providers/AdProvider";
 import { handleEarnGems } from "@/utils/adsReward";
 import { useApp } from "@/providers/AppProvider";
@@ -25,16 +24,15 @@ import { apiService } from "@/api";
 import { useAuth } from "@clerk/clerk-expo";
 import {
   ColorTheme,
-  Deal,
   Flag,
   GemPack,
-  ProDeal,
   Smoking,
 } from "@/types/api.types";
 import { usePostHog } from "posthog-react-native";
+import NestedScreenHeader from "@/components/nestedScreenHeader";
 
 export default function StoreScreen() {
-    const posthog = usePostHog();
+  const posthog = usePostHog();
 
   const { getToken } = useAuth();
   const insets = useSafeAreaInsets();
@@ -63,11 +61,11 @@ export default function StoreScreen() {
 
   const scrollViewRef = useRef<ScrollView>(null);
   const getMoreGemsSectionRef = useRef<View>(null);
-useEffect(() => {
-  posthog?.capture("store_viewed", {
-    user_gem_balance: userData?.gems || 0,
-  });
-}, [userData?.gems]);
+  useEffect(() => {
+    posthog?.capture("store_viewed", {
+      user_gem_balance: userData?.gems || 0,
+    });
+  }, [userData?.gems]);
 
   const handleGetMorePress = () => {
     // Track intent to buy gems
@@ -203,7 +201,6 @@ useEffect(() => {
     setRefreshing(false);
   };
 
-
   const flags: Flag[] = (storeItems?.flag || []).map(
     (item: any, index: number) => ({
       id: index + 1,
@@ -223,7 +220,6 @@ useEffect(() => {
       storeItem: device,
     })
   );
-
 
   const gemPacks: GemPack[] = [
     {
@@ -264,7 +260,6 @@ useEffect(() => {
   // const ReferralModal = () = {
 
   // }
-
 
   const SmokingCard = ({ device }: { device: any }) => (
     <TouchableOpacity
@@ -385,7 +380,9 @@ useEffect(() => {
   return (
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
-      <SecondaryHeader title="Store" />
+
+      <NestedScreenHeader heading="Store" secondaryHeading="DRUNK" />
+
       <ScrollView
         ref={scrollViewRef}
         className="flex-1"

@@ -6,7 +6,14 @@ import { router } from "expo-router";
 import { getLevelInfo } from "@/utils/levels";
 import InfoTooltip from "./infoTooltip";
 import { useAds } from "@/providers/AdProvider";
-import { Entypo, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import {
+  Entypo,
+  FontAwesome6,
+  Ionicons,
+  MaterialCommunityIcons,
+  MaterialIcons,
+  Octicons,
+} from "@expo/vector-icons";
 
 export const Header = () => {
   const { userData, userStats, updateUserProfile } = useApp();
@@ -94,7 +101,7 @@ export const Header = () => {
           </TouchableOpacity>
         </View>
 
-        <View className="flex-row items-center gap-4">
+        <View className="flex-row items-center gap-2">
           <View className="flex-row items-center  bg-white/5 px-3 py-2 rounded-full">
             <MaterialCommunityIcons name="fire" size={34} color="#EA580C" />
             <Text className="text-white text-base font-bold">
@@ -122,6 +129,28 @@ export const Header = () => {
               {userData?.gems || 0}
             </Text>
           </TouchableOpacity>
+          {/* <TouchableOpacity
+            className="flex-row items-center gap-1.5 bg-white/5 px-3 py-2 rounded-full"
+            onPress={() => router.push("/(screens)/notifications")}
+          >
+            <View className="relative">
+              <MaterialIcons
+                name="notifications-none"
+                size={30}
+                color="#EA580C"
+              />
+
+              <View
+                style={{
+                  position: "absolute",
+                  bottom: -2,
+                  right: -2,
+                }}
+              >
+                <Octicons name="dot-fill" size={18} color="#ff8c00" />
+              </View>
+            </View>
+          </TouchableOpacity> */}
         </View>
       </View>
     </View>
