@@ -19,12 +19,12 @@ import Animated, {
   useSharedValue,
   withRepeat,
   withTiming,
-  
   Easing,
 } from "react-native-reanimated";
 import SecondaryHeader from "@/components/secondaryHeader";
 import { useApp } from "@/providers/AppProvider";
 import { FontAwesome5, Ionicons } from "@expo/vector-icons";
+import NestedScreenHeader from "@/components/nestedScreenHeader";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -33,7 +33,7 @@ const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
 export default function MixTimeline() {
   const insets = useSafeAreaInsets();
-  const { userData,mixTimelineData } = useApp();
+  const { userData, mixTimelineData } = useApp();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Pulse animation for badges
@@ -95,10 +95,9 @@ export default function MixTimeline() {
 
   return (
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
-      <SecondaryHeader title="Mix Timeline" />
-
+      <NestedScreenHeader heading="Timeline" secondaryHeading="MIX" />
       <ScrollView
-        className="flex-1 px-4"
+        className="flex-1 px-4 mt-1"
         contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
         showsVerticalScrollIndicator={false}
       >

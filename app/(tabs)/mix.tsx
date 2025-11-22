@@ -307,7 +307,7 @@ const MixScreen = () => {
             No Mixes Ready Yet
           </Text>
           <Text className="text-white/50 text-sm text-center font-semibold px-4">
-            Who's the one who can bring you back to drinking?
+            Who&apos;s the one who can bring you back to drinking?
           </Text>
         </View>
       );
