@@ -63,7 +63,7 @@ export default function SplashScreen() {
         <View style={styles.iconContainer}>
           <Image
             source={require("../assets/images/icon.png")}
-            className="w-56 h-56 rounded-full border-3 border-white"
+            className="w-56 h-56 border-3 border-white"
           />
         </View>
         <Text style={styles.title}>OutDrinkMe</Text>

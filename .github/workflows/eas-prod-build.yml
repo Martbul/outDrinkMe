@@ -80,7 +80,7 @@ jobs:
         
       - name: Build Android Production AAB
         # --output ensures we know exactly where the file is
-        run: eas build --platform android --profile production --local --non-interactive --output=./app-release.aab
+        run: eas build --platform android --profile production --local --clear-cache  --non-interactive --output=./app-release.aab
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           # Fixes Gradle memory issues
