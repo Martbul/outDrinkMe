@@ -10,8 +10,10 @@ import {
   Friendship,
   Leaderboard,
   LeaderboardEntry,
+  NotificationListResponse,
   SearchDbAlcoholResult,
   StoreItem,
+  UnreadCountResponse,
   UpdateUserProfileReq,
   UserData,
   UserStats,
@@ -587,12 +589,90 @@ class ApiService {
       token,
     });
   }
-  
+
   async purchaseStoreItem(itemId: string, token: string): Promise<any> {
     return this.makeRequest<any>("/api/v1/store/purchase/item", {
       method: "POST",
       token,
       body: JSON.stringify({ item_id: itemId }),
+    });
+  }
+  async getAllNotifications(
+    token: string,
+    page: number = 1,
+    pageSize: number = 20,
+    unreadOnly: boolean = false
+  ): Promise<NotificationListResponse> {
+    const query = `?page=${page}&page_size=${pageSize}&unread_only=${unreadOnly}`;
+
+    return this.makeRequest<NotificationListResponse>(
+      `/api/v1/notifications${query}`,
+      {
+        method: "GET",
+        token,
+      }
+    );
+  }
+
+  async getUnreadNotificationsCount(
+    token: string
+  ): Promise<UnreadCountResponse> {
+    return this.makeRequest<UnreadCountResponse>(
+      "/api/v1/notifications/unread-count",
+      {
+        method: "GET",
+        token,
+      }
+    );
+  }
+
+  async markNotificationAsRead(
+    token: string,
+    id: string
+  ): Promise<{ message: string }> {
+    return this.makeRequest<{ message: string }>(
+      `/api/v1/notifications/${id}/read`,
+      {
+        method: "PUT",
+        token,
+      }
+    );
+  }
+
+  async markAllNotificationsAsRead(
+    token: string
+  ): Promise<{ message: string }> {
+    return this.makeRequest<{ message: string }>(
+      `/api/v1/notifications/read-all`,
+      {
+        method: "PUT",
+        token,
+      }
+    );
+  }
+
+  async getNotificationPreferences(token: string): Promise<any> {
+    return this.makeRequest<any>("/api/v1/notifications/preferences", {
+      method: "GET",
+      token,
+    });
+  }
+
+  async editNotificationPreferences(token: string): Promise<any> {
+    return this.makeRequest<any>("/api/v1/notifications/preferences", {
+      method: "PUT",
+      token,
+    });
+  }
+
+  async registerDevice(
+    token: string,
+    data: { token: string; platform: "android" | "ios" | "web" }
+  ): Promise<any> {
+    return this.makeRequest<any>("/api/v1/notifications/register-device", {
+      method: "POST",
+      token,
+      body: JSON.stringify(data), // You must send the body
     });
   }
 }

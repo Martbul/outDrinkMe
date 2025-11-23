@@ -337,3 +337,91 @@ export interface GemPack {
   image: any;
   bonus?: number;
 }
+
+export type NotificationType =
+  | "streak_milestone"
+  | "streak_at_risk"
+  | "friend_overtook_you"
+  | "mentioned_in_post"
+  | "video_chips_milestone"
+  | "challenge_invite"
+  | "challenge_result"
+  | "weekly_recap"
+  | "drunk_thought_reaction";
+
+export type NotificationPriority = "low" | "medium" | "high" | "urgent";
+
+export type NotificationStatus = "pending" | "sent" | "failed" | "read";
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  type: NotificationType;
+  priority: NotificationPriority;
+  status: NotificationStatus;
+  title: string;
+  body: string;
+  data: Record<string, any>; // Maps to Go's map[string]any
+  actor_id?: string | null;
+  scheduled_for?: string | null; // ISO Date string
+  sent_at?: string | null;
+  read_at?: string | null;
+  failed_at?: string | null;
+  failure_reason?: string | null;
+  retry_count: number;
+  action_url?: string | null;
+  created_at: string;
+  expires_at?: string | null;
+}
+
+// Response structure for GET /api/v1/notifications
+export interface NotificationListResponse {
+  notifications: NotificationItem[] | null; // Go sends null if empty slice sometimes, or empty array
+  unread_count: number;
+  total_count: number;
+  page: number;
+  page_size: number;
+}
+
+// Response structure for GET /api/v1/notifications/unread-count
+export interface UnreadCountResponse {
+  unread_count: number;
+}
+
+export interface DeviceToken {
+  token: string;
+  platform: "ios" | "android" | "web";
+  added_at: string;
+  last_used: string;
+}
+
+export interface NotificationPreferences {
+  id: string;
+  user_id: string;
+  push_enabled: boolean;
+  email_enabled: boolean;
+  in_app_enabled: boolean;
+  enabled_types: Record<string, boolean>;
+  max_notifications_per_hour: number;
+  max_notifications_per_day: number;
+  device_tokens: DeviceToken[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NotificationItem {
+  id: string;
+  user_id: string;
+  type: NotificationType;
+  priority: string;
+  status: "pending" | "sent" | "failed" | "read";
+  title: string;
+  body: string;
+  data: Record<string, any>; // The dynamic JSON data from Go
+  actor_id?: string;
+  scheduled_for?: string;
+  sent_at?: string;
+  read_at?: string | null; // If null, it is unread
+  created_at: string;
+  action_url?: string;
+}
