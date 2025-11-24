@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -11,20 +11,21 @@ import {
   ActivityIndicator,
   FlatList,
   TextInput,
+  LayoutAnimation,
+  ScrollView,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router"; // Added useFocusEffect
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/providers/AppProvider";
 import Entypo from "@expo/vector-icons/Entypo";
-import { Feather, Ionicons } from "@expo/vector-icons";
+import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import type { UserData } from "@/types/api.types";
 import { ImagePickerModal } from "@/components/imagePickerModal";
-// 1. Import PostHog hook
 import { usePostHog } from "posthog-react-native";
+import * as ImageManipulator from 'expo-image-manipulator'; // <--- Import this
 
 export default function AddDrinks() {
-  // 2. Initialize PostHog
   const posthog = usePostHog();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -37,69 +38,232 @@ export default function AddDrinks() {
     addDrunkThought,
   } = useApp();
 
+  // --- STATE MANAGEMENT ---
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0);
   const [isHolding, setIsHolding] = useState(false);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
     null
   );
+
+  const [viewState, setViewState] = useState<"logging" | "details" | "done">(
+    "logging"
+  );
+
+  // Details View State
+  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [mentionedBuddies, setMentionedBuddies] = useState<UserData[]>([]);
+  const [locationText, setLocationText] = useState("");
+
+  // Modals
+  const [imagePickerVisible, setImagePickerVisible] = useState(false);
   const [isAfterDrinkLoggedModalVisible, setAfterDrinkLoggedModal] =
     useState(false);
+
+  // Thoughts State
   const [thoughtInput, setThoughtInput] = useState("");
-  const [isSubmittingDrtunkThought, setIsSubmittingDrunkThought] =
+  const [isSubmittingDrunkThought, setIsSubmittingDrunkThought] =
     useState(false);
+  const [isSubmittingThought, setIsSubmittingThought] = useState(false);
 
   const hasCompletedRef = useRef(false);
+
   const alreadyLogged = userStats?.today_status || false;
 
-  // Sync thoughtInput with drunkThought from context
+  useFocusEffect(
+    useCallback(() => {
+      setViewState("logging");
+
+      setImageUri(null);
+      setMentionedBuddies([]);
+      setLocationText("");
+
+    }, [])
+  );
+
   useEffect(() => {
     if (drunkThought) {
       setThoughtInput(drunkThought);
     }
   }, [drunkThought]);
 
-  const handleUpload = async (
-    drinkToday: boolean,
-    imageUri?: string | null,
-    locationText?: string,
-    mentionedBuddies?: UserData[] | []
-  ) => {
-    if (isSubmitting) return;
 
-    setIsSubmitting(true);
+
+const uploadToCloudinary = async (localUri: string): Promise<string | null> => {
+  try {
+    posthog?.capture("image_upload_started");
+
+    // 1. OPTIMIZE IMAGE BEFORE UPLOAD
+    // Resize to max width 1080px, compress to 80% quality
+    // This turns a 10MB file into ~300KB without visible quality loss on phone screens
+    const manipulatedResult = await ImageManipulator.manipulateAsync(
+      localUri,
+      [{ resize: { width: 1080 } }],
+      { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+    );
+
+    const uriToUpload = manipulatedResult.uri;
+
+    const CLOUDINARY_CLOUD_NAME = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    const CLOUDINARY_UPLOAD_PRESET =
+      process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+
+    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+      throw new Error("Cloudinary credentials are not configured.");
+    }
+
+    const formData = new FormData();
+    formData.append("file", {
+      uri: uriToUpload, // Use the optimized URI
+      type: "image/jpeg",
+      name: `drank_${Date.now()}.jpg`,
+    } as any);
+
+    formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+    formData.append("folder", "drank-images");
+
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+      {
+        method: "POST",
+        body: formData,
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+
+    const data = await response.json();
+
+    if (data.secure_url) {
+      posthog?.capture("image_upload_success");
+      return data.secure_url;
+    }
+
+    return null;
+  } catch (error: any) {
+    console.error("Upload error:", error);
+    posthog?.capture("image_upload_failed", { error: error.message });
+    Alert.alert("Upload Error", "Failed to upload image. Please try again.");
+    return null;
+  }
+};
+
+
+
+  // const uploadToCloudinary = async (
+  //   localUri: string
+  // ): Promise<string | null> => {
+  //   try {
+  //     posthog?.capture("image_upload_started");
+
+  //     const CLOUDINARY_CLOUD_NAME =
+  //       process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
+  //     const CLOUDINARY_UPLOAD_PRESET =
+  //       process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+
+  //     if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+  //       throw new Error(
+  //         "Cloudinary credentials are not configured. Please check your .env file."
+  //       );
+  //     }
+
+  //     const formData = new FormData();
+  //     formData.append("file", {
+  //       uri: localUri,
+  //       type: "image/jpeg",
+  //       name: `drank_${Date.now()}.jpg`,
+  //     } as any);
+
+  //     formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+  //     formData.append("folder", "drank-images");
+
+  //     const response = await fetch(
+  //       `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+  //       {
+  //         method: "POST",
+  //         body: formData,
+  //         headers: {
+  //           "Content-Type": "multipart/form-data",
+  //         },
+  //       }
+  //     );
+
+  //     const data = await response.json();
+
+  //     if (data.secure_url) {
+  //       posthog?.capture("image_upload_success");
+  //       return data.secure_url;
+  //     }
+
+  //     return null;
+  //   } catch (error: any) {
+  //     console.error("Upload error:", error);
+  //     posthog?.capture("image_upload_failed", { error: error.message });
+  //     Alert.alert("Upload Error", "Failed to upload image. Please try again.");
+  //     return null;
+  //   }
+  // };
+
+  const handleImageSelection = async (source: "camera" | "library") => {
+    setImagePickerVisible(false); // Close the modal
+    posthog?.capture("image_picker_opened", { source });
+
     try {
-      await addDrinking(drinkToday, imageUri, locationText, mentionedBuddies);
+      let result;
 
-      // 3. Track successful drink log
-      posthog.capture("drink_logged", {
-        has_image: !!imageUri,
-        has_location: !!locationText,
-        buddy_count: mentionedBuddies?.length || 0,
-        current_streak: userStats?.current_streak || 0,
-        is_first_time_today: !userStats?.today_status,
-        timestamp: new Date().toISOString(),
-      });
-    } catch (error: any) {
-      Alert.alert("Error", "Failed to log. Please try again.");
+      if (source === "camera") {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== "granted") {
+          Alert.alert("Permission needed", "Camera access is required");
+          return;
+        }
+        result = await ImagePicker.launchCameraAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [4, 3],
+          quality: 0.8,
+        });
+      } else {
+        const { status } =
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== "granted") {
+          Alert.alert("Permission needed", "Gallery access is required");
+          return;
+        }
+        result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [4, 3],
+          quality: 0.8,
+        });
+      }
 
-      // 4. Track errors
-      posthog.capture("error_logged", {
-        context: "drinking_log_failed",
-        error_message: error.message,
-      });
-    } finally {
-      setIsSubmitting(false);
+      if (!result.canceled && result.assets[0]) {
+        setImageUri(result.assets[0].uri);
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to pick image");
     }
   };
 
+  const toggleBuddy = (buddy: UserData) => {
+    setMentionedBuddies((prev) => {
+      const exists = prev.find((b) => b.id === buddy.id);
+      if (exists) return prev.filter((b) => b.id !== buddy.id);
+      return [...prev, buddy];
+    });
+  };
+
+
   const startHold = () => {
+    if (viewState !== "logging" || alreadyLogged) return;
     setIsHolding(true);
     hasCompletedRef.current = false;
     let progress = 0;
 
     progressIntervalRef.current = setInterval(() => {
-      progress += 2;
+      progress += 1.4;
       setHoldProgress(progress);
 
       if (progress >= 100) {
@@ -109,12 +273,14 @@ export default function AddDrinks() {
         hasCompletedRef.current = true;
         setIsHolding(false);
         setHoldProgress(0);
-        setAfterDrinkLoggedModal(true);
 
-        // 5. Track that the hold interaction completed
+        // Transition to Details View
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setViewState("details");
+
         posthog.capture("drink_button_hold_complete");
       }
-    }, 30);
+    }, 16);
   };
 
   const cancelHold = () => {
@@ -123,209 +289,445 @@ export default function AddDrinks() {
       progressIntervalRef.current = null;
     }
 
-    // Only reset if the hold wasn't completed
     if (!hasCompletedRef.current) {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.spring);
       setHoldProgress(0);
       setIsHolding(false);
     }
   };
 
-  const potentialStreak = (userStats?.current_streak || 0) + 1;
 
-  if (alreadyLogged) {
-    const handleSubmitThought = async () => {
-      if (!thoughtInput.trim()) return;
+  const handleFinalSubmit = async (skipDetails = false) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
 
-      setIsSubmittingDrunkThought(true);
-      try {
-        await addDrunkThought(thoughtInput.trim());
+    try {
+      let finalImageUri = imageUri;
 
-        // 6. Track drunk thought submission
-        posthog.capture("drunk_thought_shared", {
-          char_length: thoughtInput.length,
-          is_update: !!drunkThought,
-        });
-      } catch (error: any) {
-        console.error("Failed to submit drunk thought:", error);
-
-        posthog.capture("error_logged", {
-          context: "drunk_thought_failed",
-          error_message: error.message,
-        });
-
-        Alert.alert("Error", "Failed to save your thought. Try again!");
-      } finally {
-        setIsSubmittingDrunkThought(false);
+      if (
+        !skipDetails &&
+        imageUri &&
+        !imageUri.includes("cloudinary") &&
+        !imageUri.includes("http")
+      ) {
+        finalImageUri = await uploadToCloudinary(imageUri);
       }
-    };
 
-    return (
-      <View
-        className="flex-1 bg-black px-4 justify-center"
-        style={{
-          paddingTop: insets.top,
-          paddingBottom: insets.bottom + 40,
-        }}
+      await addDrinking(
+        true,
+        skipDetails ? null : finalImageUri,
+        skipDetails ? "" : locationText,
+        skipDetails ? [] : mentionedBuddies
+      );
+
+      posthog.capture("drink_logged", {
+        has_image: !!finalImageUri,
+        buddy_count: mentionedBuddies.length,
+        is_skipped: skipDetails,
+      });
+
+      // --- KEY CHANGE: DO NOT NAVIGATE BACK ---
+      // Instead, we clear the local form state and reset viewState to "logging".
+      // Since addDrinking updated userStats.today_status to true,
+      // the render logic (alreadyLogged && viewState === "logging") will display the success screen.
+
+      setImageUri(null);
+      setMentionedBuddies([]);
+      setViewState("logging");
+
+      // router.back(); // Removed
+    } catch (error: any) {
+      Alert.alert("Error", "Failed to log drink.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+
+  const renderHeader = () => (
+    <View
+      className="flex-row items-center justify-between mb-6"
+      style={{ paddingTop: insets.top + 10}}
+    >
+      <TouchableOpacity
+        onPress={() => router.back()}
+        className="w-10 h-10 rounded-full bg-white/[0.05] items-center justify-center border border-white/[0.1]"
       >
-        {/* Success Header */}
-        <View className="mb-12 items-center">
-          <View className="w-32 h-32 rounded-full bg-orange-600/20 items-center justify-center mb-6 border-4 border-orange-600/50">
-            <Entypo name="check" size={84} color="#ff8c00" />
-          </View>
-          <Text className="text-white text-4xl font-black text-center leading-tight mb-3">
-            Already Logged!
-          </Text>
-          <Text className="text-white/50 text-base text-center font-semibold">
-            You are my alcoholic pride!{"\n"}Drink again tomorrow and keep your
-            streak!
-          </Text>
-        </View>
-
-        {/* Current Streak Display */}
-        <View className="bg-white/[0.03] rounded-2xl p-6 mb-8 border border-white/[0.08]">
-          <View className="items-center">
-            <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-2">
-              CURRENT STREAK
-            </Text>
-            <Text className="text-orange-600 text-6xl font-black mb-2">
-              {userStats?.current_streak || 0}
-            </Text>
-          </View>
-        </View>
-
-        {drunkThought ? (
-          <View className="bg-white/[0.03] rounded-2xl p-6 mb-6 border border-white/[0.08]">
-            <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-3">
-              TODAY&apos;S DRUNK THOUGHT
-            </Text>
-            <Text className="text-orange-600 text-2xl  font-bold leading-relaxed">
-              {drunkThought}
-            </Text>
-          </View>
-        ) : (
-          // Show input for new thought
-          <View className="mb-6">
-            <Text className="text-white/70 text-sm font-bold mb-3 text-center">
-              Share your drunk thought of the day
-            </Text>
-            <TextInput
-              value={thoughtInput}
-              onChangeText={setThoughtInput}
-              placeholder="What's on your mind?"
-              placeholderTextColor="#ffffff40"
-              multiline
-              numberOfLines={3}
-              maxLength={280}
-              className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-4 text-white text-base mb-4"
-              style={{ textAlignVertical: "top", minHeight: 100 }}
-              editable={!isSubmittingDrtunkThought}
-            />
-            <TouchableOpacity
-              onPress={handleSubmitThought}
-              disabled={!thoughtInput.trim() || isSubmittingDrtunkThought}
-              className={`rounded-2xl py-5 ${
-                !thoughtInput.trim() || isSubmittingDrtunkThought
-                  ? "bg-orange-600/30"
-                  : "bg-orange-600"
-              }`}
-            >
-              <Text className="text-black text-base font-black text-center tracking-widest uppercase">
-                {isSubmittingDrtunkThought ? "Saving..." : "Share Thought"}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
+        <Ionicons name="close" size={20} color="white" />
+      </TouchableOpacity>
+      <View className="items-center">
+        <Text className="text-white text-base font-bold">New Entry</Text>
       </View>
-    );
-  }
+      <View className="w-10" />
+    </View>
+  );
+const renderAlreadyLogged = () => {
+  const handleSubmitThought = async () => {
+    if (!thoughtInput.trim()) return;
+
+    setIsSubmittingDrunkThought(true);
+    try {
+      await addDrunkThought(thoughtInput.trim());
+      posthog?.capture("drunk_thought_shared", {
+        char_length: thoughtInput.length,
+        is_update: !!drunkThought,
+      });
+    } catch (error: any) {
+      Alert.alert("Error", "Failed to save your thought. Try again!");
+    } finally {
+      setIsSubmittingDrunkThought(false);
+    }
+  };
 
   return (
-    <View
-      className="flex-1 bg-black px-4 justify-center"
-      style={{
-        paddingTop: insets.top,
-        paddingBottom: insets.bottom + 40,
-      }}
-    >
-      <View className="mb-12">
-        <View className="flex-row items-center justify-center mb-6">
-          <View className="w-2 h-2 bg-orange-600 rounded-full mr-3" />
-          <Text className="text-orange-600 text-xs font-black tracking-widest uppercase">
-            Quick Log
+    <View className="flex-1 justify-center px-1">
+      <View className="items-center justify-center mb-8 mt-6">
+        <View className="relative justify-center items-center mb-6">
+          <View className="absolute w-56 h-56 bg-[#EA580C]/20 rounded-full blur-2xl" />
+          <View className="w-48 h-48 rounded-full bg-[#0d0d0d] border-4 border-[#EA580C] items-center justify-center shadow-xl shadow-[#EA580C]/20">
+            <View className="w-36 h-36 rounded-full border-2 border-[#EA580C]/20 items-center justify-center bg-[#EA580C]/5">
+              <Ionicons name="checkmark-sharp" size={60} color="#EA580C" />
+            </View>
+          </View>
+
+          <View className="absolute -bottom-3 bg-[#EA580C] px-4 py-1 rounded-full border-4 border-black">
+            <Text className="text-black text-[10px] font-black tracking-[0.2em] uppercase">
+              DRUNK
+            </Text>
+          </View>
+        </View>
+
+        <View className="items-center space-y-2 px-4">
+          <Text className="text-white text-3xl font-black text-center tracking-tight uppercase  transform -rotate-1">
+          SUCCESS
+          </Text>
+
+          <Text className="text-white/40 text-sm font-semibold text-center mt-2">
+            You are my alcoholic pride!
           </Text>
         </View>
-        <Text className="text-white text-5xl font-black text-center leading-tight">
-          Did you{"\n"}drink today?
+      </View>
+      <View className="flex-row items-center bg-white/[0.04] rounded-2xl p-5 mb-8 border border-white/[0.08] mx-2">
+        <View className="w-16 h-16 rounded-full bg-orange-500/10 items-center justify-center mr-4">
+          <MaterialCommunityIcons name="fire" size={44} color="#EA580C" />
+        </View>
+        <View className="flex-1">
+          <Text className="text-white/40 text-[10px] font-black tracking-widest uppercase mb-1">
+            Current Streak
+          </Text>
+          <Text className="text-white text-3xl font-black">
+            {userStats?.current_streak || 0}{" "}
+            <Text className="text-base text-white/30 font-bold">days</Text>
+          </Text>
+        </View>
+      </View>
+
+      {drunkThought ? (
+        <View className="bg-orange-600/10 rounded-3xl p-6 mb-6 mx-2 border border-orange-600/20 relative overflow-hidden">
+          <Entypo
+            name="quote"
+            size={40}
+            color="#ff8c00"
+            style={{ opacity: 0.2, position: "absolute", top: 10, left: 10 }}
+          />
+          <Text className="text-orange-500 text-[10px] font-black tracking-widest uppercase mb-3 text-center opacity-80">
+            Your Drunk Wisdom
+          </Text>
+          <Text className="text-white text-xl font-bold text-center leading-7 italic">
+            "{drunkThought}"
+          </Text>
+        </View>
+      ) : (
+        // --- Input Mode (Card Style) ---
+        <View className="bg-[#1A1A1A] rounded-3xl p-5 mb-6 mx-2 border border-white/[0.1]">
+          <View className="flex-row items-center mb-4 ml-1">
+            <Feather name="edit-3" size={14} color="#ff8c00" />
+            <Text className="text-white/60 text-xs font-bold ml-2">
+              Share a drunk thought
+            </Text>
+          </View>
+
+          <TextInput
+            value={thoughtInput}
+            onChangeText={setThoughtInput}
+            placeholder="What's going through your head?"
+            placeholderTextColor="#525252"
+            multiline
+            maxLength={280}
+            className="text-white text-lg font-medium min-h-[80px] mb-4"
+            style={{ textAlignVertical: "top" }}
+            editable={!isSubmittingDrunkThought}
+          />
+
+          <TouchableOpacity
+            onPress={handleSubmitThought}
+            disabled={!thoughtInput.trim() || isSubmittingDrunkThought}
+            className={`flex-row items-center justify-center py-4 rounded-xl ${
+              !thoughtInput.trim() || isSubmittingDrunkThought
+                ? "bg-white/5"
+                : "bg-orange-600"
+            }`}
+          >
+            {isSubmittingDrunkThought ? (
+              <ActivityIndicator
+                color={!thoughtInput.trim() ? "gray" : "black"}
+              />
+            ) : (
+              <>
+                <Text
+                  className={`font-bold text-sm mr-2 ${!thoughtInput.trim() ? "text-white/20" : "text-black"}`}
+                >
+                  POST TO BUDDIES
+                </Text>
+                {!!thoughtInput.trim() && (
+                  <Ionicons name="send" size={16} color="black" />
+                )}
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+};
+
+  const renderLoggingView = () => {
+    const potentialStreak = (userStats?.current_streak || 0) + 1;
+
+    return (
+      <View className="flex-1 justify-center">
+        <View className="mb-12">
+          <View className="flex-row items-center justify-center mb-6">
+            <View className="w-2 h-2 bg-orange-600 rounded-full mr-3" />
+            <Text className="text-orange-600 text-xs font-black tracking-widest uppercase">
+              Quick Log
+            </Text>
+          </View>
+          <Text className="text-white text-5xl font-black text-center leading-tight">
+            Did you{"\n"}drink today?
+          </Text>
+        </View>
+
+        <View className="bg-white/[0.03] rounded-2xl p-6 mb-12 border border-white/[0.08]">
+          <View className="flex-row items-center justify-between">
+            <View>
+              <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-1">
+                CURRENT STREAK
+              </Text>
+              <Text className="text-white text-4xl font-black">
+                {userStats?.current_streak || 0}
+              </Text>
+            </View>
+            <View className="items-end">
+              <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">
+                NEXT
+              </Text>
+              <Text className="text-orange-600 text-3xl font-black">
+                {potentialStreak}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <View className="mb-6">
+          <TouchableOpacity
+            onPressIn={startHold}
+            onPressOut={cancelHold}
+            disabled={isSubmitting}
+            activeOpacity={0.9}
+            className="bg-white/[0.05] rounded-3xl border-2 border-white/[0.08] overflow-hidden relative items-center justify-center"
+            style={{ height: 170 }}
+          >
+            <View className="flex-1 items-center justify-center">
+              <Text className="text-black text-3xl font-black mb-2">
+                <View className="z-10 items-center">
+                  <Ionicons
+                    color={isHolding ? "#000" : "#ff8c00"}
+                    name={isHolding ? "beer" : "finger-print"}
+                    size={48}
+                    style={{ marginBottom: 16 }}
+                  />
+                  <Text
+                    className={`text-2xl font-black tracking-widest ${
+                      holdProgress > 50 ? "text-black" : "text-white"
+                    }`}
+                  >
+                    {isHolding ? "HOLDING..." : "HOLD TO LOG"}
+                  </Text>
+                </View>
+              </Text>
+              <Text className="text-white/30 text-xs text-center font-semibold">
+                Keep pressing to confirm
+              </Text>
+            </View>
+            <View
+              className="absolute bottom-0 left-0 right-0 bg-orange-600"
+              style={{ height: `${holdProgress}%` }}
+            />
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity onPress={() => router.back()} className="py-4 mb-8">
+          <Text className="text-white/40 text-sm font-bold text-center">
+            Not now
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  const renderDetailsView = () => (
+    <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
+      <View className="items-center mb-8 mt-4">
+        <Text className="text-orange-500 text-sm font-black tracking-widest mb-2">
+          STREAK SECURED
+        </Text>
+        <Text className="text-white text-3xl font-black text-center">
+          Make it memorable
         </Text>
       </View>
 
-      <View className="bg-white/[0.03] rounded-2xl p-6 mb-12 border border-white/[0.08]">
-        <View className="flex-row items-center justify-between">
-          <View>
-            <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-1">
-              CURRENT STREAK
-            </Text>
-            <Text className="text-white text-4xl font-black">
-              {userStats?.current_streak || 0}
-            </Text>
+      {/* --- Image Picker Card --- */}
+      <TouchableOpacity
+        onPress={() => setImagePickerVisible(true)}
+        className="w-full aspect-video bg-white/[0.03] rounded-3xl border-2 border-dashed border-white/[0.1] mb-6 overflow-hidden"
+      >
+        {imageUri ? (
+          <Image
+            source={{ uri: imageUri }}
+            className="w-full h-full"
+            resizeMode="cover"
+          />
+        ) : (
+          <View className="flex-1 items-center justify-center">
+            <View className="w-16 h-16 rounded-full bg-white/[0.05] items-center justify-center mb-3">
+              <Feather name="camera" size={24} color="#ff8c00" />
+            </View>
+            <Text className="text-white/60 font-bold">Snap a picture</Text>
           </View>
-          <View className="items-end">
-            <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">
-              NEXT
-            </Text>
-            <Text className="text-orange-600 text-3xl font-black">
-              {potentialStreak}
-            </Text>
+        )}
+        {imageUri && (
+          <View className="absolute top-4 right-4 bg-black/50 px-3 py-1 rounded-full">
+            <Text className="text-white text-xs font-bold">Tap to change</Text>
           </View>
+        )}
+      </TouchableOpacity>
+
+      {/* --- Buddies Section --- */}
+      <View className="mb-8">
+        <View className="flex-row items-center mb-3 ml-1">
+          <Ionicons
+            name="people"
+            size={16}
+            color="#ffffff60"
+            style={{ marginRight: 6 }}
+          />
+          <Text className="text-white/40 text-xs font-black tracking-widest">
+            WITH WHO?
+          </Text>
         </View>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingRight: 20 }}
+        >
+       
+
+          {friends.map((friend) => {
+            const isSelected = mentionedBuddies.some((b) => b.id === friend.id);
+            return (
+              <TouchableOpacity
+                key={friend.id}
+                onPress={() => toggleBuddy(friend)}
+                className={`mr-3 items-center justify-center px-4 py-3 rounded-2xl border ${
+                  isSelected
+                    ? "bg-orange-600 border-orange-600"
+                    : "bg-white/[0.03] border-white/[0.08]"
+                }`}
+              >
+                <Text
+                  className={`font-bold ${isSelected ? "text-black" : "text-white"}`}
+                >
+                  {friend.username}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
+
+      {/* --- Action Buttons --- */}
+      <View className="gap-3 mb-10">
+        <TouchableOpacity
+          onPress={() => handleFinalSubmit(false)}
+          disabled={isSubmitting}
+          className="w-full py-5 bg-white rounded-2xl items-center flex-row justify-center"
+        >
+          {isSubmitting ? (
+            <ActivityIndicator color="black" />
+          ) : (
+            <>
+              <Text className="text-black text-base font-black tracking-wider mr-2">
+                SAVE MEMORY
+              </Text>
+              <Ionicons name="arrow-forward" size={20} color="black" />
+            </>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => handleFinalSubmit(true)}
+          disabled={isSubmitting}
+          className="w-full py-4 items-center"
+        >
+          <Text className="text-white/40 font-bold text-sm">Skip details</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
+  );
+
+  // --- MAIN RENDER ---
+  return (
+    <View
+      className="flex-1 bg-black px-3"
+      style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}
+    >
+      {alreadyLogged && viewState === "logging" ? (
+        <>
+          {renderAlreadyLogged()}
+        </>
+      ) : viewState === "details" ? (
+        <>
+          {renderHeader()}
+          {renderDetailsView()}
+        </>
+      ) : (
+        renderLoggingView()
+      )}
+
+      {/* Helper Modal */}
+      <ImagePickerModal
+        visible={imagePickerVisible}
+        onClose={() => setImagePickerVisible(false)}
+        onSelectCamera={() => handleImageSelection("camera")}
+        onSelectLibrary={() => handleImageSelection("library")}
+      />
 
       <AdditionalInfoModal
         friends={friends}
         visible={isAfterDrinkLoggedModalVisible}
         isLoading={isLoading}
-        handleUpload={handleUpload}
+        handleUpload={async (today, uri, loc, buddies) => {
+          await addDrinking(today, uri, loc, buddies);
+        }}
         onClose={() => setAfterDrinkLoggedModal(false)}
       />
-
-      <View className="mb-6">
-        <TouchableOpacity
-          onPressIn={startHold}
-          onPressOut={cancelHold}
-          disabled={isSubmitting}
-          activeOpacity={0.9}
-          className="bg-orange-600 rounded-3xl overflow-hidden"
-          style={{ height: 140 }}
-        >
-          <View className="flex-1 items-center justify-center">
-            <Text className="text-black text-3xl font-black mb-2">
-              {isHolding ? "HOLD..." : "DRINK"}
-            </Text>
-            <Text className="text-black/60 text-sm font-bold">
-              Press and hold to confirm
-            </Text>
-          </View>
-          {holdProgress > 0 && (
-            <View
-              className="absolute bottom-0 left-0 right-0 bg-black/30"
-              style={{ height: `${holdProgress}%` }}
-            />
-          )}
-        </TouchableOpacity>
-
-        <Text className="text-white/50 text-xs text-center mt-3 font-semibold">
-          Hold the button for 2 seconds to log
-        </Text>
-      </View>
-
-      <TouchableOpacity onPress={() => router.back()} className="py-4 mb-8">
-        <Text className="text-white/40 text-sm font-bold text-center">
-          Not now
-        </Text>
-      </TouchableOpacity>
     </View>
   );
 }
+
+// --- SUB COMPONENTS ---
 
 interface InfoTooltipProps {
   friends: UserData[];
@@ -353,7 +755,6 @@ function AdditionalInfoModal({
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [locationText, setLocationText] = useState("");
   const [mentionedBuddies, setMentionedBuddies] = useState<UserData[] | []>([]);
-  // const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [isFriendsListVisible, setFriendsListVisible] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [imagePickerModalVisible, setImagePickerModalVisible] = useState(false);
@@ -378,13 +779,6 @@ function AdditionalInfoModal({
   const toggleFriendSelection = (friend: UserData) => {
     setMentionedBuddies((prev) => {
       const isAlreadySelected = prev.some((f) => f.id === friend.id);
-
-      // 8. Track friend selection toggles (Social Engagement)
-      posthog?.capture("buddy_selection_toggled", {
-        friend_id: friend.id,
-        action: isAlreadySelected ? "removed" : "added",
-      });
-
       if (isAlreadySelected) {
         return prev.filter((f) => f.id !== friend.id);
       } else {
@@ -402,7 +796,6 @@ function AdditionalInfoModal({
   ): Promise<string | null> => {
     try {
       setIsUploadingImage(true);
-      // 9. Track upload start
       posthog?.capture("image_upload_started");
 
       const CLOUDINARY_CLOUD_NAME =
@@ -411,9 +804,7 @@ function AdditionalInfoModal({
         process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
       if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
-        throw new Error(
-          "Cloudinary credentials are not configured. Please check your .env file."
-        );
+        throw new Error("Cloudinary credentials are not configured.");
       }
 
       const formData = new FormData();
@@ -440,22 +831,13 @@ function AdditionalInfoModal({
       const data = await response.json();
 
       if (data.secure_url) {
-        console.log("Upload successful:", data.secure_url);
-        // 10. Track success
         posthog?.capture("image_upload_success");
         return data.secure_url;
       }
-
-      throw new Error(data.error?.message || "Upload failed");
+      return null;
     } catch (error: any) {
       console.error("Upload error:", error);
-      // 11. Track upload failures
-      posthog?.capture("image_upload_failed", { error: error.message });
-
-      Alert.alert(
-        "Upload Error",
-        "Failed to upload image to Cloudinary. Please try again."
-      );
+      Alert.alert("Upload Error", "Failed to upload image.");
       return null;
     } finally {
       setIsUploadingImage(false);
@@ -471,15 +853,10 @@ function AdditionalInfoModal({
 
       if (source === "camera") {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
-
         if (status !== "granted") {
-          Alert.alert(
-            "Permission needed",
-            "Please grant permission to access your camera"
-          );
+          Alert.alert("Permission needed", "Camera access is required");
           return;
         }
-
         result = await ImagePicker.launchCameraAsync({
           mediaTypes: ImagePicker.MediaTypeOptions.Images,
           allowsEditing: true,
@@ -489,15 +866,10 @@ function AdditionalInfoModal({
       } else {
         const { status } =
           await ImagePicker.requestMediaLibraryPermissionsAsync();
-
         if (status !== "granted") {
-          Alert.alert(
-            "Permission needed",
-            "Please grant permission to access your photos"
-          );
+          Alert.alert("Permission needed", "Gallery access is required");
           return;
         }
-
         result = await ImagePicker.launchImageLibraryAsync({
           mediaTypes: ImagePicker.MediaTypeOptions.Images,
           allowsEditing: true,
@@ -509,9 +881,7 @@ function AdditionalInfoModal({
       if (!result.canceled && result.assets[0]) {
         const localUri = result.assets[0].uri;
         setImageUri(localUri);
-
         const cloudinaryUrl = await uploadToCloudinary(localUri);
-
         if (cloudinaryUrl) {
           setImageUri(cloudinaryUrl);
         } else {
@@ -520,13 +890,10 @@ function AdditionalInfoModal({
       }
     } catch (error) {
       Alert.alert("Error", "Failed to pick image");
-      console.error(error);
     }
   };
 
   const handleSkip = async () => {
-    posthog?.capture("drink_details_skipped");
-
     setImageUri(null);
     setLocationText("");
     setMentionedBuddies([]);
@@ -534,27 +901,17 @@ function AdditionalInfoModal({
     onClose();
   };
 
- const handleDone = async () => {
-   if (isUploadingImage) {
-     Alert.alert("Please wait", "Image is still uploading...");
-     return;
-   }
-
-   // 14. Track completion details
-   posthog?.capture("drink_details_completed", {
-     has_image: !!imageUri,
-     has_location: !!locationText,
-     buddy_count: mentionedBuddies.length,
-   });
-
-   // imageUri now contains the Cloudinary public URL
-   await handleUpload(true, imageUri, locationText, mentionedBuddies);
-
-   // Reset state after successful upload
-   setImageUri(null);
-   setLocationText("");
-   setMentionedBuddies([]);
- };
+  const handleDone = async () => {
+    if (isUploadingImage) {
+      Alert.alert("Please wait", "Image is still uploading...");
+      return;
+    }
+    // imageUri now contains the Cloudinary public URL
+    await handleUpload(true, imageUri, locationText, mentionedBuddies);
+    setImageUri(null);
+    setLocationText("");
+    setMentionedBuddies([]);
+  };
 
   const renderEmptyFriendComponent = () => {
     if (isLoading) {
@@ -567,7 +924,6 @@ function AdditionalInfoModal({
         </View>
       );
     }
-
     if (friends.length === 0) {
       return (
         <View className="bg-white/[0.03] rounded-2xl p-8 border border-white/[0.08] items-center">
@@ -577,13 +933,9 @@ function AdditionalInfoModal({
           <Text className="text-white text-xl font-black mb-2">
             No Friends Yet
           </Text>
-          <Text className="text-white/50 text-sm text-center font-semibold px-4">
-            Whos the one who can bring you back to drinking?
-          </Text>
         </View>
       );
     }
-
     return null;
   };
 
@@ -623,15 +975,6 @@ function AdditionalInfoModal({
           >
             {item.username || "Unknown User"}
           </Text>
-          {(item.firstName || item.lastName) && (
-            <Text
-              className={`text-sm font-semibold ${
-                isSelected ? "text-orange-300/70" : "text-white/50"
-              }`}
-            >
-              {[item.firstName, item.lastName].filter(Boolean).join(" ")}
-            </Text>
-          )}
         </View>
 
         {isSelected && (
@@ -704,17 +1047,6 @@ function AdditionalInfoModal({
                 </TouchableOpacity>
               </View>
 
-              {locationText ? (
-                <View className="bg-[#2a2a2a] rounded-xl p-3 mb-3 border border-orange-600/20">
-                  <View className="flex-row items-start">
-                    <Feather name="map-pin" size={16} color="#ff8c00" />
-                    <Text className="text-white/80 text-xs ml-2 flex-1">
-                      {locationText}
-                    </Text>
-                  </View>
-                </View>
-              ) : null}
-
               {isFriendsListVisible && friends && (
                 <FlatList
                   data={friends}
@@ -724,6 +1056,7 @@ function AdditionalInfoModal({
                   renderItem={renderFriendItem}
                   ListEmptyComponent={renderEmptyFriendComponent}
                   showsVerticalScrollIndicator={false}
+                  style={{ maxHeight: 200 }}
                 />
               )}
 
