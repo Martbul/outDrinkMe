@@ -361,9 +361,9 @@ export interface Notification {
   status: NotificationStatus;
   title: string;
   body: string;
-  data: Record<string, any>; // Maps to Go's map[string]any
+  data: Record<string, any>; 
   actor_id?: string | null;
-  scheduled_for?: string | null; // ISO Date string
+  scheduled_for?: string | null; 
   sent_at?: string | null;
   read_at?: string | null;
   failed_at?: string | null;
@@ -374,16 +374,14 @@ export interface Notification {
   expires_at?: string | null;
 }
 
-// Response structure for GET /api/v1/notifications
 export interface NotificationListResponse {
-  notifications: NotificationItem[] | null; // Go sends null if empty slice sometimes, or empty array
+  notifications: NotificationItem[] | null; 
   unread_count: number;
   total_count: number;
   page: number;
   page_size: number;
 }
 
-// Response structure for GET /api/v1/notifications/unread-count
 export interface UnreadCountResponse {
   unread_count: number;
 }
@@ -417,11 +415,11 @@ export interface NotificationItem {
   status: "pending" | "sent" | "failed" | "read";
   title: string;
   body: string;
-  data: Record<string, any>; // The dynamic JSON data from Go
+  data: Record<string, any>; 
   actor_id?: string;
   scheduled_for?: string;
   sent_at?: string;
-  read_at?: string | null; // If null, it is unread
+  read_at?: string | null; 
   created_at: string;
   action_url?: string;
 }
