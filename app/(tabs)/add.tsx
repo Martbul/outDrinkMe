@@ -14,7 +14,7 @@ import {
   LayoutAnimation,
   ScrollView,
 } from "react-native";
-import { useRouter, useFocusEffect } from "expo-router"; // Added useFocusEffect
+import { useRouter, useFocusEffect } from "expo-router"; 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/providers/AppProvider";
 import Entypo from "@expo/vector-icons/Entypo";
@@ -23,7 +23,7 @@ import * as ImagePicker from "expo-image-picker";
 import type { UserData } from "@/types/api.types";
 import { ImagePickerModal } from "@/components/imagePickerModal";
 import { usePostHog } from "posthog-react-native";
-import * as ImageManipulator from 'expo-image-manipulator'; // <--- Import this
+import * as ImageManipulator from 'expo-image-manipulator'; 
 
 export default function AddDrinks() {
   const posthog = usePostHog();
@@ -38,7 +38,6 @@ export default function AddDrinks() {
     addDrunkThought,
   } = useApp();
 
-  // --- STATE MANAGEMENT ---
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0);
   const [isHolding, setIsHolding] = useState(false);
@@ -204,48 +203,46 @@ const uploadToCloudinary = async (localUri: string): Promise<string | null> => {
   //     return null;
   //   }
   // };
+const handleImageSelection = async (source: "camera" | "library") => {
+  setImagePickerVisible(false);
+  posthog?.capture("image_picker_opened", { source });
 
-  const handleImageSelection = async (source: "camera" | "library") => {
-    setImagePickerVisible(false); // Close the modal
-    posthog?.capture("image_picker_opened", { source });
+  try {
+    let result;
 
-    try {
-      let result;
+    // --- ENABLE NATIVE CROPPER ---
+    const pickerOptions: ImagePicker.ImagePickerOptions = {
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true, // <--- CHANGED TO TRUE: Enables the crop/edit screen
+      quality: 0.8,
+      // aspect: [4, 3],   // Keep this commented out if you want freeform cropping (Android)
+      // or default cropping (iOS)
+    };
 
-      if (source === "camera") {
-        const { status } = await ImagePicker.requestCameraPermissionsAsync();
-        if (status !== "granted") {
-          Alert.alert("Permission needed", "Camera access is required");
-          return;
-        }
-        result = await ImagePicker.launchCameraAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsEditing: true,
-          aspect: [4, 3],
-          quality: 0.8,
-        });
-      } else {
-        const { status } =
-          await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== "granted") {
-          Alert.alert("Permission needed", "Gallery access is required");
-          return;
-        }
-        result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsEditing: true,
-          aspect: [4, 3],
-          quality: 0.8,
-        });
+    if (source === "camera") {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission needed", "Camera access is required");
+        return;
       }
-
-      if (!result.canceled && result.assets[0]) {
-        setImageUri(result.assets[0].uri);
+      result = await ImagePicker.launchCameraAsync(pickerOptions);
+    } else {
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission needed", "Gallery access is required");
+        return;
       }
-    } catch (error) {
-      Alert.alert("Error", "Failed to pick image");
+      result = await ImagePicker.launchImageLibraryAsync(pickerOptions);
     }
-  };
+
+    if (!result.canceled && result.assets[0]) {
+      setImageUri(result.assets[0].uri);
+    }
+  } catch (error) {
+    Alert.alert("Error", "Failed to pick image");
+  }
+};
 
   const toggleBuddy = (buddy: UserData) => {
     setMentionedBuddies((prev) => {
@@ -392,14 +389,14 @@ const renderAlreadyLogged = () => {
 
           <View className="absolute -bottom-3 bg-[#EA580C] px-4 py-1 rounded-full border-4 border-black">
             <Text className="text-black text-[10px] font-black tracking-[0.2em] uppercase">
-              DRUNK
+              SUCCESSFULLY
             </Text>
           </View>
         </View>
 
         <View className="items-center space-y-2 px-4">
-          <Text className="text-white text-3xl font-black text-center tracking-tight uppercase  transform -rotate-1">
-          SUCCESS
+          <Text className="text-white text-4xl font-black text-center tracking-tight uppercase  transform -rotate-1">
+            DRUNK
           </Text>
 
           <Text className="text-white/40 text-sm font-semibold text-center mt-2">
@@ -542,7 +539,7 @@ const renderAlreadyLogged = () => {
               <Text className="text-black text-3xl font-black mb-2">
                 <View className="z-10 items-center">
                   <Ionicons
-                    color={isHolding ? "#000" : "#ff8c00"}
+                    color={isHolding ? "#000" : "#EA580C"}
                     name={isHolding ? "beer" : "finger-print"}
                     size={48}
                     style={{ marginBottom: 16 }}
@@ -601,7 +598,7 @@ const renderAlreadyLogged = () => {
         ) : (
           <View className="flex-1 items-center justify-center">
             <View className="w-16 h-16 rounded-full bg-white/[0.05] items-center justify-center mb-3">
-              <Feather name="camera" size={24} color="#ff8c00" />
+              <Feather name="camera" size={24} color="#EA580C" />
             </View>
             <Text className="text-white/60 font-bold">Snap a picture</Text>
           </View>
@@ -632,8 +629,6 @@ const renderAlreadyLogged = () => {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingRight: 20 }}
         >
-       
-
           {friends.map((friend) => {
             const isSelected = mentionedBuddies.some((b) => b.id === friend.id);
             return (
@@ -662,7 +657,7 @@ const renderAlreadyLogged = () => {
         <TouchableOpacity
           onPress={() => handleFinalSubmit(false)}
           disabled={isSubmitting}
-          className="w-full py-5 bg-white rounded-2xl items-center flex-row justify-center"
+          className="w-full py-5 bg-[#EA580C] rounded-2xl items-center flex-row justify-center"
         >
           {isSubmitting ? (
             <ActivityIndicator color="black" />
@@ -851,18 +846,20 @@ function AdditionalInfoModal({
     try {
       let result;
 
+      // --- ENABLE NATIVE CROPPER ---
+      const pickerOptions: ImagePicker.ImagePickerOptions = {
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true, // <--- CHANGED TO TRUE: Enables the crop/edit screen
+        quality: 0.8,
+      };
+
       if (source === "camera") {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== "granted") {
           Alert.alert("Permission needed", "Camera access is required");
           return;
         }
-        result = await ImagePicker.launchCameraAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsEditing: true,
-          aspect: [4, 3],
-          quality: 1,
-        });
+        result = await ImagePicker.launchCameraAsync(pickerOptions);
       } else {
         const { status } =
           await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -870,18 +867,16 @@ function AdditionalInfoModal({
           Alert.alert("Permission needed", "Gallery access is required");
           return;
         }
-        result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsEditing: true,
-          aspect: [4, 3],
-          quality: 1,
-        });
+        result = await ImagePicker.launchImageLibraryAsync(pickerOptions);
       }
 
       if (!result.canceled && result.assets[0]) {
         const localUri = result.assets[0].uri;
         setImageUri(localUri);
+
+        // Upload the CROPPED image
         const cloudinaryUrl = await uploadToCloudinary(localUri);
+
         if (cloudinaryUrl) {
           setImageUri(cloudinaryUrl);
         } else {
@@ -889,6 +884,7 @@ function AdditionalInfoModal({
         }
       }
     } catch (error) {
+      console.error(error);
       Alert.alert("Error", "Failed to pick image");
     }
   };
