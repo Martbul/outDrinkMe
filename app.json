@@ -12,9 +12,6 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.martbul.outDrinkMe",
       "associatedDomains": [
-        "applinks:clerk.martbul.com",
-        "applinks:clerk.martbul.com",
-        "applinks:clerk.martbul.com",
         "applinks:clerk.martbul.com"
       ],
       "infoPlist": {
@@ -60,34 +57,25 @@
             }
           ],
           "category": ["BROWSABLE", "DEFAULT"]
-        },
-        {
-          "action": "VIEW",
-          "autoVerify": true,
-          "data": [
-            {
-              "scheme": "outdrinkme"
-            }
-          ],
-          "category": ["BROWSABLE", "DEFAULT"]
-        },
-        {
-          "action": "VIEW",
-          "autoVerify": true,
-          "data": [
-            {
-              "scheme": "https",
-              "host": "clerk.martbul.com",
-              "pathPrefix": "/v1/oauth_callback"
-            }
-          ],
-          "category": ["BROWSABLE", "DEFAULT"]
         }
       ]
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "bundler": "metro",
+      "favicon": "./assets/images/favicon.png",
+      "name": "OutDrinkMe",
+      "shortName": "OutDrinkMe",
+      "display": "standalone",
+      "backgroundColor": "#000000",
+      "themeColor": "#000000",
+      "startUrl": "/",
+      "meta": {
+        "apple": {
+          "mobileWebAppCapable": "yes",
+          "statusBarStyle": "black-translucent"
+        }
+      }
     },
     "plugins": [
       "expo-router",

@@ -5,10 +5,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { getLevelInfo } from "@/utils/levels";
 import InfoTooltip from "./infoTooltip";
-import { useAds } from "@/providers/AdProvider";
 import {
   Entypo,
-  FontAwesome6,
   Ionicons,
   MaterialCommunityIcons,
   MaterialIcons,
@@ -17,7 +15,6 @@ import {
 
 export const Header = () => {
   const { userData, userStats, unreadNotificationCount, updateUserProfile } = useApp();
-  const { isAdLoaded, showRewardedAd } = useAds();
   const [isLevelTooltipVisible, setIsLevelTooltipVisible] =
     useState<boolean>(false);
 
@@ -35,25 +32,7 @@ export const Header = () => {
     return (first + last).toUpperCase() || "??";
   };
 
-  const handleEarnGems = async () => {
-    // Show the ad and wait for result
-    const rewardEarned = await showRewardedAd();
-
-    if (rewardEarned) {
-      const gemAmount = 1;
-      try {
-        const newGemCount = (userData?.gems || 0) + gemAmount;
-        await updateUserProfile({ gems: newGemCount });
-
-        // Alert.alert("Gems Earned! 💎", `You earned ${gemAmount} gems!`, [
-        //   { text: "Awesome!", style: "default" },
-        // ]);
-      } catch (error) {
-        console.error("Failed to update gems:", error);
-        Alert.alert("Error", "Failed to award gems. Please try again.");
-      }
-    }
-  };
+  
 
   return (
     <View className="bg-black" style={{ paddingTop: insets.top }}>
