@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState } from "react";
 
-// 1. Define the Interface (Must match your Native file exactly)
 interface AdsContextType {
   isAdLoaded: boolean;
   isAdLoading: boolean;
@@ -10,9 +9,7 @@ interface AdsContextType {
 
 const AdsContext = createContext<AdsContextType | undefined>(undefined);
 
-// 2. The Web/Default Implementation
 export function AdsProvider({ children }: { children: React.ReactNode }) {
-  // Always false on web so the "Watch Ad" button is hidden
   const [isAdLoaded] = useState(false);
   const [isAdLoading] = useState(false);
 
