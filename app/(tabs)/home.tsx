@@ -31,7 +31,6 @@ import DrunkThought from "@/components/drunkThought";
 import { useAuth } from "@clerk/clerk-expo";
 import { apiService } from "@/api";
 import { useAnalytics } from "@/utils/analytics";
-import { useFocusEffect } from "@react-navigation/native";
 
 export default function HomeScreen() {
   const analytics = useAnalytics();
@@ -53,11 +52,11 @@ export default function HomeScreen() {
 
   const coefInfo = getCoefInfo(userStats);
 
-   const onRefresh = async () => {
-     setRefreshing(true);
-     await refreshAll();
-     setRefreshing(false);
-   };
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refreshAll();
+    setRefreshing(false);
+  };
 
   const displayedThoughts = useMemo(() => {
     if (!friendsDrunkThoughts || friendsDrunkThoughts.length === 0) {
@@ -161,28 +160,53 @@ export default function HomeScreen() {
         }
       >
         <View className="items-center mb-6">
-          <View className="relative w-[120px] h-[120px] rounded-full bg-orange-600/15 border-4 border-orange-600 justify-center items-center mb-3">
-            <Text className="text-orange-600 text-5xl font-black">
-              {coefInfo.coef}
-            </Text>
+          <View className="flex flex-row items-center gap-8">
+            {/* <View className="rounded-full bg-orange-600/15 border-orange-600 ">
+              <TouchableOpacity
+                className=" w-16 h-16 rounded-full  items-center justify-center"
+              >
+                <MaterialCommunityIcons
+                  name="qrcode-scan"
+                  size={24}
+                  color="#EA580C"
+                />
+              </TouchableOpacity>
+            </View> */}
+            <View className="relative w-[120px] h-[120px] rounded-full bg-orange-600/15 border-4 border-orange-600 justify-center items-center mb-3">
+              <Text className="text-orange-600 text-5xl font-black">
+                {coefInfo.coef}
+              </Text>
 
-            <TouchableOpacity
-              onPress={() => setIsCoefTooltipVisible(!isCoefTooltipVisible)}
-              className="absolute  w-8 h-8 rounded-full  items-center justify-center"
-              style={{ zIndex: 10, right: -14, bottom: -10 }}
-            >
-              <Feather name="help-circle" size={24} color="#666666" />
-            </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setIsCoefTooltipVisible(!isCoefTooltipVisible)}
+                className="absolute  w-8 h-8 rounded-full  items-center justify-center"
+                style={{ zIndex: 10, right: -14, bottom: -10 }}
+              >
+                <Feather name="help-circle" size={24} color="#666666" />
+              </TouchableOpacity>
 
-            {isCoefTooltipVisible && (
-              <InfoTooltip
-                title="Coefficient"
-                visible={isCoefTooltipVisible}
-                description="Your drinking coefficient calculated from your drunk performance. Higher number means more fun nights!"
-                onClose={() => setIsCoefTooltipVisible(false)}
-                position="bottom"
-              />
-            )}
+              {isCoefTooltipVisible && (
+                <InfoTooltip
+                  title="Coefficient"
+                  visible={isCoefTooltipVisible}
+                  description="Your drinking coefficient calculated from your drunk performance. Higher number means more fun nights!"
+                  onClose={() => setIsCoefTooltipVisible(false)}
+                  position="bottom"
+                />
+              )}
+            </View>
+            {/* <View className="rounded-full bg-orange-600/15 border-orange-600 ">
+              <TouchableOpacity
+                onPress={() => router.push("/(screens)/sideQuestBoard")}
+                className="w-16 h-16 rounded-full  items-center justify-center"
+              >
+                <MaterialCommunityIcons
+                  name="sword"
+                  size={34}
+                  color="#EA580C"
+                />
+              </TouchableOpacity>
+            </View> */}
           </View>
 
           <Text className="text-white text-[22px] font-black tracking-wide">

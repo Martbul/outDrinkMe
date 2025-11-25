@@ -337,3 +337,183 @@ export interface GemPack {
   image: any;
   bonus?: number;
 }
+
+export type NotificationType =
+  | "streak_milestone"
+  | "streak_at_risk"
+  | "friend_overtook_you"
+  | "mentioned_in_post"
+  | "video_chips_milestone"
+  | "challenge_invite"
+  | "challenge_result"
+  | "weekly_recap"
+  | "drunk_thought_reaction";
+
+export type NotificationPriority = "low" | "medium" | "high" | "urgent";
+
+export type NotificationStatus = "pending" | "sent" | "failed" | "read";
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  type: NotificationType;
+  priority: NotificationPriority;
+  status: NotificationStatus;
+  title: string;
+  body: string;
+  data: Record<string, any>;
+  actor_id?: string | null;
+  scheduled_for?: string | null;
+  sent_at?: string | null;
+  read_at?: string | null;
+  failed_at?: string | null;
+  failure_reason?: string | null;
+  retry_count: number;
+  action_url?: string | null;
+  created_at: string;
+  expires_at?: string | null;
+}
+
+export interface NotificationListResponse {
+  notifications: NotificationItem[] | null;
+  unread_count: number;
+  total_count: number;
+  page: number;
+  page_size: number;
+}
+
+export interface UnreadCountResponse {
+  unread_count: number;
+}
+
+export interface DeviceToken {
+  token: string;
+  platform: "ios" | "android" | "web";
+  added_at: string;
+  last_used: string;
+}
+
+export interface NotificationPreferences {
+  id: string;
+  user_id: string;
+  push_enabled: boolean;
+  email_enabled: boolean;
+  in_app_enabled: boolean;
+  enabled_types: Record<string, boolean>;
+  max_notifications_per_hour: number;
+  max_notifications_per_day: number;
+  device_tokens: DeviceToken[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NotificationItem {
+  id: string;
+  user_id: string;
+  type: NotificationType;
+  priority: string;
+  status: "pending" | "sent" | "failed" | "read";
+  title: string;
+  body: string;
+  data: Record<string, any>;
+  actor_id?: string;
+  scheduled_for?: string;
+  sent_at?: string;
+  read_at?: string | null;
+  created_at: string;
+  action_url?: string;
+}
+
+export type QuestStatus = "OPEN" | "COMPLETED" | "EXPIRED" | "CANCELLED";
+export type SubmissionStatus = "PENDING" | "APPROVED" | "REJECTED";
+export type PayoutStatus = "PENDING" | "SUCCESS" | "FAILED";
+
+export interface SideQuest {
+  id: string;
+  issuerId: string;
+  title: string;
+  description: string;
+  rewardAmount: number;
+  isLocked: boolean;
+  isPublic: boolean;
+  isAnonymous: boolean;
+  status: QuestStatus;
+  expiresAt: string; // ISO date string
+  createdAt: string;
+  updatedAt: string;
+
+  // Extended fields for display
+  issuerName?: string;
+  issuerImage?: string;
+  submissionCount?: number;
+}
+
+export interface SideQuestCompletion {
+  id: string;
+  sideQuestId: string;
+  completerId: string;
+  proofImageUrl: string;
+  proofText?: string;
+  status: SubmissionStatus;
+  rejectionReason?: string;
+  payoutStatus: PayoutStatus;
+  paidAt?: string;
+  createdAt: string;
+
+  // Extended fields for display
+  questTitle?: string;
+  questReward?: number;
+  completerName?: string;
+  completerImage?: string;
+}
+
+// ============================================================================
+// API REQUEST/RESPONSE TYPES
+// ============================================================================
+
+export interface CreateQuestRequest {
+  title: string;
+  description: string;
+  rewardAmount: number;
+  isPublic: boolean;
+  isAnonymous: boolean;
+  expiresInHours: number; // e.g., 24 for 24 hours
+}
+
+export interface CreateQuestResponse {
+  quest: SideQuest;
+  message: string;
+}
+
+export interface SubmitQuestCompletionRequest {
+  sideQuestId: string;
+  proofImageUrl: string; // Should be uploaded to Cloudinary first
+  proofText?: string;
+}
+
+export interface SubmitQuestCompletionResponse {
+  completion: SideQuestCompletion;
+  message: string;
+}
+
+export interface ReviewSubmissionRequest {
+  completionId: string;
+  approved: boolean;
+  rejectionReason?: string;
+}
+
+export interface ReviewSubmissionResponse {
+  completion: SideQuestCompletion;
+  payoutStatus?: PayoutStatus;
+  message: string;
+}
+
+export interface GetQuestsResponse {
+  quests: SideQuest[];
+  total: number;
+}
+
+export interface GetSubmissionsResponse {
+  submissions: SideQuestCompletion[];
+  total: number;
+}

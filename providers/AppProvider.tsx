@@ -19,14 +19,12 @@ import type {
   FriendDiscoveryDisplayProfileResponse,
   YourMixPostData,
   DrunkThought,
-  AlcoholDbItem,
   AlcoholCollectionByType,
-  InventoryItem,
   StoreItems,
   InventoryItems,
+  NotificationItem,
 } from "../types/api.types";
 import { apiService } from "@/api";
-import { Alert } from "react-native";
 import { usePostHog } from "posthog-react-native";
 
 interface AppContextType {
@@ -47,6 +45,8 @@ interface AppContextType {
   drunkThought: string | null;
   friendsDrunkThoughts: DrunkThought[] | [];
   alcoholCollection: AlcoholCollectionByType | null;
+  notifications: NotificationItem[];
+  unreadNotificationCount: number;
 
   // Refresh Functions
   refreshUserData: () => Promise<void>;
@@ -64,6 +64,7 @@ interface AppContextType {
   refreshUserAlcoholCollection: () => Promise<void>;
   refreshUserInventory: () => Promise<void>;
   refreshStore: () => Promise<void>;
+  refreshNotifications: (page?: number) => Promise<void>;
   refreshAll: () => Promise<void>;
 
   // Actions
@@ -80,6 +81,9 @@ interface AppContextType {
   deleteUserAccount: () => Promise<boolean>;
   removeFriend: (friendId: string) => Promise<void>;
   addDrunkThought: (drunkThought: string) => Promise<void>;
+  markNotificationRead: (id: string) => Promise<void>;
+  markAllNotificationsRead: () => Promise<void>;
+  registerPushDevice: (token: string) => Promise<void>;
 
   // Global State
   isLoading: boolean;
@@ -113,6 +117,8 @@ export function AppProvider({ children }: AppProviderProps) {
   const [mixTimelineData, setMixTimelineData] = useState<
     YourMixPostData[] | []
   >([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [drunkThought, setDrunkThought] = useState<string | null>(null);
   const [friendsDrunkThoughts, setFriendsDrunkThoughts] = useState<
@@ -195,22 +201,20 @@ export function AppProvider({ children }: AppProviderProps) {
     );
   }, [isSignedIn, getToken, withLoadingAndError, posthog]);
 
+  const refreshUserStats = useCallback(async () => {
+    if (!isSignedIn) return;
 
-   const refreshUserStats = useCallback(async () => {
-     if (!isSignedIn) return;
+    await withLoadingAndError(
+      async () => {
+        const token = await getToken();
+        if (!token) throw new Error("No auth token");
+        return await apiService.getUserStats(token);
+      },
+      (data) => setUserStats(data),
+      "refresh_user_stats"
+    );
+  }, [isSignedIn, getToken, withLoadingAndError]);
 
-     await withLoadingAndError(
-       async () => {
-         const token = await getToken();
-         if (!token) throw new Error("No auth token");
-         return await apiService.getUserStats(token);
-       },
-       (data) => setUserStats(data),
-       "refresh_user_stats"
-     );
-   }, [isSignedIn, getToken, withLoadingAndError]);
-
- 
   const refreshLeaderboard = useCallback(async () => {
     if (!isSignedIn) return;
 
@@ -400,6 +404,33 @@ export function AppProvider({ children }: AppProviderProps) {
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
 
+  const refreshNotifications = useCallback(
+    async (page = 1) => {
+      if (!isSignedIn) return;
+
+      await withLoadingAndError(
+        async () => {
+          const token = await getToken();
+          if (!token) throw new Error("No auth token");
+
+          // Fetch list and count in parallel
+          const [listRes, countRes] = await Promise.all([
+            apiService.getAllNotifications(token, page, 50), // Fetch first 50
+            apiService.getUnreadNotificationsCount(token),
+          ]);
+
+          return { list: listRes, count: countRes };
+        },
+        (data) => {
+          // Handle case where API returns null notifications
+          setNotifications(data.list.notifications || []);
+          setUnreadNotificationCount(data.count.unread_count);
+        },
+        "refresh_notifications"
+      );
+    },
+    [isSignedIn, getToken, withLoadingAndError]
+  );
 
   // ============================================
   // Refresh All - Using Parallel Execution
@@ -431,6 +462,8 @@ export function AppProvider({ children }: AppProviderProps) {
         apiService.getUserAlcoholCollection(token),
         apiService.getUserInventory(token),
         apiService.getStore(token),
+        apiService.getAllNotifications(token, 1, 50),
+        apiService.getUnreadNotificationsCount(token),
       ]);
 
       // Extract successful results and handle failures
@@ -450,6 +483,8 @@ export function AppProvider({ children }: AppProviderProps) {
         userAlcoholCollectionResult,
         inventoryResult,
         storeResult,
+        notifListResult,
+        notifCountResult,
       ] = results;
 
       if (userResult.status === "fulfilled") {
@@ -566,7 +601,12 @@ export function AppProvider({ children }: AppProviderProps) {
         setStoreItems(null);
         console.error("Failed to fetch store:", storeResult.reason);
       }
-
+      if (notifListResult.status === "fulfilled") {
+        setNotifications(notifListResult.value.notifications || []);
+      }
+      if (notifCountResult.status === "fulfilled") {
+        setUnreadNotificationCount(notifCountResult.value.unread_count);
+      }
       // Collect any errors
       const failedCalls = results.filter((r) => r.status === "rejected");
       if (failedCalls.length > 0) {
@@ -759,7 +799,6 @@ export function AppProvider({ children }: AppProviderProps) {
     [isSignedIn, getToken, withLoadingAndError, posthog]
   );
 
-
   const updateUserProfile = useCallback(
     async (updateReq: UpdateUserProfileReq): Promise<any> => {
       if (!isSignedIn) {
@@ -846,6 +885,62 @@ export function AppProvider({ children }: AppProviderProps) {
     return false;
   }, [isSignedIn, getToken, withLoadingAndError, posthog]);
 
+  const markNotificationRead = useCallback(
+    async (id: string) => {
+      if (!isSignedIn) return;
+
+      // Optimistic Update: Update UI immediately before API returns
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n.id === id ? { ...n, read_at: new Date().toISOString() } : n
+        )
+      );
+      setUnreadNotificationCount((prev) => Math.max(0, prev - 1));
+
+      // Background API call
+      const token = await getToken();
+      if (token) {
+        apiService.markNotificationAsRead(token, id).catch((err) => {
+          console.error("Failed to mark read:", err);
+          // Optionally revert state here on error
+        });
+      }
+    },
+    [isSignedIn, getToken]
+  );
+
+  const markAllNotificationsRead = useCallback(async () => {
+    if (!isSignedIn) return;
+
+    // Optimistic Update
+    setNotifications((prev) =>
+      prev.map((n) => ({ ...n, read_at: new Date().toISOString() }))
+    );
+    setUnreadNotificationCount(0);
+
+    const token = await getToken();
+    if (token) {
+      apiService.markAllNotificationsAsRead(token).catch(console.error);
+    }
+  }, [isSignedIn, getToken]);
+
+   const registerPushDevice = useCallback(
+     async (deviceToken: string) => {
+       if (!isSignedIn) return;
+
+       const token = await getToken();
+       if (token) {
+         apiService
+           .registerDevice(token, {
+             token: deviceToken,
+             platform: "android",
+           })
+           .catch((err) => console.error("Failed to register device:", err));
+       }
+     },
+     [isSignedIn, getToken]
+   );
+
   // ============================================
   // Initial Load
   // ============================================
@@ -891,6 +986,8 @@ export function AppProvider({ children }: AppProviderProps) {
     drunkThought,
     friendsDrunkThoughts,
     alcoholCollection,
+    notifications,
+    unreadNotificationCount,
 
     // Refresh Functions
     refreshUserData,
@@ -908,6 +1005,7 @@ export function AppProvider({ children }: AppProviderProps) {
     refreshUserAlcoholCollection,
     refreshUserInventory,
     refreshStore,
+    refreshNotifications,
     refreshAll,
 
     // Actions
@@ -919,6 +1017,9 @@ export function AppProvider({ children }: AppProviderProps) {
     getFriendDiscoveryDisplayProfile,
     deleteUserAccount,
     addDrunkThought,
+    markNotificationRead,
+    markAllNotificationsRead,
+    registerPushDevice,
 
     // Global State
     isLoading,

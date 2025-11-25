@@ -1,4 +1,4 @@
-import { Slot, usePathname } from "expo-router"; // Added usePathname
+import { Redirect, Slot, usePathname } from "expo-router";
 import { ClerkProvider, ClerkLoaded, useUser } from "@clerk/clerk-expo";
 import { tokenCache } from "@clerk/clerk-expo/token-cache";
 import { useFonts } from "expo-font";
@@ -11,10 +11,9 @@ import { Text, View } from "react-native";
 import { useEffect } from "react";
 import MobileAds from "react-native-google-mobile-ads";
 import { AdsProvider } from "@/providers/AdProvider";
-import "../global.css";
 import { PostHogProvider, usePostHog } from "posthog-react-native";
+import "../global.css";
 
-// --- NEW: Screen Tracker Component ---
 function PostHogScreenTracker() {
   const posthog = usePostHog();
   const pathname = usePathname();
@@ -27,9 +26,7 @@ function PostHogScreenTracker() {
 
   return null;
 }
-// -------------------------------------
 
-// 1. Created a new Inner component to handle logic that needs User/PostHog context
 function AuthenticatedAppContent() {
   const posthog = usePostHog();
   const { user } = useUser();
@@ -83,21 +80,20 @@ export default function RootLayout() {
     );
   }
 
-   if (!posthogApiKey) {
-     console.error("Missing Posthog Key!");
-     return (
-       <View className="flex-1 bg-black items-center justify-center">
-         <Text className="text-white text-xl">Configuration Error</Text>
-         <Text className="text-white/50 mt-2">Missing Posthog Key</Text>
-       </View>
-     );
-   }
+  if (!posthogApiKey) {
+    console.error("Missing Posthog Key!");
+    return (
+      <View className="flex-1 bg-black items-center justify-center">
+        <Text className="text-white text-xl">Configuration Error</Text>
+        <Text className="text-white/50 mt-2">Missing Posthog Key</Text>
+      </View>
+    );
+  }
 
   if (!loaded) {
     return <SplashScreen />;
   }
 
-  // 2. Reorganized Providers: Providers wrap the content, not the other way around
   return (
     <ErrorBoundary>
       <SafeAreaProvider>
@@ -110,12 +106,9 @@ export default function RootLayout() {
               apiKey={posthogApiKey}
               options={{
                 host: "https://us.i.posthog.com",
-                // flushAt: 1, // Send every event immediately (remove this in production!)
               }}
             >
-              {/* Added Screen Tracker Here */}
               <PostHogScreenTracker />
-
               <AppProvider>
                 <AdsProvider>
                   <TailwindProvider>
@@ -129,4 +122,8 @@ export default function RootLayout() {
       </SafeAreaProvider>
     </ErrorBoundary>
   );
+}
+
+export function IndexScreen() {
+  return <Redirect href="/(tabs)/add" />;
 }

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "572574104310",
+    "project_id": "outdrinkme-677b5",
+    "storage_bucket": "outdrinkme-677b5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:572574104310:android:c1c944425f92c8244fcad7",
+        "android_client_info": {
+          "package_name": "com.martbul.outDrinkMe"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDwe609vztpTQeKAQbH_JY3VHLhvYWEWtk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

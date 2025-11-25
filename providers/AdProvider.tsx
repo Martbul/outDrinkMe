@@ -189,7 +189,6 @@
 //   }
 //   return context;
 // }
-
 import React, {
   createContext,
   useContext,
@@ -199,19 +198,23 @@ import React, {
   ReactNode,
   useRef,
 } from "react";
-import { Alert } from "react-native";
+import { Alert, Platform } from "react-native";
 import {
   RewardedAd,
   RewardedAdEventType,
   TestIds,
+  AdEventType,
 } from "react-native-google-mobile-ads";
-// 1. Import PostHog
 import { usePostHog } from "posthog-react-native";
 
-//!TODO: comfigure for prod
-const adUnitId = __DEV__
-  ? TestIds.REWARDED
-  : "ca-app-pub-XXXXXXXXXXXXXXXX/YYYYYYYYYY";
+// REPLACE THIS WITH YOUR REAL AD UNIT ID FROM ADMOB CONSOLE (Ads > Ad Units)
+// It looks like: ca-app-pub-1167503921437683/XXXXXXXXXX
+const PRODUCTION_ID = Platform.select({
+  ios: "ca-app-pub-1167503921437683/4220175598",
+  android: "ca-app-pub-1167503921437683/4220175598",
+});
+
+const adUnitId = __DEV__ ? TestIds.REWARDED : PRODUCTION_ID;
 
 interface AdsContextType {
   isAdLoaded: boolean;
@@ -227,30 +230,30 @@ interface AdsProviderProps {
 }
 
 export function AdsProvider({ children }: AdsProviderProps) {
-  // 2. Initialize Hook
   const posthog = usePostHog();
 
   const [isAdLoaded, setIsAdLoaded] = useState(false);
   const [isAdLoading, setIsAdLoading] = useState(true);
   const [rewardedAd, setRewardedAd] = useState<RewardedAd | null>(null);
 
+  // We keep track of the ad instance to remove listeners later
+  const adRef = useRef<RewardedAd | null>(null);
   const rewardEarnedRef = useRef(false);
-  const showPromiseRef = useRef<{
-    resolve: (value: boolean) => void;
-    reject: (reason?: any) => void;
-  } | null>(null);
 
   const loadAd = useCallback(() => {
+    // Prevent multiple loads
+    if (isAdLoaded) return;
+
     try {
       setIsAdLoading(true);
       console.log("Loading new rewarded ad...");
-
-      // 3. Track Request
       posthog?.capture("ad_load_requested", { ad_type: "rewarded" });
 
-      const ad = RewardedAd.createForAdRequest(adUnitId, {
+      const ad = RewardedAd.createForAdRequest(adUnitId!, {
         keywords: ["social", "alcohol", "drinks", "party"],
       });
+
+      adRef.current = ad;
 
       const unsubscribeLoaded = ad.addAdEventListener(
         RewardedAdEventType.LOADED,
@@ -258,7 +261,7 @@ export function AdsProvider({ children }: AdsProviderProps) {
           console.log("Rewarded ad loaded successfully");
           setIsAdLoaded(true);
           setIsAdLoading(false);
-          // 4. Track Success (Fill Rate)
+          setRewardedAd(ad);
           posthog?.capture("ad_loaded_success", { ad_type: "rewarded" });
         }
       );
@@ -268,7 +271,6 @@ export function AdsProvider({ children }: AdsProviderProps) {
         (reward) => {
           console.log("User earned reward:", reward);
           rewardEarnedRef.current = true;
-          // 5. Track Reward (Economy Balancing)
           posthog?.capture("ad_reward_earned", {
             amount: reward.amount,
             currency: reward.type,
@@ -276,93 +278,87 @@ export function AdsProvider({ children }: AdsProviderProps) {
         }
       );
 
-      
+      // Handle Load Failures
+      const unsubscribeError = ad.addAdEventListener(
+        AdEventType.ERROR,
+        (error) => {
+          console.error("Ad failed to load", error);
+          setIsAdLoading(false);
+          setIsAdLoaded(false);
+        }
+      );
 
-      setRewardedAd(ad);
       ad.load();
 
+      // Cleanup listeners when the ad instance changes or unmounts
       return () => {
         unsubscribeLoaded();
         unsubscribeEarned();
+        unsubscribeError();
       };
     } catch (error: any) {
       console.error("Failed to initialize rewarded ad:", error);
       posthog?.capture("ad_system_error", { error: error.message });
       setIsAdLoading(false);
     }
-  }, [posthog]);
+  }, [posthog, isAdLoaded]);
 
+  // Initial load
   useEffect(() => {
-    const timer = setTimeout(() => {
-      const cleanup = loadAd();
-      return cleanup;
-    }, 1000);
-
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [loadAd]);
+    loadAd();
+  }, []); // Only run once on mount
 
   const showRewardedAd = useCallback((): Promise<boolean> => {
-    return new Promise((resolve, reject) => {
-      if (!rewardedAd) {
-        Alert.alert("Error", "Ad not initialized");
+    return new Promise((resolve) => {
+      if (!rewardedAd || !isAdLoaded) {
+        Alert.alert("Ad not ready", "Please try again in a moment.");
         resolve(false);
         return;
       }
 
-      if (!isAdLoaded) {
-        Alert.alert(
-          "Ad Loading",
-          "The ad is still loading. Please try again in a moment.",
-          [{ text: "OK" }]
-        );
-        resolve(false);
-        return;
-      }
+      rewardEarnedRef.current = false;
 
-      try {
-        rewardEarnedRef.current = false;
-        showPromiseRef.current = { resolve, reject };
+      // Define the close listener inside the show function so we can resolve the promise
+      const unsubscribeClosed = rewardedAd.addAdEventListener(
+        AdEventType.CLOSED,
+        () => {
+          console.log("Ad closed");
 
-        console.log("Showing rewarded ad...");
+          const earned = rewardEarnedRef.current;
 
-        // 6. Track Impression
-        posthog?.capture("ad_impression", { ad_type: "rewarded" });
+          // 1. Resolve the promise for the UI
+          resolve(earned);
 
-        rewardedAd.show();
-
-        const checkTimeout = setTimeout(() => {
-          const earnedReward = rewardEarnedRef.current;
-
-          if (showPromiseRef.current) {
-            showPromiseRef.current.resolve(earnedReward);
-            showPromiseRef.current = null;
-          }
-
-          // 7. Track Completion Status
-          if (!earnedReward) {
+          // 2. Track if closed without reward
+          if (!earned) {
             posthog?.capture("ad_closed_no_reward");
           }
 
+          // 3. Cleanup and Reload next ad
+          unsubscribeClosed();
+          setRewardedAd(null);
           setIsAdLoaded(false);
-          loadAd();
-        }, 1000);
+
+          // Load next ad after a short delay to ensure smooth UI transition
+          setTimeout(() => loadAd(), 500);
+        }
+      );
+
+      try {
+        console.log("Showing rewarded ad...");
+        posthog?.capture("ad_impression", { ad_type: "rewarded" });
+        rewardedAd.show();
       } catch (error: any) {
         console.error("Error showing rewarded ad:", error);
         posthog?.capture("ad_show_error", { error: error.message });
-
-        Alert.alert("Error", "Failed to show ad. Please try again.");
-
-        if (showPromiseRef.current) {
-          showPromiseRef.current.resolve(false);
-          showPromiseRef.current = null;
-        }
+        unsubscribeClosed(); // Clean up listener
+        resolve(false);
       }
     });
   }, [rewardedAd, isAdLoaded, loadAd, posthog]);
 
   const reloadAd = useCallback(() => {
+    setRewardedAd(null);
     setIsAdLoaded(false);
     loadAd();
   }, [loadAd]);

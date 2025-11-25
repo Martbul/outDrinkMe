@@ -16,7 +16,7 @@ import {
 } from "@expo/vector-icons";
 
 export const Header = () => {
-  const { userData, userStats, updateUserProfile } = useApp();
+  const { userData, userStats, unreadNotificationCount, updateUserProfile } = useApp();
   const { isAdLoaded, showRewardedAd } = useAds();
   const [isLevelTooltipVisible, setIsLevelTooltipVisible] =
     useState<boolean>(false);
@@ -129,7 +129,7 @@ export const Header = () => {
               {userData?.gems || 0}
             </Text>
           </TouchableOpacity>
-          {/* <TouchableOpacity
+          <TouchableOpacity
             className="flex-row items-center gap-1.5 bg-white/5 px-3 py-2 rounded-full"
             onPress={() => router.push("/(screens)/notifications")}
           >
@@ -139,18 +139,19 @@ export const Header = () => {
                 size={30}
                 color="#EA580C"
               />
-
-              <View
-                style={{
-                  position: "absolute",
-                  bottom: -2,
-                  right: -2,
-                }}
-              >
-                <Octicons name="dot-fill" size={18} color="#ff8c00" />
-              </View>
+              {unreadNotificationCount > 0 && (
+                <View
+                  style={{
+                    position: "absolute",
+                    bottom: -2,
+                    right: -2,
+                  }}
+                >
+                  <Octicons name="dot-fill" size={18} color="#ff8c00" />
+                </View>
+              )}
             </View>
-          </TouchableOpacity> */}
+          </TouchableOpacity>
         </View>
       </View>
     </View>

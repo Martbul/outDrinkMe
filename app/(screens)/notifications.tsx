@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -6,122 +6,174 @@ import {
   TouchableOpacity,
   Image,
   RefreshControl,
+  AppState,
+  Linking,
+  Platform,
+  Alert,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
+import * as Notifications from "expo-notifications";
 import NestedScreenHeader from "@/components/nestedScreenHeader";
-// Mock notification data
-const MOCK_NOTIFICATIONS = [
-  {
-    id: "1",
-    type: "friend_request",
-    user: {
-      name: "Alex Johnson",
-      username: "alexj",
-      imageUrl: "https://i.pravatar.cc/150?img=1",
-    },
-    timestamp: "2m ago",
-    read: false,
-  },
-  {
-    id: "2",
-    type: "achievement",
-    title: "New Achievement Unlocked!",
-    description: "Fire Starter - 7 day streak",
-    icon: "🔥",
-    timestamp: "1h ago",
-    read: false,
-  },
-  {
-    id: "3",
-    type: "streak_reminder",
-    title: "Don't break your streak!",
-    description: "You haven't logged today. Keep it going!",
-    timestamp: "3h ago",
-    read: true,
-  },
-  {
-    id: "4",
-    type: "friend_activity",
-    user: {
-      name: "Sarah Miller",
-      username: "sarahm",
-      imageUrl: "https://i.pravatar.cc/150?img=2",
-    },
-    action: "just logged a drink",
-    timestamp: "5h ago",
-    read: true,
-  },
-  {
-    id: "5",
-    type: "level_up",
-    title: "Level Up!",
-    description: "You've reached Level 12",
-    timestamp: "1d ago",
-    read: true,
-  },
-  {
-    id: "6",
-    type: "mix_mention",
-    user: {
-      name: "Mike Davis",
-      username: "miked",
-      imageUrl: "https://i.pravatar.cc/150?img=3",
-    },
-    action: "mentioned you in a mix",
-    timestamp: "1d ago",
-    read: true,
-  },
-  {
-    id: "7",
-    type: "weekly_recap",
-    title: "Weekly Recap",
-    description: "You drank 5 out of 7 days this week!",
-    timestamp: "2d ago",
-    read: true,
-  },
-];
+import { useApp } from "@/providers/AppProvider";
+import { NotificationItem } from "@/types/api.types";
+import { registerForPushNotificationsAsync } from "@/utils/registerPushNotification";
 
 export default function NotificationsScreen() {
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+  const {
+    notifications,
+    unreadNotificationCount,
+    refreshNotifications,
+    markNotificationRead,
+    markAllNotificationsRead,
+    registerPushDevice,
+  } = useApp();
+
   const [refreshing, setRefreshing] = useState(false);
+
+  // 1. Default to "unread" as requested
   const [filter, setFilter] = useState<"all" | "unread">("unread");
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  // --- Permission State ---
+  const [hasPermission, setHasPermission] = useState(true);
+  const appState = useRef(AppState.currentState);
 
-  const onRefresh = () => {
+  // --- NEW: Mark as Read on Exit Logic ---
+  useEffect(() => {
+    // A. When entering: Refresh to get the latest state
+    refreshNotifications();
+
+    // B. When leaving (Unmounting): Mark everything as read
+    return () => {
+      // We use a clean function here.
+      // Even though the component is unmounting, the Context provider
+      // (where markAllNotificationsRead lives) stays alive, so the API call works.
+      markAllNotificationsRead();
+    };
+  }, []); // Empty array ensures this runs only on Mount and Unmount
+
+  // --- Check Permissions Logic ---
+  const checkPermissions = async () => {
+    const { status } = await Notifications.getPermissionsAsync();
+    setHasPermission(status === "granted");
+  };
+
+  const handleEnablePermissions = async () => {
+    const { status } = await Notifications.requestPermissionsAsync();
+
+    if (status === "granted") {
+      setHasPermission(true);
+      const token = await registerForPushNotificationsAsync();
+      if (token) {
+        registerPushDevice(token);
+      }
+    } else {
+      Alert.alert(
+        "Notifications Disabled",
+        "To receive updates, you need to enable notifications in your device settings.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Open Settings",
+            onPress: () => {
+              if (Platform.OS === "ios") {
+                Linking.openURL("app-settings:");
+              } else {
+                Linking.openSettings();
+              }
+            },
+          },
+        ]
+      );
+    }
+  };
+
+  useEffect(() => {
+    checkPermissions();
+    const subscription = AppState.addEventListener("change", (nextAppState) => {
+      if (
+        appState.current.match(/inactive|background/) &&
+        nextAppState === "active"
+      ) {
+        checkPermissions();
+      }
+      appState.current = nextAppState;
+    });
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  const onRefresh = async () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
+    await refreshNotifications();
+    await checkPermissions();
+    setRefreshing(false);
   };
 
-  const markAsRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
-  };
+  const getTimeAgo = (dateString: string) => {
+    const now = new Date();
+    const date = new Date(dateString);
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
-  const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    if (seconds < 60) return "just now";
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
   };
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
-      case "friend_request":
+      case "friend_overtook_you":
+      case "challenge_invite":
         return <Ionicons name="person-add" size={20} color="#EA580C" />;
-      case "achievement":
-        return <Ionicons name="trophy" size={20} color="#EA580C" />;
-      case "streak_reminder":
+      case "streak_milestone":
         return <MaterialCommunityIcons name="fire" size={20} color="#EA580C" />;
-      case "friend_activity":
-        return <Ionicons name="notifications" size={20} color="#EA580C" />;
+      case "streak_at_risk":
+        return (
+          <MaterialCommunityIcons
+            name="clock-alert"
+            size={20}
+            color="#EA580C"
+          />
+        );
+      case "video_chips_milestone":
+        return <Ionicons name="videocam" size={20} color="#EA580C" />;
       case "level_up":
         return <Feather name="star" size={20} color="#EA580C" />;
-      case "mix_mention":
-        return <Ionicons name="at" size={20} color="#EA580C" />;
+      case "mentioned_in_post":
+      case "friend_posted_mix": // Added your new type icon
+        return <Ionicons name="images" size={20} color="#EA580C" />;
       case "weekly_recap":
         return <Ionicons name="calendar" size={20} color="#EA580C" />;
       default:
         return <Ionicons name="notifications" size={20} color="#EA580C" />;
     }
+  };
+
+  const PermissionBanner = () => {
+    if (hasPermission) return null;
+
+    return (
+      <View className="mb-4 bg-orange-600/10 border border-orange-600/30 rounded-2xl p-4 flex-row items-center justify-between">
+        <View className="flex-1 mr-2">
+          <Text className="text-white font-bold text-sm">
+            Notifications are disabled
+          </Text>
+          <Text className="text-white/60 text-xs mt-0.5">
+            Enable them to get streak updates & friend activity.
+          </Text>
+        </View>
+        <TouchableOpacity
+          onPress={handleEnablePermissions}
+          className="bg-orange-600 px-3 py-2 rounded-lg"
+        >
+          <Text className="text-black font-black text-xs">ENABLE</Text>
+        </TouchableOpacity>
+      </View>
+    );
   };
 
   const notificationListHeader = () => {
@@ -141,7 +193,7 @@ export default function NotificationsScreen() {
             >
               UNREAD
             </Text>
-            {unreadCount > 0 && (
+            {unreadNotificationCount > 0 && (
               <View
                 className={`ml-2 px-2 py-0.5 rounded-full ${
                   filter === "unread" ? "bg-black/20" : "bg-orange-600/30"
@@ -152,7 +204,7 @@ export default function NotificationsScreen() {
                     filter === "unread" ? "text-black" : "text-orange-600"
                   }`}
                 >
-                  {unreadCount}
+                  {unreadNotificationCount}
                 </Text>
               </View>
             )}
@@ -176,13 +228,15 @@ export default function NotificationsScreen() {
     );
   };
 
-  const renderNotification = (notification: any) => {
-    const isUnread = !notification.read;
+  const renderNotification = (notification: NotificationItem) => {
+    const isUnread = !notification.read_at;
+    const userImage =
+      notification.data?.user_image || notification.data?.image_url;
 
     return (
       <TouchableOpacity
         key={notification.id}
-        onPress={() => markAsRead(notification.id)}
+        onPress={() => markNotificationRead(notification.id)}
         className={`mb-3 rounded-2xl border overflow-hidden ${
           isUnread
             ? "bg-orange-600/10 border-orange-600/30"
@@ -190,12 +244,11 @@ export default function NotificationsScreen() {
         }`}
       >
         <View className="flex-row p-4">
-          {/* Left: Avatar or Icon */}
           <View className="mr-3">
-            {notification.user ? (
+            {userImage ? (
               <View className="relative">
                 <Image
-                  source={{ uri: notification.user.imageUrl }}
+                  source={{ uri: userImage }}
                   className="w-12 h-12 rounded-full"
                 />
                 {isUnread && (
@@ -208,69 +261,46 @@ export default function NotificationsScreen() {
                   isUnread ? "bg-orange-600/20" : "bg-white/[0.05]"
                 }`}
               >
-                {notification.icon ? (
-                  <Text className="text-2xl">{notification.icon}</Text>
-                ) : (
-                  getNotificationIcon(notification.type)
-                )}
+                {getNotificationIcon(notification.type)}
               </View>
             )}
           </View>
 
-          {/* Middle: Content */}
           <View className="flex-1">
-            {notification.user && (
-              <Text className="text-white text-base font-bold mb-1">
-                {notification.user.name}
-              </Text>
-            )}
-
-            {notification.title && (
-              <Text
-                className={`text-base font-bold mb-1 ${
-                  isUnread ? "text-orange-600" : "text-white"
-                }`}
-              >
-                {notification.title}
-              </Text>
-            )}
+            <Text
+              className={`text-base font-bold mb-1 ${
+                isUnread ? "text-orange-600" : "text-white"
+              }`}
+            >
+              {notification.title}
+            </Text>
 
             <Text className="text-white/70 text-sm font-semibold mb-2">
-              {notification.action || notification.description}
+              {notification.body}
             </Text>
 
             <Text className="text-white/40 text-xs font-semibold">
-              {notification.timestamp}
+              {getTimeAgo(notification.created_at)}
             </Text>
           </View>
-
-          {/* Right: Action buttons */}
-          {notification.type === "friend_request" && (
-            <View className="ml-2 gap-2">
-              <TouchableOpacity className="bg-orange-600 px-4 py-2 rounded-lg">
-                <Text className="text-black text-xs font-black">ACCEPT</Text>
-              </TouchableOpacity>
-              <TouchableOpacity className="bg-white/[0.05] px-4 py-2 rounded-lg border border-white/[0.08]">
-                <Text className="text-white text-xs font-black">DECLINE</Text>
-              </TouchableOpacity>
-            </View>
-          )}
         </View>
       </TouchableOpacity>
     );
   };
 
   const filteredNotifications =
-    filter === "unread" ? notifications.filter((n) => !n.read) : notifications;
+    filter === "unread"
+      ? notifications.filter((n) => !n.read_at)
+      : notifications;
 
   return (
     <View className="flex-1 bg-black" style={{ paddingTop: 10 }}>
-      {unreadCount > 0 ? (
+      {unreadNotificationCount > 0 ? (
         <NestedScreenHeader
           heading="Notifications"
           secondaryHeading="UPDATES"
           buttonHeading="CLEAR"
-          buttonAction={markAllAsRead}
+          buttonAction={markAllNotificationsRead}
         />
       ) : (
         <NestedScreenHeader
@@ -293,7 +323,10 @@ export default function NotificationsScreen() {
           />
         }
       >
-        <View className="mb-4 bg-black">{notificationListHeader()}</View>
+        <View className="bg-black pb-4">
+          <PermissionBanner />
+          {notificationListHeader()}
+        </View>
 
         {filteredNotifications.length === 0 ? (
           <View className="bg-white/[0.03] rounded-2xl p-8 border border-white/[0.08] items-center">

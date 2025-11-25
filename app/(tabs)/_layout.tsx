@@ -1,7 +1,7 @@
 import { Tabs, Redirect } from "expo-router";
 import { StatusBar, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "@clerk/clerk-expo";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import Octicons from "@expo/vector-icons/Octicons";
@@ -10,30 +10,78 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Feather } from "@expo/vector-icons";
 import SplashScreen from "@/components/spashScreen";
 import { useApp } from "@/providers/AppProvider";
+import * as Notifications from "expo-notifications";
+import { registerForPushNotificationsAsync } from "@/utils/registerPushNotification";
+
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const { isSignedIn, isLoaded } = useAuth();
   const [isReady, setIsReady] = useState(false);
   const { isInitialLoading } = useApp();
+  const { registerPushDevice } = useApp(); 
+  const notificationListener = useRef<Notifications.Subscription | null>(null);
+  const responseListener = useRef<Notifications.Subscription | null>(null);
 
+
+  //! Uselec timer??
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsReady(true);
-    }, 1500); 
+    }, 1500);
 
     return () => clearTimeout(timer);
   }, []);
 
-   if (!isSignedIn) {
-     return <Redirect href="/(auth)/google-sign-in" />;
-   }
+  useEffect(() => {
+    // A. Register for Token
+    registerForPushNotificationsAsync().then((token) => {
+      if (token) {
+        console.log("FCM TOKEN:", token);
+        registerPushDevice(token);
+      }
+    });
 
-    if (isInitialLoading) {
-      return <SplashScreen />;
-    }
+    // B. Listen for incoming notifications (Foreground)
+    notificationListener.current =
+      Notifications.addNotificationReceivedListener((notification) => {
+        console.log("Notification Received:", notification);
+      });
 
- 
+    // C. Listen for user tapping the notification
+    responseListener.current =
+      Notifications.addNotificationResponseReceivedListener((response) => {
+        console.log("Notification Tapped:", response);
+      });
+
+    return () => {
+      // FIX 2: Call .remove() directly on the subscription object
+      if (notificationListener.current) {
+        notificationListener.current.remove();
+      }
+      if (responseListener.current) {
+        responseListener.current.remove();
+      }
+    };
+  }, [registerPushDevice]);
+  if (!isSignedIn) {
+    return <Redirect href="/(auth)/google-sign-in" />;
+  }
+
+  if (isInitialLoading) {
+    return <SplashScreen />;
+  }
+
   return (
     <>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />

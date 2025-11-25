@@ -35,6 +35,9 @@ export default function MixTimeline() {
   const { userData, mixTimelineData } = useApp();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // 1. NEW: State to hold the dynamic aspect ratio of the expanded image
+  const [currentAspectRatio, setCurrentAspectRatio] = useState(4 / 3);
+
   // Pulse animation for badges
   const pulseScale = useSharedValue(1);
 
@@ -87,6 +90,24 @@ export default function MixTimeline() {
   };
 
   const expandedItem = mixTimelineData.find((item) => item.id === expandedId);
+
+  // 2. NEW: Calculate image size whenever the expanded item changes
+  useEffect(() => {
+    if (expandedItem?.imageUrl) {
+      Image.getSize(
+        expandedItem.imageUrl,
+        (width, height) => {
+          if (width && height) {
+            setCurrentAspectRatio(width / height);
+          }
+        },
+        (error) => console.log("Failed to get size", error)
+      );
+    } else {
+      // Reset to default if closed
+      setCurrentAspectRatio(4 / 3);
+    }
+  }, [expandedItem]);
 
   // Calculate heights for the curved line
   const imageHeight = (SCREEN_WIDTH - 32) * 0.7 * (3 / 4); // 70% width with 4:3 ratio
@@ -276,26 +297,26 @@ export default function MixTimeline() {
                 >
                   <TouchableOpacity
                     onPress={() => setExpandedId(null)}
-                    className="bg-white/10 p-2 rounded-full"
+                    className="bg-black/50 p-2 rounded-full border border-white/10"
                     activeOpacity={0.7}
                   >
                     <Ionicons name="close-outline" size={24} color="white" />
                   </TouchableOpacity>
                 </Animated.View>
 
-                {/* Full Image */}
+                {/* Full Image Display - MODIFIED HERE */}
                 <Animated.View
                   entering={FadeInDown.delay(100).duration(400)}
-                  className="p-4 pb-0"
+                  className="p-1" // Reduced padding slightly to give max width to image
                 >
-                  <View className="rounded-2xl overflow-hidden">
+                  <View className="rounded-2xl overflow-hidden bg-white/5">
                     <Image
                       source={{ uri: expandedItem.imageUrl }}
                       style={{
                         width: "100%",
-                        aspectRatio: 4 / 3,
+                        aspectRatio: currentAspectRatio, // 3. Uses dynamic calculated ratio
                       }}
-                      resizeMode="cover"
+                      resizeMode="contain" // 4. Ensures full image visibility
                     />
                   </View>
                 </Animated.View>
