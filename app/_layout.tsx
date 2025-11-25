@@ -1,18 +1,18 @@
-import { Redirect, Slot, usePathname } from "expo-router";
-import { ClerkProvider, ClerkLoaded, useUser } from "@clerk/clerk-expo";
-import { tokenCache } from "@clerk/clerk-expo/token-cache";
-import { useFonts } from "expo-font";
-import { TailwindProvider } from "tailwindcss-react-native";
-import { AppProvider } from "@/providers/AppProvider";
-import { SafeAreaProvider } from "react-native-safe-area-context";
 import ErrorBoundary from "@/components/errorBoundary";
 import SplashScreen from "@/components/spashScreen";
-import { Text, View } from "react-native";
-import { useEffect } from "react";
-import MobileAds from "react-native-google-mobile-ads";
 import { AdsProvider } from "@/providers/AdProvider";
+import { AppProvider } from "@/providers/AppProvider";
+import { ClerkLoaded, ClerkProvider, useUser } from "@clerk/clerk-expo";
+import { tokenCache } from "@clerk/clerk-expo/token-cache";
+import { useFonts } from "expo-font";
+import { Redirect, Slot, usePathname } from "expo-router";
 import { PostHogProvider, usePostHog } from "posthog-react-native";
+import { useEffect } from "react";
+import { Text, View } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { TailwindProvider } from "tailwindcss-react-native";
 import "../global.css";
+
 
 function PostHogScreenTracker() {
   const posthog = usePostHog();
@@ -52,16 +52,8 @@ function AuthenticatedAppContent() {
 }
 
 export default function RootLayout() {
-  useEffect(() => {
-    MobileAds()
-      .initialize()
-      .then((adapterStatuses) => {
-        console.log("Google Mobile Ads initialized:", adapterStatuses);
-      })
-      .catch((error) => {
-        console.error("Failed to initialize Google Mobile Ads:", error);
-      });
-  }, []);
+  // FIX 3: REMOVED the useEffect that called MobileAds().initialize().
+  // That logic is now safely inside AdProvider.native.tsx
 
   const [loaded] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
@@ -122,8 +114,4 @@ export default function RootLayout() {
       </SafeAreaProvider>
     </ErrorBoundary>
   );
-}
-
-export function IndexScreen() {
-  return <Redirect href="/(tabs)/add" />;
 }

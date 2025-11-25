@@ -1,40 +1,36 @@
+import { apiService } from "@/api";
+import NestedScreenHeader from "@/components/nestedScreenHeader";
+import PurchaseConfirmationModal, {
+  GemPurchaseItem,
+  StoreItem,
+} from "@/components/purchaseModal";
+import { useAds } from "@/providers/AdProvider";
+import { useApp } from "@/providers/AppProvider";
+import { ColorTheme, Flag, GemPack, Smoking } from "@/types/api.types";
+import { handleEarnGems } from "@/utils/adsReward";
+import { useAuth } from "@clerk/clerk-expo";
+import { Ionicons } from "@expo/vector-icons";
+import { usePostHog } from "posthog-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
   Image,
-  StatusBar,
-  RefreshControl,
-  Modal,
   KeyboardAvoidingView,
+  Modal,
   Platform,
+  RefreshControl,
+  ScrollView,
+  StatusBar,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
-import { useAds } from "@/providers/AdProvider";
-import { handleEarnGems } from "@/utils/adsReward";
-import { useApp } from "@/providers/AppProvider";
-import PurchaseConfirmationModal, {
-  StoreItem,
-  GemPurchaseItem,
-} from "@/components/purchaseModal";
-import { apiService } from "@/api";
-import { useAuth } from "@clerk/clerk-expo";
-import {
-  ColorTheme,
-  Flag,
-  GemPack,
-  Smoking,
-} from "@/types/api.types";
-import { usePostHog } from "posthog-react-native";
-import NestedScreenHeader from "@/components/nestedScreenHeader";
 
 export default function StoreScreen() {
   const posthog = usePostHog();
 
   const { getToken } = useAuth();
+  const [isWatchingAd, setIsWatchingAd] = useState(false);
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
   const { isAdLoaded, showRewardedAd } = useAds();
@@ -61,6 +57,7 @@ export default function StoreScreen() {
 
   const scrollViewRef = useRef<ScrollView>(null);
   const getMoreGemsSectionRef = useRef<View>(null);
+
   useEffect(() => {
     posthog?.capture("store_viewed", {
       user_gem_balance: userData?.gems || 0,
@@ -83,9 +80,7 @@ export default function StoreScreen() {
     setShowReferralModal(false);
   };
 
-  // Handle store item purchase
   const handleStoreItemPress = (item: StoreItem) => {
-    // 4. Track Item Selection (Intent)
     posthog?.capture("store_item_selected", {
       item_id: item.id,
       item_name: item.name,
@@ -98,9 +93,8 @@ export default function StoreScreen() {
     setPurchaseType("store");
     setShowPurchaseModal(true);
   };
-  // Handle gem pack purchase
+
   const handleGemPackPress = (pack: GemPack) => {
-    // 5. Track Gem Pack Selection
     posthog?.capture("store_gem_pack_selected", {
       pack_id: pack.id,
       gem_amount: pack.amount,
@@ -257,9 +251,24 @@ export default function StoreScreen() {
     },
   ];
 
-  // const ReferralModal = () = {
+  const handleWatchAdPress = async () => {
+    if (isWatchingAd) return;
 
-  // }
+    setIsWatchingAd(true);
+
+    try {
+      await handleEarnGems(
+        1,
+        showRewardedAd,
+        userData?.gems || 0,
+        updateUserProfile
+      );
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsWatchingAd(false);
+    }
+  };
 
   const SmokingCard = ({ device }: { device: any }) => (
     <TouchableOpacity
@@ -411,12 +420,16 @@ export default function StoreScreen() {
                   </Text>
                 </View>
               </View>
-              <TouchableOpacity
-                className="bg-orange-600 px-5 py-3 rounded-xl"
-                onPress={handleGetMorePress}
-              >
-                <Text className="text-black text-sm font-black">GET MORE</Text>
-              </TouchableOpacity>
+              {isAdLoaded && (
+                <TouchableOpacity
+                  className="bg-orange-600 px-5 py-3 rounded-xl"
+                  onPress={handleGetMorePress}
+                >
+                  <Text className="text-black text-sm font-black">
+                    GET MORE
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </View>
@@ -510,16 +523,10 @@ export default function StoreScreen() {
         {isAdLoaded && (
           <View className="mx-4 mt-4">
             <TouchableOpacity
+              disabled={isWatchingAd}
               className="bg-orange-600/10 rounded-2xl p-5 border-2 border-orange-600/50"
               activeOpacity={0.8}
-              onPress={() =>
-                handleEarnGems(
-                  1,
-                  showRewardedAd,
-                  userData?.gems || 0,
-                  updateUserProfile
-                )
-              }
+              onPress={handleWatchAdPress} // Use the new safe function
             >
               <View
                 className="flex-row items-center justify-between"

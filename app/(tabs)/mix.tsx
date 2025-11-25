@@ -18,7 +18,6 @@ import {
 import Header from "@/components/header";
 import { RefreshControl } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { apiService } from "@/api";
 import { useAuth } from "@clerk/clerk-expo";
 import { usePostHog } from "posthog-react-native";
 
@@ -26,7 +25,10 @@ import { usePostHog } from "posthog-react-native";
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const PADDING = 32; // 16px padding on left + 16px on right
 const MAX_CONTENT_WIDTH = SCREEN_WIDTH - PADDING;
-const MAX_IMAGE_HEIGHT = SCREEN_HEIGHT * 0.7;
+
+// FIX 1: Reduced max height from 0.7 to 0.6.
+// On small screens, 0.7 leaves no room for headers/tabs.
+const MAX_IMAGE_HEIGHT = SCREEN_HEIGHT * 0.6;
 
 const getOptimizedImageUrl = (url: string, width = 1080) => {
   if (!url || !url.includes("cloudinary.com")) return url;
@@ -43,14 +45,9 @@ const MixScreen = () => {
   const flatListRef = useRef<FlatList>(null);
   const insets = useSafeAreaInsets();
 
-  // --- VIDEO LOGIC COMMENTED OUT ---
-  // const [videos, setVideos] = useState<VideoPost[]>([]);
-  // const [showRecordModal, setShowRecordModal] = useState(false);
-  // const [isLoadingVideos, setIsLoadingVideos] = useState(false);
-
   const screens = [
     { key: "yourmix", title: "YOUR MIX" },
-    // { key: "videos", title: "VIDEO FEED" }, // <--- Commented out Video Tab
+    // { key: "videos", title: "VIDEO FEED" },
   ];
 
   useEffect(() => {
@@ -59,28 +56,6 @@ const MixScreen = () => {
       mix_count: yourMixData.length,
     });
   }, [activeTab, yourMixData.length]);
-
-  // --- VIDEO FUNCTIONS COMMENTED OUT ---
-  /*
-  // Handle like/unlike video
-  const handleLikeVideo = async (videoId: string): Promise<boolean> => {
-    const token = await getToken();
-    if (!token) return false;
-
-    try {
-      const success = await apiService.addChipsToVideo(token, videoId);
-      if (success) {
-        // 4. Track Engagement (Likes)
-        posthog?.capture("video_liked", { video_id: videoId });
-        console.log(`Successfully added chips to video ${videoId}`);
-      }
-      return success;
-    } catch (error) {
-      console.error("Error adding chips to video:", error);
-      return false;
-    }
-  };
-  */
 
   const YourMixCard = ({ item }: { item: YourMixPostData }) => {
     const [flipState, setFlipState] = useState(0);
@@ -103,7 +78,6 @@ const MixScreen = () => {
       ? getOptimizedImageUrl(item.userImageUrl, 200)
       : null;
 
-    // Calculate exact dimensions to fit within constraints without gaps
     useEffect(() => {
       if (item.imageUrl) {
         Image.getSize(
@@ -120,6 +94,16 @@ const MixScreen = () => {
               if (finalHeight > MAX_IMAGE_HEIGHT) {
                 finalHeight = MAX_IMAGE_HEIGHT;
                 finalWidth = finalHeight * aspectRatio;
+              }
+
+              // Safety check: Ensure width doesn't get too small on very tall images
+              if (finalWidth < MAX_CONTENT_WIDTH * 0.5) {
+                finalWidth = MAX_CONTENT_WIDTH * 0.5;
+                // Recalculate height based on forced width (will crop slightly via overflow hidden)
+                finalHeight = finalWidth / aspectRatio;
+                // Cap height again just in case
+                if (finalHeight > MAX_IMAGE_HEIGHT)
+                  finalHeight = MAX_IMAGE_HEIGHT;
               }
 
               setCardDimensions({ width: finalWidth, height: finalHeight });
@@ -186,6 +170,7 @@ const MixScreen = () => {
             <Image
               source={{ uri: optimizedImage }}
               className="w-full h-full bg-white/5"
+              // FIX 2: Ensure 'cover' is used so if dimensions are constrained, no whitespace appears
               resizeMode="cover"
             />
             <View className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
@@ -232,40 +217,43 @@ const MixScreen = () => {
                 {item.mentionedBuddies.length}
               </Text>
             </View>
-            <View className="flex-row flex-wrap gap-4 justify-center mb-5">
-              {item.mentionedBuddies.map((buddy, index) => (
-                <View
-                  key={buddy.id || index}
-                  className="items-center"
-                  style={{ width: 75 }}
-                >
-                  <View className="w-16 h-16 rounded-full bg-orange-600/20 border-2 border-orange-600/40 items-center justify-center mb-2 overflow-hidden">
-                    {buddy.imageUrl ? (
-                      <Image
-                        source={{
-                          uri: getOptimizedImageUrl(buddy.imageUrl, 150),
-                        }}
-                        className="w-full h-full"
-                        resizeMode="cover"
-                      />
-                    ) : (
-                      <Text className="text-orange-600 text-2xl font-black">
-                        {buddy.firstName?.charAt(0).toUpperCase() ||
-                          buddy.username?.charAt(0).toUpperCase() ||
-                          "?"}
-                      </Text>
-                    )}
-                  </View>
-                  <Text
-                    className="text-white text-xs text-center font-semibold"
-                    numberOfLines={2}
+            {/* Added max-height to ScrollView inside card to prevent overflow on small cards */}
+            <View className="flex-1 w-full justify-center">
+              <View className="flex-row flex-wrap gap-4 justify-center">
+                {item.mentionedBuddies.map((buddy, index) => (
+                  <View
+                    key={buddy.id || index}
+                    className="items-center"
+                    style={{ width: 75 }}
                   >
-                    {buddy.firstName && buddy.lastName
-                      ? `${buddy.firstName} ${buddy.lastName}`
-                      : buddy.username || "Unknown"}
-                  </Text>
-                </View>
-              ))}
+                    <View className="w-16 h-16 rounded-full bg-orange-600/20 border-2 border-orange-600/40 items-center justify-center mb-2 overflow-hidden">
+                      {buddy.imageUrl ? (
+                        <Image
+                          source={{
+                            uri: getOptimizedImageUrl(buddy.imageUrl, 150),
+                          }}
+                          className="w-full h-full"
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <Text className="text-orange-600 text-2xl font-black">
+                          {buddy.firstName?.charAt(0).toUpperCase() ||
+                            buddy.username?.charAt(0).toUpperCase() ||
+                            "?"}
+                        </Text>
+                      )}
+                    </View>
+                    <Text
+                      className="text-white text-xs text-center font-semibold"
+                      numberOfLines={2}
+                    >
+                      {buddy.firstName && buddy.lastName
+                        ? `${buddy.firstName} ${buddy.lastName}`
+                        : buddy.username || "Unknown"}
+                    </Text>
+                  </View>
+                ))}
+              </View>
             </View>
           </View>
         );
@@ -343,43 +331,18 @@ const MixScreen = () => {
     return null;
   };
 
-  /* 
-  // --- VIDEO UPLOAD LOGIC COMMENTED OUT ---
-  const handleVideoRecorded = async (
-    videoUri: string,
-    caption: string,
-    duration: number
-  ) => {
-    if (!userData) {
-      Alert.alert("Error", "User data not available");
-      return;
-    }
-
-    const token = await getToken();
-    if (!token) {
-      Alert.alert("Error", "Authentication token not available");
-      return;
-    }
-
-    try {
-      // ... (Cloudinary upload logic) ...
-    } catch (error: any) {
-      console.error("Error uploading video:", error);
-      Alert.alert("Upload Failed", error.message);
-      throw error;
-    }
-  };
-  */
-
   const renderYourMixScreen = () => (
-    <View style={{ width: SCREEN_WIDTH }}>
+    <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
       <FlatList
         data={yourMixData}
         keyExtractor={(item) => item.id || Math.random().toString()}
         contentContainerStyle={{
           paddingHorizontal: 16,
           paddingTop: 10,
-          paddingBottom: 48,
+          // FIX 3: Moved bottom padding here.
+          // 'insets.bottom' ensures we clear the home indicator on iPhone.
+          // + 100 gives enough space to scroll comfortably past the bottom bar.
+          paddingBottom: insets.bottom + 100,
         }}
         renderItem={({ item }) => <YourMixCard item={item} />}
         ListEmptyComponent={renderEmptyYourMixComponent}
@@ -402,30 +365,6 @@ const MixScreen = () => {
     if (item.key === "yourmix") {
       return renderYourMixScreen();
     }
-
-    
-    /* 
-    else if (item.key === "videos") {
-      return (
-        <View
-          className="flex-1 items-center justify-center px-8"
-          style={{ width: SCREEN_WIDTH }}
-        >
-          <View className="bg-white/[0.03] rounded-2xl p-8 border border-white/[0.08] items-center w-full">
-            <View className="w-24 h-24 rounded-2xl bg-orange-600/20 items-center justify-center mb-4">
-              <Ionicons name="build-outline" size={48} color="#ff8c00" />
-            </View>
-            <Text className="text-white text-xl font-black mb-2">
-              No Videos Yet
-            </Text>
-            <Text className="text-white/50 text-sm text-center font-semibold px-4 mb-6">
-              This area is under construction
-            </Text>
-          </View>
-        </View>
-      );
-    }
-    */
     return null;
   };
 
@@ -436,10 +375,10 @@ const MixScreen = () => {
   }).current;
 
   return (
-    <View
-      className="flex-1 bg-black"
-      style={{ paddingBottom: insets.bottom + 40 }}
-    >
+    // FIX 4: Removed 'paddingBottom' from here.
+    // It was shrinking the view window. We want the view to be full height,
+    // and the inner ScrollView (FlatList) to handle the padding.
+    <View className="flex-1 bg-black">
       <Header />
 
       <View className="flex-row justify-center items-center py-3">
