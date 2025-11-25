@@ -13,6 +13,8 @@ import {
   TextInput,
   LayoutAnimation,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router"; 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -358,6 +360,9 @@ const handleImageSelection = async (source: "camera" | "library") => {
       <View className="w-10" />
     </View>
   );
+
+  
+
 const renderAlreadyLogged = () => {
   const handleSubmitThought = async () => {
     if (!thoughtInput.trim()) return;
@@ -377,117 +382,138 @@ const renderAlreadyLogged = () => {
   };
 
   return (
-    <View className="flex-1 justify-center px-1">
-      <View className="items-center justify-center mb-8 mt-6">
-        <View className="relative justify-center items-center mb-6">
-          <View className="absolute w-56 h-56 bg-[#EA580C]/20 rounded-full blur-2xl" />
-          <View className="w-48 h-48 rounded-full bg-[#0d0d0d] border-4 border-[#EA580C] items-center justify-center shadow-xl shadow-[#EA580C]/20">
-            <View className="w-36 h-36 rounded-full border-2 border-[#EA580C]/20 items-center justify-center bg-[#EA580C]/5">
-              <Ionicons name="checkmark-sharp" size={60} color="#EA580C" />
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={{ flex: 1 }}
+      // Adjust this offset if your header covers the input (usually 80-100 works)
+      keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 0}
+    >
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View className="px-1">
+          {/* 1. Success Badge */}
+          <View className="items-center justify-center mb-8 mt-6">
+            <View className="relative justify-center items-center mb-6">
+              <View className="absolute w-56 h-56 bg-[#EA580C]/20 rounded-full blur-2xl" />
+              <View className="w-48 h-48 rounded-full bg-[#0d0d0d] border-4 border-[#EA580C] items-center justify-center shadow-xl shadow-[#EA580C]/20">
+                <View className="w-36 h-36 rounded-full border-2 border-[#EA580C]/20 items-center justify-center bg-[#EA580C]/5">
+                  <Ionicons name="checkmark-sharp" size={60} color="#EA580C" />
+                </View>
+              </View>
+
+              <View className="absolute -bottom-3 bg-[#EA580C] px-4 py-1 rounded-full border-4 border-black">
+                <Text className="text-black text-[10px] font-black tracking-[0.2em] uppercase">
+                  SUCCESSFULLY
+                </Text>
+              </View>
+            </View>
+
+            <View className="items-center space-y-2 px-4">
+              <Text className="text-white text-4xl font-black text-center tracking-tight uppercase transform -rotate-1">
+                DRUNK
+              </Text>
+
+              <Text className="text-white/40 text-sm font-semibold text-center mt-2">
+                You are my alcoholic pride!
+              </Text>
             </View>
           </View>
 
-          <View className="absolute -bottom-3 bg-[#EA580C] px-4 py-1 rounded-full border-4 border-black">
-            <Text className="text-black text-[10px] font-black tracking-[0.2em] uppercase">
-              SUCCESSFULLY
-            </Text>
-          </View>
-        </View>
-
-        <View className="items-center space-y-2 px-4">
-          <Text className="text-white text-4xl font-black text-center tracking-tight uppercase  transform -rotate-1">
-            DRUNK
-          </Text>
-
-          <Text className="text-white/40 text-sm font-semibold text-center mt-2">
-            You are my alcoholic pride!
-          </Text>
-        </View>
-      </View>
-      <View className="flex-row items-center bg-white/[0.04] rounded-2xl p-5 mb-8 border border-white/[0.08] mx-2">
-        <View className="w-16 h-16 rounded-full bg-orange-500/10 items-center justify-center mr-4">
-          <MaterialCommunityIcons name="fire" size={44} color="#EA580C" />
-        </View>
-        <View className="flex-1">
-          <Text className="text-white/40 text-[10px] font-black tracking-widest uppercase mb-1">
-            Current Streak
-          </Text>
-          <Text className="text-white text-3xl font-black">
-            {userStats?.current_streak || 0}{" "}
-            <Text className="text-base text-white/30 font-bold">days</Text>
-          </Text>
-        </View>
-      </View>
-
-      {drunkThought ? (
-        <View className="bg-orange-600/10 rounded-3xl p-6 mb-6 mx-2 border border-orange-600/20 relative overflow-hidden">
-          <Entypo
-            name="quote"
-            size={40}
-            color="#ff8c00"
-            style={{ opacity: 0.2, position: "absolute", top: 10, left: 10 }}
-          />
-          <Text className="text-orange-500 text-[10px] font-black tracking-widest uppercase mb-3 text-center opacity-80">
-            Your Drunk Wisdom
-          </Text>
-          <Text className="text-white text-xl font-bold text-center leading-7 italic">
-            "{drunkThought}"
-          </Text>
-        </View>
-      ) : (
-        // --- Input Mode (Card Style) ---
-        <View className="bg-[#1A1A1A] rounded-3xl p-5 mb-6 mx-2 border border-white/[0.1]">
-          <View className="flex-row items-center mb-4 ml-1">
-            <Feather name="edit-3" size={14} color="#ff8c00" />
-            <Text className="text-white/60 text-xs font-bold ml-2">
-              Share a drunk thought
-            </Text>
+          {/* 2. Streak Info */}
+          <View className="flex-row items-center bg-white/[0.04] rounded-2xl p-5 mb-8 border border-white/[0.08] mx-2">
+            <View className="w-16 h-16 rounded-full bg-orange-500/10 items-center justify-center mr-4">
+              <MaterialCommunityIcons name="fire" size={44} color="#EA580C" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-white/40 text-[10px] font-black tracking-widest uppercase mb-1">
+                Current Streak
+              </Text>
+              <Text className="text-white text-3xl font-black">
+                {userStats?.current_streak || 0}{" "}
+                <Text className="text-base text-white/30 font-bold">days</Text>
+              </Text>
+            </View>
           </View>
 
-          <TextInput
-            value={thoughtInput}
-            onChangeText={setThoughtInput}
-            placeholder="What's going through your head?"
-            placeholderTextColor="#525252"
-            multiline
-            maxLength={280}
-            className="text-white text-lg font-medium min-h-[80px] mb-4"
-            style={{ textAlignVertical: "top" }}
-            editable={!isSubmittingDrunkThought}
-          />
-
-          <TouchableOpacity
-            onPress={handleSubmitThought}
-            disabled={!thoughtInput.trim() || isSubmittingDrunkThought}
-            className={`flex-row items-center justify-center py-4 rounded-xl ${
-              !thoughtInput.trim() || isSubmittingDrunkThought
-                ? "bg-white/5"
-                : "bg-orange-600"
-            }`}
-          >
-            {isSubmittingDrunkThought ? (
-              <ActivityIndicator
-                color={!thoughtInput.trim() ? "gray" : "black"}
+          {/* 3. Input / Quote Section */}
+          {drunkThought ? (
+            <View className="bg-orange-600/10 rounded-3xl p-6 mb-6 mx-2 border border-orange-600/20 relative overflow-hidden">
+              <Entypo
+                name="quote"
+                size={40}
+                color="#ff8c00"
+                style={{
+                  opacity: 0.2,
+                  position: "absolute",
+                  top: 10,
+                  left: 10,
+                }}
               />
-            ) : (
-              <>
-                <Text
-                  className={`font-bold text-sm mr-2 ${!thoughtInput.trim() ? "text-white/20" : "text-black"}`}
-                >
-                  POST TO BUDDIES
+              <Text className="text-orange-500 text-[10px] font-black tracking-widest uppercase mb-3 text-center opacity-80">
+                Your Drunk Wisdom
+              </Text>
+              <Text className="text-white text-xl font-bold text-center leading-7 italic">
+                "{drunkThought}"
+              </Text>
+            </View>
+          ) : (
+            // --- Input Mode (Card Style) ---
+            <View className="bg-[#1A1A1A] rounded-3xl p-5 mb-6 mx-2 border border-white/[0.1]">
+              <View className="flex-row items-center mb-4 ml-1">
+                <Feather name="edit-3" size={14} color="#ff8c00" />
+                <Text className="text-white/60 text-xs font-bold ml-2">
+                  Share a drunk thought
                 </Text>
-                {!!thoughtInput.trim() && (
-                  <Ionicons name="send" size={16} color="black" />
+              </View>
+
+              <TextInput
+                value={thoughtInput}
+                onChangeText={setThoughtInput}
+                placeholder="What's going through your head?"
+                placeholderTextColor="#525252"
+                multiline
+                maxLength={280}
+                className="text-white text-lg font-medium min-h-[80px] mb-4"
+                style={{ textAlignVertical: "top" }}
+                editable={!isSubmittingDrunkThought}
+              />
+
+              <TouchableOpacity
+                onPress={handleSubmitThought}
+                disabled={!thoughtInput.trim() || isSubmittingDrunkThought}
+                className={`flex-row items-center justify-center py-4 rounded-xl ${
+                  !thoughtInput.trim() || isSubmittingDrunkThought
+                    ? "bg-white/5"
+                    : "bg-orange-600"
+                }`}
+              >
+                {isSubmittingDrunkThought ? (
+                  <ActivityIndicator
+                    color={!thoughtInput.trim() ? "gray" : "black"}
+                  />
+                ) : (
+                  <>
+                    <Text
+                      className={`font-bold text-sm mr-2 ${!thoughtInput.trim() ? "text-white/20" : "text-black"}`}
+                    >
+                      POST TO BUDDIES
+                    </Text>
+                    {!!thoughtInput.trim() && (
+                      <Ionicons name="send" size={16} color="black" />
+                    )}
+                  </>
                 )}
-              </>
-            )}
-          </TouchableOpacity>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
-      )}
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
-
   const renderLoggingView = () => {
     const potentialStreak = (userStats?.current_streak || 0) + 1;
 

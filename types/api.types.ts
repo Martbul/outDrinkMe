@@ -361,9 +361,9 @@ export interface Notification {
   status: NotificationStatus;
   title: string;
   body: string;
-  data: Record<string, any>; 
+  data: Record<string, any>;
   actor_id?: string | null;
-  scheduled_for?: string | null; 
+  scheduled_for?: string | null;
   sent_at?: string | null;
   read_at?: string | null;
   failed_at?: string | null;
@@ -375,7 +375,7 @@ export interface Notification {
 }
 
 export interface NotificationListResponse {
-  notifications: NotificationItem[] | null; 
+  notifications: NotificationItem[] | null;
   unread_count: number;
   total_count: number;
   page: number;
@@ -415,11 +415,105 @@ export interface NotificationItem {
   status: "pending" | "sent" | "failed" | "read";
   title: string;
   body: string;
-  data: Record<string, any>; 
+  data: Record<string, any>;
   actor_id?: string;
   scheduled_for?: string;
   sent_at?: string;
-  read_at?: string | null; 
+  read_at?: string | null;
   created_at: string;
   action_url?: string;
+}
+
+export type QuestStatus = "OPEN" | "COMPLETED" | "EXPIRED" | "CANCELLED";
+export type SubmissionStatus = "PENDING" | "APPROVED" | "REJECTED";
+export type PayoutStatus = "PENDING" | "SUCCESS" | "FAILED";
+
+export interface SideQuest {
+  id: string;
+  issuerId: string;
+  title: string;
+  description: string;
+  rewardAmount: number;
+  isLocked: boolean;
+  isPublic: boolean;
+  isAnonymous: boolean;
+  status: QuestStatus;
+  expiresAt: string; // ISO date string
+  createdAt: string;
+  updatedAt: string;
+
+  // Extended fields for display
+  issuerName?: string;
+  issuerImage?: string;
+  submissionCount?: number;
+}
+
+export interface SideQuestCompletion {
+  id: string;
+  sideQuestId: string;
+  completerId: string;
+  proofImageUrl: string;
+  proofText?: string;
+  status: SubmissionStatus;
+  rejectionReason?: string;
+  payoutStatus: PayoutStatus;
+  paidAt?: string;
+  createdAt: string;
+
+  // Extended fields for display
+  questTitle?: string;
+  questReward?: number;
+  completerName?: string;
+  completerImage?: string;
+}
+
+// ============================================================================
+// API REQUEST/RESPONSE TYPES
+// ============================================================================
+
+export interface CreateQuestRequest {
+  title: string;
+  description: string;
+  rewardAmount: number;
+  isPublic: boolean;
+  isAnonymous: boolean;
+  expiresInHours: number; // e.g., 24 for 24 hours
+}
+
+export interface CreateQuestResponse {
+  quest: SideQuest;
+  message: string;
+}
+
+export interface SubmitQuestCompletionRequest {
+  sideQuestId: string;
+  proofImageUrl: string; // Should be uploaded to Cloudinary first
+  proofText?: string;
+}
+
+export interface SubmitQuestCompletionResponse {
+  completion: SideQuestCompletion;
+  message: string;
+}
+
+export interface ReviewSubmissionRequest {
+  completionId: string;
+  approved: boolean;
+  rejectionReason?: string;
+}
+
+export interface ReviewSubmissionResponse {
+  completion: SideQuestCompletion;
+  payoutStatus?: PayoutStatus;
+  message: string;
+}
+
+export interface GetQuestsResponse {
+  quests: SideQuest[];
+  total: number;
+}
+
+export interface GetSubmissionsResponse {
+  submissions: SideQuestCompletion[];
+  total: number;
 }
