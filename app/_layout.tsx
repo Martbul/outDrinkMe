@@ -8,11 +8,23 @@ import { useFonts } from "expo-font";
 import { Redirect, Slot, usePathname } from "expo-router";
 import { PostHogProvider, usePostHog } from "posthog-react-native";
 import { useEffect } from "react";
-import { Text, View } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import PostHog from 'posthog-react-native'; 
+import { Platform, Text, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { TailwindProvider } from "tailwindcss-react-native";
 import "../global.css";
 
+// 1. Create the client instance conditionally
+// We use a constant or a useMemo so it doesn't recreate on every render
+// 1. Create the client instance conditionally
+const posthog = new PostHog(process.env.EXPO_PUBLIC_POSTHOG_API_KEY!, {
+  host: "https://us.i.posthog.com",
+  // ------------------------------------------------------------
+  // FIX: Change 'storage' to 'customStorage'
+  // ------------------------------------------------------------
+  customStorage: Platform.OS === 'web' ? AsyncStorage : undefined, 
+});
 
 function PostHogScreenTracker() {
   const posthog = usePostHog();
@@ -94,12 +106,7 @@ export default function RootLayout() {
           publishableKey={clerkPublishableKey}
         >
           <ClerkLoaded>
-            <PostHogProvider
-              apiKey={posthogApiKey}
-              options={{
-                host: "https://us.i.posthog.com",
-              }}
-            >
+            <PostHogProvider client={posthog}>
               <PostHogScreenTracker />
               <AppProvider>
                 <AdsProvider>
