@@ -1,7 +1,12 @@
+import { apiService } from "@/api";
+import DrunkThought from "@/components/drunkThought";
 import { Header } from "@/components/header";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import InfoTooltip from "@/components/infoTooltip";
+import ThisWeekGadget from "@/components/thisWeekGadget";
 import { useApp } from "@/providers/AppProvider";
+import { useAnalytics } from "@/utils/analytics";
 import { getCoefInfo } from "@/utils/levels";
+import { useAuth } from "@clerk/clerk-expo";
 import {
   AntDesign,
   Feather,
@@ -9,32 +14,26 @@ import {
   Ionicons,
   MaterialCommunityIcons,
   MaterialIcons,
-  SimpleLineIcons,
 } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useState, useMemo, useCallback, useRef } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
+  Animated,
+  Dimensions,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  RefreshControl,
   ScrollView,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
-  ActivityIndicator,
-  RefreshControl,
-  Modal,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform,
-  Dimensions,
-  Animated,
-  Image,
 } from "react-native";
 import QRCode from "react-native-qrcode-svg";
-import ThisWeekGadget from "@/components/thisWeekGadget";
-import InfoTooltip from "@/components/infoTooltip";
-import DrunkThought from "@/components/drunkThought";
-import { useAuth } from "@clerk/clerk-expo";
-import { apiService } from "@/api";
-import { useAnalytics } from "@/utils/analytics";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface GroupSession {
   id: string;
@@ -396,7 +395,10 @@ export default function HomeScreen() {
         <ThisWeekGadget />
 
         <View className="flex-row gap-3 mb-4">
-          <TouchableOpacity onPress={() => router.push("/(screens)/ranking")} className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]">
+          <TouchableOpacity
+            onPress={() => router.push("/(screens)/ranking")}
+            className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]"
+          >
             <View className="w-10 h-10 rounded-xl bg-orange-600/20 items-center justify-center mb-2">
               <MaterialIcons name="leaderboard" size={20} color="#EA580C" />
             </View>
@@ -407,7 +409,10 @@ export default function HomeScreen() {
               #{userStats?.rank || 0}
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push("/(tabs)/calendar")} className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]">
+          <TouchableOpacity
+            onPress={() => router.push("/(tabs)/calendar")}
+            className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]"
+          >
             <View className="w-10 h-10 rounded-xl bg-orange-600/20 items-center justify-center mb-2">
               <Ionicons name="calendar" size={20} color="#EA580C" />
             </View>
@@ -418,7 +423,10 @@ export default function HomeScreen() {
               {userStats?.total_days_drank || 0}
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push("/(screens)/stats")} className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]">
+          <TouchableOpacity
+            onPress={() => router.push("/(screens)/stats")}
+            className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]"
+          >
             <View className="w-10 h-10 rounded-xl bg-orange-600/20 items-center justify-center mb-2">
               <Ionicons name="trophy" size={20} color="#EA580C" />
             </View>

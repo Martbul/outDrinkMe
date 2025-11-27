@@ -3,6 +3,7 @@ import {
   AddDrinkingRequest,
   AlcoholCollectionByType,
   CalendarResponse,
+  CreateSideQuestReq,
   DailyDrinkingPostResponse,
   DaysStat,
   DrunkThought,
@@ -11,8 +12,12 @@ import {
   Leaderboard,
   LeaderboardEntry,
   NotificationListResponse,
+  ReviewSubmissionRequest,
   SearchDbAlcoholResult,
+  SideQuest,
+  SideQuestCompletion,
   StoreItem,
+  SubmitQuestProofReq,
   UnreadCountResponse,
   UpdateUserProfileReq,
   UserData,
@@ -675,6 +680,105 @@ class ApiService {
       body: JSON.stringify(data), // You must send the body
     });
   }
+
+  /**
+   * Fetch quests for the main board.
+   * @param filter 'friends' for friends only, 'public' for everyone
+   */
+  async getBoardQuests(
+    token: string,
+    filter: "friends" | "public" = "public"
+  ): Promise<SideQuest[]> {
+    return this.makeRequest<SideQuest[]>(`/api/v1/quests?filter=${filter}`, {
+      method: "GET",
+      token,
+    });
+  }
+
+  /**
+   * Fetch quests created by the current logged-in user.
+   */
+  async getMyCreatedQuests(token: string): Promise<SideQuest[]> {
+    return this.makeRequest<SideQuest[]>("/api/v1/quests/created", {
+      method: "GET",
+      token,
+    });
+  }
+
+  /**
+   * Create a new side quest.
+   */
+  async createSideQuest(
+    data: CreateSideQuestReq,
+    token: string
+  ): Promise<SideQuest> {
+    return this.makeRequest<SideQuest>("/api/v1/quests", {
+      method: "POST",
+      token,
+      body: JSON.stringify(data),
+    });
+  }
+
+  /**
+   * Fetch all submissions (attempts) made by the current user.
+   */
+  async getMyQuestAttempts(token: string): Promise<SideQuestCompletion[]> {
+    return this.makeRequest<SideQuestCompletion[]>("/api/v1/quests/attempts", {
+      method: "GET",
+      token,
+    });
+  }
+
+  /**
+   * Fetch incoming submissions that need review (for quests created by the user).
+   */
+  async getPendingReviews(token: string): Promise<SideQuestCompletion[]> {
+    return this.makeRequest<SideQuestCompletion[]>(
+      "/api/v1/quests/approvals/pending",
+      {
+        method: "GET",
+        token,
+      }
+    );
+  }
+
+  /**
+   * Submit proof (image + text) for a specific quest.
+   */
+  async submitQuestProof(
+    questId: string,
+    data: SubmitQuestProofReq,
+    token: string
+  ): Promise<SideQuestCompletion> {
+    return this.makeRequest<SideQuestCompletion>(
+      `/api/v1/quests/${questId}/submit`,
+      {
+        method: "POST",
+        token,
+        body: JSON.stringify(data),
+      }
+    );
+  }
+
+  /**
+   * Approve or Reject a submission.
+   */
+  async reviewSubmission(
+    submissionId: string,
+    data: ReviewSubmissionRequest,
+    token: string
+  ): Promise<{ approved: boolean; rejectionReason?: string }> {
+    return this.makeRequest<{ approved: boolean; rejectionReason?: string }>(
+      `/api/v1/quests/submissions/${submissionId}/review`,
+      {
+        method: "POST",
+        token,
+        body: JSON.stringify(data),
+      }
+    );
+  }
 }
+
+
 
 export const apiService = new ApiService();

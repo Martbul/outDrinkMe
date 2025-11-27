@@ -1,123 +1,3 @@
-import ErrorBoundary from "@/components/errorBoundary";
-import SplashScreen from "@/components/spashScreen";
-import { AdsProvider } from "@/providers/AdProvider";
-import { AppProvider } from "@/providers/AppProvider";
-import { ClerkLoaded, ClerkProvider, useUser } from "@clerk/clerk-expo";
-import { tokenCache } from "@clerk/clerk-expo/token-cache";
-import { useFonts } from "expo-font";
-import { Redirect, Slot, usePathname } from "expo-router";
-import { PostHogProvider, usePostHog } from "posthog-react-native";
-import { useEffect } from "react";
-import { Text, View } from "react-native";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import { TailwindProvider } from "tailwindcss-react-native";
-import "../global.css";
-
-
-function PostHogScreenTracker() {
-  const posthog = usePostHog();
-  const pathname = usePathname();
-
-  useEffect(() => {
-    if (posthog && pathname) {
-      posthog.screen(pathname);
-    }
-  }, [posthog, pathname]);
-
-  return null;
-}
-
-function AuthenticatedAppContent() {
-  const posthog = usePostHog();
-  const { user } = useUser();
-
-  useEffect(() => {
-    if (user && posthog) {
-      posthog.identify(user.id, {
-        email: user.primaryEmailAddress?.emailAddress ?? "",
-        name: user.fullName ?? "",
-        username: user.username ?? "",
-        created_at: user.createdAt ? user.createdAt.toISOString() : "",
-      });
-    }
-  }, [user, posthog]);
-
-  useEffect(() => {
-    posthog?.capture("app_opened", {
-      timestamp: new Date().toISOString(),
-    });
-  }, [posthog]);
-
-  return <Slot />;
-}
-
-export default function RootLayout() {
-  // FIX 3: REMOVED the useEffect that called MobileAds().initialize().
-  // That logic is now safely inside AdProvider.native.tsx
-
-  const [loaded] = useFonts({
-    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
-  });
-
-  const clerkPublishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
-  const posthogApiKey = process.env.EXPO_PUBLIC_POSTHOG_API_KEY;
-
-  if (!clerkPublishableKey) {
-    console.error("Missing Clerk Publishable Key!");
-    return (
-      <View className="flex-1 bg-black items-center justify-center">
-        <Text className="text-white text-xl">Configuration Error</Text>
-        <Text className="text-white/50 mt-2">Missing Clerk Key</Text>
-      </View>
-    );
-  }
-
-  if (!posthogApiKey) {
-    console.error("Missing Posthog Key!");
-    return (
-      <View className="flex-1 bg-black items-center justify-center">
-        <Text className="text-white text-xl">Configuration Error</Text>
-        <Text className="text-white/50 mt-2">Missing Posthog Key</Text>
-      </View>
-    );
-  }
-
-  if (!loaded) {
-    return <SplashScreen />;
-  }
-
-  return (
-    <ErrorBoundary>
-      <SafeAreaProvider>
-        <ClerkProvider
-          tokenCache={tokenCache}
-          publishableKey={clerkPublishableKey}
-        >
-          <ClerkLoaded>
-            <PostHogProvider
-              apiKey={posthogApiKey}
-              options={{
-                host: "https://us.i.posthog.com",
-              }}
-            >
-              
-              <PostHogScreenTracker />
-              <AppProvider>
-                <AdsProvider>
-                  <TailwindProvider>
-                    <AuthenticatedAppContent />
-                  </TailwindProvider>
-                </AdsProvider>
-              </AppProvider>
-            </PostHogProvider>
-          </ClerkLoaded>
-        </ClerkProvider>
-      </SafeAreaProvider>
-    </ErrorBoundary>
-  );
-}
-
-
 // import ErrorBoundary from "@/components/errorBoundary";
 // import SplashScreen from "@/components/spashScreen";
 // import { AdsProvider } from "@/providers/AdProvider";
@@ -128,23 +8,11 @@ export default function RootLayout() {
 // import { Redirect, Slot, usePathname } from "expo-router";
 // import { PostHogProvider, usePostHog } from "posthog-react-native";
 // import { useEffect } from "react";
-// import AsyncStorage from "@react-native-async-storage/async-storage";
-// import PostHog from "posthog-react-native";
-// import { Platform, Text, View } from "react-native";
+// import { Text, View } from "react-native";
 // import { SafeAreaProvider } from "react-native-safe-area-context";
 // import { TailwindProvider } from "tailwindcss-react-native";
 // import "../global.css";
 
-// // 1. Create the client instance conditionally
-// // We use a constant or a useMemo so it doesn't recreate on every render
-// // 1. Create the client instance conditionally
-// const posthog = new PostHog(process.env.EXPO_PUBLIC_POSTHOG_API_KEY!, {
-//   host: "https://us.i.posthog.com",
-//   // ------------------------------------------------------------
-//   // FIX: Change 'storage' to 'customStorage'
-//   // ------------------------------------------------------------
-//   customStorage: Platform.OS === "web" ? AsyncStorage : undefined,
-// });
 
 // function PostHogScreenTracker() {
 //   const posthog = usePostHog();
@@ -226,7 +94,13 @@ export default function RootLayout() {
 //           publishableKey={clerkPublishableKey}
 //         >
 //           <ClerkLoaded>
-//             <PostHogProvider client={posthog}>
+//             <PostHogProvider
+//               apiKey={posthogApiKey}
+//               options={{
+//                 host: "https://us.i.posthog.com",
+//               }}
+//             >
+              
 //               <PostHogScreenTracker />
 //               <AppProvider>
 //                 <AdsProvider>
@@ -242,3 +116,134 @@ export default function RootLayout() {
 //     </ErrorBoundary>
 //   );
 // }
+
+
+import ErrorBoundary from "@/components/errorBoundary";
+import SplashScreen from "@/components/spashScreen";
+import { AdsProvider } from "@/providers/AdProvider";
+import { AppProvider } from "@/providers/AppProvider";
+import { ClerkLoaded, ClerkProvider, useUser } from "@clerk/clerk-expo";
+import { tokenCache } from "@clerk/clerk-expo/token-cache";
+import { useFonts } from "expo-font";
+import { Slot, usePathname } from "expo-router";
+import { PostHogProvider, usePostHog } from "posthog-react-native";
+import { useEffect } from "react";
+import PostHog from "posthog-react-native";
+import { Platform, Text, View } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { TailwindProvider } from "tailwindcss-react-native";
+import { AppStorage } from "@/utils/storage"; // This works now!
+import "../global.css";
+
+let posthog;
+
+if (Platform.OS === "web") {
+  // WEB: Uses the real LocalStorage wrapper from storage.web.ts
+  posthog = new PostHog(process.env.EXPO_PUBLIC_POSTHOG_API_KEY!, {
+    host: "https://us.i.posthog.com",
+    customStorage: AppStorage,
+  });
+} else {
+  // MOBILE: Uses 'memory'. The AppStorage import exists but is ignored here.
+  posthog = new PostHog(process.env.EXPO_PUBLIC_POSTHOG_API_KEY!, {
+    host: "https://us.i.posthog.com",
+    persistence: "memory",
+  });
+}
+
+function PostHogScreenTracker() {
+  const posthog = usePostHog();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (posthog && pathname) {
+      posthog.screen(pathname);
+    }
+  }, [posthog, pathname]);
+
+  return null;
+}
+
+function AuthenticatedAppContent() {
+  const posthog = usePostHog();
+  const { user } = useUser();
+
+  useEffect(() => {
+    if (user && posthog) {
+      posthog.identify(user.id, {
+        email: user.primaryEmailAddress?.emailAddress ?? "",
+        name: user.fullName ?? "",
+        username: user.username ?? "",
+        created_at: user.createdAt ? user.createdAt.toISOString() : "",
+      });
+    }
+  }, [user, posthog]);
+
+  useEffect(() => {
+    posthog?.capture("app_opened", {
+      timestamp: new Date().toISOString(),
+    });
+  }, [posthog]);
+
+  return <Slot />;
+}
+
+export default function RootLayout() {
+  // FIX 3: REMOVED the useEffect that called MobileAds().initialize().
+  // That logic is now safely inside AdProvider.native.tsx
+
+  const [loaded] = useFonts({
+    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
+  });
+
+  const clerkPublishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  const posthogApiKey = process.env.EXPO_PUBLIC_POSTHOG_API_KEY;
+
+  if (!clerkPublishableKey) {
+    console.error("Missing Clerk Publishable Key!");
+    return (
+      <View className="flex-1 bg-black items-center justify-center">
+        <Text className="text-white text-xl">Configuration Error</Text>
+        <Text className="text-white/50 mt-2">Missing Clerk Key</Text>
+      </View>
+    );
+  }
+
+  if (!posthogApiKey) {
+    console.error("Missing Posthog Key!");
+    return (
+      <View className="flex-1 bg-black items-center justify-center">
+        <Text className="text-white text-xl">Configuration Error</Text>
+        <Text className="text-white/50 mt-2">Missing Posthog Key</Text>
+      </View>
+    );
+  }
+
+  if (!loaded) {
+    return <SplashScreen />;
+  }
+
+  return (
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <ClerkProvider
+          tokenCache={tokenCache}
+          publishableKey={clerkPublishableKey}
+        >
+          <ClerkLoaded>
+            <PostHogProvider client={posthog}>
+              <PostHogScreenTracker />
+              <AppProvider>
+                <AdsProvider>
+                  <TailwindProvider>
+                    <AuthenticatedAppContent />
+                  </TailwindProvider>
+                </AdsProvider>
+              </AppProvider>
+            </PostHogProvider>
+          </ClerkLoaded>
+        </ClerkProvider>
+      </SafeAreaProvider>
+    </ErrorBoundary>
+  );
+}

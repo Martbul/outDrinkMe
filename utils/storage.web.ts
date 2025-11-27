@@ -1,3 +1,4 @@
+// This file is loaded on Web.
 export const AppStorage = {
   getItem: async (key: string) => {
     if (typeof window !== "undefined") {

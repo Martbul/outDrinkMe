@@ -12,6 +12,7 @@ import {
   Alert,
 } from "react-native";
 import { Ionicons, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router"; // Added this
 
 type QuestStatus = "OPEN" | "COMPLETED" | "EXPIRED" | "CANCELLED";
 type SubmissionStatus = "PENDING" | "APPROVED" | "REJECTED";
@@ -71,11 +72,7 @@ const MOCK_BOARD_QUESTS: SideQuest[] = [
     submissionCount: 0,
   },
 ];
- const tabs = [
-   { id: "board" as const, label: "Board" },
-   { id: "myQuests" as const, label: "My Quests" },
-   { id: "submissions" as const, label: "My Tries" },
- ];
+
 const MOCK_MY_QUESTS: SideQuest[] = [
   {
     id: "q_my_1",
@@ -142,19 +139,6 @@ const MOCK_MY_ATTEMPTS: SideQuestCompletion[] = [
     createdAt: new Date(Date.now() - 900000).toISOString(),
     rewardAmount: 50,
   },
-  {
-    id: "att_2",
-    sideQuestId: "99",
-    questTitle: "Do a backflip",
-    completerId: "currentUser",
-    proofImageUrl: "https://via.placeholder.com/400",
-    proofText: "Almost landed it...",
-    status: "REJECTED",
-    rejectionReason: "That was a roll, not a flip.",
-    payoutStatus: "FAILED",
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    rewardAmount: 500,
-  },
 ];
 
 const DURATION_PRESETS = [
@@ -165,8 +149,247 @@ const DURATION_PRESETS = [
   { label: "1 Week", value: 168 },
 ];
 
-export default function SideQuestBoard() {
+function cn(...classes: (string | undefined | null | false)[]) {
+  return classes.filter(Boolean).join(" ");
+}
 
+const getTimeRemaining = (expiresAt: string) => {
+  const now = Date.now();
+  const expires = new Date(expiresAt).getTime();
+  const diff = expires - now;
+
+  if (diff <= 0)
+    return { text: "Expired", color: "text-red-500", bg: "bg-red-500/10" };
+  const hours = Math.floor(diff / 3600000);
+  const minutes = Math.floor((diff % 3600000) / 60000);
+
+  if (hours < 1)
+    return {
+      text: `${minutes}m left`,
+      color: "text-red-500",
+      bg: "bg-red-500/10",
+    };
+  if (hours < 24)
+    return {
+      text: `${hours}h ${minutes}m left`,
+      color: "text-orange-500",
+      bg: "bg-orange-500/10",
+    };
+  const days = Math.floor(hours / 24);
+  return {
+    text: `${days}d left`,
+    color: "text-green-500",
+    bg: "bg-green-500/10",
+  };
+};
+
+const QuestCard = ({
+  quest,
+  onPress,
+}: {
+  quest: SideQuest;
+  onPress: () => void;
+}) => {
+  const timeStatus = getTimeRemaining(quest.expiresAt);
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.9}
+      className="bg-[#1A1A1A] rounded-3xl p-4 mb-4 border border-white/[0.05]"
+    >
+      <View className="flex-row items-start justify-between mb-3">
+        <View className="flex-row items-center flex-1 mr-2">
+          {!quest.isAnonymous && quest.issuerImage ? (
+            <Image
+              source={{ uri: quest.issuerImage }}
+              className="w-10 h-10 rounded-full border border-white/10"
+            />
+          ) : (
+            <View className="w-10 h-10 rounded-full bg-orange-600/20 items-center justify-center border border-orange-500/30">
+              <Ionicons name="person" size={20} color="#EA580C" />
+            </View>
+          )}
+          <View className="ml-3 flex-1">
+            <Text className="text-white text-base font-bold" numberOfLines={1}>
+              {quest.isAnonymous ? "Anonymous" : quest.issuerName}
+            </Text>
+            <View
+              className={`self-start mt-1 px-2 py-0.5 rounded-md ${timeStatus.bg}`}
+            >
+              <Text
+                className={`${timeStatus.color} text-[10px] font-bold uppercase`}
+              >
+                {timeStatus.text}
+              </Text>
+            </View>
+          </View>
+        </View>
+        <View className="bg-orange-600/10 px-3 py-1.5 rounded-xl border border-orange-500/20 flex-row items-center">
+          <Ionicons name="diamond" size={14} color="#EA580C" />
+          <Text className="text-orange-500 text-base font-black ml-1">
+            {quest.rewardAmount}
+          </Text>
+        </View>
+      </View>
+      <Text className="text-white text-lg font-black mb-1.5">
+        {quest.title}
+      </Text>
+      <Text className="text-gray-400 text-sm" numberOfLines={2}>
+        {quest.description}
+      </Text>
+    </TouchableOpacity>
+  );
+};
+
+const MyQuestItem = ({
+  quest,
+  onReviewPress,
+}: {
+  quest: SideQuest;
+  onReviewPress: (sub: SideQuestCompletion) => void;
+}) => {
+  const submissions = MOCK_INCOMING_SUBMISSIONS.filter(
+    (s) => s.sideQuestId === quest.id
+  );
+  const pendingCount = submissions.filter((s) => s.status === "PENDING").length;
+  const timeStatus = getTimeRemaining(quest.expiresAt);
+
+  return (
+    <View className="bg-[#1A1A1A] rounded-3xl p-5 mb-4 border border-white/[0.05]">
+      <View className="flex-row justify-between items-start mb-2">
+        <View className={`px-2 py-0.5 rounded-md ${timeStatus.bg}`}>
+          <Text
+            className={`${timeStatus.color} text-[10px] font-bold uppercase`}
+          >
+            {timeStatus.text}
+          </Text>
+        </View>
+        {quest.status === "OPEN" ? (
+          <View className="flex-row items-center">
+            <View className="w-2 h-2 bg-green-500 rounded-full mr-1" />
+            <Text className="text-green-500 text-xs font-bold">ACTIVE</Text>
+          </View>
+        ) : (
+          <Text className="text-gray-500 text-xs font-bold">
+            {quest.status}
+          </Text>
+        )}
+      </View>
+
+      <Text className="text-white text-xl font-black mb-1">{quest.title}</Text>
+      <Text className="text-gray-400 text-sm mb-4">{quest.description}</Text>
+
+      <View className="flex-row justify-between items-center border-t border-white/10 pt-4">
+        <View>
+          <Text className="text-gray-500 text-xs font-bold uppercase">
+            Reward
+          </Text>
+          <Text className="text-white font-bold">
+            {quest.rewardAmount} Gems
+          </Text>
+        </View>
+
+        {pendingCount > 0 ? (
+          <TouchableOpacity
+            onPress={() => {
+              const sub = submissions.find((s) => s.status === "PENDING");
+              if (sub) onReviewPress(sub);
+            }}
+            className="bg-orange-600 px-4 py-2 rounded-xl flex-row items-center shadow-lg shadow-orange-600/20"
+          >
+            <Text className="text-white font-bold mr-2">
+              Review ({pendingCount})
+            </Text>
+            <Feather name="arrow-right" size={16} color="white" />
+          </TouchableOpacity>
+        ) : (
+          <View className="bg-white/5 px-4 py-2 rounded-xl">
+            <Text className="text-gray-500 font-bold text-xs">
+              No pending reviews
+            </Text>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+};
+
+const SubmissionStatusCard = ({
+  submission,
+}: {
+  submission: SideQuestCompletion;
+}) => {
+  let statusColor = "text-yellow-500";
+  let statusBg = "bg-yellow-500/10";
+  let statusBorder = "border-yellow-500/20";
+  let icon = "time-outline";
+
+  if (submission.status === "APPROVED") {
+    statusColor = "text-green-500";
+    statusBg = "bg-green-500/10";
+    statusBorder = "border-green-500/20";
+    icon = "checkmark-circle";
+  } else if (submission.status === "REJECTED") {
+    statusColor = "text-red-500";
+    statusBg = "bg-red-500/10";
+    statusBorder = "border-red-500/20";
+    icon = "close-circle";
+  }
+
+  return (
+    <View className="bg-[#1A1A1A] rounded-3xl p-4 mb-4 border border-white/[0.05] overflow-hidden">
+      <View className="flex-row justify-between items-center mb-3">
+        <Text className="text-gray-500 text-xs font-bold">
+          {new Date(submission.createdAt).toLocaleDateString()}
+        </Text>
+        <View
+          className={`flex-row items-center px-2 py-1 rounded-lg border ${statusBg} ${statusBorder}`}
+        >
+          <Ionicons
+            name={icon as any}
+            size={14}
+            className={statusColor}
+            style={{ marginRight: 4 }}
+          />
+          <Text className={`${statusColor} text-xs font-black uppercase`}>
+            {submission.status}
+          </Text>
+        </View>
+      </View>
+
+      <View className="flex-row gap-3">
+        <Image
+          source={{ uri: submission.proofImageUrl }}
+          className="w-20 h-20 rounded-xl bg-gray-800"
+          resizeMode="cover"
+        />
+        <View className="flex-1 justify-center">
+          <Text className="text-white font-bold text-lg leading-6 mb-1">
+            {submission.questTitle}
+          </Text>
+
+          {submission.status === "APPROVED" ? (
+            <View className="flex-row items-center">
+              <Text className="text-green-500 text-sm font-bold mr-1">
+                +{submission.rewardAmount} Gems
+              </Text>
+              <Ionicons name="sparkles" size={12} color="#22c55e" />
+            </View>
+          ) : submission.status === "REJECTED" ? (
+            <Text className="text-red-400 text-xs">
+              {submission.rejectionReason || "Criteria not met"}
+            </Text>
+          ) : (
+            <Text className="text-gray-400 text-xs">Waiting for review...</Text>
+          )}
+        </View>
+      </View>
+    </View>
+  );
+};
+
+const SideQuestBoard = () => {
+  const router = useRouter(); // Hook to navigation context
   const [activeMainTab, setActiveMainTab] = useState<
     "board" | "myQuests" | "submissions"
   >("board");
@@ -189,39 +412,6 @@ export default function SideQuestBoard() {
   const [newQuestReward, setNewQuestReward] = useState("50");
   const [selectedDurationHours, setSelectedDurationHours] =
     useState<number>(24);
-  const [newQuestIsPublic, setNewQuestIsPublic] = useState(false);
-  const [newQuestIsAnonymous, setNewQuestIsAnonymous] = useState(false);
-
-  // --- Helpers ---
-  const getTimeRemaining = (expiresAt: string) => {
-    const now = Date.now();
-    const expires = new Date(expiresAt).getTime();
-    const diff = expires - now;
-
-    if (diff <= 0)
-      return { text: "Expired", color: "text-red-500", bg: "bg-red-500/10" };
-    const hours = Math.floor(diff / 3600000);
-    const minutes = Math.floor((diff % 3600000) / 60000);
-
-    if (hours < 1)
-      return {
-        text: `${minutes}m left`,
-        color: "text-red-500",
-        bg: "bg-red-500/10",
-      };
-    if (hours < 24)
-      return {
-        text: `${hours}h ${minutes}m left`,
-        color: "text-orange-500",
-        bg: "bg-orange-500/10",
-      };
-    const days = Math.floor(hours / 24);
-    return {
-      text: `${days}d left`,
-      color: "text-green-500",
-      bg: "bg-green-500/10",
-    };
-  };
 
   const handleReviewPress = (submission: SideQuestCompletion) => {
     setSelectedReviewSub(submission);
@@ -233,225 +423,14 @@ export default function SideQuestBoard() {
     // Logic to post quest would go here
   };
 
-  // --- Components ---
-
-  const QuestCard = ({
-    quest,
-    onPress,
-  }: {
-    quest: SideQuest;
-    onPress: () => void;
-  }) => {
-    const timeStatus = getTimeRemaining(quest.expiresAt);
-    return (
-      <TouchableOpacity
-        onPress={onPress}
-        activeOpacity={0.9}
-        className="bg-[#1A1A1A] rounded-3xl p-4 mb-4 border border-white/[0.05]"
-      >
-        <View className="flex-row items-start justify-between mb-3">
-          <View className="flex-row items-center flex-1 mr-2">
-            {!quest.isAnonymous && quest.issuerImage ? (
-              <Image
-                source={{ uri: quest.issuerImage }}
-                className="w-10 h-10 rounded-full border border-white/10"
-              />
-            ) : (
-              <View className="w-10 h-10 rounded-full bg-orange-600/20 items-center justify-center border border-orange-500/30">
-                <Ionicons name="person" size={20} color="#EA580C" />
-              </View>
-            )}
-            <View className="ml-3 flex-1">
-              <Text
-                className="text-white text-base font-bold"
-                numberOfLines={1}
-              >
-                {quest.isAnonymous ? "Anonymous" : quest.issuerName}
-              </Text>
-              <View
-                className={`self-start mt-1 px-2 py-0.5 rounded-md ${timeStatus.bg}`}
-              >
-                <Text
-                  className={`${timeStatus.color} text-[10px] font-bold uppercase`}
-                >
-                  {timeStatus.text}
-                </Text>
-              </View>
-            </View>
-          </View>
-          <View className="bg-orange-600/10 px-3 py-1.5 rounded-xl border border-orange-500/20 flex-row items-center">
-            <Ionicons name="diamond" size={14} color="#EA580C" />
-            <Text className="text-orange-500 text-base font-black ml-1">
-              {quest.rewardAmount}
-            </Text>
-          </View>
-        </View>
-        <Text className="text-white text-lg font-black mb-1.5">
-          {quest.title}
-        </Text>
-        <Text className="text-gray-400 text-sm" numberOfLines={2}>
-          {quest.description}
-        </Text>
-      </TouchableOpacity>
-    );
-  };
-
-  const MyQuestItem = ({ quest }: { quest: SideQuest }) => {
-    const submissions = MOCK_INCOMING_SUBMISSIONS.filter(
-      (s) => s.sideQuestId === quest.id
-    );
-    const pendingCount = submissions.filter(
-      (s) => s.status === "PENDING"
-    ).length;
-    const timeStatus = getTimeRemaining(quest.expiresAt);
-
-    return (
-      <View className="bg-[#1A1A1A] rounded-3xl p-5 mb-4 border border-white/[0.05]">
-        <View className="flex-row justify-between items-start mb-2">
-          <View className={`px-2 py-0.5 rounded-md ${timeStatus.bg}`}>
-            <Text
-              className={`${timeStatus.color} text-[10px] font-bold uppercase`}
-            >
-              {timeStatus.text}
-            </Text>
-          </View>
-          {quest.status === "OPEN" ? (
-            <View className="flex-row items-center">
-              <View className="w-2 h-2 bg-green-500 rounded-full mr-1" />
-              <Text className="text-green-500 text-xs font-bold">ACTIVE</Text>
-            </View>
-          ) : (
-            <Text className="text-gray-500 text-xs font-bold">
-              {quest.status}
-            </Text>
-          )}
-        </View>
-
-        <Text className="text-white text-xl font-black mb-1">
-          {quest.title}
-        </Text>
-        <Text className="text-gray-400 text-sm mb-4">{quest.description}</Text>
-
-        <View className="flex-row justify-between items-center border-t border-white/10 pt-4">
-          <View>
-            <Text className="text-gray-500 text-xs font-bold uppercase">
-              Reward
-            </Text>
-            <Text className="text-white font-bold">
-              {quest.rewardAmount} Gems
-            </Text>
-          </View>
-
-          {pendingCount > 0 ? (
-            <TouchableOpacity
-              onPress={() => {
-                const sub = submissions.find((s) => s.status === "PENDING");
-                if (sub) handleReviewPress(sub);
-              }}
-              className="bg-orange-600 px-4 py-2 rounded-xl flex-row items-center shadow-lg shadow-orange-600/20"
-            >
-              <Text className="text-white font-bold mr-2">
-                Review ({pendingCount})
-              </Text>
-              <Feather name="arrow-right" size={16} color="white" />
-            </TouchableOpacity>
-          ) : (
-            <View className="bg-white/5 px-4 py-2 rounded-xl">
-              <Text className="text-gray-500 font-bold text-xs">
-                No pending reviews
-              </Text>
-            </View>
-          )}
-        </View>
-      </View>
-    );
-  };
-
-  const SubmissionStatusCard = ({
-    submission,
-  }: {
-    submission: SideQuestCompletion;
-  }) => {
-    let statusColor = "text-yellow-500";
-    let statusBg = "bg-yellow-500/10";
-    let statusBorder = "border-yellow-500/20";
-    let icon = "time-outline";
-
-    if (submission.status === "APPROVED") {
-      statusColor = "text-green-500";
-      statusBg = "bg-green-500/10";
-      statusBorder = "border-green-500/20";
-      icon = "checkmark-circle";
-    } else if (submission.status === "REJECTED") {
-      statusColor = "text-red-500";
-      statusBg = "bg-red-500/10";
-      statusBorder = "border-red-500/20";
-      icon = "close-circle";
-    }
-
-    return (
-      <View className="bg-[#1A1A1A] rounded-3xl p-4 mb-4 border border-white/[0.05] overflow-hidden">
-        <View className="flex-row justify-between items-center mb-3">
-          <Text className="text-gray-500 text-xs font-bold">
-            {new Date(submission.createdAt).toLocaleDateString()}
-          </Text>
-          <View
-            className={`flex-row items-center px-2 py-1 rounded-lg border ${statusBg} ${statusBorder}`}
-          >
-            <Ionicons
-              name={icon as any}
-              size={14}
-              className={statusColor}
-              style={{ marginRight: 4 }}
-            />
-            <Text className={`${statusColor} text-xs font-black uppercase`}>
-              {submission.status}
-            </Text>
-          </View>
-        </View>
-
-        <View className="flex-row gap-3">
-          <Image
-            source={{ uri: submission.proofImageUrl }}
-            className="w-20 h-20 rounded-xl bg-gray-800"
-            resizeMode="cover"
-          />
-          <View className="flex-1 justify-center">
-            <Text className="text-white font-bold text-lg leading-6 mb-1">
-              {submission.questTitle}
-            </Text>
-
-            {submission.status === "APPROVED" ? (
-              <View className="flex-row items-center">
-                <Text className="text-green-500 text-sm font-bold mr-1">
-                  +{submission.rewardAmount} Gems
-                </Text>
-                <Ionicons name="sparkles" size={12} color="#22c55e" />
-              </View>
-            ) : submission.status === "REJECTED" ? (
-              <Text className="text-red-400 text-xs">
-                {submission.rejectionReason || "Criteria not met"}
-              </Text>
-            ) : (
-              <Text className="text-gray-400 text-xs">
-                Waiting for review...
-              </Text>
-            )}
-          </View>
-        </View>
-      </View>
-    );
-  };
-
   return (
     <View className="flex-1 bg-black">
-      {/* --- Header --- */}
+      {/* Header */}
       <View className="px-5 pt-14 pb-4 bg-black border-b border-white/[0.08] z-10">
         <View className="flex-row items-center justify-between mb-6">
           <View className="flex-row gap-3 items-center">
-            {/* 3. Use standard navigation.goBack() */}
             <TouchableOpacity
-              // onPress={() => router.back()}
+              onPress={() => router.back()}
               className="w-10 h-10 rounded-full bg-white/[0.05] items-center justify-center"
             >
               <Feather name="arrow-left" size={20} color="white" />
@@ -472,14 +451,21 @@ export default function SideQuestBoard() {
             <Ionicons name="add" size={30} color="white" />
           </TouchableOpacity>
         </View>
-
         <View className="flex-row bg-[#1A1A1A] rounded-xl p-1.5">
           <TouchableOpacity
             onPress={() => setActiveMainTab("board")}
-            className={`flex-1 py-2.5 rounded-lg ${activeMainTab === "board" ? "bg-[#333333] shadow-sm" : ""}`}
+            className={`${
+              activeMainTab === "board"
+                ? "flex-1 py-2.5 rounded-lg bg-[#333333]"
+                : "flex-1 py-2.5 rounded-lg"
+            }`}
           >
             <Text
-              className={`text-center text-xs font-bold ${activeMainTab === "board" ? "text-white" : "text-gray-500"}`}
+              className={`${
+                activeMainTab === "board"
+                  ? "text-center text-xs font-bold text-white"
+                  : "text-center text-xs font-bold text-gray-500"
+              }`}
             >
               Board
             </Text>
@@ -487,10 +473,18 @@ export default function SideQuestBoard() {
 
           <TouchableOpacity
             onPress={() => setActiveMainTab("myQuests")}
-            className={`flex-1 py-2.5 rounded-lg ${activeMainTab === "myQuests" ? "bg-[#333333] shadow-sm" : ""}`}
+            className={`${
+              activeMainTab === "myQuests"
+                ? "flex-1 py-2.5 rounded-lg bg-[#333333]"
+                : "flex-1 py-2.5 rounded-lg"
+            }`}
           >
             <Text
-              className={`text-center text-xs font-bold ${activeMainTab === "myQuests" ? "text-white" : "text-gray-500"}`}
+              className={`${
+                activeMainTab === "myQuests"
+                  ? "text-center text-xs font-bold text-white"
+                  : "text-center text-xs font-bold text-gray-500"
+              }`}
             >
               My Quests
             </Text>
@@ -498,10 +492,18 @@ export default function SideQuestBoard() {
 
           <TouchableOpacity
             onPress={() => setActiveMainTab("submissions")}
-            className={`flex-1 py-2.5 rounded-lg ${activeMainTab === "submissions" ? "bg-[#333333] shadow-sm" : ""}`}
+            className={`${
+              activeMainTab === "submissions"
+                ? "flex-1 py-2.5 rounded-lg bg-[#333333]"
+                : "flex-1 py-2.5 rounded-lg"
+            }`}
           >
             <Text
-              className={`text-center text-xs font-bold ${activeMainTab === "submissions" ? "text-white" : "text-gray-500"}`}
+              className={`${
+                activeMainTab === "submissions"
+                  ? "text-center text-xs font-bold text-white"
+                  : "text-center text-xs font-bold text-gray-500"
+              }`}
             >
               My Tries
             </Text>
@@ -509,16 +511,14 @@ export default function SideQuestBoard() {
         </View>
       </View>
 
-      {/* --- Main Content Area --- */}
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 16 }}>
-        {/* 1. MAIN BOARD */}
         {activeMainTab === "board" && (
           <>
             <View className="flex-row mb-6 gap-3">
-              {["friends", "public"].map((t) => (
+              {(["friends", "public"] as const).map((t) => (
                 <TouchableOpacity
                   key={t}
-                  onPress={() => setActiveBoardTab(t as any)}
+                  onPress={() => setActiveBoardTab(t)}
                   className={`px-5 py-2 rounded-full border ${activeBoardTab === t ? "bg-white border-white" : "bg-transparent border-white/20"}`}
                 >
                   <Text
@@ -530,18 +530,11 @@ export default function SideQuestBoard() {
               ))}
             </View>
             {MOCK_BOARD_QUESTS.map((quest) => (
-              <QuestCard
-                key={quest.id}
-                quest={quest}
-                onPress={() => {
-                  /* View details */
-                }}
-              />
+              <QuestCard key={quest.id} quest={quest} onPress={() => {}} />
             ))}
           </>
         )}
 
-        {/* 2. MY QUESTS (ISSUER) */}
         {activeMainTab === "myQuests" && (
           <>
             <View className="mb-6">
@@ -554,16 +547,12 @@ export default function SideQuestBoard() {
             </View>
 
             {MOCK_MY_QUESTS.map((quest) => (
-              <MyQuestItem key={quest.id} quest={quest} />
+              <MyQuestItem
+                key={quest.id}
+                quest={quest}
+                onReviewPress={handleReviewPress}
+              />
             ))}
-
-            {MOCK_MY_QUESTS.length === 0 && (
-              <View className="items-center py-10">
-                <Text className="text-gray-500">
-                  You haven't posted any quests yet.
-                </Text>
-              </View>
-            )}
           </>
         )}
 
@@ -619,10 +608,12 @@ export default function SideQuestBoard() {
 
               <ScrollView className="flex-1 p-5">
                 <View className="flex-row items-center mb-4">
-                  <Image
-                    source={{ uri: selectedReviewSub.completerImage }}
-                    className="w-12 h-12 rounded-full mr-3"
-                  />
+                  {selectedReviewSub.completerImage && (
+                    <Image
+                      source={{ uri: selectedReviewSub.completerImage }}
+                      className="w-12 h-12 rounded-full mr-3"
+                    />
+                  )}
                   <View>
                     <Text className="text-white font-bold text-lg">
                       {selectedReviewSub.completerName}
@@ -680,7 +671,7 @@ export default function SideQuestBoard() {
         </View>
       </Modal>
 
-      {/* --- Create Quest Modal (Existing) --- */}
+      {/* --- Create Modal --- */}
       <Modal
         visible={createModalVisible}
         animationType="slide"
@@ -706,7 +697,6 @@ export default function SideQuestBoard() {
             className="flex-1 px-5 pt-6"
             showsVerticalScrollIndicator={false}
           >
-            {/* Title */}
             <View className="mb-6">
               <Text className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2">
                 Quest Title
@@ -719,7 +709,6 @@ export default function SideQuestBoard() {
                 className="bg-[#1E1E1E] border border-white/10 rounded-xl p-4 text-white text-lg font-bold"
               />
             </View>
-            {/* Description */}
             <View className="mb-6">
               <Text className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2">
                 Description
@@ -735,7 +724,6 @@ export default function SideQuestBoard() {
                 style={{ textAlignVertical: "top" }}
               />
             </View>
-            {/* Reward */}
             <View className="mb-6">
               <Text className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2">
                 Reward (Gems)
@@ -749,7 +737,6 @@ export default function SideQuestBoard() {
                 className="bg-[#1E1E1E] border border-white/10 rounded-xl p-4 text-white text-lg font-bold"
               />
             </View>
-            {/* Duration */}
             <View className="mb-8">
               <View className="flex-row items-center justify-between mb-3">
                 <Text className="text-gray-400 text-xs font-bold uppercase tracking-wider">
@@ -779,7 +766,6 @@ export default function SideQuestBoard() {
                 ))}
               </View>
             </View>
-            {/* Button */}
             <TouchableOpacity
               onPress={handleCreateQuest}
               className="bg-orange-600 rounded-xl py-4 items-center mb-10 shadow-lg shadow-orange-600/20"
@@ -793,4 +779,6 @@ export default function SideQuestBoard() {
       </Modal>
     </View>
   );
-}
+};
+
+export default SideQuestBoard;

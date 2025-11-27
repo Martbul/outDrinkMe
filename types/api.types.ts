@@ -424,66 +424,8 @@ export interface NotificationItem {
   action_url?: string;
 }
 
-export type QuestStatus = "OPEN" | "COMPLETED" | "EXPIRED" | "CANCELLED";
-export type SubmissionStatus = "PENDING" | "APPROVED" | "REJECTED";
-export type PayoutStatus = "PENDING" | "SUCCESS" | "FAILED";
 
-export interface SideQuest {
-  id: string;
-  issuerId: string;
-  title: string;
-  description: string;
-  rewardAmount: number;
-  isLocked: boolean;
-  isPublic: boolean;
-  isAnonymous: boolean;
-  status: QuestStatus;
-  expiresAt: string; // ISO date string
-  createdAt: string;
-  updatedAt: string;
 
-  // Extended fields for display
-  issuerName?: string;
-  issuerImage?: string;
-  submissionCount?: number;
-}
-
-export interface SideQuestCompletion {
-  id: string;
-  sideQuestId: string;
-  completerId: string;
-  proofImageUrl: string;
-  proofText?: string;
-  status: SubmissionStatus;
-  rejectionReason?: string;
-  payoutStatus: PayoutStatus;
-  paidAt?: string;
-  createdAt: string;
-
-  // Extended fields for display
-  questTitle?: string;
-  questReward?: number;
-  completerName?: string;
-  completerImage?: string;
-}
-
-// ============================================================================
-// API REQUEST/RESPONSE TYPES
-// ============================================================================
-
-export interface CreateQuestRequest {
-  title: string;
-  description: string;
-  rewardAmount: number;
-  isPublic: boolean;
-  isAnonymous: boolean;
-  expiresInHours: number; // e.g., 24 for 24 hours
-}
-
-export interface CreateQuestResponse {
-  quest: SideQuest;
-  message: string;
-}
 
 export interface SubmitQuestCompletionRequest {
   sideQuestId: string;
@@ -496,11 +438,6 @@ export interface SubmitQuestCompletionResponse {
   message: string;
 }
 
-export interface ReviewSubmissionRequest {
-  completionId: string;
-  approved: boolean;
-  rejectionReason?: string;
-}
 
 export interface ReviewSubmissionResponse {
   completion: SideQuestCompletion;
@@ -516,4 +453,65 @@ export interface GetQuestsResponse {
 export interface GetSubmissionsResponse {
   submissions: SideQuestCompletion[];
   total: number;
+}
+
+// Add these to your existing types
+export type QuestStatus = "OPEN" | "COMPLETED" | "EXPIRED" | "CANCELLED";
+export type SubmissionStatus = "PENDING" | "APPROVED" | "REJECTED";
+export type PayoutStatus = "PENDING" | "SUCCESS" | "FAILED";
+
+export interface SideQuest {
+  id: string;
+  issuerId: string;
+  issuerName?: string;
+  issuerImage?: string;
+  title: string;
+  description: string;
+  rewardAmount: number;
+  isLocked: boolean;
+  isPublic: boolean;
+  isAnonymous: boolean;
+  status: QuestStatus;
+  expiresAt: string;
+  createdAt: string;
+  submissionCount?: number;
+}
+
+export interface SideQuestCompletion {
+  id: string;
+  sideQuestId: string;
+  questTitle?: string;
+  completerId: string;
+  completerName?: string;
+  completerImage?: string;
+  proofImageUrl: string;
+  proofText?: string;
+  status: SubmissionStatus;
+  rejectionReason?: string;
+  payoutStatus: PayoutStatus;
+  paidAt?: string;
+  createdAt: string;
+  rewardAmount?: number;
+}
+
+export interface CreateSideQuestReq {
+  title: string;
+  description: string;
+  rewardAmount: number;
+  durationHours: number;
+  isPublic: boolean;
+  isAnonymous: boolean;
+}
+
+export interface SubmitQuestProofReq {
+  proofImageUrl: string;
+  proofText?: string;
+}
+
+
+
+export interface ReviewSubmissionRequest {
+  completionId: string;
+  approved: boolean;
+  rejectionReason?: string;
 }

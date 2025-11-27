@@ -1,15 +1,52 @@
-import NestedScreenHeader from "@/components/nestedScreenHeader";
-import { useApp } from "@/providers/AppProvider";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import { useEffect, useState } from "react";
-import { ActivityIndicator, FlatList, Image, LayoutAnimation, RefreshControl, Text, TouchableOpacity, View } from "react-native";
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  FlatList,
+  RefreshControl,
+  LayoutAnimation,
+  Platform,
+  UIManager,
+} from "react-native";
+import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  MaterialCommunityIcons,
+  Ionicons,
+  FontAwesome5,
+} from "@expo/vector-icons";
+import { Header } from "@/components/header";
+import { useApp } from "@/providers/AppProvider";
+import { UserData } from "@/types/api.types";
+import { useAuth } from "@clerk/clerk-expo";
+// You might need to adjust this import path depending on where your gradients are,
+// or remove if using pure Tailwind classes.
+import { LinearGradient } from "expo-linear-gradient";
+
+// Enable LayoutAnimation for Android
+if (
+  Platform.OS === "android" &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+// Mock Types - Adjust to your actual DB types
+interface RankedUser extends UserData {
+  rank: number;
+  score: number; // Derived from collection count + streak
+  bottleCount: number;
+  streak: number;
+  title: string; // e.g. "Tipsy King", "Novice", "Legend"
+}
 
 export default function Leaderboard() {
   const insets = useSafeAreaInsets();
-  const { userData, friends } = useApp();
-  const [activeTab, setActiveTab] = useState<"buddies" | "global">("buddies");
+  const { user, friends } = useApp(); // Assuming user provides current user data
+  const [activeTab, setActiveTab] = useState<"friends" | "global">("friends");
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -27,7 +64,7 @@ export default function Leaderboard() {
     setLoading(true);
     // Simulate API Call
     setTimeout(() => {
-      const data = activeTab === "buddies" ? mockFriendsData : mockGlobalData;
+      const data = activeTab === "friends" ? mockFriendsData : mockGlobalData;
       setRankingData(data);
 
       // Find current user in the list (Simulated)
@@ -45,9 +82,22 @@ export default function Leaderboard() {
     setRefreshing(false);
   };
 
-  const handleTabChange = (tab: "buddies" | "global") => {
-   //  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+  const handleTabChange = (tab: "friends" | "global") => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setActiveTab(tab);
+  };
+
+  const getRankColor = (rank: number) => {
+    switch (rank) {
+      case 1:
+        return "#F59E0B"; // Gold/Orange-ish
+      case 2:
+        return "#E2E8F0"; // Silver
+      case 3:
+        return "#B45309"; // Bronze
+      default:
+        return "#ffffff50";
+    }
   };
 
   // Render the Top 3 podium differently
@@ -145,10 +195,68 @@ export default function Leaderboard() {
     );
   };
 
+  const renderRankItem = ({ item }: { item: RankedUser }) => {
+    // Top 3 are handled by podium, skip them in list or style them differently?
+    // Usually lists skip top 3 or highlight them. Let's just list 4 onwards for this "Unique" look.
+    if (item.rank <= 3) return null;
+
+    const isMe = item.id === "current_user_id";
+
+    return (
+      <View
+        className={`flex-row items-center p-4 mx-4 mb-3 rounded-2xl border ${
+          isMe
+            ? "bg-orange-600/10 border-orange-600"
+            : "bg-white/[0.03] border-white/[0.08]"
+        }`}
+      >
+        <Text
+          className={`text-xl font-black w-10 text-center mr-2 ${isMe ? "text-orange-500" : "text-white/30"}`}
+        >
+          {item.rank}
+        </Text>
+
+        <View className="w-12 h-12 rounded-full overflow-hidden mr-4 bg-white/5 border border-white/10">
+          <Image
+            source={{ uri: item.imageUrl }}
+            className="w-full h-full"
+            contentFit="cover"
+          />
+        </View>
+
+        <View className="flex-1">
+          <View className="flex-row items-center gap-2">
+            <Text
+              className={`font-bold text-base ${isMe ? "text-orange-500" : "text-white"}`}
+            >
+              {item.username}
+            </Text>
+            {isMe && (
+              <View className="bg-orange-600/20 px-2 rounded-md">
+                <Text className="text-orange-600 text-[9px] font-bold">
+                  YOU
+                </Text>
+              </View>
+            )}
+          </View>
+          <Text className="text-white/30 text-[10px] font-bold tracking-widest uppercase mt-0.5">
+            {item.bottleCount} Bottles • {item.streak} Day Streak
+          </Text>
+        </View>
+
+        <View className="items-end">
+          <Text className="text-white font-black text-lg">{item.score}</Text>
+          <Text className="text-white/30 text-[9px] font-bold">XP</Text>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
       {/* Header Area */}
-      <NestedScreenHeader heading="Ranking" secondaryHeading="Drunk" />
+      <Header />
+
       <View className="px-4 pb-2">
         <Text className="text-white text-3xl font-black mb-1">Rankings</Text>
         <Text className="text-white/50 text-xs font-bold tracking-widest uppercase mb-6">
@@ -160,21 +268,37 @@ export default function Leaderboard() {
       <View className="px-4 mb-4">
         <View className="flex-row bg-white/[0.05] p-1 rounded-xl border border-white/[0.1]">
           <TouchableOpacity
-            className={`flex-1 py-3 rounded-lg items-center ${activeTab === "buddies" ? "bg-orange-600 shadow-md" : "bg-transparent"}`}
-            onPress={() => handleTabChange("buddies")}
+            className={`${
+              activeTab === "friends"
+                ? "flex-1 py-3 rounded-lg items-center bg-orange-600 shadow-md"
+                : "flex-1 py-3 rounded-lg items-center bg-transparent"
+            }`}
+            onPress={() => handleTabChange("friends")}
           >
             <Text
-              className={`font-black tracking-wider text-xs ${activeTab === "buddies" ? "text-black" : "text-white/50"}`}
+              className={`${
+                activeTab === "friends"
+                  ? "font-black tracking-wider text-xs text-black"
+                  : "font-black tracking-wider text-xs text-white/50"
+              }`}
             >
               FRIENDS
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            className={`flex-1 py-3 rounded-lg items-center ${activeTab === "global" ? "bg-orange-600 shadow-md" : "bg-transparent"}`}
+            className={`${
+              activeTab === "global"
+                ? "flex-1 py-3 rounded-lg items-center bg-orange-600 shadow-md"
+                : "flex-1 py-3 rounded-lg items-center bg-transparent"
+            }`}
             onPress={() => handleTabChange("global")}
           >
             <Text
-              className={`font-black tracking-wider text-xs ${activeTab === "global" ? "text-black" : "text-white/50"}`}
+              className={`${
+                activeTab === "global"
+                  ? "font-black tracking-wider text-xs text-black"
+                  : "font-black tracking-wider text-xs text-white/50"
+              }`}
             >
               GLOBAL
             </Text>
@@ -191,7 +315,7 @@ export default function Leaderboard() {
           data={rankingData}
           keyExtractor={(item) => item.id}
           ListHeaderComponent={renderPodium}
-         //  renderItem={renderRankItem}
+          renderItem={renderRankItem}
           contentContainerStyle={{ paddingBottom: 120 }} // Space for the sticky user bar
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -260,3 +384,123 @@ export default function Leaderboard() {
     </View>
   );
 }
+
+// ----------------------
+// Mock Data Helpers
+// ----------------------
+
+const mockFriendsData: RankedUser[] = [
+  {
+    id: "u1",
+    username: "Alejandro",
+    rank: 1,
+    score: 2450,
+    bottleCount: 15,
+    streak: 12,
+    imageUrl: "https://i.pravatar.cc/150?u=a042581f4e29026024d",
+    title: "THE LEGEND",
+    firstName: "Ale",
+    lastName: "G",
+  },
+  {
+    id: "u2",
+    username: "Sarah_B",
+    rank: 2,
+    score: 2100,
+    bottleCount: 11,
+    streak: 8,
+    imageUrl: "https://i.pravatar.cc/150?u=a042581f4e29026704d",
+    title: "Wine Lover",
+    firstName: "Sarah",
+    lastName: "B",
+  },
+  {
+    id: "u3",
+    username: "MikeDranks",
+    rank: 3,
+    score: 1850,
+    bottleCount: 8,
+    streak: 5,
+    imageUrl: "https://i.pravatar.cc/150?u=a04258114e29026702d",
+    title: "Social Drinker",
+    firstName: "Mike",
+    lastName: "D",
+  },
+  {
+    id: "current_user_id",
+    username: "You",
+    rank: 4,
+    score: 1600,
+    bottleCount: 5,
+    streak: 15,
+    imageUrl: "https://github.com/shadcn.png",
+    title: "Rising Star",
+    firstName: "Me",
+    lastName: "Me",
+  },
+  {
+    id: "u5",
+    username: "Dave_shots",
+    rank: 5,
+    score: 1200,
+    bottleCount: 20,
+    streak: 0,
+    imageUrl: "https://i.pravatar.cc/150?u=a04258a2462d826712d",
+    title: "Party Animal",
+    firstName: "Dave",
+    lastName: "S",
+  },
+  // Add more mock users to test scrolling...
+];
+
+const mockGlobalData: RankedUser[] = [
+  {
+    id: "g1",
+    username: "VodkaVal",
+    rank: 1,
+    score: 9900,
+    bottleCount: 124,
+    streak: 365,
+    imageUrl: "https://i.pravatar.cc/150?u=vodka",
+    title: "IMORTAL",
+    firstName: "V",
+    lastName: "V",
+  },
+  {
+    id: "g2",
+    username: "BeerBaron",
+    rank: 2,
+    score: 8750,
+    bottleCount: 95,
+    streak: 200,
+    imageUrl: "https://i.pravatar.cc/150?u=beer",
+    title: "Baron",
+    firstName: "B",
+    lastName: "B",
+  },
+  {
+    id: "g3",
+    username: "GinGenius",
+    rank: 3,
+    score: 8200,
+    bottleCount: 80,
+    streak: 45,
+    imageUrl: "https://i.pravatar.cc/150?u=gin",
+    title: "Mixologist",
+    firstName: "G",
+    lastName: "G",
+  },
+  // ... fill gap ...
+  {
+    id: "current_user_id",
+    username: "You",
+    rank: 142,
+    score: 1600,
+    bottleCount: 5,
+    streak: 15,
+    imageUrl: "https://github.com/shadcn.png",
+    title: "Rising Star",
+    firstName: "Me",
+    lastName: "Me",
+  },
+];
