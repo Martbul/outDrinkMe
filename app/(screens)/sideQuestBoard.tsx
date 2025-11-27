@@ -12,10 +12,7 @@ import {
   Alert,
 } from "react-native";
 import { Ionicons, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-// 1. Import useNavigation from React Navigation (standard for RN)
-import { useNavigation } from "@react-navigation/native";
 
-// --- Types ---
 type QuestStatus = "OPEN" | "COMPLETED" | "EXPIRED" | "CANCELLED";
 type SubmissionStatus = "PENDING" | "APPROVED" | "REJECTED";
 type PayoutStatus = "PENDING" | "SUCCESS" | "FAILED";
@@ -74,7 +71,11 @@ const MOCK_BOARD_QUESTS: SideQuest[] = [
     submissionCount: 0,
   },
 ];
-
+ const tabs = [
+   { id: "board" as const, label: "Board" },
+   { id: "myQuests" as const, label: "My Quests" },
+   { id: "submissions" as const, label: "My Tries" },
+ ];
 const MOCK_MY_QUESTS: SideQuest[] = [
   {
     id: "q_my_1",
@@ -165,11 +166,9 @@ const DURATION_PRESETS = [
 ];
 
 export default function SideQuestBoard() {
-  // 2. Initialize Navigation Hook
-  const navigation = useNavigation();
 
   const [activeMainTab, setActiveMainTab] = useState<
-    "board" | "my-quests" | "submissions"
+    "board" | "myQuests" | "submissions"
   >("board");
   const [activeBoardTab, setActiveBoardTab] = useState<"friends" | "public">(
     "friends"
@@ -452,6 +451,7 @@ export default function SideQuestBoard() {
           <View className="flex-row gap-3 items-center">
             {/* 3. Use standard navigation.goBack() */}
             <TouchableOpacity
+              // onPress={() => router.back()}
               className="w-10 h-10 rounded-full bg-white/[0.05] items-center justify-center"
             >
               <Feather name="arrow-left" size={20} color="white" />
@@ -474,23 +474,38 @@ export default function SideQuestBoard() {
         </View>
 
         <View className="flex-row bg-[#1A1A1A] rounded-xl p-1.5">
-          {[
-            { id: "board", label: "Board" },
-            { id: "my-quests", label: "My Quests" },
-            { id: "submissions", label: "My Tries" },
-          ].map((tab) => (
-            <TouchableOpacity
-              key={tab.id}
-              onPress={() => setActiveMainTab(tab.id as any)}
-              className={`flex-1 py-2.5 rounded-lg ${activeMainTab === tab.id ? "bg-[#333333] shadow-sm" : ""}`}
+          <TouchableOpacity
+            onPress={() => setActiveMainTab("board")}
+            className={`flex-1 py-2.5 rounded-lg ${activeMainTab === "board" ? "bg-[#333333] shadow-sm" : ""}`}
+          >
+            <Text
+              className={`text-center text-xs font-bold ${activeMainTab === "board" ? "text-white" : "text-gray-500"}`}
             >
-              <Text
-                className={`text-center text-xs font-bold ${activeMainTab === tab.id ? "text-white" : "text-gray-500"}`}
-              >
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
+              Board
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setActiveMainTab("myQuests")}
+            className={`flex-1 py-2.5 rounded-lg ${activeMainTab === "myQuests" ? "bg-[#333333] shadow-sm" : ""}`}
+          >
+            <Text
+              className={`text-center text-xs font-bold ${activeMainTab === "myQuests" ? "text-white" : "text-gray-500"}`}
+            >
+              My Quests
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setActiveMainTab("submissions")}
+            className={`flex-1 py-2.5 rounded-lg ${activeMainTab === "submissions" ? "bg-[#333333] shadow-sm" : ""}`}
+          >
+            <Text
+              className={`text-center text-xs font-bold ${activeMainTab === "submissions" ? "text-white" : "text-gray-500"}`}
+            >
+              My Tries
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -527,7 +542,7 @@ export default function SideQuestBoard() {
         )}
 
         {/* 2. MY QUESTS (ISSUER) */}
-        {activeMainTab === "my-quests" && (
+        {activeMainTab === "myQuests" && (
           <>
             <View className="mb-6">
               <Text className="text-white text-3xl font-black mb-2">
@@ -552,7 +567,6 @@ export default function SideQuestBoard() {
           </>
         )}
 
-        {/* 3. MY TRIES (SUBMISSIONS) */}
         {activeMainTab === "submissions" && (
           <>
             <View className="mb-6 flex-row items-center justify-between">

@@ -12,7 +12,7 @@ import {
   SimpleLineIcons,
 } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useRef } from "react";
 import {
   ScrollView,
   Text,
@@ -24,7 +24,11 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Dimensions,
+  Animated,
+  Image,
 } from "react-native";
+import QRCode from "react-native-qrcode-svg";
 import ThisWeekGadget from "@/components/thisWeekGadget";
 import InfoTooltip from "@/components/infoTooltip";
 import DrunkThought from "@/components/drunkThought";
@@ -32,6 +36,87 @@ import { useAuth } from "@clerk/clerk-expo";
 import { apiService } from "@/api";
 import { useAnalytics } from "@/utils/analytics";
 
+interface GroupSession {
+  id: string;
+  name: string;
+  hostName: string;
+  expiresAt: Date;
+  memberCount: number;
+  thumbnailUrls: string[];
+  isActive: boolean;
+}
+
+interface PhotoMessage {
+  id: string;
+  userId: string;
+  userAvatar: string;
+  imageUrl: string;
+  timestamp: Date;
+  caption?: string;
+}
+
+const ACTIVE_SESSIONS: GroupSession[] = [
+  {
+    id: "1",
+    name: "Friday Night Out 🍻",
+    hostName: "Alex",
+    expiresAt: new Date(Date.now() + 86400000), // 24h left
+    memberCount: 5,
+    isActive: true,
+    thumbnailUrls: [
+      "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400",
+      "https://images.unsplash.com/photo-1543007630-9710e4a00a20?w=400",
+      "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=400",
+    ],
+  },
+  {
+    id: "2",
+    name: "Beach Day 🏖️",
+    hostName: "Sarah",
+    expiresAt: new Date(Date.now() - 3600000), // Expired
+    memberCount: 8,
+    isActive: false,
+    thumbnailUrls: [
+      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400",
+    ],
+  },
+];
+
+const MOCK_DISK_PHOTOS: PhotoMessage[] = [
+  {
+    id: "p1",
+    userId: "u1",
+    userAvatar: "https://i.pravatar.cc/150?img=11",
+    imageUrl:
+      "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400",
+    timestamp: new Date(),
+    caption: "Cheers!",
+  },
+  {
+    id: "p2",
+    userId: "u2",
+    userAvatar: "https://i.pravatar.cc/150?img=5",
+    imageUrl: "https://images.unsplash.com/photo-1543007630-9710e4a00a20?w=400",
+    timestamp: new Date(),
+    caption: "DJ was crazy",
+  },
+  {
+    id: "p3",
+    userId: "u1",
+    userAvatar: "https://i.pravatar.cc/150?img=11",
+    imageUrl:
+      "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=400",
+    timestamp: new Date(),
+  },
+  {
+    id: "p4",
+    userId: "u3",
+    userAvatar: "https://i.pravatar.cc/150?img=8",
+    imageUrl:
+      "https://images.unsplash.com/photo-1514525253440-b393452e8d26?w=400",
+    timestamp: new Date(),
+  },
+];
 export default function HomeScreen() {
   const analytics = useAnalytics();
   const { getToken } = useAuth();
@@ -43,6 +128,39 @@ export default function HomeScreen() {
   const [feedbackCategory, setFeedbackCategory] = useState<string | null>(null);
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [qrModalVisible, setQrModalVisible] = useState(false);
+  const [selectedSession, setSelectedSession] = useState<GroupSession | null>(
+    null
+  );
+
+  const slideAnim = useRef(
+    new Animated.Value(Dimensions.get("window").height)
+  ).current;
+
+  const openModal = () => {
+    setQrModalVisible(true);
+    Animated.spring(slideAnim, {
+      toValue: 0,
+      useNativeDriver: true,
+      damping: 20,
+    }).start();
+  };
+
+  const closeModal = () => {
+    Animated.timing(slideAnim, {
+      toValue: Dimensions.get("window").height,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => setQrModalVisible(false));
+  };
+  if (selectedSession) {
+    return (
+      <SessionDiskView
+        session={selectedSession}
+        onBack={() => setSelectedSession(null)}
+      />
+    );
+  }
 
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -163,6 +281,7 @@ export default function HomeScreen() {
           <View className="flex flex-row items-center gap-8">
             <View className="rounded-full bg-orange-600/15 border-orange-600 ">
               <TouchableOpacity
+                onPress={openModal}
                 className=" w-16 h-16 rounded-full  items-center justify-center"
               >
                 <MaterialCommunityIcons
@@ -213,67 +332,6 @@ export default function HomeScreen() {
             {coefInfo.title}
           </Text>
         </View>
-        <ThisWeekGadget />
-
-        <View className="flex-row gap-3 mb-4">
-          <View className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]">
-            <View className="w-10 h-10 rounded-xl bg-orange-600/20 items-center justify-center mb-2">
-              <MaterialIcons name="leaderboard" size={20} color="#EA580C" />
-            </View>
-            <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">
-              RANK
-            </Text>
-            <Text className="text-white text-2xl font-black">
-              #{userStats?.rank || 0}
-            </Text>
-          </View>
-          <View className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]">
-            <View className="w-10 h-10 rounded-xl bg-orange-600/20 items-center justify-center mb-2">
-              <Ionicons name="calendar" size={20} color="#EA580C" />
-            </View>
-            <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">
-              TOTAL
-            </Text>
-            <Text className="text-white text-2xl font-black">
-              {userStats?.total_days_drank || 0}
-            </Text>
-          </View>
-          <View className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]">
-            <View className="w-10 h-10 rounded-xl bg-orange-600/20 items-center justify-center mb-2">
-              <Ionicons name="trophy" size={20} color="#EA580C" />
-            </View>
-            <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">
-              WINS
-            </Text>
-            <Text className="text-white text-2xl font-black">
-              {userStats?.total_weeks_won || 0}
-            </Text>
-          </View>
-        </View>
-
-        <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
-          <View className="flex-row justify-between items-center">
-            <View>
-              <Text className="text-white/50 text-[11px] font-bold tracking-[1.5px] mb-2">
-                CURRENT STREAK
-              </Text>
-
-              <View className="flex-row items-center">
-                <Text className="text-white text-[32px] font-black">
-                  {userStats?.current_streak || 0} Days
-                </Text>
-                <MaterialCommunityIcons name="fire" size={56} color="#EA580C" />
-              </View>
-            </View>
-            {userStats && userStats.current_streak > 0 && (
-              <View className="bg-orange-600/20 px-3.5 py-1.5 rounded-lg">
-                <Text className="text-orange-600 text-[11px] font-black tracking-wide">
-                  ACTIVE
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
 
         <View className="flex-row gap-3 mb-4">
           <TouchableOpacity
@@ -321,7 +379,7 @@ export default function HomeScreen() {
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity
+          {/* <TouchableOpacity
             onPress={() => router.push("/(screens)/store")}
             className="w-20 bg-white/[0.03] rounded-2xl border border-white/[0.08] items-center justify-center"
           >
@@ -332,7 +390,69 @@ export default function HomeScreen() {
                 color="#EA580C"
               />
             </View>
+          </TouchableOpacity> */}
+        </View>
+
+        <ThisWeekGadget />
+
+        <View className="flex-row gap-3 mb-4">
+          <TouchableOpacity onPress={() => router.push("/(screens)/ranking")} className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]">
+            <View className="w-10 h-10 rounded-xl bg-orange-600/20 items-center justify-center mb-2">
+              <MaterialIcons name="leaderboard" size={20} color="#EA580C" />
+            </View>
+            <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">
+              RANK
+            </Text>
+            <Text className="text-white text-2xl font-black">
+              #{userStats?.rank || 0}
+            </Text>
           </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push("/(tabs)/calendar")} className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]">
+            <View className="w-10 h-10 rounded-xl bg-orange-600/20 items-center justify-center mb-2">
+              <Ionicons name="calendar" size={20} color="#EA580C" />
+            </View>
+            <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">
+              TOTAL
+            </Text>
+            <Text className="text-white text-2xl font-black">
+              {userStats?.total_days_drank || 0}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push("/(screens)/stats")} className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]">
+            <View className="w-10 h-10 rounded-xl bg-orange-600/20 items-center justify-center mb-2">
+              <Ionicons name="trophy" size={20} color="#EA580C" />
+            </View>
+            <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">
+              WINS
+            </Text>
+            <Text className="text-white text-2xl font-black">
+              {userStats?.total_weeks_won || 0}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
+          <View className="flex-row justify-between items-center">
+            <View>
+              <Text className="text-white/50 text-[11px] font-bold tracking-[1.5px] mb-2">
+                CURRENT STREAK
+              </Text>
+
+              <View className="flex-row items-center">
+                <Text className="text-white text-[32px] font-black">
+                  {userStats?.current_streak || 0} Days
+                </Text>
+                <MaterialCommunityIcons name="fire" size={56} color="#EA580C" />
+              </View>
+            </View>
+            {userStats && userStats.current_streak > 0 && (
+              <View className="bg-orange-600/20 px-3.5 py-1.5 rounded-lg">
+                <Text className="text-orange-600 text-[11px] font-black tracking-wide">
+                  ACTIVE
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
 
         <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
@@ -624,546 +744,248 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </KeyboardAvoidingView>
       </Modal>
+      <Modal visible={qrModalVisible} transparent onRequestClose={closeModal}>
+        <View className="flex-1 justify-end bg-black/80">
+          <TouchableOpacity className="flex-1" onPress={closeModal} />
+
+          <Animated.View
+            style={{ transform: [{ translateY: slideAnim }] }}
+            className="bg-[#121212] rounded-t-[40px] border-t border-white/10 min-h-[70%] max-h-[90%]"
+          >
+            <QrSessionManager onClose={closeModal} />
+          </Animated.View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
+function SessionDiskView({
+  session,
+  onBack,
+}: {
+  session: GroupSession;
+  onBack: () => void;
+}) {
+  // Calculate grid dimensions
+  const windowWidth = Dimensions.get("window").width;
+  const itemSize = (windowWidth - 32) / 2; // 2 column grid with padding
 
-// import React, { useState, useRef, useEffect } from "react";
-// import {
-//   View,
-//   Text,
-//   ScrollView,
-//   TouchableOpacity,
-//   Image,
-//   Modal,
-//   TextInput,
-//   Dimensions,
-//   Animated,
-//   Platform,
-//   KeyboardAvoidingView,
-// } from "react-native";
-// import { Ionicons, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-// import QRCode from "react-native-qrcode-svg"; // Requires: npm install react-native-qrcode-svg
-// import { BlurView } from "expo-blur"; // Optional: for glass effect, removed here for pure RN compatibility
+  return (
+    <View className="flex-1 bg-black">
+      {/* Navbar */}
+      <View className="pt-14 pb-2 px-4 flex-row items-center justify-between z-10 bg-black/80">
+        <TouchableOpacity
+          onPress={onBack}
+          className="w-10 h-10 rounded-full bg-[#1A1A1A] items-center justify-center"
+        >
+          <Feather name="arrow-left" size={20} color="white" />
+        </TouchableOpacity>
 
-// // --- Types ---
+        <View className="items-center">
+          <Text className="text-white font-bold text-lg">{session.name}</Text>
+          <Text className="text-orange-500 text-xs font-bold tracking-widest">
+            EXPIRES IN 23H 14M
+          </Text>
+        </View>
 
-// interface GroupSession {
-//   id: string;
-//   name: string;
-//   hostName: string;
-//   expiresAt: Date;
-//   memberCount: number;
-//   thumbnailUrls: string[];
-//   isActive: boolean;
-// }
+        <TouchableOpacity className="w-10 h-10 rounded-full bg-[#1A1A1A] items-center justify-center">
+          <Ionicons name="settings-outline" size={20} color="white" />
+        </TouchableOpacity>
+      </View>
 
-// interface PhotoMessage {
-//   id: string;
-//   userId: string;
-//   userAvatar: string;
-//   imageUrl: string;
-//   timestamp: Date;
-//   caption?: string;
-// }
+      <ScrollView contentContainerStyle={{ padding: 16 }}>
+        {/* Banner / Info */}
+        <View className="bg-[#1A1A1A] rounded-2xl p-4 mb-6 flex-row items-center justify-between border border-white/5">
+          <View className="flex-row items-center">
+            <View className="flex-row -space-x-2 mr-3">
+              {session.thumbnailUrls.map((url, i) => (
+                <Image
+                  key={i}
+                  source={{ uri: url }}
+                  className="w-8 h-8 rounded-full border border-black"
+                />
+              ))}
+            </View>
+            <Text className="text-gray-400 text-xs">
+              {session.memberCount} members active
+            </Text>
+          </View>
+          <TouchableOpacity className="bg-white/10 px-3 py-1.5 rounded-full">
+            <Text className="text-white text-xs font-bold">Invite +</Text>
+          </TouchableOpacity>
+        </View>
 
-// // --- Mock Data ---
+        {/* The Disk Grid (Masonry-ish) */}
+        <View className="flex-row flex-wrap justify-between">
+          {MOCK_DISK_PHOTOS.map((photo) => (
+            <View
+              key={photo.id}
+              className="mb-4 relative"
+              style={{ width: itemSize }}
+            >
+              <Image
+                source={{ uri: photo.imageUrl }}
+                style={{ width: itemSize, height: itemSize * 1.3 }}
+                className="rounded-2xl bg-[#1A1A1A]"
+                resizeMode="cover"
+              />
 
-// const ACTIVE_SESSIONS: GroupSession[] = [
-//   {
-//     id: "1",
-//     name: "Friday Night Out 🍻",
-//     hostName: "Alex",
-//     expiresAt: new Date(Date.now() + 86400000), // 24h left
-//     memberCount: 5,
-//     isActive: true,
-//     thumbnailUrls: [
-//       "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400",
-//       "https://images.unsplash.com/photo-1543007630-9710e4a00a20?w=400",
-//       "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=400",
-//     ],
-//   },
-//   {
-//     id: "2",
-//     name: "Beach Day 🏖️",
-//     hostName: "Sarah",
-//     expiresAt: new Date(Date.now() - 3600000), // Expired
-//     memberCount: 8,
-//     isActive: false,
-//     thumbnailUrls: [
-//       "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400",
-//     ],
-//   },
-// ];
+              {/* Overlay Gradient for Text */}
+              <View className="absolute bottom-0 w-full h-16 rounded-b-2xl bg-black/40" />
 
-// const MOCK_DISK_PHOTOS: PhotoMessage[] = [
-//   {
-//     id: "p1",
-//     userId: "u1",
-//     userAvatar: "https://i.pravatar.cc/150?img=11",
-//     imageUrl:
-//       "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400",
-//     timestamp: new Date(),
-//     caption: "Cheers!",
-//   },
-//   {
-//     id: "p2",
-//     userId: "u2",
-//     userAvatar: "https://i.pravatar.cc/150?img=5",
-//     imageUrl: "https://images.unsplash.com/photo-1543007630-9710e4a00a20?w=400",
-//     timestamp: new Date(),
-//     caption: "DJ was crazy",
-//   },
-//   {
-//     id: "p3",
-//     userId: "u1",
-//     userAvatar: "https://i.pravatar.cc/150?img=11",
-//     imageUrl:
-//       "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=400",
-//     timestamp: new Date(),
-//   },
-//   {
-//     id: "p4",
-//     userId: "u3",
-//     userAvatar: "https://i.pravatar.cc/150?img=8",
-//     imageUrl:
-//       "https://images.unsplash.com/photo-1514525253440-b393452e8d26?w=400",
-//     timestamp: new Date(),
-//   },
-// ];
+              {/* Uploader Info */}
+              <View className="absolute bottom-2 left-2 flex-row items-center">
+                <Image
+                  source={{ uri: photo.userAvatar }}
+                  className="w-6 h-6 rounded-full border border-white mr-2"
+                />
+                {photo.caption && (
+                  <Text
+                    className="text-white text-xs font-bold shadow-sm"
+                    numberOfLines={1}
+                  >
+                    {photo.caption}
+                  </Text>
+                )}
+              </View>
+            </View>
+          ))}
 
-// // --- Components ---
+          {/* Add Button in Grid */}
+          <TouchableOpacity
+            style={{ width: itemSize, height: itemSize * 1.3 }}
+            className="rounded-2xl bg-[#111] border border-white/10 border-dashed items-center justify-center mb-4"
+          >
+            <View className="w-14 h-14 rounded-full bg-[#222] items-center justify-center mb-2">
+              <Ionicons name="camera" size={28} color="#EA580C" />
+            </View>
+            <Text className="text-gray-500 font-bold text-xs">Add to Disk</Text>
+          </TouchableOpacity>
+        </View>
+        <View className="h-20" />
+      </ScrollView>
 
-// export default function HomeScreen() {
-//   const [qrModalVisible, setQrModalVisible] = useState(false);
-//   const [selectedSession, setSelectedSession] = useState<GroupSession | null>(
-//     null
-//   );
+      {/* Floating Upload Button (Alternative) */}
+      <View className="absolute bottom-8 self-center">
+        <TouchableOpacity className="bg-orange-600 px-6 py-3 rounded-full flex-row items-center shadow-lg shadow-orange-600/30">
+          <Ionicons name="cloud-upload" size={20} color="white" />
+          <Text className="text-white font-bold ml-2">Upload Photo</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
 
-//   // Modal Animation
-//   const slideAnim = useRef(
-//     new Animated.Value(Dimensions.get("window").height)
-//   ).current;
+function QrSessionManager({ onClose }: { onClose: () => void }) {
+  const [activeTab, setActiveTab] = useState<"create" | "scan">("create");
+  const [sessionName, setSessionName] = useState("");
 
-//   const openModal = () => {
-//     setQrModalVisible(true);
-//     Animated.spring(slideAnim, {
-//       toValue: 0,
-//       useNativeDriver: true,
-//       damping: 20,
-//     }).start();
-//   };
+  return (
+    <View className="flex-1 p-6">
+      {/* Handle Bar */}
+      <View className="w-12 h-1 bg-white/10 rounded-full self-center mb-6" />
 
-//   const closeModal = () => {
-//     Animated.timing(slideAnim, {
-//       toValue: Dimensions.get("window").height,
-//       duration: 300,
-//       useNativeDriver: true,
-//     }).start(() => setQrModalVisible(false));
-//   };
+      {/* Toggle Tabs */}
+      <View className="flex-row bg-[#1A1A1A] p-1 rounded-2xl mb-8 border border-white/5">
+        <TouchableOpacity
+          onPress={() => setActiveTab("create")}
+          className={`flex-1 py-3 rounded-xl items-center flex-row justify-center gap-2 ${activeTab === "create" ? "bg-[#333]" : ""}`}
+        >
+          <Ionicons
+            name="qr-code-outline"
+            size={18}
+            color={activeTab === "create" ? "white" : "gray"}
+          />
+          <Text
+            className={`font-bold ${activeTab === "create" ? "text-white" : "text-gray-500"}`}
+          >
+            Create Experience
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setActiveTab("scan")}
+          className={`flex-1 py-3 rounded-xl items-center flex-row justify-center gap-2 ${activeTab === "scan" ? "bg-[#333]" : ""}`}
+        >
+          <Ionicons
+            name="scan-outline"
+            size={18}
+            color={activeTab === "scan" ? "white" : "gray"}
+          />
+          <Text
+            className={`font-bold ${activeTab === "scan" ? "text-white" : "text-gray-500"}`}
+          >
+            Join Experience
+          </Text>
+        </TouchableOpacity>
+      </View>
 
-//   // If a session is selected, show the "Disk" view
-//   if (selectedSession) {
-//     return (
-//       <SessionDiskView
-//         session={selectedSession}
-//         onBack={() => setSelectedSession(null)}
-//       />
-//     );
-//   }
+      {activeTab === "create" ? (
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <View className="items-center">
+            <Text className="text-white text-2xl font-black mb-2 text-center">
+              Start an Experience
+            </Text>
+            <Text className="text-gray-400 text-center mb-8 px-4">
+              Friends can scan this to join. Photos shared here disappear after
+              48 hours.
+            </Text>
 
-//   return (
-//     <View className="flex-1 bg-black">
-//       {/* Header */}
-//       <View className="pt-14 pb-4 px-5 flex-row items-center justify-between border-b border-white/[0.08]">
-//         <View>
-//           <Text className="text-gray-400 text-xs font-bold uppercase tracking-widest">
-//             Welcome back
-//           </Text>
-//           <Text className="text-white text-2xl font-black">Dashbaord</Text>
-//         </View>
+            {/* QR Container */}
+            <View className="bg-white p-4 rounded-3xl mb-8 shadow-2xl shadow-orange-500/20">
+              <QRCode
+                value={sessionName || "New Session"}
+                size={220}
+                color="black"
+                backgroundColor="white"
+              />
+              <View className="absolute -bottom-4 -right-4 bg-orange-600 w-12 h-12 rounded-full items-center justify-center border-4 border-[#121212]">
+                <Ionicons name="flash" size={20} color="white" />
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+      ) : (
+        // SCAN / JOIN
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          className="flex-1"
+        >
+          <View className="flex-1 items-center justify-center">
+            {/* Fake Camera Viewfinder */}
+            <View className="w-64 h-64 border border-white/20 rounded-3xl items-center justify-center mb-8 bg-[#1A1A1A] relative overflow-hidden">
+              <View className="absolute top-0 w-full h-1 bg-orange-500/50 shadow-lg shadow-orange-500" />
+              <Ionicons name="camera-outline" size={48} color="#444" />
+              <Text className="text-gray-600 mt-2 font-medium">
+                Camera View
+              </Text>
 
-//         {/* THE QR BUTTON */}
-//         <TouchableOpacity
-//           onPress={openModal}
-//           className="bg-[#222] border border-white/10 w-12 h-12 rounded-full items-center justify-center overflow-hidden"
-//         >
-//           <View className="absolute inset-0 bg-orange-600/10" />
-//           <Ionicons name="qr-code" size={24} color="#EA580C" />
-//         </TouchableOpacity>
-//       </View>
+              {/* Corner Markers */}
+              <View className="absolute top-4 left-4 w-6 h-6 border-t-2 border-l-2 border-orange-500 rounded-tl-lg" />
+              <View className="absolute top-4 right-4 w-6 h-6 border-t-2 border-r-2 border-orange-500 rounded-tr-lg" />
+              <View className="absolute bottom-4 left-4 w-6 h-6 border-b-2 border-l-2 border-orange-500 rounded-bl-lg" />
+              <View className="absolute bottom-4 right-4 w-6 h-6 border-b-2 border-r-2 border-orange-500 rounded-br-lg" />
+            </View>
 
-//       <ScrollView
-//         className="flex-1 px-5 pt-6"
-//         showsVerticalScrollIndicator={false}
-//       >
-//         {/* Active Disks / Squads Section */}
-//         <View className="mb-8">
-//           <View className="flex-row items-center justify-between mb-4">
-//             <Text className="text-white text-lg font-black">
-//               Active Disks 💿
-//             </Text>
-//             <TouchableOpacity>
-//               <Text className="text-orange-600 text-xs font-bold">See All</Text>
-//             </TouchableOpacity>
-//           </View>
+            <Text className="text-white font-bold mb-4">
+              Or enter code manually
+            </Text>
 
-//           <ScrollView
-//             horizontal
-//             showsHorizontalScrollIndicator={false}
-//             className="-mx-5 px-5"
-//           >
-//             {/* Create New Card */}
-//             <TouchableOpacity
-//               onPress={openModal}
-//               className="mr-4 w-32 h-44 rounded-3xl bg-[#1A1A1A] border border-white/10 items-center justify-center border-dashed"
-//             >
-//               <View className="w-12 h-12 rounded-full bg-white/5 items-center justify-center mb-2">
-//                 <Ionicons name="add" size={24} color="white" />
-//               </View>
-//               <Text className="text-gray-500 text-xs font-bold text-center">
-//                 New{"\n"}Night Out
-//               </Text>
-//             </TouchableOpacity>
-
-//             {/* Active Session Cards */}
-//             {ACTIVE_SESSIONS.map((session) => (
-//               <TouchableOpacity
-//                 key={session.id}
-//                 onPress={() => setSelectedSession(session)}
-//                 className={`mr-4 w-40 h-44 rounded-3xl p-3 justify-between border ${session.isActive ? "bg-[#1A1A1A] border-white/10" : "bg-red-900/10 border-red-500/20"}`}
-//               >
-//                 {/* Photo Stack Preview */}
-//                 <View className="flex-row">
-//                   {session.thumbnailUrls.slice(0, 3).map((url, i) => (
-//                     <Image
-//                       key={i}
-//                       source={{ uri: url }}
-//                       className={`w-8 h-8 rounded-full border-2 border-[#1A1A1A] ${i > 0 ? "-ml-3" : ""}`}
-//                     />
-//                   ))}
-//                   {session.memberCount > 3 && (
-//                     <View className="w-8 h-8 rounded-full border-2 border-[#1A1A1A] bg-[#333] items-center justify-center -ml-3">
-//                       <Text className="text-white text-[9px] font-bold">
-//                         +{session.memberCount - 3}
-//                       </Text>
-//                     </View>
-//                   )}
-//                 </View>
-
-//                 <View>
-//                   <Text
-//                     className="text-white font-bold text-sm leading-4 mb-1"
-//                     numberOfLines={2}
-//                   >
-//                     {session.name}
-//                   </Text>
-//                   {session.isActive ? (
-//                     <View className="flex-row items-center">
-//                       <View className="w-2 h-2 rounded-full bg-green-500 mr-1.5 animate-pulse" />
-//                       <Text className="text-green-500 text-[10px] font-bold">
-//                         LIVE
-//                       </Text>
-//                     </View>
-//                   ) : (
-//                     <Text className="text-red-500 text-[10px] font-bold">
-//                       EXPIRED
-//                     </Text>
-//                   )}
-//                 </View>
-//               </TouchableOpacity>
-//             ))}
-//           </ScrollView>
-//         </View>
-
-//         {/* Other Home Content Placeholder */}
-//         <View className="bg-[#1A1A1A] rounded-3xl p-6 border border-white/5 mb-6">
-//           <Text className="text-white font-bold mb-2">Weekly Stats</Text>
-//           <View className="h-20 bg-black/20 rounded-xl items-center justify-center">
-//             <Text className="text-gray-500">Graph Placeholder</Text>
-//           </View>
-//         </View>
-//       </ScrollView>
-
-//       {/* --- QR Code Modal --- */}
-//       <Modal visible={qrModalVisible} transparent onRequestClose={closeModal}>
-//         <View className="flex-1 justify-end bg-black/80">
-//           <TouchableOpacity className="flex-1" onPress={closeModal} />
-
-//           <Animated.View
-//             style={{ transform: [{ translateY: slideAnim }] }}
-//             className="bg-[#121212] rounded-t-[40px] border-t border-white/10 min-h-[70%] max-h-[90%]"
-//           >
-//             <QrSessionManager onClose={closeModal} />
-//           </Animated.View>
-//         </View>
-//       </Modal>
-//     </View>
-//   );
-// }
-
-// // --- Sub-Component: QR Manager (The Animated Modal Content) ---
-
-// function QrSessionManager({ onClose }: { onClose: () => void }) {
-//   const [activeTab, setActiveTab] = useState<"create" | "scan">("create");
-//   const [sessionName, setSessionName] = useState("");
-
-//   return (
-//     <View className="flex-1 p-6">
-//       {/* Handle Bar */}
-//       <View className="w-12 h-1 bg-white/10 rounded-full self-center mb-6" />
-
-//       {/* Toggle Tabs */}
-//       <View className="flex-row bg-[#1A1A1A] p-1 rounded-2xl mb-8 border border-white/5">
-//         <TouchableOpacity
-//           onPress={() => setActiveTab("create")}
-//           className={`flex-1 py-3 rounded-xl items-center flex-row justify-center gap-2 ${activeTab === "create" ? "bg-[#333]" : ""}`}
-//         >
-//           <Ionicons
-//             name="qr-code-outline"
-//             size={18}
-//             color={activeTab === "create" ? "white" : "gray"}
-//           />
-//           <Text
-//             className={`font-bold ${activeTab === "create" ? "text-white" : "text-gray-500"}`}
-//           >
-//             My Code
-//           </Text>
-//         </TouchableOpacity>
-//         <TouchableOpacity
-//           onPress={() => setActiveTab("scan")}
-//           className={`flex-1 py-3 rounded-xl items-center flex-row justify-center gap-2 ${activeTab === "scan" ? "bg-[#333]" : ""}`}
-//         >
-//           <Ionicons
-//             name="scan-outline"
-//             size={18}
-//             color={activeTab === "scan" ? "white" : "gray"}
-//           />
-//           <Text
-//             className={`font-bold ${activeTab === "scan" ? "text-white" : "text-gray-500"}`}
-//           >
-//             Join Squad
-//           </Text>
-//         </TouchableOpacity>
-//       </View>
-
-//       {activeTab === "create" ? (
-//         // CREATE / DISPLAY QR
-//         <ScrollView showsVerticalScrollIndicator={false}>
-//           <View className="items-center">
-//             <Text className="text-white text-2xl font-black mb-2 text-center">
-//               Start a Disk
-//             </Text>
-//             <Text className="text-gray-400 text-center mb-8 px-4">
-//               Friends can scan this to join. Photos shared here disappear after
-//               48 hours.
-//             </Text>
-
-//             {/* QR Container */}
-//             <View className="bg-white p-4 rounded-3xl mb-8 shadow-2xl shadow-orange-500/20">
-//               <QRCode
-//                 value={sessionName || "New Session"}
-//                 size={220}
-//                 color="black"
-//                 backgroundColor="white"
-//               />
-//               <View className="absolute -bottom-4 -right-4 bg-orange-600 w-12 h-12 rounded-full items-center justify-center border-4 border-[#121212]">
-//                 <Ionicons name="flash" size={20} color="white" />
-//               </View>
-//             </View>
-
-//             {/* Session Name Input */}
-//             <View className="w-full mb-4">
-//               <Text className="text-gray-500 text-xs font-bold uppercase mb-2 ml-1">
-//                 Session Name
-//               </Text>
-//               <TextInput
-//                 placeholder="e.g., Saturday Rager 🕺"
-//                 placeholderTextColor="#444"
-//                 value={sessionName}
-//                 onChangeText={setSessionName}
-//                 className="bg-[#1A1A1A] w-full p-4 rounded-xl text-white font-bold border border-white/10"
-//               />
-//             </View>
-
-//             {/* Options */}
-//             <View className="flex-row gap-2 w-full">
-//               <View className="flex-1 bg-[#1A1A1A] p-3 rounded-xl border border-white/5 items-center">
-//                 <Text className="text-orange-500 font-bold text-lg">48h</Text>
-//                 <Text className="text-gray-500 text-[10px] uppercase">
-//                   Duration
-//                 </Text>
-//               </View>
-//               <View className="flex-1 bg-[#1A1A1A] p-3 rounded-xl border border-white/5 items-center">
-//                 <Text className="text-white font-bold text-lg">Public</Text>
-//                 <Text className="text-gray-500 text-[10px] uppercase">
-//                   Visibility
-//                 </Text>
-//               </View>
-//             </View>
-//           </View>
-//         </ScrollView>
-//       ) : (
-//         // SCAN / JOIN
-//         <KeyboardAvoidingView
-//           behavior={Platform.OS === "ios" ? "padding" : "height"}
-//           className="flex-1"
-//         >
-//           <View className="flex-1 items-center justify-center">
-//             {/* Fake Camera Viewfinder */}
-//             <View className="w-64 h-64 border border-white/20 rounded-3xl items-center justify-center mb-8 bg-[#1A1A1A] relative overflow-hidden">
-//               <View className="absolute top-0 w-full h-1 bg-orange-500/50 shadow-lg shadow-orange-500" />
-//               <Ionicons name="camera-outline" size={48} color="#444" />
-//               <Text className="text-gray-600 mt-2 font-medium">
-//                 Camera View
-//               </Text>
-
-//               {/* Corner Markers */}
-//               <View className="absolute top-4 left-4 w-6 h-6 border-t-2 border-l-2 border-orange-500 rounded-tl-lg" />
-//               <View className="absolute top-4 right-4 w-6 h-6 border-t-2 border-r-2 border-orange-500 rounded-tr-lg" />
-//               <View className="absolute bottom-4 left-4 w-6 h-6 border-b-2 border-l-2 border-orange-500 rounded-bl-lg" />
-//               <View className="absolute bottom-4 right-4 w-6 h-6 border-b-2 border-r-2 border-orange-500 rounded-br-lg" />
-//             </View>
-
-//             <Text className="text-white font-bold mb-4">
-//               Or enter code manually
-//             </Text>
-
-//             <View className="flex-row w-full gap-2">
-//               <TextInput
-//                 placeholder="Enter 6-digit code"
-//                 placeholderTextColor="#444"
-//                 className="flex-1 bg-[#1A1A1A] p-4 rounded-xl text-white font-bold border border-white/10 text-center tracking-widest text-lg"
-//                 maxLength={6}
-//                 keyboardType="default"
-//               />
-//               <TouchableOpacity className="bg-white w-14 rounded-xl items-center justify-center">
-//                 <Ionicons name="arrow-forward" size={24} color="black" />
-//               </TouchableOpacity>
-//             </View>
-//           </View>
-//         </KeyboardAvoidingView>
-//       )}
-//     </View>
-//   );
-// }
-
-// // --- Sub-Component: Group Session View (The "Disk") ---
-
-// function SessionDiskView({
-//   session,
-//   onBack,
-// }: {
-//   session: GroupSession;
-//   onBack: () => void;
-// }) {
-//   // Calculate grid dimensions
-//   const windowWidth = Dimensions.get("window").width;
-//   const itemSize = (windowWidth - 32) / 2; // 2 column grid with padding
-
-//   return (
-//     <View className="flex-1 bg-black">
-//       {/* Navbar */}
-//       <View className="pt-14 pb-2 px-4 flex-row items-center justify-between z-10 bg-black/80">
-//         <TouchableOpacity
-//           onPress={onBack}
-//           className="w-10 h-10 rounded-full bg-[#1A1A1A] items-center justify-center"
-//         >
-//           <Feather name="arrow-left" size={20} color="white" />
-//         </TouchableOpacity>
-
-//         <View className="items-center">
-//           <Text className="text-white font-bold text-lg">{session.name}</Text>
-//           <Text className="text-orange-500 text-xs font-bold tracking-widest">
-//             EXPIRES IN 23H 14M
-//           </Text>
-//         </View>
-
-//         <TouchableOpacity className="w-10 h-10 rounded-full bg-[#1A1A1A] items-center justify-center">
-//           <Ionicons name="settings-outline" size={20} color="white" />
-//         </TouchableOpacity>
-//       </View>
-
-//       <ScrollView contentContainerStyle={{ padding: 16 }}>
-//         {/* Banner / Info */}
-//         <View className="bg-[#1A1A1A] rounded-2xl p-4 mb-6 flex-row items-center justify-between border border-white/5">
-//           <View className="flex-row items-center">
-//             <View className="flex-row -space-x-2 mr-3">
-//               {session.thumbnailUrls.map((url, i) => (
-//                 <Image
-//                   key={i}
-//                   source={{ uri: url }}
-//                   className="w-8 h-8 rounded-full border border-black"
-//                 />
-//               ))}
-//             </View>
-//             <Text className="text-gray-400 text-xs">
-//               {session.memberCount} members active
-//             </Text>
-//           </View>
-//           <TouchableOpacity className="bg-white/10 px-3 py-1.5 rounded-full">
-//             <Text className="text-white text-xs font-bold">Invite +</Text>
-//           </TouchableOpacity>
-//         </View>
-
-//         {/* The Disk Grid (Masonry-ish) */}
-//         <View className="flex-row flex-wrap justify-between">
-//           {MOCK_DISK_PHOTOS.map((photo) => (
-//             <View
-//               key={photo.id}
-//               className="mb-4 relative"
-//               style={{ width: itemSize }}
-//             >
-//               <Image
-//                 source={{ uri: photo.imageUrl }}
-//                 style={{ width: itemSize, height: itemSize * 1.3 }}
-//                 className="rounded-2xl bg-[#1A1A1A]"
-//                 resizeMode="cover"
-//               />
-
-//               {/* Overlay Gradient for Text */}
-//               <View className="absolute bottom-0 w-full h-16 rounded-b-2xl bg-black/40" />
-
-//               {/* Uploader Info */}
-//               <View className="absolute bottom-2 left-2 flex-row items-center">
-//                 <Image
-//                   source={{ uri: photo.userAvatar }}
-//                   className="w-6 h-6 rounded-full border border-white mr-2"
-//                 />
-//                 {photo.caption && (
-//                   <Text
-//                     className="text-white text-xs font-bold shadow-sm"
-//                     numberOfLines={1}
-//                   >
-//                     {photo.caption}
-//                   </Text>
-//                 )}
-//               </View>
-//             </View>
-//           ))}
-
-//           {/* Add Button in Grid */}
-//           <TouchableOpacity
-//             style={{ width: itemSize, height: itemSize * 1.3 }}
-//             className="rounded-2xl bg-[#111] border border-white/10 border-dashed items-center justify-center mb-4"
-//           >
-//             <View className="w-14 h-14 rounded-full bg-[#222] items-center justify-center mb-2">
-//               <Ionicons name="camera" size={28} color="#EA580C" />
-//             </View>
-//             <Text className="text-gray-500 font-bold text-xs">Add to Disk</Text>
-//           </TouchableOpacity>
-//         </View>
-//         <View className="h-20" />
-//       </ScrollView>
-
-//       {/* Floating Upload Button (Alternative) */}
-//       <View className="absolute bottom-8 self-center">
-//         <TouchableOpacity className="bg-orange-600 px-6 py-3 rounded-full flex-row items-center shadow-lg shadow-orange-600/30">
-//           <Ionicons name="cloud-upload" size={20} color="white" />
-//           <Text className="text-white font-bold ml-2">Upload Photo</Text>
-//         </TouchableOpacity>
-//       </View>
-//     </View>
-//   );
-// }
+            <View className="flex-row w-full gap-2">
+              <TextInput
+                placeholder="Enter 6-digit code"
+                placeholderTextColor="#444"
+                className="flex-1 bg-[#1A1A1A] p-4 rounded-xl text-white font-bold border border-white/10 text-center tracking-widest text-lg"
+                maxLength={6}
+                keyboardType="default"
+              />
+              <TouchableOpacity className="bg-white w-14 rounded-xl items-center justify-center">
+                <Ionicons name="arrow-forward" size={24} color="black" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      )}
+    </View>
+  );
+}
