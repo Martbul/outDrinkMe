@@ -2,6 +2,7 @@ import { apiService } from "@/api";
 import DrunkThought from "@/components/drunkThought";
 import { Header } from "@/components/header";
 import InfoTooltip from "@/components/infoTooltip";
+import QrSessionManager from "@/components/qrCodeManager";
 import ThisWeekGadget from "@/components/thisWeekGadget";
 import { useApp } from "@/providers/AppProvider";
 import { useAnalytics } from "@/utils/analytics";
@@ -32,7 +33,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import QRCode from "react-native-qrcode-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface GroupSession {
@@ -117,7 +117,6 @@ const MOCK_DISK_PHOTOS: PhotoMessage[] = [
   },
 ];
 export default function HomeScreen() {
-  const analytics = useAnalytics();
   const { getToken } = useAuth();
   const [isCoefTooltipVisible, setIsCoefTooltipVisible] =
     useState<boolean>(false);
@@ -164,10 +163,18 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  const { userStats, friends, friendsDrunkThoughts, isLoading, refreshAll } =
-    useApp();
+  const {
+    userStats,
+    userData,
+    friends,
+    friendsDrunkThoughts,
+    isLoading,
+    leaderboard,
+    refreshAll,
+  } = useApp();
 
-  const coefInfo = getCoefInfo(userStats);
+  const coefInfo = getCoefInfo(userData?.alcoholism_coefficient);
+  console.log("||||", leaderboard);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -283,14 +290,14 @@ export default function HomeScreen() {
                 onPress={openModal}
                 className=" w-16 h-16 rounded-full  items-center justify-center"
               >
-                <MaterialCommunityIcons
-                  name="qrcode-scan"
-                  size={24}
-                  color="#EA580C"
-                />
+                <Ionicons name="images-outline" size={24} color="#EA580C" />
               </TouchableOpacity>
             </View>
-            <View className="relative w-[120px] h-[120px] rounded-full bg-orange-600/15 border-4 border-orange-600 justify-center items-center mb-3">
+
+            <TouchableOpacity
+              onPress={() => router.push("/(screens)/coeffInfo")}
+              className="relative w-[120px] h-[120px] rounded-full bg-orange-600/15 border-4 border-orange-600 justify-center items-center mb-3"
+            >
               <Text className="text-orange-600 text-5xl font-black">
                 {coefInfo.coef}
               </Text>
@@ -312,7 +319,7 @@ export default function HomeScreen() {
                   position="bottom"
                 />
               )}
-            </View>
+            </TouchableOpacity>
             <View className="rounded-full bg-orange-600/15 border-orange-600 ">
               <TouchableOpacity
                 onPress={() => router.push("/(screens)/sideQuestBoard")}
@@ -391,6 +398,22 @@ export default function HomeScreen() {
             </View>
           </TouchableOpacity> */}
         </View>
+        <TouchableOpacity
+          onPress={() => router.push("/(screens)/drinkingGames")}
+          className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]"
+        >
+          <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">
+            DRINKING GAMES
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => router.push("/(screens)/profileBuilder")}
+          className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]"
+        >
+          <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">
+            PROFILE BUILDER
+          </Text>
+        </TouchableOpacity>
 
         <ThisWeekGadget />
 
@@ -406,7 +429,7 @@ export default function HomeScreen() {
               RANK
             </Text>
             <Text className="text-white text-2xl font-black">
-              #{userStats?.rank || 0}
+              #{leaderboard?.global?.user_position?.rank}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -438,7 +461,7 @@ export default function HomeScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-
+        {/* 
         <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
           <View className="flex-row justify-between items-center">
             <View>
@@ -461,7 +484,7 @@ export default function HomeScreen() {
               </View>
             )}
           </View>
-        </View>
+        </View> */}
 
         <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
           <Text className="text-white text-lg font-black mb-4">
@@ -752,6 +775,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </KeyboardAvoidingView>
       </Modal>
+
       <Modal visible={qrModalVisible} transparent onRequestClose={closeModal}>
         <View className="flex-1 justify-end bg-black/80">
           <TouchableOpacity className="flex-1" onPress={closeModal} />
@@ -885,115 +909,3 @@ function SessionDiskView({
   );
 }
 
-function QrSessionManager({ onClose }: { onClose: () => void }) {
-  const [activeTab, setActiveTab] = useState<"create" | "scan">("create");
-  const [sessionName, setSessionName] = useState("");
-
-  return (
-    <View className="flex-1 p-6">
-      {/* Handle Bar */}
-      <View className="w-12 h-1 bg-white/10 rounded-full self-center mb-6" />
-
-      {/* Toggle Tabs */}
-      <View className="flex-row bg-[#1A1A1A] p-1 rounded-2xl mb-8 border border-white/5">
-        <TouchableOpacity
-          onPress={() => setActiveTab("create")}
-          className={`flex-1 py-3 rounded-xl items-center flex-row justify-center gap-2 ${activeTab === "create" ? "bg-[#333]" : ""}`}
-        >
-          <Ionicons
-            name="qr-code-outline"
-            size={18}
-            color={activeTab === "create" ? "white" : "gray"}
-          />
-          <Text
-            className={`font-bold ${activeTab === "create" ? "text-white" : "text-gray-500"}`}
-          >
-            Create Experience
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => setActiveTab("scan")}
-          className={`flex-1 py-3 rounded-xl items-center flex-row justify-center gap-2 ${activeTab === "scan" ? "bg-[#333]" : ""}`}
-        >
-          <Ionicons
-            name="scan-outline"
-            size={18}
-            color={activeTab === "scan" ? "white" : "gray"}
-          />
-          <Text
-            className={`font-bold ${activeTab === "scan" ? "text-white" : "text-gray-500"}`}
-          >
-            Join Experience
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {activeTab === "create" ? (
-        <ScrollView showsVerticalScrollIndicator={false}>
-          <View className="items-center">
-            <Text className="text-white text-2xl font-black mb-2 text-center">
-              Start an Experience
-            </Text>
-            <Text className="text-gray-400 text-center mb-8 px-4">
-              Friends can scan this to join. Photos shared here disappear after
-              48 hours.
-            </Text>
-
-            {/* QR Container */}
-            <View className="bg-white p-4 rounded-3xl mb-8 shadow-2xl shadow-orange-500/20">
-              <QRCode
-                value={sessionName || "New Session"}
-                size={220}
-                color="black"
-                backgroundColor="white"
-              />
-              <View className="absolute -bottom-4 -right-4 bg-orange-600 w-12 h-12 rounded-full items-center justify-center border-4 border-[#121212]">
-                <Ionicons name="flash" size={20} color="white" />
-              </View>
-            </View>
-          </View>
-        </ScrollView>
-      ) : (
-        // SCAN / JOIN
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          className="flex-1"
-        >
-          <View className="flex-1 items-center justify-center">
-            {/* Fake Camera Viewfinder */}
-            <View className="w-64 h-64 border border-white/20 rounded-3xl items-center justify-center mb-8 bg-[#1A1A1A] relative overflow-hidden">
-              <View className="absolute top-0 w-full h-1 bg-orange-500/50 shadow-lg shadow-orange-500" />
-              <Ionicons name="camera-outline" size={48} color="#444" />
-              <Text className="text-gray-600 mt-2 font-medium">
-                Camera View
-              </Text>
-
-              {/* Corner Markers */}
-              <View className="absolute top-4 left-4 w-6 h-6 border-t-2 border-l-2 border-orange-500 rounded-tl-lg" />
-              <View className="absolute top-4 right-4 w-6 h-6 border-t-2 border-r-2 border-orange-500 rounded-tr-lg" />
-              <View className="absolute bottom-4 left-4 w-6 h-6 border-b-2 border-l-2 border-orange-500 rounded-bl-lg" />
-              <View className="absolute bottom-4 right-4 w-6 h-6 border-b-2 border-r-2 border-orange-500 rounded-br-lg" />
-            </View>
-
-            <Text className="text-white font-bold mb-4">
-              Or enter code manually
-            </Text>
-
-            <View className="flex-row w-full gap-2">
-              <TextInput
-                placeholder="Enter 6-digit code"
-                placeholderTextColor="#444"
-                className="flex-1 bg-[#1A1A1A] p-4 rounded-xl text-white font-bold border border-white/10 text-center tracking-widest text-lg"
-                maxLength={6}
-                keyboardType="default"
-              />
-              <TouchableOpacity className="bg-white w-14 rounded-xl items-center justify-center">
-                <Ionicons name="arrow-forward" size={24} color="black" />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      )}
-    </View>
-  );
-}

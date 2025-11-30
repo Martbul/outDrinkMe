@@ -47,6 +47,7 @@ const UserInfoScreen = () => {
     loadData();
   }, [rawUserId]);
 
+  //! TODO: Fix
   const coefInfo = getCoefInfo(
     friendDiscoveryProfile?.stats as UserStats | null
   );

@@ -6,7 +6,7 @@ import PurchaseConfirmationModal, {
 } from "@/components/purchaseModal";
 import { useAds } from "@/providers/AdProvider";
 import { useApp } from "@/providers/AppProvider";
-import { ColorTheme, Flag, GemPack, Smoking } from "@/types/api.types";
+import { ColorTheme, EnergyDrink, Flag, GemPack, Smoking } from "@/types/api.types";
 import { handleEarnGems } from "@/utils/adsReward";
 import { useAuth } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
@@ -215,6 +215,17 @@ export default function StoreScreen() {
     })
   );
 
+    const energyDrinks: EnergyDrink[] = (storeItems?.energy || []).map(
+      (drink: any, index: number) => ({
+        id: index + 1,
+        title: drink.name,
+        price: drink.base_price,
+        image: { uri: drink.image_url },
+        storeItem: drink,
+      })
+    );
+
+
   const gemPacks: GemPack[] = [
     {
       id: 1,
@@ -283,7 +294,7 @@ export default function StoreScreen() {
       <View className="bg-black/20 rounded-xl p-3 w-full items-center mb-3">
         <Image
           source={device.image}
-          style={{ width: 50, height: 50 }}
+          style={{ width: 70, height: 60 }}
           resizeMode="contain"
         />
       </View>
@@ -297,6 +308,35 @@ export default function StoreScreen() {
       </View>
     </TouchableOpacity>
   );
+
+  const EnergyDrinkCard = ({ drink }: { drink: any }) => (
+    <TouchableOpacity
+      className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08] items-center mr-3"
+      style={{ width: 140 }}
+      activeOpacity={0.7}
+      onPress={() => drink.storeItem && handleStoreItemPress(drink.storeItem)}
+    >
+      <Text className="text-white text-sm font-bold mb-1" numberOfLines={1}>
+        {drink.title}
+      </Text>
+      <View className="bg-black/20 rounded-xl p-3 w-full items-center mb-3">
+        <Image
+          source={drink.image}
+          style={{ width: 100, height: 100 }}
+          resizeMode="contain"
+        />
+      </View>
+
+      <View className="bg-orange-600/20 rounded-xl py-2 px-3 flex-row items-center justify-center border border-orange-600/40 w-full">
+        <Ionicons name="diamond" size={18} color="#EA580C" />
+
+        <Text className="text-orange-600 text-lg font-black ml-1">
+          {drink.price}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+  ;
 
   const FlagCard = ({ item }: { item: any }) => (
     <TouchableOpacity
@@ -479,7 +519,6 @@ export default function StoreScreen() {
             </View>
           </TouchableOpacity>
         </View> */}
-
         <View className="mt-6">
           <View className="mx-4 mb-4 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
             <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">
@@ -495,6 +534,24 @@ export default function StoreScreen() {
           >
             {smokingDevices.map((device) => (
               <SmokingCard key={device.id} device={device} />
+            ))}
+          </ScrollView>
+        </View>
+        <View className="mt-6">
+          <View className="mx-4 mb-4 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
+            <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">
+              IMPROVE YOUR SLEEP
+            </Text>
+            <Text className="text-white text-2xl font-black">Energy</Text>
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 16 }}
+          >
+            {energyDrinks.map((drink) => (
+              <EnergyDrinkCard key={drink.id} drink={drink} />
             ))}
           </ScrollView>
         </View>
@@ -518,7 +575,6 @@ export default function StoreScreen() {
             ))}
           </ScrollView>
         </View>
-
         {/* Watch Ad Section */}
         {isAdLoaded && (
           <View className="mx-4 mt-4">
@@ -574,7 +630,6 @@ export default function StoreScreen() {
             </TouchableOpacity>
           </View>
         )}
-
         {/* Get More Gems Section */}
         {/* <View className="mt-6 mb-6" ref={getMoreGemsSectionRef}>
           <View className="mx-4 mb-4 bg-gradient-to-r from-orange-600/20 to-yellow-600/20 rounded-2xl p-5 border border-orange-600/40">

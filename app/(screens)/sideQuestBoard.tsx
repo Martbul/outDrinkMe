@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -10,10 +10,17 @@ import {
   Platform,
   KeyboardAvoidingView,
   Alert,
+  ActivityIndicator,
+  RefreshControl,
 } from "react-native";
-import { Ionicons, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router"; // Added this
+import { Ionicons, Feather } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useAuth } from "@clerk/clerk-expo";
+import { apiService } from "@/api";
+import { usePostHog } from "posthog-react-native";
+import { useApp } from "@/providers/AppProvider";
 
+// ... [Types] ...
 type QuestStatus = "OPEN" | "COMPLETED" | "EXPIRED" | "CANCELLED";
 type SubmissionStatus = "PENDING" | "APPROVED" | "REJECTED";
 type PayoutStatus = "PENDING" | "SUCCESS" | "FAILED";
@@ -52,27 +59,7 @@ interface SideQuestCompletion {
   rewardAmount?: number;
 }
 
-// --- Mock Data ---
-const MOCK_BOARD_QUESTS: SideQuest[] = [
-  {
-    id: "1",
-    issuerId: "user1",
-    issuerName: "Alex Johnson",
-    issuerImage: "https://i.pravatar.cc/150?img=11",
-    title: "Find me a phone charger",
-    description:
-      "I'm at the library and my phone is dying. Need a USB-C charger ASAP!",
-    rewardAmount: 50,
-    isLocked: true,
-    isPublic: false,
-    isAnonymous: false,
-    status: "OPEN",
-    expiresAt: new Date(Date.now() + 1800000).toISOString(),
-    createdAt: new Date().toISOString(),
-    submissionCount: 0,
-  },
-];
-
+// --- MOCKS ---
 const MOCK_MY_QUESTS: SideQuest[] = [
   {
     id: "q_my_1",
@@ -88,21 +75,6 @@ const MOCK_MY_QUESTS: SideQuest[] = [
     expiresAt: new Date(Date.now() + 5400000).toISOString(),
     createdAt: new Date(Date.now() - 900000).toISOString(),
     submissionCount: 2,
-  },
-  {
-    id: "q_my_2",
-    issuerId: "currentUser",
-    issuerName: "You",
-    title: "Take a photo of the sunset",
-    description: "Need a reference photo for painting.",
-    rewardAmount: 300,
-    isLocked: true,
-    isPublic: true,
-    isAnonymous: false,
-    status: "COMPLETED",
-    expiresAt: new Date(Date.now() - 100000).toISOString(),
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    submissionCount: 5,
   },
 ];
 
@@ -143,15 +115,14 @@ const MOCK_MY_ATTEMPTS: SideQuestCompletion[] = [
 
 const DURATION_PRESETS = [
   { label: "1 Hour", value: 1 },
+  { label: "2 Hour", value: 2 },
   { label: "4 Hours", value: 4 },
+  { label: "8 Hours", value: 8 },
+  { label: "12 Hours", value: 12 },
   { label: "24 Hours", value: 24 },
-  { label: "3 Days", value: 72 },
-  { label: "1 Week", value: 168 },
+  { label: "2 Days", value: 48 },
+  { label: "5 Days", value: 120 },
 ];
-
-function cn(...classes: (string | undefined | null | false)[]) {
-  return classes.filter(Boolean).join(" ");
-}
 
 const getTimeRemaining = (expiresAt: string) => {
   const now = Date.now();
@@ -183,6 +154,7 @@ const getTimeRemaining = (expiresAt: string) => {
   };
 };
 
+// ... [Components] ...
 const QuestCard = ({
   quest,
   onPress,
@@ -389,44 +361,130 @@ const SubmissionStatusCard = ({
 };
 
 const SideQuestBoard = () => {
-  const router = useRouter(); // Hook to navigation context
+  // --- 1. GET REAL DATA FROM APP PROVIDER ---
+  const { sideQuestBoards, refreshUserData, refreshSideQuestBoard, isLoading } =
+    useApp();
+  const { getToken } = useAuth();
+  const posthog = usePostHog();
+  const router = useRouter();
+
+  // --- STATE ---
   const [activeMainTab, setActiveMainTab] = useState<
     "board" | "myQuests" | "submissions"
   >("board");
   const [activeBoardTab, setActiveBoardTab] = useState<"friends" | "public">(
     "friends"
   );
+  const [refreshing, setRefreshing] = useState(false);
+  const [screenLoading, setScreenLoading] = useState(false);
 
   // Modals
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [reviewModalVisible, setReviewModalVisible] = useState(false);
 
-  // Selection State
-  const [selectedQuest, setSelectedQuest] = useState<SideQuest | null>(null);
+  // Selection
   const [selectedReviewSub, setSelectedReviewSub] =
     useState<SideQuestCompletion | null>(null);
 
   // Form State
   const [newQuestTitle, setNewQuestTitle] = useState("");
   const [newQuestDescription, setNewQuestDescription] = useState("");
-  const [newQuestReward, setNewQuestReward] = useState("50");
-  const [selectedDurationHours, setSelectedDurationHours] =
-    useState<number>(24);
+  const [newQuestReward, setNewQuestReward] = useState("5");
+  const [selectedDurationHours, setSelectedDurationHours] = useState<number>(1);
+  const [isPublic, setIsPublic] = useState(true);
+  const [isAnonymous, setIsAnonymous] = useState(false);
+
+  // --- 2. CALCULATE WHICH QUESTS TO SHOW ---
+  const boardQuestsToDisplay = useMemo(() => {
+    if (!sideQuestBoards) return [];
+    return activeBoardTab === "friends"
+      ? sideQuestBoards.buddies || []
+      : sideQuestBoards.random || [];
+  }, [sideQuestBoards, activeBoardTab]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([refreshSideQuestBoard(), refreshUserData()]);
+    setRefreshing(false);
+  };
 
   const handleReviewPress = (submission: SideQuestCompletion) => {
     setSelectedReviewSub(submission);
     setReviewModalVisible(true);
   };
 
-  const handleCreateQuest = () => {
-    setCreateModalVisible(false);
-    // Logic to post quest would go here
+  const handleCreateQuest = async () => {
+    // --- VALIDATION START ---
+    if (!newQuestTitle.trim()) {
+      Alert.alert("Missing Title", "Please enter a title for your side quest.");
+      return;
+    }
+
+    if (!newQuestDescription.trim()) {
+      Alert.alert(
+        "Missing Description",
+        "Please enter a description so others know what to do."
+      );
+      return;
+    }
+
+    const rewardValue = Number(newQuestReward);
+    if (!newQuestReward.trim() || isNaN(rewardValue) || rewardValue <= 0) {
+      Alert.alert(
+        "Invalid Reward",
+        "Please enter a valid reward amount greater than 0."
+      );
+      return;
+    }
+    // --- VALIDATION END ---
+
+    const token = await getToken();
+    if (!token) return;
+    setScreenLoading(true);
+
+    try {
+      const data = {
+        title: newQuestTitle.trim(),
+        description: newQuestDescription.trim(),
+        rewardAmount: rewardValue,
+        durationHours: selectedDurationHours,
+        isPublic,
+        isAnonymous,
+      };
+
+      await apiService.createSideQuest(data, token);
+      await refreshSideQuestBoard();
+      await refreshUserData();
+
+      posthog?.capture("new_quest_created", { ...data });
+
+      // Reset form
+      setNewQuestTitle("");
+      setNewQuestDescription("");
+      setNewQuestReward("5");
+      setSelectedDurationHours(1);
+      setIsPublic(true);
+      setIsAnonymous(false);
+      setCreateModalVisible(false);
+    } catch (error) {
+      console.error("Error creating quest:", error);
+      Alert.alert("Error", "Failed to post quest. Check your gem balance.");
+    } finally {
+      setScreenLoading(false);
+    }
   };
+
+  // --- VALIDATION HELPER FOR UI ---
+  const isValid =
+    newQuestTitle.trim().length > 0 &&
+    newQuestDescription.trim().length > 0 &&
+    !isNaN(Number(newQuestReward)) &&
+    Number(newQuestReward) > 0;
 
   return (
     <View className="flex-1 bg-black">
       {/* Header */}
-      <View className="px-5 pt-14 pb-4 bg-black border-b border-white/[0.08] z-10">
+      <View className="px-5 pt-8 pb-4 bg-black border-b border-white/[0.08] z-10">
         <View className="flex-row items-center justify-between mb-6">
           <View className="flex-row gap-3 items-center">
             <TouchableOpacity
@@ -451,67 +509,45 @@ const SideQuestBoard = () => {
             <Ionicons name="add" size={30} color="white" />
           </TouchableOpacity>
         </View>
+
+        {/* Main Tabs */}
         <View className="flex-row bg-[#1A1A1A] rounded-xl p-1.5">
-          <TouchableOpacity
-            onPress={() => setActiveMainTab("board")}
-            className={`${
-              activeMainTab === "board"
-                ? "flex-1 py-2.5 rounded-lg bg-[#333333]"
-                : "flex-1 py-2.5 rounded-lg"
-            }`}
-          >
-            <Text
-              className={`${
-                activeMainTab === "board"
-                  ? "text-center text-xs font-bold text-white"
-                  : "text-center text-xs font-bold text-gray-500"
+          {(["board", "myQuests", "submissions"] as const).map((tab) => (
+            <TouchableOpacity
+              key={tab}
+              onPress={() => setActiveMainTab(tab)}
+              className={`flex-1 py-2.5 rounded-lg ${
+                activeMainTab === tab ? "bg-[#333333]" : ""
               }`}
             >
-              Board
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setActiveMainTab("myQuests")}
-            className={`${
-              activeMainTab === "myQuests"
-                ? "flex-1 py-2.5 rounded-lg bg-[#333333]"
-                : "flex-1 py-2.5 rounded-lg"
-            }`}
-          >
-            <Text
-              className={`${
-                activeMainTab === "myQuests"
-                  ? "text-center text-xs font-bold text-white"
-                  : "text-center text-xs font-bold text-gray-500"
-              }`}
-            >
-              My Quests
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setActiveMainTab("submissions")}
-            className={`${
-              activeMainTab === "submissions"
-                ? "flex-1 py-2.5 rounded-lg bg-[#333333]"
-                : "flex-1 py-2.5 rounded-lg"
-            }`}
-          >
-            <Text
-              className={`${
-                activeMainTab === "submissions"
-                  ? "text-center text-xs font-bold text-white"
-                  : "text-center text-xs font-bold text-gray-500"
-              }`}
-            >
-              My Tries
-            </Text>
-          </TouchableOpacity>
+              <Text
+                className={`text-center text-xs font-bold ${
+                  activeMainTab === tab ? "text-white" : "text-gray-500"
+                }`}
+              >
+                {tab === "board"
+                  ? "Board"
+                  : tab === "myQuests"
+                    ? "My Quests"
+                    : "My Tries"}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
 
-      <ScrollView className="flex-1" contentContainerStyle={{ padding: 16 }}>
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ padding: 16 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#EA580C"
+          />
+        }
+      >
+        {/* --- BOARD TAB (REAL DATA) --- */}
         {activeMainTab === "board" && (
           <>
             <View className="flex-row mb-6 gap-3">
@@ -519,22 +555,49 @@ const SideQuestBoard = () => {
                 <TouchableOpacity
                   key={t}
                   onPress={() => setActiveBoardTab(t)}
-                  className={`px-5 py-2 rounded-full border ${activeBoardTab === t ? "bg-white border-white" : "bg-transparent border-white/20"}`}
+                  className={`px-5 py-2 rounded-full border ${
+                    activeBoardTab === t
+                      ? "bg-white border-white"
+                      : "bg-transparent border-white/20"
+                  }`}
                 >
                   <Text
-                    className={`text-sm font-bold capitalize ${activeBoardTab === t ? "text-black" : "text-white"}`}
+                    className={`text-sm font-bold capitalize ${
+                      activeBoardTab === t ? "text-black" : "text-white"
+                    }`}
                   >
                     {t}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
-            {MOCK_BOARD_QUESTS.map((quest) => (
-              <QuestCard key={quest.id} quest={quest} onPress={() => {}} />
-            ))}
+
+            {isLoading && !refreshing && boardQuestsToDisplay.length === 0 ? (
+              <View className="mt-10">
+                <ActivityIndicator size="large" color="#EA580C" />
+              </View>
+            ) : boardQuestsToDisplay.length > 0 ? (
+              boardQuestsToDisplay.map((quest) => (
+                <QuestCard
+                  key={quest.id}
+                  quest={quest}
+                  onPress={() => {
+                    // Navigate to details if needed
+                  }}
+                />
+              ))
+            ) : (
+              <View className="items-center py-20 opacity-50">
+                <Ionicons name="search" size={48} color="white" />
+                <Text className="text-white mt-4 font-bold text-center">
+                  No active quests found.{"\n"}Be the first to post one!
+                </Text>
+              </View>
+            )}
           </>
         )}
 
+        {/* --- MY QUESTS TAB (MOCK DATA) --- */}
         {activeMainTab === "myQuests" && (
           <>
             <View className="mb-6">
@@ -556,6 +619,7 @@ const SideQuestBoard = () => {
           </>
         )}
 
+        {/* --- SUBMISSIONS TAB (MOCK DATA) --- */}
         {activeMainTab === "submissions" && (
           <>
             <View className="mb-6 flex-row items-center justify-between">
@@ -671,7 +735,7 @@ const SideQuestBoard = () => {
         </View>
       </Modal>
 
-      {/* --- Create Modal --- */}
+      {/* --- CREATE NEW QUEST MODAL --- */}
       <Modal
         visible={createModalVisible}
         animationType="slide"
@@ -731,7 +795,7 @@ const SideQuestBoard = () => {
               <TextInput
                 value={newQuestReward}
                 onChangeText={setNewQuestReward}
-                placeholder="50"
+                placeholder="5"
                 placeholderTextColor="#555"
                 keyboardType="numeric"
                 className="bg-[#1E1E1E] border border-white/10 rounded-xl p-4 text-white text-lg font-bold"
@@ -741,13 +805,6 @@ const SideQuestBoard = () => {
               <View className="flex-row items-center justify-between mb-3">
                 <Text className="text-gray-400 text-xs font-bold uppercase tracking-wider">
                   Expires In
-                </Text>
-                <Text className="text-orange-500 text-xs font-bold">
-                  {
-                    DURATION_PRESETS.find(
-                      (d) => d.value === selectedDurationHours
-                    )?.label
-                  }
                 </Text>
               </View>
               <View className="flex-row flex-wrap gap-2">
@@ -766,13 +823,102 @@ const SideQuestBoard = () => {
                 ))}
               </View>
             </View>
+
+            {/* --- VISIBILITY --- */}
+            <View className="mb-6">
+              <Text className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-3">
+                Visibility
+              </Text>
+              <View className="flex-row gap-3">
+                <TouchableOpacity
+                  onPress={() => setIsPublic(true)}
+                  className={`flex-1 p-4 rounded-xl border flex-row items-center justify-center ${isPublic ? "bg-orange-600/10 border-orange-600" : "bg-[#1E1E1E] border-white/10"}`}
+                >
+                  <Ionicons
+                    name="earth"
+                    size={18}
+                    color={isPublic ? "#EA580C" : "#666"}
+                  />
+                  <Text
+                    className={`ml-2 font-bold ${isPublic ? "text-orange-500" : "text-gray-400"}`}
+                  >
+                    Public
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => setIsPublic(false)}
+                  className={`flex-1 p-4 rounded-xl border flex-row items-center justify-center ${!isPublic ? "bg-orange-600/10 border-orange-600" : "bg-[#1E1E1E] border-white/10"}`}
+                >
+                  <Ionicons
+                    name="people"
+                    size={18}
+                    color={!isPublic ? "#EA580C" : "#666"}
+                  />
+                  <Text
+                    className={`ml-2 font-bold ${!isPublic ? "text-orange-500" : "text-gray-400"}`}
+                  >
+                    Friends Only
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* --- ANONYMITY --- */}
+            <TouchableOpacity
+              onPress={() => setIsAnonymous(!isAnonymous)}
+              className={`flex-row items-center justify-between p-4 rounded-xl border mb-10 ${isAnonymous ? "bg-white/10 border-white/30" : "bg-[#1E1E1E] border-white/10"}`}
+            >
+              <View className="flex-row items-center">
+                <View
+                  className={`w-8 h-8 rounded-full items-center justify-center mr-3 ${isAnonymous ? "bg-white" : "bg-gray-700"}`}
+                >
+                  <Ionicons
+                    name={isAnonymous ? "eye-off" : "eye"}
+                    size={16}
+                    color={isAnonymous ? "black" : "white"}
+                  />
+                </View>
+                <View>
+                  <Text className="text-white font-bold">Post Anonymously</Text>
+                  <Text className="text-gray-500 text-xs">
+                    Hide your identity on the board
+                  </Text>
+                </View>
+              </View>
+              <View
+                className={`w-6 h-6 rounded-full border items-center justify-center ${isAnonymous ? "bg-white border-white" : "border-gray-600"}`}
+              >
+                {isAnonymous && (
+                  <Ionicons name="checkmark" size={14} color="black" />
+                )}
+              </View>
+            </TouchableOpacity>
+
             <TouchableOpacity
               onPress={handleCreateQuest}
-              className="bg-orange-600 rounded-xl py-4 items-center mb-10 shadow-lg shadow-orange-600/20"
+              disabled={screenLoading || !isValid} // Disabled if invalid
+              className={`flex-row justify-center bg-orange-600 rounded-xl py-4 items-center mb-10 shadow-lg shadow-orange-600/20 ${screenLoading || !isValid ? "opacity-50" : "opacity-100"}`}
             >
-              <Text className="text-white text-base font-black tracking-wide">
-                POST QUEST • {newQuestReward} 💎
-              </Text>
+              {screenLoading ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <>
+                  <Text className="text-white text-base font-black tracking-wide">
+                    POST QUEST
+                  </Text>
+                  {/* Only show reward amount if valid */}
+                  {Number(newQuestReward) > 0 && (
+                    <View className="flex-row items-center">
+                      <Text className="text-white text-base font-black tracking-wide">
+                        {" "}
+                        • {newQuestReward}
+                      </Text>
+                      <Ionicons name="diamond" size={20} color="#ffffff" />
+                    </View>
+                  )}
+                </>
+              )}
             </TouchableOpacity>
           </ScrollView>
         </KeyboardAvoidingView>

@@ -11,21 +11,26 @@ export interface UserData {
   gems: number;
   xp: number;
   allDaysDrinkingCount: number;
+  alcoholism_coefficient: number;
 }
 
 export interface LeaderboardEntry {
   user_id: string;
   username: string;
-  imageUrl?: string;
-  days_this_week: number;
+  image_url?: string | null;
+  alcoholism_coefficient: number;
   rank: number;
-  current_streak: number;
 }
 
 export interface Leaderboard {
   entries: LeaderboardEntry[];
   user_position?: LeaderboardEntry;
   total_users: number;
+}
+
+export interface LeaderboardsResponse {
+  global: Leaderboard;
+  friends: Leaderboard;
 }
 
 export interface Achievement {
@@ -321,6 +326,13 @@ export interface Smoking {
   image: any;
 }
 
+export interface EnergyDrink {
+  id: number;
+  title: string;
+  price: number;
+  image: any;
+}
+
 export interface ColorTheme {
   id: number;
   name: string;
@@ -424,9 +436,6 @@ export interface NotificationItem {
   action_url?: string;
 }
 
-
-
-
 export interface SubmitQuestCompletionRequest {
   sideQuestId: string;
   proofImageUrl: string; // Should be uploaded to Cloudinary first
@@ -437,7 +446,6 @@ export interface SubmitQuestCompletionResponse {
   completion: SideQuestCompletion;
   message: string;
 }
-
 
 export interface ReviewSubmissionResponse {
   completion: SideQuestCompletion;
@@ -455,7 +463,6 @@ export interface GetSubmissionsResponse {
   total: number;
 }
 
-// Add these to your existing types
 export type QuestStatus = "OPEN" | "COMPLETED" | "EXPIRED" | "CANCELLED";
 export type SubmissionStatus = "PENDING" | "APPROVED" | "REJECTED";
 export type PayoutStatus = "PENDING" | "SUCCESS" | "FAILED";
@@ -508,10 +515,43 @@ export interface SubmitQuestProofReq {
   proofText?: string;
 }
 
-
-
 export interface ReviewSubmissionRequest {
   completionId: string;
   approved: boolean;
   rejectionReason?: string;
+}
+
+export type SideQuestBoard = {
+  [boardType: string]: SideQuest[];
+};
+
+// types/api.types.ts
+
+export interface CreateGameResponse {
+  sessionId: string;
+  wsUrl: string;
+}
+
+export interface GameSessionDetails {
+  exists: boolean;
+  hostUsername: string;
+  gameType: string;
+  playerCount: number;
+}
+
+export interface PublicGame {
+  sessionId: string;
+  gameType: string;
+  host: string;
+  players: number;
+}
+
+export interface GameSettings {
+  max_players: number;
+  rounds: number;
+}
+
+export interface CreateGameReq {
+  gameType: string;
+  settings: GameSettings;
 }

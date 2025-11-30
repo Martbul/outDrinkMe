@@ -11,6 +11,7 @@ import { useAuth } from "@clerk/clerk-expo";
 import type {
   UserStats,
   Leaderboard,
+  LeaderboardsResponse,
   Achievement,
   CalendarResponse,
   DaysStat,
@@ -23,6 +24,7 @@ import type {
   StoreItems,
   InventoryItems,
   NotificationItem,
+  SideQuestBoard,
 } from "../types/api.types";
 import { apiService } from "@/api";
 import { usePostHog } from "posthog-react-native";
@@ -33,7 +35,7 @@ interface AppContextType {
   userStats: UserStats | null;
   userInventory: InventoryItems | null;
   storeItems: StoreItems | null;
-  leaderboard: Leaderboard | null;
+  leaderboard: LeaderboardsResponse | null;
   achievements: Achievement[] | null;
   calendar: CalendarResponse | null;
   weeklyStats: DaysStat | null;
@@ -47,6 +49,7 @@ interface AppContextType {
   alcoholCollection: AlcoholCollectionByType | null;
   notifications: NotificationItem[];
   unreadNotificationCount: number;
+  sideQuestBoards: SideQuestBoard | null;
 
   // Refresh Functions
   refreshUserData: () => Promise<void>;
@@ -65,6 +68,7 @@ interface AppContextType {
   refreshUserInventory: () => Promise<void>;
   refreshStore: () => Promise<void>;
   refreshNotifications: (page?: number) => Promise<void>;
+  refreshSideQuestBoard: () => Promise<void>;
   refreshAll: () => Promise<void>;
 
   // Actions
@@ -107,7 +111,9 @@ export function AppProvider({ children }: AppProviderProps) {
     null
   );
   const [storeItems, setStoreItems] = useState<StoreItems | null>(null);
-  const [leaderboard, setLeaderboard] = useState<Leaderboard | null>(null);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardsResponse | null>(
+    null
+  );
   const [achievements, setAchievements] = useState<Achievement[] | null>(null);
   const [calendar, setCalendar] = useState<CalendarResponse | null>(null);
   const [weeklyStats, setWeeklyStats] = useState<DaysStat | null>(null);
@@ -128,7 +134,9 @@ export function AppProvider({ children }: AppProviderProps) {
     useState<AlcoholCollectionByType | null>(null);
   const [friendDiscoveryProfile, setFriendDiscoveryProfile] =
     useState<FriendDiscoveryDisplayProfileResponse | null>(null);
-
+  const [sideQuestBoards, setSideQuestBoards] = useState<SideQuestBoard | null>(
+    null
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hasInitialized = useRef(false);
@@ -222,7 +230,7 @@ export function AppProvider({ children }: AppProviderProps) {
       async () => {
         const token = await getToken();
         if (!token) throw new Error("No auth token");
-        return await apiService.getFriendsLeaderboard(token);
+        return await apiService.getLeaderboards(token);
       },
       (data) => setLeaderboard(data),
       "refresh_leaderboard"
@@ -432,6 +440,19 @@ export function AppProvider({ children }: AppProviderProps) {
     [isSignedIn, getToken, withLoadingAndError]
   );
 
+  const refreshSideQuestBoard = useCallback(async () => {
+    if (!isSignedIn) return;
+
+    await withLoadingAndError(
+      async () => {
+        const token = await getToken();
+        if (!token) throw new Error("No auth token");
+        return await apiService.getBoardQuests(token);
+      },
+      (data) => setSideQuestBoards(data),
+      "refresh_sidequest_board"
+    );
+  }, [isSignedIn, getToken, withLoadingAndError]);
   // ============================================
   // Refresh All - Using Parallel Execution
   // ============================================
@@ -449,7 +470,7 @@ export function AppProvider({ children }: AppProviderProps) {
       const results = await Promise.allSettled([
         apiService.fetchUser(token),
         apiService.getUserStats(token),
-        apiService.getFriendsLeaderboard(token),
+        apiService.getLeaderboards(token),
         apiService.getAchievements(token),
         apiService.getCurrentMonthCalendar(token),
         apiService.getFriends(token),
@@ -464,6 +485,7 @@ export function AppProvider({ children }: AppProviderProps) {
         apiService.getStore(token),
         apiService.getAllNotifications(token, 1, 50),
         apiService.getUnreadNotificationsCount(token),
+        apiService.getBoardQuests(token),
       ]);
 
       // Extract successful results and handle failures
@@ -485,6 +507,7 @@ export function AppProvider({ children }: AppProviderProps) {
         storeResult,
         notifListResult,
         notifCountResult,
+        SideQuestBoardResult,
       ] = results;
 
       if (userResult.status === "fulfilled") {
@@ -503,9 +526,11 @@ export function AppProvider({ children }: AppProviderProps) {
         setLeaderboard(boardResult.value);
       } else {
         console.error("Failed to fetch leaderboard:", boardResult.reason);
-        setLeaderboard({ entries: [], total_users: 0 });
+        setLeaderboard({
+          global: { entries: [], total_users: 0 },
+          friends: { entries: [], total_users: 0 },
+        });
       }
-
       if (achievResult.status === "fulfilled") {
         setAchievements(achievResult.value);
       } else {
@@ -607,6 +632,16 @@ export function AppProvider({ children }: AppProviderProps) {
       if (notifCountResult.status === "fulfilled") {
         setUnreadNotificationCount(notifCountResult.value.unread_count);
       }
+
+      if (SideQuestBoardResult.status === "fulfilled") {
+        setSideQuestBoards(SideQuestBoardResult.value);
+      } else {
+        setSideQuestBoards(null);
+        console.error(
+          "Failed to fetch sidequest board:",
+          SideQuestBoardResult.reason
+        );
+      }
       // Collect any errors
       const failedCalls = results.filter((r) => r.status === "rejected");
       if (failedCalls.length > 0) {
@@ -662,7 +697,7 @@ export function AppProvider({ children }: AppProviderProps) {
           const [userData, stats, board, cal, weekly] = await Promise.all([
             apiService.fetchUser(token),
             apiService.getUserStats(token),
-            apiService.getFriendsLeaderboard(token),
+            apiService.getLeaderboards(token),
             apiService.getCurrentMonthCalendar(token),
             apiService.getWeeklyStats(token),
           ]);
@@ -924,22 +959,22 @@ export function AppProvider({ children }: AppProviderProps) {
     }
   }, [isSignedIn, getToken]);
 
-   const registerPushDevice = useCallback(
-     async (deviceToken: string) => {
-       if (!isSignedIn) return;
+  const registerPushDevice = useCallback(
+    async (deviceToken: string) => {
+      if (!isSignedIn) return;
 
-       const token = await getToken();
-       if (token) {
-         apiService
-           .registerDevice(token, {
-             token: deviceToken,
-             platform: "android",
-           })
-           .catch((err) => console.error("Failed to register device:", err));
-       }
-     },
-     [isSignedIn, getToken]
-   );
+      const token = await getToken();
+      if (token) {
+        apiService
+          .registerDevice(token, {
+            token: deviceToken,
+            platform: "android",
+          })
+          .catch((err) => console.error("Failed to register device:", err));
+      }
+    },
+    [isSignedIn, getToken]
+  );
 
   // ============================================
   // Initial Load
@@ -988,6 +1023,7 @@ export function AppProvider({ children }: AppProviderProps) {
     alcoholCollection,
     notifications,
     unreadNotificationCount,
+    sideQuestBoards,
 
     // Refresh Functions
     refreshUserData,
@@ -1006,6 +1042,7 @@ export function AppProvider({ children }: AppProviderProps) {
     refreshUserInventory,
     refreshStore,
     refreshNotifications,
+    refreshSideQuestBoard,
     refreshAll,
 
     // Actions
