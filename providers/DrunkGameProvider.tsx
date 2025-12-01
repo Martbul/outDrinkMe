@@ -8,6 +8,7 @@ import React, {
 import { Alert } from "react-native";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import { apiService } from "@/api";
+import { RoundResult } from "@/types/api.types";
 
 export type ViewStage = "lobby" | "waiting" | "game";
 
@@ -42,11 +43,12 @@ export interface BurnBookState {
   phase: string;
   questionText: string;
   collectedCount: number;
-  voters: { userid: string, username: string };
-  winner: string
-  votes: any
+  voters: { userid: string; username: string };
+  winner: string;
+  votes: any;
   anonymousAnswers: string[];
   isVoting: boolean;
+  roundResults?: RoundResult;
 }
 
 export type GameState = KingsCupState | BurnBookState | any;
@@ -57,7 +59,7 @@ interface DrunkGameContextType {
   isHost: boolean;
   hostName: string;
   gameType: string;
-  gameLabel: string; 
+  gameLabel: string;
   players: Player[];
   messages: string[];
   publicGames: PublicGame[];
@@ -67,6 +69,7 @@ interface DrunkGameContextType {
 
   createGame: (gameId: string, gameLabel: string) => Promise<void>;
   joinGame: (sessionId: string, gameType: string, hostName: string) => void;
+  joinViaDeepLink: (sid: string) => Promise<void>;
   leaveGame: () => void;
   startGame: () => void;
   sendMessage: (text: string) => void;
@@ -99,7 +102,6 @@ export const DrunkGameProvider: React.FC<{ children: React.ReactNode }> = ({
   const [messages, setMessages] = useState<string[]>([]);
   const [publicGames, setPublicGames] = useState<PublicGame[]>([]);
 
-  // Generic State (Initialize as empty object)
   const [gameState, setGameState] = useState<GameState>({});
 
   const ws = useRef<WebSocket | null>(null);
@@ -113,6 +115,8 @@ export const DrunkGameProvider: React.FC<{ children: React.ReactNode }> = ({
       const token = await getToken();
       if (!token) return;
       const games = await apiService.getPublicGames(token);
+      console.log(games)
+      //!TODO: Add the host's username to games
       setPublicGames(games || []);
     } catch (error) {
       console.error("Failed to fetch public games", error);
@@ -179,6 +183,24 @@ export const DrunkGameProvider: React.FC<{ children: React.ReactNode }> = ({
 
       case "join_room":
         setMessages((prev) => [`${data.username} joined.`, ...prev]);
+        // If the server sends metadata on join, update our state
+        if (data.gameType) {
+          setGameType(data.gameType);
+          // Helper to format label nicely
+          const label =
+            data.gameType === "kings-cup"
+              ? "King's Cup"
+              : data.gameType === "mafia"
+                ? "Mafia"
+                : data.gameType === "burn-book"
+                  ? "Burn Book"
+                  : "Game";
+          setGameLabel(label);
+        }
+        if (data.hostName) {
+          setHostName(data.hostName);
+        }
+        // ----------------------
         break;
 
       case "update_player_list":
@@ -222,7 +244,6 @@ export const DrunkGameProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  // Fix joinGame to accept gameType (id) from the PublicGame object
   const joinGame = (sid: string, gType: string, host: string) => {
     setSessionId(sid);
     setIsHost(false);
@@ -243,6 +264,35 @@ export const DrunkGameProvider: React.FC<{ children: React.ReactNode }> = ({
     connectSocket(sid, false);
   };
 
+
+  const joinViaDeepLink = async (sid: string) => {
+    if (sessionId === sid) return; // Already in this game
+
+    setLoading(true);
+    try {
+      // Option A: If you have an API to get game details, call it here.
+      // const details = await apiService.getGameDetails(sid);
+
+      // Option B: For now, we join "Blindly" and wait for the WebSocket
+      // to tell us what game it is.
+      setSessionId(sid);
+      setIsHost(false);
+      setHostName("Loading..."); // Placeholder
+      setGameType("unknown"); // Placeholder
+      setGameLabel("Joining..."); // Placeholder
+
+      setPlayers([]);
+      setGameState({});
+
+      // Connect!
+      await connectSocket(sid, false);
+    } catch (error) {
+      Alert.alert("Error", "Failed to join via link");
+      setLoading(false);
+      setStage("lobby");
+    }
+  };
+
   const startGame = () => {
     if (ws.current) {
       ws.current.send(JSON.stringify({ action: "start_game" }));
@@ -251,11 +301,12 @@ export const DrunkGameProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const sendGameAction = (actionType: string, payload: any = {}) => {
+    console.log("sendiong game actrion")
     if (ws.current) {
       ws.current.send(
         JSON.stringify({
           action: "game_action",
-          type: actionType, // e.g., "draw_card" or "submit_vote"
+          type: actionType, 
           ...payload, // Any extra data needed
         })
       );
@@ -302,9 +353,10 @@ export const DrunkGameProvider: React.FC<{ children: React.ReactNode }> = ({
         gameState,
         createGame,
         joinGame,
+        joinViaDeepLink,
         leaveGame,
         startGame,
-        sendGameAction, // New Generic Function
+        sendGameAction, 
         sendMessage,
         refreshPublicGames,
       }}

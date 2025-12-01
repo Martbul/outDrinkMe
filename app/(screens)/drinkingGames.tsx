@@ -2,30 +2,34 @@ import React, { useState } from "react";
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
   ActivityIndicator,
-  Share,
-  RefreshControl,
-  Alert,
-  Dimensions,
   Image,
+  RefreshControl,
+  Modal,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   MaterialCommunityIcons,
   FontAwesome5,
   Ionicons,
+  MaterialIcons,
 } from "@expo/vector-icons";
 import NestedScreenHeader from "@/components/nestedScreenHeader";
-import { useDrunkGame, KingsCupState, BurnBookState } from "@/providers/DrunkGameProvider";
+import { useDrunkGame, KingsCupState } from "@/providers/DrunkGameProvider";
+import RenderMafiaBoard from "@/components/drink_games/mafia";
+import RenderBurnBookBoard from "@/components/drink_games/burn_book";
+import QRCode from "react-native-qrcode-svg";
 
-// --- CONSTANTS ---
 const GAMES = [
+  {
+    id: "mafia",
+    label: "Mafia",
+    icon: "domino-mask",
+    iconType: "MCI",
+    description: "Deceive, kill, and survive.",
+  },
   {
     id: "kings-cup",
     label: "King's Cup",
@@ -40,31 +44,51 @@ const GAMES = [
     iconType: "MCI",
     description: "Roast your friends anonymously.",
   },
-  {
-    id: "this-or-that",
-    label: "This Or That",
-    icon: "yin-yang",
-    iconType: "FA5",
-    description: "Choose between two difficult options.",
-  },
 ];
 
-const SCREEN_WIDTH = Dimensions.get("window").width;
+const GAME_RULES: Record<string, any> = {
+  Mafia: {
+    title: "How to Play Mafia",
+    steps: [
+      "The game is split into Day and Night phases.",
+      "NIGHT: The Mafia secretly chooses a victim to kill. The Doctor saves one person. The Sheriff investigates one person.",
+      "DAY: Everyone discusses who they think the Mafia is.",
+      "VOTE: Players vote to eliminate a suspect. The person with the most votes is removed.",
+      "WIN: Civilians win if all Mafia are eliminated. Mafia wins if they outnumber Civilians.",
+    ],
+  },
+  "King's Cup": {
+    title: "King's Cup Rules",
+    steps: [
+      "Players take turns drawing cards.",
+      "Each card has a specific rule (e.g., '2 is You', '5 is Guys').",
+      "Ace: Everyone drinks.",
+      "King: Pour some of your drink into the central cup. The person who draws the 4th King drinks the whole cup!",
+      "Don't break the circle of cards, or you drink!",
+    ],
+  },
+  "Drinking Game": {
+    title: "Burn Book",
+    steps: [
+      "Everyone submits an anonymous question (e.g., 'Who is most likely to end up covered in puke?').",
+      "Questions are shown one by one. Everyone votes for the player that best fits the description.",
+      "The victim is revealed and must drink.",
+    ],
+  },
+};
 
 export default function GameLobbyScreen() {
   const insets = useSafeAreaInsets();
 
-  // --- STATE & HOOKS ---
   const {
     stage,
     loading,
     sessionId,
     isHost,
     hostName,
-    gameType, 
-    gameLabel, 
+    gameType,
+    gameLabel,
     players,
-    messages,
     publicGames,
     gameState,
     createGame,
@@ -72,14 +96,10 @@ export default function GameLobbyScreen() {
     leaveGame,
     startGame,
     sendGameAction,
-    sendMessage,
     refreshPublicGames,
   } = useDrunkGame();
 
-  const [inputMsg, setInputMsg] = useState("");
   const [refreshing, setRefreshing] = useState(false);
-
-    const [burnBookuestionText, setBurnBookuestionText] = useState("");
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -87,15 +107,8 @@ export default function GameLobbyScreen() {
     setRefreshing(false);
   };
 
-  const handleShare = async () => {
-    try {
-      await Share.share({
-        message: `Join my drinking game on OutDrinkMe! Game: ${gameLabel}\nCode: ${sessionId}`,
-      });
-    } catch (e) {
-      console.log(e);
-    }
-  };
+  const scheme = "outdrinkme";
+  const inviteLink = `${scheme}://game?id=${sessionId}`;
 
   const getGameIcon = (gameId: string) => {
     const game = GAMES.find((g) => g.id === gameId);
@@ -104,82 +117,70 @@ export default function GameLobbyScreen() {
       : { icon: "gamepad-variant", type: "MCI" };
   };
 
-  const handleSend = () => {
-    if (!inputMsg.trim()) return;
-    sendMessage(inputMsg);
-    setInputMsg("");
-  };
-
   const renderLobby = () => (
-    <ScrollView
-      contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          tintColor="#EA580C"
-        />
-      }
-    >
+    <View style={{ paddingBottom: insets.bottom + 20 }}>
       <NestedScreenHeader
         heading="Drinking Lobby"
         secondaryHeading="MULTIPLAYER"
       />
 
-      {/* Start New Game */}
       <View className="px-4 mb-8 pt-5">
-        <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-3 ml-1">
+        <Text className="text-white/50 text-[12px] font-bold tracking-widest mb-3 ml-1">
           START A NEW GAME
         </Text>
-        <View className="gap-3">
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
+        >
           {GAMES.map((game) => (
             <TouchableOpacity
               key={game.id}
               onPress={() => createGame(game.id, game.label)}
               disabled={loading}
-              className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-4 flex-row items-center active:bg-white/[0.08]"
+              className="w-40 bg-white/[0.03] border border-white/[0.08] rounded-3xl p-4 flex-col justify-between active:bg-white/[0.08] min-h-[160px]"
             >
-              <View className="w-12 h-12 rounded-xl bg-orange-600/20 items-center justify-center mr-4">
-                {game.iconType === "MCI" ? (
-                  <MaterialCommunityIcons
-                    name={game.icon as any}
-                    size={24}
-                    color="#EA580C"
-                  />
-                ) : (
-                  <FontAwesome5
-                    name={game.icon as any}
-                    size={20}
-                    color="#EA580C"
-                  />
-                )}
+              <View className="items-start">
+                <View className="w-14 h-14 rounded-2xl bg-orange-600/10 border border-orange-600/20 items-center justify-center mb-3">
+                  {game.iconType === "MCI" ? (
+                    <MaterialCommunityIcons
+                      name={game.icon as any}
+                      size={32}
+                      color="#EA580C"
+                    />
+                  ) : (
+                    <FontAwesome5
+                      name={game.icon as any}
+                      size={24}
+                      color="#EA580C"
+                    />
+                  )}
+                </View>
               </View>
-              <View className="flex-1">
-                <Text className="text-white text-lg font-black">
-                  {game.label}
+
+              <View>
+                <Text className="text-white text-lg font-black leading-tight mb-1">
+                  {game.label.replace(" ", "\n")}
                 </Text>
-                <Text className="text-white/40 text-xs font-medium">
+                <Text
+                  className="text-white/40 text-[10px] font-medium leading-4"
+                  numberOfLines={2}
+                >
                   {game.description}
                 </Text>
               </View>
-              <MaterialCommunityIcons
-                name="chevron-right"
-                size={24}
-                color="#555"
-              />
             </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
       </View>
 
-      {/* Public Games */}
       <View className="px-4">
         <View className="flex-row items-center justify-between mb-3 ml-1">
-          <Text className="text-white/50 text-[11px] font-bold tracking-widest">
+          <Text className="text-white/50 text-[12px] font-bold tracking-widest">
             JOIN PUBLIC GAME
           </Text>
           <TouchableOpacity onPress={() => refreshPublicGames()}>
-            <MaterialCommunityIcons name="refresh" size={16} color="#666" />
+            <MaterialCommunityIcons name="refresh" size={20} color="#666" />
           </TouchableOpacity>
         </View>
 
@@ -194,7 +195,17 @@ export default function GameLobbyScreen() {
             </Text>
           </View>
         ) : (
-          <View className="gap-3">
+          <ScrollView
+            showsHorizontalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor="#ff8c00"
+                colors={["#ff8c00"]}
+              />
+            }
+          >
             {publicGames.map((game) => {
               const { icon, type } = getGameIcon(game.gameType);
               return (
@@ -205,18 +216,18 @@ export default function GameLobbyScreen() {
                   }
                   className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-4 flex-row items-center active:bg-white/[0.08]"
                 >
-                  <View className="w-10 h-10 rounded-full bg-blue-500/20 items-center justify-center mr-3 border border-blue-500/30">
+                  <View className="w-10 h-10 rounded-full bg-orange-600/20 items-center justify-center mr-3 border border-[#ff8c00]">
                     {type === "MCI" ? (
                       <MaterialCommunityIcons
                         name={icon as any}
                         size={20}
-                        color="#3b82f6"
+                        color="#ff8c00"
                       />
                     ) : (
                       <FontAwesome5
                         name={icon as any}
                         size={16}
-                        color="#3b82f6"
+                        color="#ff8c00"
                       />
                     )}
                   </View>
@@ -242,175 +253,323 @@ export default function GameLobbyScreen() {
                 </TouchableOpacity>
               );
             })}
-          </View>
-        )}
-      </View>
-    </ScrollView>
-  );
-
-  const renderWaitingRoom = () => (
-    <View className="flex-1">
-      <View className="px-4 py-3 border-b border-white/[0.08] flex-row justify-between items-center bg-white/[0.02]">
-        <TouchableOpacity
-          onPress={leaveGame}
-          className="flex-row items-center p-2 rounded-lg active:bg-white/10"
-        >
-          <Ionicons name="close" size={24} color="#ef4444" />
-        </TouchableOpacity>
-        <View className="items-end">
-          <Text className="text-white/50 text-[10px] font-bold tracking-widest uppercase">
-            {gameLabel || "Lobby"}
-          </Text>
-          <View className="flex-row items-center gap-1">
-            <View className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
-            <Text className="text-yellow-500 text-xs font-bold">
-              WAITING FOR PLAYERS
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      <ScrollView className="flex-1">
-        <View className="px-4 pt-6">
-          <View className="bg-white/[0.05] rounded-2xl p-6 items-center border border-white/[0.1] mb-8 relative overflow-hidden">
-            <MaterialCommunityIcons
-              name="cards-playing"
-              size={120}
-              color="white"
-              style={{
-                position: "absolute",
-                opacity: 0.03,
-                right: -20,
-                bottom: -20,
-                transform: [{ rotate: "-15deg" }],
-              }}
-            />
-
-            <Text className="text-white/50 text-xs font-bold uppercase tracking-widest mb-2">
-              Room Code
-            </Text>
-            <TouchableOpacity
-              onPress={handleShare}
-              className="flex-row items-center gap-3 bg-black/20 px-6 py-3 rounded-xl border border-white/10 active:bg-black/40"
-            >
-              <Text className="text-white text-3xl font-black tracking-[3px]">
-                {sessionId.length > 8 ? sessionId.slice(0, 8) : sessionId}
-              </Text>
-              <View className="bg-orange-600/20 p-2 rounded-lg">
-                <MaterialCommunityIcons
-                  name="share-variant"
-                  size={20}
-                  color="#EA580C"
-                />
-              </View>
-            </TouchableOpacity>
-            <Text className="text-white/30 text-[10px] mt-3">
-              Tap to share invitation link
-            </Text>
-          </View>
-
-          {/* Player Grid Header */}
-          <View className="flex-row items-baseline justify-between mb-4 px-1">
-            <Text className="text-white font-bold text-lg">
-              Players{" "}
-              <Text className="text-white/40 text-sm">({players.length})</Text>
-            </Text>
-            {isHost && (
-              <Text className="text-orange-500 text-xs font-bold">
-                YOU ARE HOST
-              </Text>
-            )}
-          </View>
-
-          {/* Players Grid */}
-          <View className="flex-row flex-wrap gap-3">
-            {players.map((player) => (
-              <View
-                key={player.id || player.username}
-                className="w-[30%] aspect-square bg-white/[0.03] rounded-xl items-center justify-center border border-white/[0.08] relative"
-              >
-                <View className="w-12 h-12 rounded-full bg-gradient-to-tr from-gray-800 to-gray-700 items-center justify-center mb-2 border border-white/10">
-                  <Text className="text-white font-black text-xl">
-                    {player.username
-                      ? player.username.charAt(0).toUpperCase()
-                      : "?"}
-                  </Text>
-                </View>
-
-                <Text
-                  className="text-white font-semibold text-xs text-center px-1"
-                  numberOfLines={1}
-                >
-                  {player.username}
-                </Text>
-
-                {player.isHost && (
-                  <View className="absolute -top-2 -right-2 bg-yellow-500 w-6 h-6 rounded-full items-center justify-center border-2 border-black">
-                    <MaterialCommunityIcons
-                      name="crown"
-                      size={14}
-                      color="black"
-                    />
-                  </View>
-                )}
-              </View>
-            ))}
-
-            {[...Array(Math.max(0, 3 - players.length))].map((_, i) => (
-              <View
-                key={`empty-${i}`}
-                className="w-[30%] aspect-square rounded-xl border-2 border-dashed border-white/[0.05] items-center justify-center bg-transparent"
-              >
-                <Ionicons name="person" size={20} color="#333" />
-              </View>
-            ))}
-          </View>
-        </View>
-      </ScrollView>
-
-      {/* Footer / Start Button */}
-      <View
-        className="p-4 border-t border-white/[0.08] bg-black shadow-lg"
-        style={{ paddingBottom: insets.bottom + 10 }}
-      >
-        {isHost ? (
-          <TouchableOpacity
-            onPress={startGame}
-            className="bg-orange-600 py-4 rounded-2xl items-center flex-row justify-center gap-2"
-          >
-            <Text className="text-black text-lg font-black tracking-widest">
-              START GAME
-            </Text>
-            <MaterialCommunityIcons
-              name="arrow-right"
-              size={20}
-              color="black"
-            />
-          </TouchableOpacity>
-        ) : (
-          <View className="bg-white/[0.05] py-4 rounded-2xl items-center border border-white/10">
-            <View className="flex-row items-center gap-3">
-              <ActivityIndicator size="small" color="#EA580C" />
-              <Text className="text-white/70 text-sm font-semibold">
-                Host is setting up...
-              </Text>
-            </View>
-          </View>
+          </ScrollView>
         )}
       </View>
     </View>
   );
 
-  // 3. GAME BOARD 1: KING'S CUP
+  const GAME_RULES: Record<string, any> = {
+    "Mafia": {
+      title: "How to Play Mafia",
+      steps: [
+        "The game is split into Day and Night",
+        "NIGHT: The Mafia secretly chooses a victim to kill. The Doctor saves one person. The Sheriff investigates one person",
+        "DAY: Everyone discusses who they think the Mafia is",
+        "VOTE: Players vote to eliminate a suspect. The person with the most votes is removed",
+        "WIN: Civilians win if all Mafia are eliminated. Mafia wins if they outnumber the Civilians",
+      ],
+    },
+    "King's Cup": {
+      title: "King's Cup Rules",
+      steps: [
+        "Players take turns drawing cards.",
+        "Each card has a specific rule (e.g., '2 is You', '5 is Guys').",
+        "Ace: Everyone drinks.",
+        "King: Pour some of your drink into the central cup. The person who draws the 4th King drinks the whole cup!",
+        "Don't break the circle of cards, or you drink!",
+      ],
+    },
+
+    "Burn Book": {
+      title: "Drinking Game",
+      steps: [
+        "Everyone submits an anonymous question (e.g., 'Who is most likely to end up covered in puke?').",
+        "Questions are shown one by one. Everyone votes for the player that best fits the description.",
+        "The victim is revealed and must drink.",
+      ],
+    },
+  };
+
+  const [showRules, setShowRules] = useState(false);
+
+  const renderWaitingRoom = () => {
+    // Get rules based on label, fallback to generic if missing
+    const activeRules = GAME_RULES[gameLabel] || {
+      title: "Game Rules",
+      steps: [
+        "Follow the host's instructions!",
+        "Have fun and drink responsibly.",
+      ],
+    };
+
+    return (
+      <View className="flex-1">
+        {/* HEADER (Existing) */}
+        <View className="relative px-4 py-3 border-b border-white/[0.08] flex-row justify-between items-center bg-white/[0.02]">
+          <View className="absolute left-0 right-0 items-center justify-center">
+            <Text className="text-orange-600 text-[18px] font-black tracking-widest uppercase">
+              {gameLabel || "Lobby"}
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            onPress={leaveGame}
+            className="flex-row items-center p-2 rounded-lg active:bg-white/10 z-10"
+          >
+            <Ionicons name="close" size={28} color="#ef4444" />
+          </TouchableOpacity>
+
+          <View className="flex-row items-center gap-2 z-10">
+            <View className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+            <Text className="text-yellow-500 text-xs font-bold text-left">
+              {`WAITING FOR\nPLAYERS`}
+            </Text>
+          </View>
+        </View>
+
+        <ScrollView className="flex-1">
+          <View className="px-4 pt-6">
+            {/* QR CODE CARD (Existing) */}
+            <View className="bg-white/[0.05] rounded-2xl p-6 items-center border border-white/[0.1] mb-6 relative overflow-hidden">
+              {gameLabel === "Mafia" && (
+                <MaterialCommunityIcons
+                  name="domino-mask"
+                  size={130}
+                  color="white"
+                  style={{
+                    position: "absolute",
+                    opacity: 0.05,
+                    right: -20,
+                    bottom: -20,
+                    transform: [{ rotate: "-15deg" }],
+                  }}
+                />
+              )}
+              {gameLabel === "King's Cup" && (
+                <MaterialCommunityIcons
+                  name="cards-playing"
+                  size={130}
+                  color="white"
+                  style={{
+                    position: "absolute",
+                    opacity: 0.05,
+                    right: -20,
+                    bottom: -20,
+                    transform: [{ rotate: "-15deg" }],
+                  }}
+                />
+              )}
+              {gameLabel === "Burn Book" && (
+                <MaterialIcons
+                  name="menu-book"
+                  size={130}
+                  color="white"
+                  style={{
+                    position: "absolute",
+                    opacity: 0.05,
+                    right: -10,
+                    bottom: -10,
+                    transform: [{ rotate: "-15deg" }],
+                  }}
+                />
+              )}
+
+              <Text className="text-white/50 text-xs font-bold uppercase tracking-widest mb-2">
+                Scan to Join
+              </Text>
+              <View className="bg-white mt-2 p-2 rounded-xl mb-2 shadow-lg shadow-black/50">
+                <QRCode
+                  value={inviteLink}
+                  size={140}
+                  color="black"
+                  backgroundColor="white"
+                />
+              </View>
+            </View>
+
+            <View className="flex-row items-center justify-between mb-4 px-1">
+              <Text className="text-white font-bold text-lg">
+                Players{" "}
+                <Text className="text-white/40 text-sm">
+                  ({players.length})
+                </Text>
+              </Text>
+
+              <TouchableOpacity
+                onPress={() => setShowRules(true)}
+                className="flex-row items-center justify-center bg-white/[0.05] "
+              >
+                <MaterialCommunityIcons
+                  name="book-open-page-variant"
+                  size={24}
+                  color="#EA580C" 
+                />
+              </TouchableOpacity>
+
+              {isHost && (
+                <Text className="text-orange-500 text-xs font-bold">
+                  YOU ARE HOST
+                </Text>
+              )}
+            </View>
+
+            {/* Player Grid (Existing) */}
+            <View className="flex-row flex-wrap justify-between gap-y-4">
+              {players.map((player) => (
+                <View
+                  key={player.id || player.username}
+                  className="w-[31%] aspect-[0.85] bg-white/[0.05] rounded-2xl items-center justify-center border border-white/10 relative overflow-hidden shadow-sm"
+                >
+                  {player.isHost && (
+                    <View className="absolute top-0 right-0 bg-yellow-500/20 pl-2 pb-2 pt-1 pr-1 rounded-bl-2xl border-l border-b border-yellow-500/30">
+                      <MaterialCommunityIcons
+                        name="crown"
+                        size={12}
+                        color="#fbbf24"
+                      />
+                    </View>
+                  )}
+
+                  <View className="w-14 h-14 rounded-full items-center justify-center mb-3 shadow-lg shadow-black/40 border-2 border-white/10">
+                    <Text className="text-white font-black text-xl shadow-sm">
+                      {player.username
+                        ? player.username.charAt(0).toUpperCase()
+                        : "?"}
+                    </Text>
+                  </View>
+
+                  <Text
+                    className="text-white font-bold text-[13px] text-center px-2 leading-4"
+                    numberOfLines={1}
+                  >
+                    {player.username}
+                  </Text>
+
+                  <Text className="text-white/30 text-[10px] font-medium mt-1">
+                    {player.isHost ? "HOST" : "PLAYER"}
+                  </Text>
+                </View>
+              ))}
+
+              {[...Array(Math.max(0, 3 - players.length))].map((_, i) => (
+                <View
+                  key={`empty-${i}`}
+                  className="w-[31%] aspect-[0.85] rounded-2xl border-2 border-dashed border-white/[0.1] items-center justify-center bg-white/[0.01]"
+                >
+                  <View className="w-10 h-10 rounded-full bg-white/[0.05] items-center justify-center mb-2">
+                    <Ionicons name="add" size={20} color="#666" />
+                  </View>
+                  <Text className="text-white/30 text-[10px] font-bold tracking-widest uppercase">
+                    Invite
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        </ScrollView>
+
+        {/* Footer (Existing) */}
+        <View
+          className="p-4 border-t border-white/[0.08] bg-black shadow-lg"
+          style={{ paddingBottom: insets.bottom + 10 }}
+        >
+          {isHost ? (
+            <TouchableOpacity
+              onPress={startGame}
+              className="bg-orange-600 py-4 rounded-2xl items-center flex-row justify-center gap-2"
+            >
+              <Text className="text-black text-lg font-black tracking-widest">
+                START GAME
+              </Text>
+              <MaterialCommunityIcons
+                name="arrow-right"
+                size={20}
+                color="black"
+              />
+            </TouchableOpacity>
+          ) : (
+            <View className="bg-white/[0.05] py-4 rounded-2xl items-center border border-white/10">
+              <View className="flex-row items-center gap-3">
+                <ActivityIndicator size="small" color="#EA580C" />
+                <Text className="text-white/70 text-sm font-semibold">
+                  Host is setting up...
+                </Text>
+              </View>
+            </View>
+          )}
+        </View>
+
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={showRules}
+          onRequestClose={() => setShowRules(false)}
+        >
+          <View className="flex-1 bg-black/80 justify-end">
+            {/* Modal Content */}
+            <View className="bg-[#1a1a1a] rounded-t-3xl border-t border-white/10 h-[70%]">
+              {/* Modal Header */}
+              <View className="p-4 border-b border-white/10 flex-row justify-between items-center bg-white/5 rounded-t-3xl">
+                <Text className="text-white font-black text-xl tracking-wide ml-2">
+                  HOW TO PLAY
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setShowRules(false)}
+                  className="bg-white/10 p-2 rounded-full"
+                >
+                  <Ionicons name="close" size={24} color="white" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Modal Body */}
+              <ScrollView
+                className="flex-1 p-6"
+                contentContainerStyle={{ paddingBottom: 40 }}
+              >
+                <Text className="text-orange-500 font-bold tracking-widest uppercase text-xs mb-2">
+                  {gameLabel?.toUpperCase()}
+                </Text>
+                <Text className="text-white font-black text-3xl mb-6 leading-8">
+                  {activeRules.title}
+                </Text>
+
+                {activeRules.steps.map((step: string, index: number) => (
+                  <View key={index} className="flex-row mb-6">
+                    <View className="w-8 h-8 rounded-full bg-orange-600/20 border border-orange-600/40 items-center justify-center mr-4 mt-1">
+                      <Text className="text-orange-500 font-bold text-sm">
+                        {index + 1}
+                      </Text>
+                    </View>
+                    <Text className="text-white/80 text-base flex-1 leading-6 font-medium">
+                      {step}
+                    </Text>
+                  </View>
+                ))}
+
+                <TouchableOpacity
+                  onPress={() => setShowRules(false)}
+                  className="mt-4 bg-white py-4 rounded-xl items-center"
+                >
+                  <Text className="text-black font-bold text-base">
+                    Got it, let's play!
+                  </Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      </View>
+    );
+  };
+
   const renderKingsCupBoard = () => {
-    // Cast State to Specific Game Type
     const state = gameState as KingsCupState;
     const currentCard = state?.currentCard;
     const cardsRemaining = state?.cardsRemaining ?? 52;
     const gameOver = state?.gameOver ?? false;
 
     if (!currentCard && !gameOver) {
-      // Game started, but no card drawn yet
       return (
         <View className="flex-1 items-center justify-center p-6">
           <TouchableOpacity
@@ -453,7 +612,6 @@ export default function GameLobbyScreen() {
 
     return (
       <View className="flex-1 items-center justify-center p-4">
-        {/* Render the Image with Orange Glow */}
         <View className="rounded-2xl">
           <Image
             source={{ uri: currentCard?.imageUrl }}
@@ -461,8 +619,6 @@ export default function GameLobbyScreen() {
             resizeMode="contain"
           />
         </View>
-
-        {/* The Rule */}
         <View className="mt-8 items-center w-full px-4">
           <Text className="text-orange-500 font-black tracking-widest uppercase text-sm mb-1">
             RULE
@@ -489,175 +645,35 @@ export default function GameLobbyScreen() {
     );
   };
 
- 
-  const renderBurnBookBoard = () => {
-    const state = gameState as any; 
-    const phase = state?.phase || "collecting";
-    const collectedCount = state?.collectedCount || 0;
-
-
-    const handleSubmitQuestion = () => {
-      if (!burnBookuestionText.trim()) return;
-
-      sendGameAction("submit_question", { payload: burnBookuestionText });
-
-      setInputMsg("");
-      setBurnBookuestionText("");
-      Alert.alert("Submitted", "Your question has been thrown into the fire.");
-    };
-
-    return (
-      <View className="flex-1 p-6">
-        {phase === "collecting" && (
-          <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            className="flex-1 justify-center"
-          >
-            <View className="items-center mb-8">
-              <View className="w-20 h-20 bg-red-500/10 rounded-full items-center justify-center mb-4 border border-red-500/30">
-                <MaterialCommunityIcons name="fire" size={40} color="#ef4444" />
-              </View>
-              <Text className="text-white font-black text-2xl tracking-wider">
-                BURN BOOK
-              </Text>
-              <Text className="text-white/50 text-center mt-2 text-xs px-4">
-                Submit an anonymous question about the group. {"\n"}
-                We will vote on who fits the description best.
-              </Text>
-            </View>
-
-            <View className="bg-white/10 rounded-2xl border border-white/10 p-4 mb-4">
-              <TextInput
-                className="text-white text-lg font-medium min-h-[100px]"
-                placeholder="e.g., Who is most likely to get arrested?"
-                placeholderTextColor="#666"
-                multiline
-                textAlignVertical="top"
-                value={burnBookuestionText}
-                onChangeText={setBurnBookuestionText}
-                maxLength={120}
-                returnKeyType="done"
-                blurOnSubmit
-              />
-              <Text className="text-white/20 text-[10px] text-right mt-2">
-                {burnBookuestionText.length}/120
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              onPress={handleSubmitQuestion}
-              disabled={burnBookuestionText.length === 0}
-              className={`py-4 rounded-xl items-center flex-row justify-center space-x-2 ${
-                burnBookuestionText.length > 0
-                  ? "bg-red-600 active:bg-red-700"
-                  : "bg-white/5"
-              }`}
-            >
-              <Text
-                className={`font-black tracking-widest ${burnBookuestionText.length > 0 ? "text-white" : "text-white/20"}`}
-              >
-                SUBMIT TO FIRE
-              </Text>
-              {burnBookuestionText.length > 0 && (
-                <MaterialCommunityIcons
-                  name="send"
-                  color="white"
-                  size={16}
-                  style={{ marginLeft: 8 }}
-                />
-              )}
-            </TouchableOpacity>
-
-            <View className="mt-8 items-center">
-              <Text className="text-white/40 font-bold text-xs uppercase tracking-widest mb-1">
-                Pool Status
-              </Text>
-              <Text className="text-white font-black text-3xl">
-                {collectedCount}
-              </Text>
-              <Text className="text-white/20 text-[10px]">
-                Questions Collected
-              </Text>
-            </View>
-
-            {isHost && (
-              <View className="mt-auto border-t border-white/10 pt-6 items-center w-full">
-                <TouchableOpacity
-                  onPress={() => sendGameAction("begin_voting")}
-                  className="bg-white/10 border border-white/20 w-full py-4 rounded-xl flex-row items-center justify-center active:bg-white/20"
-                >
-                  <Text className="text-white font-bold mr-2">
-                    Begin Voting Phase
-                  </Text>
-                  <MaterialCommunityIcons
-                    name="arrow-right"
-                    color="white"
-                    size={16}
-                  />
-                </TouchableOpacity>
-                <Text className="text-white/20 text-[10px] mt-2">
-                  Only click this when everyone has submitted.
-                </Text>
-              </View>
-            )}
-          </KeyboardAvoidingView>
-        )}
-
-        {phase === "voting" && (
-          <View className="flex-1 items-center justify-center">
-            <Text className="text-white">Voting Phase UI...</Text>
-          </View>
-        )}
-
-        {phase === "results" && (
-          <View className="flex-1 items-center justify-center">
-            <Text className="text-white">Results UI...</Text>
-          </View>
-        )}
-      </View>
-    );
-  };
-
   const renderGame = () => (
     <View className="flex-1">
-      {/* Game Header */}
-      <View className="px-4 pb-4 border-b border-white/[0.08] pt-2 bg-white/[0.02]">
-        <View className="flex-row items-center justify-between mb-2">
-          <TouchableOpacity
-            onPress={() => {
-              Alert.alert("Leave Game?", "Are you sure you want to exit?", [
-                { text: "Cancel", style: "cancel" },
-                { text: "Leave", onPress: leaveGame, style: "destructive" },
-              ]);
-            }}
-            className="flex-row items-center bg-white/[0.05] py-2 px-3 rounded-lg"
-          >
-            <Ionicons name="arrow-back" size={16} color="white" />
-            <Text className="text-white font-bold ml-2 text-xs">EXIT</Text>
-          </TouchableOpacity>
-          <View className="bg-green-500/20 px-3 py-1 rounded-full border border-green-500/30">
-            <Text className="text-green-500 text-[10px] font-black tracking-widest">
-              LIVE
-            </Text>
-          </View>
+      <View className="relative px-4 py-3 border-b border-white/[0.08] flex-row justify-between items-center bg-white/[0.02]">
+        <View className="absolute left-0 right-0 items-center justify-center">
+          <Text className="text-orange-600 text-[18px] font-black tracking-widest uppercase">
+            {gameLabel || "Game Session"}
+          </Text>
         </View>
-        <View className="mt-2 flex-row justify-between items-end">
-          <View>
-            <Text className="text-orange-600 text-sm font-black tracking-wider uppercase">
-              {gameLabel || "Game Session"}
-            </Text>
-            <Text className="text-white/30 text-xs mt-1">Host: {hostName}</Text>
-          </View>
-          <Text className="text-white/20 text-[10px] font-mono">
-            {sessionId.slice(0, 6)}
+
+        <TouchableOpacity
+          onPressIn={() => leaveGame()}
+          className="flex-row items-center bg-white/[0.05] py-2 px-3 rounded-lg z-10"
+        >
+          <Ionicons name="arrow-back" size={16} color="white" />
+          <Text className="text-white font-bold ml-2 text-xs">EXIT</Text>
+        </TouchableOpacity>
+
+        <View className="bg-orange-500/20 px-3 py-1 rounded-full border border-orange-500/30 z-10">
+          <Text className="text-orange-500 text-[10px] font-black tracking-widest">
+            LIVE
           </Text>
         </View>
       </View>
 
       <View className="flex-[1.5] bg-white/[0.02] border-b border-white/[0.08]">
         {gameType === "kings-cup" && renderKingsCupBoard()}
-        {gameType === "burn-book" && renderBurnBookBoard()}
-        {!["kings-cup", "burn-book"].includes(gameType) && (
+        {gameType === "burn-book" && <RenderBurnBookBoard />}
+        {gameType === "mafia" && <RenderMafiaBoard />}
+        {!["kings-cup", "burn-book", "mafia"].includes(gameType) && (
           <View className="flex-1 items-center justify-center">
             <Text className="text-white">Game Not Supported Yet</Text>
           </View>

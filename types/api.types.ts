@@ -555,3 +555,13 @@ export interface CreateGameReq {
   gameType: string;
   settings: GameSettings;
 }
+
+export interface PlayerRoundInfo {
+  userId: string;
+  votes: number;
+}
+
+export interface RoundResult {
+  winnerId: string;
+  results: PlayerRoundInfo[];
+}

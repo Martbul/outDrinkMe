@@ -54,33 +54,6 @@ interface PhotoMessage {
   caption?: string;
 }
 
-const ACTIVE_SESSIONS: GroupSession[] = [
-  {
-    id: "1",
-    name: "Friday Night Out 🍻",
-    hostName: "Alex",
-    expiresAt: new Date(Date.now() + 86400000), // 24h left
-    memberCount: 5,
-    isActive: true,
-    thumbnailUrls: [
-      "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400",
-      "https://images.unsplash.com/photo-1543007630-9710e4a00a20?w=400",
-      "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=400",
-    ],
-  },
-  {
-    id: "2",
-    name: "Beach Day 🏖️",
-    hostName: "Sarah",
-    expiresAt: new Date(Date.now() - 3600000), // Expired
-    memberCount: 8,
-    isActive: false,
-    thumbnailUrls: [
-      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400",
-    ],
-  },
-];
-
 const MOCK_DISK_PHOTOS: PhotoMessage[] = [
   {
     id: "p1",
@@ -285,15 +258,22 @@ export default function HomeScreen() {
       >
         <View className="items-center mb-6">
           <View className="flex flex-row items-center gap-8">
-            <View className="rounded-full bg-orange-600/15 border-orange-600 ">
+            {/* <View className="rounded-full bg-orange-600/15 border-orange-600 ">
               <TouchableOpacity
                 onPress={openModal}
                 className=" w-16 h-16 rounded-full  items-center justify-center"
               >
                 <Ionicons name="images-outline" size={24} color="#EA580C" />
               </TouchableOpacity>
+            </View> */}
+            <View className="rounded-full bg-orange-600/15 border-orange-600 ">
+              <TouchableOpacity
+                onPress={() => router.push("/(screens)/drinkingGames")}
+                className=" w-16 h-16 rounded-full  items-center justify-center"
+              >
+                <Ionicons name="dice-outline" size={32} color="#EA580C" />
+              </TouchableOpacity>
             </View>
-
             <TouchableOpacity
               onPress={() => router.push("/(screens)/coeffInfo")}
               className="relative w-[120px] h-[120px] rounded-full bg-orange-600/15 border-4 border-orange-600 justify-center items-center mb-3"
@@ -398,7 +378,7 @@ export default function HomeScreen() {
             </View>
           </TouchableOpacity> */}
         </View>
-        <TouchableOpacity
+        {/* <TouchableOpacity
           onPress={() => router.push("/(screens)/drinkingGames")}
           className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]"
         >
@@ -413,7 +393,7 @@ export default function HomeScreen() {
           <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">
             PROFILE BUILDER
           </Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         <ThisWeekGadget />
 

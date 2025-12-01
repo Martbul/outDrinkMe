@@ -15,6 +15,7 @@ import { TailwindProvider } from "tailwindcss-react-native";
 import { AppStorage } from "@/utils/storage"; 
 import "../global.css";
 import { DrunkGameProvider } from "@/providers/DrunkGameProvider";
+import DeepLinkHandler from "@/components/deepLinkHandler";
 
 let posthog: PostHog;
 
@@ -66,13 +67,15 @@ function AuthenticatedAppContent() {
     });
   }, [posthog]);
 
-  return <Slot />;
-}
+ return (
+   <>
+     <DeepLinkHandler />
+
+     <Slot />
+   </>
+ );}
 
 export default function RootLayout() {
-  // FIX 3: REMOVED the useEffect that called MobileAds().initialize().
-  // That logic is now safely inside AdProvider.native.tsx
-
   const [loaded] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
