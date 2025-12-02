@@ -11,21 +11,26 @@ export interface UserData {
   gems: number;
   xp: number;
   allDaysDrinkingCount: number;
+  alcoholism_coefficient: number;
 }
 
 export interface LeaderboardEntry {
   user_id: string;
   username: string;
-  imageUrl?: string;
-  days_this_week: number;
+  image_url?: string | null;
+  alcoholism_coefficient: number;
   rank: number;
-  current_streak: number;
 }
 
 export interface Leaderboard {
   entries: LeaderboardEntry[];
   user_position?: LeaderboardEntry;
   total_users: number;
+}
+
+export interface LeaderboardsResponse {
+  global: Leaderboard;
+  friends: Leaderboard;
 }
 
 export interface Achievement {
@@ -321,6 +326,13 @@ export interface Smoking {
   image: any;
 }
 
+export interface EnergyDrink {
+  id: number;
+  title: string;
+  price: number;
+  image: any;
+}
+
 export interface ColorTheme {
   id: number;
   name: string;
@@ -424,67 +436,6 @@ export interface NotificationItem {
   action_url?: string;
 }
 
-export type QuestStatus = "OPEN" | "COMPLETED" | "EXPIRED" | "CANCELLED";
-export type SubmissionStatus = "PENDING" | "APPROVED" | "REJECTED";
-export type PayoutStatus = "PENDING" | "SUCCESS" | "FAILED";
-
-export interface SideQuest {
-  id: string;
-  issuerId: string;
-  title: string;
-  description: string;
-  rewardAmount: number;
-  isLocked: boolean;
-  isPublic: boolean;
-  isAnonymous: boolean;
-  status: QuestStatus;
-  expiresAt: string; // ISO date string
-  createdAt: string;
-  updatedAt: string;
-
-  // Extended fields for display
-  issuerName?: string;
-  issuerImage?: string;
-  submissionCount?: number;
-}
-
-export interface SideQuestCompletion {
-  id: string;
-  sideQuestId: string;
-  completerId: string;
-  proofImageUrl: string;
-  proofText?: string;
-  status: SubmissionStatus;
-  rejectionReason?: string;
-  payoutStatus: PayoutStatus;
-  paidAt?: string;
-  createdAt: string;
-
-  // Extended fields for display
-  questTitle?: string;
-  questReward?: number;
-  completerName?: string;
-  completerImage?: string;
-}
-
-// ============================================================================
-// API REQUEST/RESPONSE TYPES
-// ============================================================================
-
-export interface CreateQuestRequest {
-  title: string;
-  description: string;
-  rewardAmount: number;
-  isPublic: boolean;
-  isAnonymous: boolean;
-  expiresInHours: number; // e.g., 24 for 24 hours
-}
-
-export interface CreateQuestResponse {
-  quest: SideQuest;
-  message: string;
-}
-
 export interface SubmitQuestCompletionRequest {
   sideQuestId: string;
   proofImageUrl: string; // Should be uploaded to Cloudinary first
@@ -494,12 +445,6 @@ export interface SubmitQuestCompletionRequest {
 export interface SubmitQuestCompletionResponse {
   completion: SideQuestCompletion;
   message: string;
-}
-
-export interface ReviewSubmissionRequest {
-  completionId: string;
-  approved: boolean;
-  rejectionReason?: string;
 }
 
 export interface ReviewSubmissionResponse {
@@ -516,4 +461,107 @@ export interface GetQuestsResponse {
 export interface GetSubmissionsResponse {
   submissions: SideQuestCompletion[];
   total: number;
+}
+
+export type QuestStatus = "OPEN" | "COMPLETED" | "EXPIRED" | "CANCELLED";
+export type SubmissionStatus = "PENDING" | "APPROVED" | "REJECTED";
+export type PayoutStatus = "PENDING" | "SUCCESS" | "FAILED";
+
+export interface SideQuest {
+  id: string;
+  issuerId: string;
+  issuerName?: string;
+  issuerImage?: string;
+  title: string;
+  description: string;
+  rewardAmount: number;
+  isLocked: boolean;
+  isPublic: boolean;
+  isAnonymous: boolean;
+  status: QuestStatus;
+  expiresAt: string;
+  createdAt: string;
+  submissionCount?: number;
+}
+
+export interface SideQuestCompletion {
+  id: string;
+  sideQuestId: string;
+  questTitle?: string;
+  completerId: string;
+  completerName?: string;
+  completerImage?: string;
+  proofImageUrl: string;
+  proofText?: string;
+  status: SubmissionStatus;
+  rejectionReason?: string;
+  payoutStatus: PayoutStatus;
+  paidAt?: string;
+  createdAt: string;
+  rewardAmount?: number;
+}
+
+export interface CreateSideQuestReq {
+  title: string;
+  description: string;
+  rewardAmount: number;
+  durationHours: number;
+  isPublic: boolean;
+  isAnonymous: boolean;
+}
+
+export interface SubmitQuestProofReq {
+  proofImageUrl: string;
+  proofText?: string;
+}
+
+export interface ReviewSubmissionRequest {
+  completionId: string;
+  approved: boolean;
+  rejectionReason?: string;
+}
+
+export type SideQuestBoard = {
+  [boardType: string]: SideQuest[];
+};
+
+// types/api.types.ts
+
+export interface CreateGameResponse {
+  sessionId: string;
+  wsUrl: string;
+}
+
+export interface GameSessionDetails {
+  exists: boolean;
+  hostUsername: string;
+  gameType: string;
+  playerCount: number;
+}
+
+export interface PublicGame {
+  sessionId: string;
+  gameType: string;
+  host: string;
+  players: number;
+}
+
+export interface GameSettings {
+  max_players: number;
+  rounds: number;
+}
+
+export interface CreateGameReq {
+  gameType: string;
+  settings: GameSettings;
+}
+
+export interface PlayerRoundInfo {
+  userId: string;
+  votes: number;
+}
+
+export interface RoundResult {
+  winnerId: string;
+  results: PlayerRoundInfo[];
 }

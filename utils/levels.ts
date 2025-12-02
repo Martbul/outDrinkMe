@@ -131,44 +131,31 @@ export function getExampleLevelTable(maxLevel: number = 20): void {
   }
 }
 
+
+
 export const getCoefInfo = (
-  userStats: UserStats | null
+  normalizedCoeff: number | undefined
 ): { title: string; coef: number } => {
-  if (!userStats) return { title: "NEWBIE", coef: 0 };
+    if (!normalizedCoeff) return { title: "NEWBIE", coef: 0 };
 
-  const rawCoef = userStats.alcoholism_coefficient;
-
-  // If rawCoef is 0 (new user with no drinking data), return initial state
-  if (rawCoef === 0) return { title: "THE SOBER SOUL", coef: 0 };
-
-  // Transform using inverse exponential: Score = 100 * (1 - e^(-k * rawValue))
-  // This way: low rawCoef = low score, high rawCoef = high score
-  // k = 0.1 controls growth rate (adjust this based on your rawCoef scale)
-  const k = 0.05;
-  const transformedScore = 100 * (1 - Math.exp(-k * rawCoef));
-
-  // Normalize to 0-100 range for coef display (as integer)
-  const coef = Math.max(0, Math.min(100, Math.round(transformedScore)));
-
-  // Calculate title index based on score (0-100 scale)
-  // Map 0-100 to titles 0-9 (lower score = lower title index)
-  const titleIndex = Math.min(Math.floor(coef / 10), 9);
+  const titleIndex = Math.min(Math.floor(normalizedCoeff / 10), 9);
 
   const titles = [
-    "THE SOBER SOUL", // 0-9 score (weak drinkers)
-    "THE FIRST SIP", // 10-19 score
-    "THE TEMPTED", // 20-29 score
-    "THE INTOXICATED", // 30-39 score
-    "THE UNHINGED", // 40-49 score
-    "THE FALLEN", // 50-59 score
-    "THE DROWNED IN SPIRITS", // 60-69 score
-    "THE WHISPERER OF WINE", // 70-79 score
-    "THE LIQUOR SHADE", // 80-89 score
-    "THE VOID DRINKER", // 90-100 score (strongest drinkers)
+    "SOBER SOUL", // 0-9 score (weak drinkers)
+    "FIRST SIP", // 10-19 score
+    "TEMPTED", // 20-29 score
+    "INTOXICATED", // 30-39 score
+    "UNHINGED", // 40-49 score
+    "FALLEN", // 50-59 score
+    "DROWNED IN SPIRITS", // 60-69 score
+    "WHISPERER OF WINE", // 70-79 score
+    "LIQUOR SHADE", // 80-89 score
+    "VOID DRINKER", // 90-100 score
   ];
 
   return {
     title: titles[titleIndex] || "NEWBIE",
-    coef: coef,
+    coef: normalizedCoeff,
   };
 };
+

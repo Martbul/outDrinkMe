@@ -5,14 +5,33 @@ import { AppProvider } from "@/providers/AppProvider";
 import { ClerkLoaded, ClerkProvider, useUser } from "@clerk/clerk-expo";
 import { tokenCache } from "@clerk/clerk-expo/token-cache";
 import { useFonts } from "expo-font";
-import { Redirect, Slot, usePathname } from "expo-router";
+import { Slot, usePathname } from "expo-router";
 import { PostHogProvider, usePostHog } from "posthog-react-native";
 import { useEffect } from "react";
-import { Text, View } from "react-native";
+import PostHog from "posthog-react-native";
+import { Platform, Text, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { TailwindProvider } from "tailwindcss-react-native";
+import { AppStorage } from "@/utils/storage"; 
 import "../global.css";
+import { DrunkGameProvider } from "@/providers/DrunkGameProvider";
+import DeepLinkHandler from "@/components/deepLinkHandler";
 
+let posthog: PostHog;
+
+if (Platform.OS === "web") {
+  // WEB: Uses the real LocalStorage wrapper from storage.web.ts
+  posthog = new PostHog(process.env.EXPO_PUBLIC_POSTHOG_API_KEY!, {
+    host: "https://us.i.posthog.com",
+    customStorage: AppStorage,
+  });
+} else {
+  // MOBILE: Uses 'memory'. The AppStorage import exists but is ignored here.
+  posthog = new PostHog(process.env.EXPO_PUBLIC_POSTHOG_API_KEY!, {
+    host: "https://us.i.posthog.com",
+    persistence: "memory",
+  });
+}
 
 function PostHogScreenTracker() {
   const posthog = usePostHog();
@@ -48,13 +67,15 @@ function AuthenticatedAppContent() {
     });
   }, [posthog]);
 
-  return <Slot />;
-}
+ return (
+   <>
+     <DeepLinkHandler />
+
+     <Slot />
+   </>
+ );}
 
 export default function RootLayout() {
-  // FIX 3: REMOVED the useEffect that called MobileAds().initialize().
-  // That logic is now safely inside AdProvider.native.tsx
-
   const [loaded] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
@@ -94,19 +115,16 @@ export default function RootLayout() {
           publishableKey={clerkPublishableKey}
         >
           <ClerkLoaded>
-            <PostHogProvider
-              apiKey={posthogApiKey}
-              options={{
-                host: "https://us.i.posthog.com",
-              }}
-            >
+            <PostHogProvider client={posthog}>
               <PostHogScreenTracker />
               <AppProvider>
-                <AdsProvider>
-                  <TailwindProvider>
-                    <AuthenticatedAppContent />
-                  </TailwindProvider>
-                </AdsProvider>
+                <DrunkGameProvider>
+                  <AdsProvider>
+                    <TailwindProvider>
+                      <AuthenticatedAppContent />
+                    </TailwindProvider>
+                  </AdsProvider>
+                </DrunkGameProvider>
               </AppProvider>
             </PostHogProvider>
           </ClerkLoaded>

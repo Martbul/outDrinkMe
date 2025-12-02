@@ -1,6 +1,6 @@
 export const drunkQuotes = [
-  "Finish your drink, there are sober kids in Aftica",
-  "It's Saturday, guess what rhymes with Saturday - ALCOHOL",
+  "Finish your drink, there are sober kids in Africa",
+  "It's Saturday, guess what rhymes with Saturday - alcohol",
   "I'd like to see AI get insanely hammered on Monday at 10AM",
   "Nobody will remember your name, job or salary, but they will remember how good drinker you were",
   "So glad I can't get pregnant, 9 month without alcohol is crazy",

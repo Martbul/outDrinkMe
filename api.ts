@@ -3,16 +3,24 @@ import {
   AddDrinkingRequest,
   AlcoholCollectionByType,
   CalendarResponse,
+  CreateSideQuestReq,
   DailyDrinkingPostResponse,
   DaysStat,
   DrunkThought,
   FriendDiscoveryDisplayProfileResponse,
   Friendship,
+  GameSettings,
   Leaderboard,
   LeaderboardEntry,
+  LeaderboardsResponse,
   NotificationListResponse,
+  ReviewSubmissionRequest,
   SearchDbAlcoholResult,
+  SideQuest,
+  SideQuestBoard,
+  SideQuestCompletion,
   StoreItem,
+  SubmitQuestProofReq,
   UnreadCountResponse,
   UpdateUserProfileReq,
   UserData,
@@ -234,18 +242,13 @@ class ApiService {
     );
   }
 
-  async getFriendsLeaderboard(token: string): Promise<Leaderboard> {
-    return this.makeRequest<Leaderboard>("/api/v1/user/leaderboard/friends", {
+  async getLeaderboards(token: string): Promise<LeaderboardsResponse> {
+    return this.makeRequest<LeaderboardsResponse>("/api/v1/user/leaderboards", {
       method: "GET",
       token,
     });
   }
-  async getGlobalLeaderboard(token: string): Promise<Leaderboard> {
-    return this.makeRequest<Leaderboard>("/api/v1/user/leaderboard/global", {
-      method: "GET",
-      token,
-    });
-  }
+
   async getAchievements(token: string): Promise<Achievement[]> {
     return this.makeRequest<Achievement[]>("/api/v1/user/achievements", {
       method: "GET",
@@ -555,27 +558,6 @@ class ApiService {
     });
   }
 
-  async getBattleStatus(token: string): Promise<{
-    user: LeaderboardEntry;
-    leader: LeaderboardEntry;
-    difference: number;
-  }> {
-    const leaderboard = await this.getFriendsLeaderboard(token);
-
-    const user = leaderboard.user_position;
-    const leader = leaderboard.entries[0];
-
-    if (!user || !leader) {
-      throw new Error("Battle status not available");
-    }
-
-    return {
-      user,
-      leader,
-      difference: leader.days_this_week - user.days_this_week,
-    };
-  }
-
   async getUserInventory(token: string): Promise<any> {
     return this.makeRequest<any>("/api/v1/user/inventory", {
       method: "GET",
@@ -674,6 +656,174 @@ class ApiService {
       token,
       body: JSON.stringify(data), // You must send the body
     });
+  }
+
+  /**
+   * Fetch quests for the main board.
+   * @param filter 'friends' for friends only, 'public' for everyone
+   */
+  async getBoardQuests(token: string): Promise<SideQuestBoard> {
+    return this.makeRequest<SideQuestBoard>(`/api/v1/sidequest/board`, {
+      method: "GET",
+      token,
+    });
+  }
+
+  /**
+   * Fetch quests created by the current logged-in user.
+   */
+  async getMyCreatedQuests(token: string): Promise<SideQuest[]> {
+    return this.makeRequest<SideQuest[]>("/api/v1/quests/created", {
+      method: "GET",
+      token,
+    });
+  }
+
+  /**
+   * Create a new side quest.
+   */
+  async createSideQuest(
+    data: CreateSideQuestReq,
+    token: string
+  ): Promise<SideQuest> {
+    return this.makeRequest<SideQuest>("/api/v1/sidequest", {
+      method: "POST",
+      token,
+      body: JSON.stringify({
+        title: data.title,
+        description: data.description,
+        reward: data.rewardAmount,
+        duration_hours: data.durationHours,
+        is_public: data.isPublic,
+        is_anonymous: data.isAnonymous,
+      }),
+    });
+  }
+
+  /**
+   * Fetch all submissions (attempts) made by the current user.
+   */
+  async getMyQuestAttempts(token: string): Promise<SideQuestCompletion[]> {
+    return this.makeRequest<SideQuestCompletion[]>("/api/v1/quests/attempts", {
+      method: "GET",
+      token,
+    });
+  }
+
+  /**
+   * Fetch incoming submissions that need review (for quests created by the user).
+   */
+  async getPendingReviews(token: string): Promise<SideQuestCompletion[]> {
+    return this.makeRequest<SideQuestCompletion[]>(
+      "/api/v1/quests/approvals/pending",
+      {
+        method: "GET",
+        token,
+      }
+    );
+  }
+
+  /**
+   * Submit proof (image + text) for a specific quest.
+   */
+  async submitQuestProof(
+    questId: string,
+    data: SubmitQuestProofReq,
+    token: string
+  ): Promise<SideQuestCompletion> {
+    return this.makeRequest<SideQuestCompletion>(
+      `/api/v1/quests/${questId}/submit`,
+      {
+        method: "POST",
+        token,
+        body: JSON.stringify(data),
+      }
+    );
+  }
+
+  /**
+   * Approve or Reject a submission.
+   */
+  async reviewSubmission(
+    submissionId: string,
+    data: ReviewSubmissionRequest,
+    token: string
+  ): Promise<{ approved: boolean; rejectionReason?: string }> {
+    return this.makeRequest<{ approved: boolean; rejectionReason?: string }>(
+      `/api/v1/quests/submissions/${submissionId}/review`,
+      {
+        method: "POST",
+        token,
+        body: JSON.stringify(data),
+      }
+    );
+  }
+
+
+  //!create is basicly creating and joingin
+  async createDrinkingGame(
+    gameType: string,
+    token: string
+  ): Promise<{ sessionId: string; wsUrl: string }> {
+    return this.makeRequest<{ sessionId: string; wsUrl: string }>(
+      `/api/v1/drinking-games/create`,
+      {
+        method: "POST",
+        token,
+        body: JSON.stringify({
+          game_type: gameType,
+        }),
+      }
+    );
+  }
+
+  /**
+   * Checks if a session exists and returns metadata (Host name, Game Type).
+   * Used when a user types a code to join manually.
+   * Backend Route: GET /api/v1/games/{sessionId}
+   */
+  async getGameSessionDetails(
+    sessionId: string,
+    token: string
+  ): Promise<{
+    exists: boolean;
+    hostUsername?: string;
+    gameType?: string;
+    playerCount?: number;
+  }> {
+    return this.makeRequest<any>(`/api/v1/drinking-games/${sessionId}`, {
+      method: "GET",
+      token,
+    });
+  }
+
+  /**
+   * Fetches a list of currently active public games.
+   * Backend Route: GET /api/v1/games/public
+   */
+  async getPublicGames(token: string): Promise<
+    Array<{
+      sessionId: string;
+      gameType: string;
+      host: string;
+      players: number;
+    }>
+  > {
+    return this.makeRequest<any>("/api/v1/drinking-games/public", {
+      method: "GET",
+      token,
+    });
+  }
+
+  getWebSocketUrl(sessionId: string): string {
+    // 1. Strip http/https
+    const rawHost = this.baseUrl.replace(/^https?:\/\//, "");
+
+    // 2. Determine protocol (wss if https, ws if http)
+    const protocol = this.baseUrl.startsWith("https") ? "wss" : "ws";
+
+    // 3. Construct URL: ws://10.0.2.2:3333/api/v1/games/ws/X7Z9
+    return `${protocol}://${rawHost}/api/v1/drinking-games/ws/${sessionId}`;
   }
 }
 

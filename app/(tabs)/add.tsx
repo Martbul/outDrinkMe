@@ -39,6 +39,7 @@ export default function AddDrinks() {
     addDrinking,
     drunkThought,
     addDrunkThought,
+    refreshAll,
   } = useApp();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -326,16 +327,11 @@ const handleImageSelection = async (source: "camera" | "library") => {
         is_skipped: skipDetails,
       });
 
-      // --- KEY CHANGE: DO NOT NAVIGATE BACK ---
-      // Instead, we clear the local form state and reset viewState to "logging".
-      // Since addDrinking updated userStats.today_status to true,
-      // the render logic (alreadyLogged && viewState === "logging") will display the success screen.
-
       setImageUri(null);
       setMentionedBuddies([]);
       setViewState("logging");
+      await refreshAll()
 
-      // router.back(); // Removed
     } catch (error: any) {
       Alert.alert("Error", "Failed to log drink.");
     } finally {
