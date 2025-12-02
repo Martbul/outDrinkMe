@@ -300,7 +300,19 @@ export default function HomeScreen() {
                 />
               )}
             </TouchableOpacity>
-            <View className="rounded-full bg-orange-600/15 border-orange-600 ">
+            {/* <View className="rounded-full bg-orange-600/15 border-orange-600 ">
+              <TouchableOpacity
+                onPress={() => router.push("/(screens)/sideQuestBoard")}
+                className="w-16 h-16 rounded-full  items-center justify-center"
+              >
+                <MaterialCommunityIcons
+                  name="sword"
+                  size={34}
+                  color="#EA580C"
+                />
+              </TouchableOpacity>
+            </View> */}
+            <View className="rounded-full bg-orange-600/15 border-orange-600 opacity-0 disabled ">
               <TouchableOpacity
                 onPress={() => router.push("/(screens)/sideQuestBoard")}
                 className="w-16 h-16 rounded-full  items-center justify-center"

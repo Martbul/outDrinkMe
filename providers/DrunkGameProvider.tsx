@@ -32,11 +32,17 @@ export interface KingsCupCard {
   color: string;
   imageUrl: string;
 }
-
 export interface KingsCupState {
   currentCard: KingsCupCard | null;
   cardsRemaining: number;
   gameOver: boolean;
+  gameStarted: boolean;
+  currentPlayerTurnID?: string;
+  kingsInCup?: number;
+  kingCupDrinker?: Player;
+  players?: Player[];
+  customRules?: Record<string, string[]>;
+  buddies?: Record<string, Player[]>;
 }
 
 export interface BurnBookState {
@@ -51,7 +57,7 @@ export interface BurnBookState {
   roundResults?: RoundResult;
 }
 
-export type GameState = KingsCupState | BurnBookState | any;
+export type GameState = KingsCupState | BurnBookState | any; // 'any' for flexibility, but prefer specific types
 
 interface DrunkGameContextType {
   stage: ViewStage;
@@ -65,7 +71,7 @@ interface DrunkGameContextType {
   publicGames: PublicGame[];
   loading: boolean;
 
-  gameState: GameState;
+  gameState: GameState; // This holds the detailed game state
 
   createGame: (gameId: string, gameLabel: string) => Promise<void>;
   joinGame: (sessionId: string, gameType: string, hostName: string) => void;
@@ -75,7 +81,6 @@ interface DrunkGameContextType {
   sendMessage: (text: string) => void;
   refreshPublicGames: () => Promise<void>;
 
-  // GENERIC ACTION (Replaces drawCard)
   sendGameAction: (actionType: string, payload?: any) => void;
 }
 
@@ -98,11 +103,11 @@ export const DrunkGameProvider: React.FC<{ children: React.ReactNode }> = ({
   const [gameType, setGameType] = useState(""); // Track the ID (e.g., "kings-cup")
   const [gameLabel, setGameLabel] = useState(""); // Track label (e.g., "King's Cup")
 
-  const [players, setPlayers] = useState<Player[]>([]);
+  const [players, setPlayers] = useState<Player[]>([]); // Lobby players
   const [messages, setMessages] = useState<string[]>([]);
   const [publicGames, setPublicGames] = useState<PublicGame[]>([]);
 
-  const [gameState, setGameState] = useState<GameState>({});
+  const [gameState, setGameState] = useState<GameState>({}); // Detailed game state
 
   const ws = useRef<WebSocket | null>(null);
 
@@ -115,8 +120,7 @@ export const DrunkGameProvider: React.FC<{ children: React.ReactNode }> = ({
       const token = await getToken();
       if (!token) return;
       const games = await apiService.getPublicGames(token);
-      console.log(games)
-      //!TODO: Add the host's username to games
+      console.log(games);
       setPublicGames(games || []);
     } catch (error) {
       console.error("Failed to fetch public games", error);
@@ -183,10 +187,8 @@ export const DrunkGameProvider: React.FC<{ children: React.ReactNode }> = ({
 
       case "join_room":
         setMessages((prev) => [`${data.username} joined.`, ...prev]);
-        // If the server sends metadata on join, update our state
         if (data.gameType) {
           setGameType(data.gameType);
-          // Helper to format label nicely
           const label =
             data.gameType === "kings-cup"
               ? "King's Cup"
@@ -200,20 +202,59 @@ export const DrunkGameProvider: React.FC<{ children: React.ReactNode }> = ({
         if (data.hostName) {
           setHostName(data.hostName);
         }
-        // ----------------------
         break;
 
+      // case "update_player_list":
+      //   setPlayers(data.players); // This updates the lobby player list
+      //   // If the game is Kings Cup and already started, also update the game state's player list
+      //   // This is a bit of a hack to ensure the `players` in KingsCupState is up-to-date
+      //   // if `UpdatePlayers` in Go is only broadcasting player list and not a full game_update
+      //   if (gameState.gameStarted && gameType === "kings-cup") {
+      //     setGameState((prev: KingsCupState) => ({
+      //       ...prev,
+      //       players: data.players.map((p: Player) => ({
+      //         id: p.id,
+      //         username: p.username,
+      //       })), // Map to PlayerInfo type
+      //     }));
+      //   }
+      //   break;
       case "update_player_list":
-        setPlayers(data.players);
+        setPlayers(data.players); 
         break;
 
+      // case "start_game":
+      //   setStage("game");
+      //   setMessages((prev) => ["--- GAME STARTED ---", ...prev]);
+      //   // --- IMPORTANT CHANGE HERE ---
+      //   // If Go backend only sends {"action": "start_game"},
+      //   // we need to set an initial KingsCupState here to mark it as started.
+      //   if (gameType === "kings-cup") {
+      //     setGameState((prev: KingsCupState) => ({
+      //       ...prev,
+      //       gameStarted: true,
+      //       cardsRemaining: 52, // Initial deck size
+      //       gameOver: false,
+      //       kingsInCup: 0,
+      //       // Assuming the first player in `players` (lobby list) will be the first turn
+      //       currentPlayerTurnID: players.length > 0 ? players[0].id : undefined,
+      //       players: players.map((p) => ({ id: p.id, username: p.username })), // Initial players in game state
+      //     }));
+      //   }
+      //   // --- END IMPORTANT CHANGE ---
+      //   break;
       case "start_game":
         setStage("game");
         setMessages((prev) => ["--- GAME STARTED ---", ...prev]);
         break;
 
       case "game_update":
+        console.log(data.gameState);
         setGameState(data.gameState);
+        // Ensure stage is 'game' if a game_update comes through after initial start
+        if (data.gameState?.gameStarted) {
+          setStage("game");
+        }
         break;
 
       default:
@@ -231,11 +272,11 @@ export const DrunkGameProvider: React.FC<{ children: React.ReactNode }> = ({
       setIsHost(true);
       setHostName(getMyUsername());
 
-      setGameType(gameId); // Save "kings-cup"
-      setGameLabel(label); // Save "King's Cup"
+      setGameType(gameId);
+      setGameLabel(label);
 
       setPlayers([]);
-      setGameState({});
+      setGameState({}); // Reset game state for new game
       await connectSocket(data.sessionId, true);
     } catch (error) {
       Alert.alert("Error", "Failed to create game");
@@ -249,8 +290,7 @@ export const DrunkGameProvider: React.FC<{ children: React.ReactNode }> = ({
     setIsHost(false);
     setHostName(host);
 
-    setGameType(gType); // Save "kings-cup"
-    // Find label from constants if needed, or pass it in
+    setGameType(gType);
     const label =
       gType === "kings-cup"
         ? "King's Cup"
@@ -260,31 +300,24 @@ export const DrunkGameProvider: React.FC<{ children: React.ReactNode }> = ({
     setGameLabel(label);
 
     setPlayers([]);
-    setGameState({});
+    setGameState({}); // Reset game state for new game
     connectSocket(sid, false);
   };
 
-
   const joinViaDeepLink = async (sid: string) => {
-    if (sessionId === sid) return; // Already in this game
+    if (sessionId === sid) return;
 
     setLoading(true);
     try {
-      // Option A: If you have an API to get game details, call it here.
-      // const details = await apiService.getGameDetails(sid);
-
-      // Option B: For now, we join "Blindly" and wait for the WebSocket
-      // to tell us what game it is.
       setSessionId(sid);
       setIsHost(false);
-      setHostName("Loading..."); // Placeholder
-      setGameType("unknown"); // Placeholder
-      setGameLabel("Joining..."); // Placeholder
+      setHostName("Loading...");
+      setGameType("unknown");
+      setGameLabel("Joining...");
 
       setPlayers([]);
-      setGameState({});
+      setGameState({}); // Reset game state for new game
 
-      // Connect!
       await connectSocket(sid, false);
     } catch (error) {
       Alert.alert("Error", "Failed to join via link");
@@ -296,18 +329,21 @@ export const DrunkGameProvider: React.FC<{ children: React.ReactNode }> = ({
   const startGame = () => {
     if (ws.current) {
       ws.current.send(JSON.stringify({ action: "start_game" }));
-      setStage("game");
+      // NOTE: We don't set the stage to "game" here immediately,
+      // as `handleWsMessage` will catch the broadcasted "start_game" action
+      // and update the stage and initial game state.
+      // This ensures a single source of truth from the WebSocket messages.
     }
   };
 
   const sendGameAction = (actionType: string, payload: any = {}) => {
-    console.log("sendiong game actrion")
+    console.log("sending game action:", actionType);
     if (ws.current) {
       ws.current.send(
         JSON.stringify({
           action: "game_action",
-          type: actionType, 
-          ...payload, // Any extra data needed
+          type: actionType,
+          ...payload,
         })
       );
     }
@@ -332,7 +368,7 @@ export const DrunkGameProvider: React.FC<{ children: React.ReactNode }> = ({
     setSessionId("");
     setPlayers([]);
     setMessages([]);
-    setGameState({});
+    setGameState({}); // Clear game state on leave
     setLoading(false);
     refreshPublicGames();
   };
@@ -356,7 +392,7 @@ export const DrunkGameProvider: React.FC<{ children: React.ReactNode }> = ({
         joinViaDeepLink,
         leaveGame,
         startGame,
-        sendGameAction, 
+        sendGameAction,
         sendMessage,
         refreshPublicGames,
       }}

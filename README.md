@@ -98,3 +98,22 @@ eas build --profile production --platform ios
 # Submit to stores
 eas submit --platform android --profile production
 eas submit --platform ios --profile production
+
+
+
+{
+    "action": "join_room",
+    "username": "Player1",
+    "userId": "some-unique-user-id",
+    "isHost": false
+}
+
+
+{
+    "action": "start_game"
+}
+
+{
+    "action": "game_action",
+    "type": "draw_card"
+}

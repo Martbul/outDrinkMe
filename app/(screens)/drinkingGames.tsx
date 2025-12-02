@@ -1,11 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Image,
   RefreshControl,
   Modal,
 } from "react-native";
@@ -21,6 +20,15 @@ import { useDrunkGame, KingsCupState } from "@/providers/DrunkGameProvider";
 import RenderMafiaBoard from "@/components/drink_games/mafia";
 import RenderBurnBookBoard from "@/components/drink_games/burn_book";
 import QRCode from "react-native-qrcode-svg";
+import { useApp } from "@/providers/AppProvider";
+import RenderKingsCupBoard from "@/components/drink_games/kings_cup";
+
+
+const MIN_PLAYER_COUNTS: Record<string, number> = {
+  Mafia: 4,
+  "King's Cup": 3,
+  "Burn Book": 2,
+};
 
 const GAMES = [
   {
@@ -62,12 +70,10 @@ const GAME_RULES: Record<string, any> = {
     steps: [
       "Players take turns drawing cards.",
       "Each card has a specific rule (e.g., '2 is You', '5 is Guys').",
-      "Ace: Everyone drinks.",
       "King: Pour some of your drink into the central cup. The person who draws the 4th King drinks the whole cup!",
-      "Don't break the circle of cards, or you drink!",
     ],
   },
-  "Drinking Game": {
+  "Burn Book": {
     title: "Burn Book",
     steps: [
       "Everyone submits an anonymous question (e.g., 'Who is most likely to end up covered in puke?').",
@@ -85,7 +91,6 @@ export default function GameLobbyScreen() {
     loading,
     sessionId,
     isHost,
-    hostName,
     gameType,
     gameLabel,
     players,
@@ -99,7 +104,61 @@ export default function GameLobbyScreen() {
     refreshPublicGames,
   } = useDrunkGame();
 
+  const { userData } = useApp();
+
   const [refreshing, setRefreshing] = useState(false);
+  const [showRules, setShowRules] = useState(false);
+
+  // Modals
+  const [buddyModalVisible, setBuddyModalVisible] = useState(false);
+  const [ruleModalVisible, setRuleModalVisible] = useState(false);
+  const [newRuleInput, setNewRuleInput] = useState("");
+
+  // Logic to prevent double-modal opening
+  const [handledCardSignature, setHandledCardSignature] = useState<
+    string | null
+  >(null);
+
+  const state = gameState as KingsCupState;
+  const isMyTurn = userData?.clerkId === state?.currentPlayerTurnID;
+  const currentCard = state?.currentCard;
+  const cardsRemaining = state?.cardsRemaining ?? 52;
+  const gameOver = state?.gameOver ?? false;
+  const gameStarted = state?.gameStarted ?? false;
+  const kingCupDrinker = state?.kingCupDrinker;
+  const kingsInCup = state?.kingsInCup ?? 0;
+  const gamePlayers = state?.players || [];
+
+  const currentPlayerInGame = gamePlayers.find(
+    (p) => p.id === state?.currentPlayerTurnID
+  );
+
+  const currentCardSignature = currentCard
+    ? `${currentCard.value}-${currentCard.suit}`
+    : null;
+
+  useEffect(() => {
+    if (currentCardSignature !== handledCardSignature && currentCard === null) {
+      setHandledCardSignature(null);
+    }
+  }, [currentCardSignature, handledCardSignature, currentCard]);
+
+  useEffect(() => {
+    if (!gameStarted || !isMyTurn || !currentCard) return;
+    if (handledCardSignature === currentCardSignature) return;
+
+    if (currentCard.value === "8" && !buddyModalVisible) {
+      setBuddyModalVisible(true);
+    } else if (currentCard.value === "K" && !ruleModalVisible) {
+      setRuleModalVisible(true);
+    }
+  }, [
+    gameStarted,
+    isMyTurn,
+    currentCard?.value,
+    currentCardSignature,
+    handledCardSignature,
+  ]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -116,6 +175,7 @@ export default function GameLobbyScreen() {
       ? { icon: game.icon, type: game.iconType }
       : { icon: "gamepad-variant", type: "MCI" };
   };
+
 
   const renderLobby = () => (
     <View style={{ paddingBottom: insets.bottom + 20 }}>
@@ -214,7 +274,7 @@ export default function GameLobbyScreen() {
                   onPress={() =>
                     joinGame(game.sessionId, game.gameType, game.host)
                   }
-                  className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-4 flex-row items-center active:bg-white/[0.08]"
+                  className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-4 flex-row items-center active:bg-white/[0.08] mb-2"
                 >
                   <View className="w-10 h-10 rounded-full bg-orange-600/20 items-center justify-center mr-3 border border-[#ff8c00]">
                     {type === "MCI" ? (
@@ -259,42 +319,7 @@ export default function GameLobbyScreen() {
     </View>
   );
 
-  const GAME_RULES: Record<string, any> = {
-    "Mafia": {
-      title: "How to Play Mafia",
-      steps: [
-        "The game is split into Day and Night",
-        "NIGHT: The Mafia secretly chooses a victim to kill. The Doctor saves one person. The Sheriff investigates one person",
-        "DAY: Everyone discusses who they think the Mafia is",
-        "VOTE: Players vote to eliminate a suspect. The person with the most votes is removed",
-        "WIN: Civilians win if all Mafia are eliminated. Mafia wins if they outnumber the Civilians",
-      ],
-    },
-    "King's Cup": {
-      title: "King's Cup Rules",
-      steps: [
-        "Players take turns drawing cards.",
-        "Each card has a specific rule (e.g., '2 is You', '5 is Guys').",
-        "Ace: Everyone drinks.",
-        "King: Pour some of your drink into the central cup. The person who draws the 4th King drinks the whole cup!",
-        "Don't break the circle of cards, or you drink!",
-      ],
-    },
-
-    "Burn Book": {
-      title: "Drinking Game",
-      steps: [
-        "Everyone submits an anonymous question (e.g., 'Who is most likely to end up covered in puke?').",
-        "Questions are shown one by one. Everyone votes for the player that best fits the description.",
-        "The victim is revealed and must drink.",
-      ],
-    },
-  };
-
-  const [showRules, setShowRules] = useState(false);
-
   const renderWaitingRoom = () => {
-    // Get rules based on label, fallback to generic if missing
     const activeRules = GAME_RULES[gameLabel] || {
       title: "Game Rules",
       steps: [
@@ -303,34 +328,37 @@ export default function GameLobbyScreen() {
       ],
     };
 
+    // --- LOGIC: Check Minimum Players ---
+    const minPlayersRequired = MIN_PLAYER_COUNTS[gameLabel] || 2; // Default to 2
+    const currentCount = players.length;
+    const canStart = currentCount >= minPlayersRequired;
+    const missingPlayers = minPlayersRequired - currentCount;
+
+    // Construct reason string
+    const disabledReason = `NEED ${missingPlayers} MORE PLAYER${missingPlayers !== 1 ? "S" : ""}`;
+
     return (
       <View className="flex-1">
-        {/* HEADER (Existing) */}
         <View className="relative px-4 py-3 border-b border-white/[0.08] flex-row justify-between items-center bg-white/[0.02]">
           <View className="absolute left-0 right-0 items-center justify-center">
             <Text className="text-orange-600 text-[18px] font-black tracking-widest uppercase">
               {gameLabel || "Lobby"}
             </Text>
           </View>
-
           <TouchableOpacity
             onPress={leaveGame}
             className="flex-row items-center p-2 rounded-lg active:bg-white/10 z-10"
           >
             <Ionicons name="close" size={28} color="#ef4444" />
           </TouchableOpacity>
-
           <View className="flex-row items-center gap-2 z-10">
             <View className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
-            <Text className="text-yellow-500 text-xs font-bold text-left">
-              {`WAITING FOR\nPLAYERS`}
-            </Text>
+            <Text className="text-yellow-500 text-xs font-bold text-left">{`WAITING FOR\nPLAYERS`}</Text>
           </View>
         </View>
 
         <ScrollView className="flex-1">
           <View className="px-4 pt-6">
-            {/* QR CODE CARD (Existing) */}
             <View className="bg-white/[0.05] rounded-2xl p-6 items-center border border-white/[0.1] mb-6 relative overflow-hidden">
               {gameLabel === "Mafia" && (
                 <MaterialCommunityIcons
@@ -374,7 +402,6 @@ export default function GameLobbyScreen() {
                   }}
                 />
               )}
-
               <Text className="text-white/50 text-xs font-bold uppercase tracking-widest mb-2">
                 Scan to Join
               </Text>
@@ -395,18 +422,19 @@ export default function GameLobbyScreen() {
                   ({players.length})
                 </Text>
               </Text>
-
               <TouchableOpacity
                 onPress={() => setShowRules(true)}
-                className="flex-row items-center justify-center bg-white/[0.05] "
+                className="flex-row items-center justify-center bg-white/[0.05] px-3 py-1 rounded-full border border-white/10"
               >
                 <MaterialCommunityIcons
                   name="book-open-page-variant"
-                  size={24}
-                  color="#EA580C" 
+                  size={18}
+                  color="#EA580C"
                 />
+                <Text className="text-orange-500 font-bold ml-2 text-xs">
+                  RULES
+                </Text>
               </TouchableOpacity>
-
               {isHost && (
                 <Text className="text-orange-500 text-xs font-bold">
                   YOU ARE HOST
@@ -414,7 +442,6 @@ export default function GameLobbyScreen() {
               )}
             </View>
 
-            {/* Player Grid (Existing) */}
             <View className="flex-row flex-wrap justify-between gap-y-4">
               {players.map((player) => (
                 <View
@@ -430,7 +457,6 @@ export default function GameLobbyScreen() {
                       />
                     </View>
                   )}
-
                   <View className="w-14 h-14 rounded-full items-center justify-center mb-3 shadow-lg shadow-black/40 border-2 border-white/10">
                     <Text className="text-white font-black text-xl shadow-sm">
                       {player.username
@@ -438,20 +464,17 @@ export default function GameLobbyScreen() {
                         : "?"}
                     </Text>
                   </View>
-
                   <Text
                     className="text-white font-bold text-[13px] text-center px-2 leading-4"
                     numberOfLines={1}
                   >
                     {player.username}
                   </Text>
-
                   <Text className="text-white/30 text-[10px] font-medium mt-1">
                     {player.isHost ? "HOST" : "PLAYER"}
                   </Text>
                 </View>
               ))}
-
               {[...Array(Math.max(0, 3 - players.length))].map((_, i) => (
                 <View
                   key={`empty-${i}`}
@@ -469,7 +492,6 @@ export default function GameLobbyScreen() {
           </View>
         </ScrollView>
 
-        {/* Footer (Existing) */}
         <View
           className="p-4 border-t border-white/[0.08] bg-black shadow-lg"
           style={{ paddingBottom: insets.bottom + 10 }}
@@ -477,16 +499,34 @@ export default function GameLobbyScreen() {
           {isHost ? (
             <TouchableOpacity
               onPress={startGame}
-              className="bg-orange-600 py-4 rounded-2xl items-center flex-row justify-center gap-2"
+              disabled={!canStart}
+              className={`py-4 rounded-2xl items-center flex-row justify-center gap-2 ${
+                canStart ? "bg-orange-600" : "bg-white/10"
+              }`}
             >
-              <Text className="text-black text-lg font-black tracking-widest">
-                START GAME
-              </Text>
-              <MaterialCommunityIcons
-                name="arrow-right"
-                size={20}
-                color="black"
-              />
+              {canStart ? (
+                <>
+                  <Text className="text-black text-lg font-black tracking-widest">
+                    START GAME
+                  </Text>
+                  <MaterialCommunityIcons
+                    name="arrow-right"
+                    size={20}
+                    color="black"
+                  />
+                </>
+              ) : (
+                <>
+                  <MaterialCommunityIcons
+                    name="account-group"
+                    size={20}
+                    color="#666"
+                  />
+                  <Text className="text-white/40 text-lg font-black tracking-widest">
+                    {disabledReason}
+                  </Text>
+                </>
+              )}
             </TouchableOpacity>
           ) : (
             <View className="bg-white/[0.05] py-4 rounded-2xl items-center border border-white/10">
@@ -507,9 +547,7 @@ export default function GameLobbyScreen() {
           onRequestClose={() => setShowRules(false)}
         >
           <View className="flex-1 bg-black/80 justify-end">
-            {/* Modal Content */}
             <View className="bg-[#1a1a1a] rounded-t-3xl border-t border-white/10 h-[70%]">
-              {/* Modal Header */}
               <View className="p-4 border-b border-white/10 flex-row justify-between items-center bg-white/5 rounded-t-3xl">
                 <Text className="text-white font-black text-xl tracking-wide ml-2">
                   HOW TO PLAY
@@ -521,8 +559,6 @@ export default function GameLobbyScreen() {
                   <Ionicons name="close" size={24} color="white" />
                 </TouchableOpacity>
               </View>
-
-              {/* Modal Body */}
               <ScrollView
                 className="flex-1 p-6"
                 contentContainerStyle={{ paddingBottom: 40 }}
@@ -533,7 +569,6 @@ export default function GameLobbyScreen() {
                 <Text className="text-white font-black text-3xl mb-6 leading-8">
                   {activeRules.title}
                 </Text>
-
                 {activeRules.steps.map((step: string, index: number) => (
                   <View key={index} className="flex-row mb-6">
                     <View className="w-8 h-8 rounded-full bg-orange-600/20 border border-orange-600/40 items-center justify-center mr-4 mt-1">
@@ -546,7 +581,6 @@ export default function GameLobbyScreen() {
                     </Text>
                   </View>
                 ))}
-
                 <TouchableOpacity
                   onPress={() => setShowRules(false)}
                   className="mt-4 bg-white py-4 rounded-xl items-center"
@@ -563,88 +597,6 @@ export default function GameLobbyScreen() {
     );
   };
 
-  const renderKingsCupBoard = () => {
-    const state = gameState as KingsCupState;
-    const currentCard = state?.currentCard;
-    const cardsRemaining = state?.cardsRemaining ?? 52;
-    const gameOver = state?.gameOver ?? false;
-
-    if (!currentCard && !gameOver) {
-      return (
-        <View className="flex-1 items-center justify-center p-6">
-          <TouchableOpacity
-            disabled={!isHost}
-            onPress={() => sendGameAction("draw_card")}
-            className={`w-48 h-72 bg-orange-600 rounded-2xl border-4 border-white/10 items-center justify-center shadow-xl ${
-              isHost ? "active:bg-orange-700" : "opacity-80"
-            }`}
-          >
-            <MaterialCommunityIcons
-              name="cards-playing-outline"
-              size={64}
-              color="white"
-            />
-            <Text className="text-white font-black text-xl mt-2 tracking-widest">
-              DECK
-            </Text>
-            {isHost && (
-              <Text className="text-white/70 text-xs mt-1">Tap to Draw</Text>
-            )}
-          </TouchableOpacity>
-          <Text className="text-white/30 font-bold mt-4 uppercase tracking-widest text-xs">
-            {cardsRemaining} Cards Remaining
-          </Text>
-        </View>
-      );
-    }
-
-    if (gameOver) {
-      return (
-        <View className="flex-1 items-center justify-center p-6">
-          <MaterialCommunityIcons name="trophy" size={80} color="#EA580C" />
-          <Text className="text-white font-black text-2xl mt-4">GAME OVER</Text>
-          <Text className="text-white/50 text-center mt-2">
-            The last king has been drawn!
-          </Text>
-        </View>
-      );
-    }
-
-    return (
-      <View className="flex-1 items-center justify-center p-4">
-        <View className="rounded-2xl">
-          <Image
-            source={{ uri: currentCard?.imageUrl }}
-            className="w-64 h-96 rounded-2xl"
-            resizeMode="contain"
-          />
-        </View>
-        <View className="mt-8 items-center w-full px-4">
-          <Text className="text-orange-500 font-black tracking-widest uppercase text-sm mb-1">
-            RULE
-          </Text>
-          <Text className="text-white font-black text-2xl text-center leading-8">
-            {currentCard?.rule || "Drink!"}
-          </Text>
-        </View>
-
-        {isHost && (
-          <TouchableOpacity
-            onPress={() => sendGameAction("draw_card")}
-            className="mt-6 bg-white/10 border border-white/20 px-8 py-3 rounded-full flex-row items-center active:bg-white/20"
-          >
-            <Text className="text-white font-bold mr-2">Draw Next Card</Text>
-            <MaterialCommunityIcons
-              name="arrow-right"
-              color="white"
-              size={16}
-            />
-          </TouchableOpacity>
-        )}
-      </View>
-    );
-  };
-
   const renderGame = () => (
     <View className="flex-1">
       <View className="relative px-4 py-3 border-b border-white/[0.08] flex-row justify-between items-center bg-white/[0.02]">
@@ -653,7 +605,6 @@ export default function GameLobbyScreen() {
             {gameLabel || "Game Session"}
           </Text>
         </View>
-
         <TouchableOpacity
           onPressIn={() => leaveGame()}
           className="flex-row items-center bg-white/[0.05] py-2 px-3 rounded-lg z-10"
@@ -661,16 +612,14 @@ export default function GameLobbyScreen() {
           <Ionicons name="arrow-back" size={16} color="white" />
           <Text className="text-white font-bold ml-2 text-xs">EXIT</Text>
         </TouchableOpacity>
-
         <View className="bg-orange-500/20 px-3 py-1 rounded-full border border-orange-500/30 z-10">
           <Text className="text-orange-500 text-[10px] font-black tracking-widest">
             LIVE
           </Text>
         </View>
       </View>
-
-      <View className="flex-[1.5] bg-white/[0.02] border-b border-white/[0.08]">
-        {gameType === "kings-cup" && renderKingsCupBoard()}
+      <View className="flex-1 bg-white/[0.02] border-b border-white/[0.08]">
+        {gameType === "kings-cup" && <RenderKingsCupBoard />}
         {gameType === "burn-book" && <RenderBurnBookBoard />}
         {gameType === "mafia" && <RenderMafiaBoard />}
         {!["kings-cup", "burn-book", "mafia"].includes(gameType) && (
@@ -689,7 +638,6 @@ export default function GameLobbyScreen() {
           <ActivityIndicator size="large" color="#EA580C" />
         </View>
       )}
-
       {stage === "lobby" && renderLobby()}
       {stage === "waiting" && renderWaitingRoom()}
       {stage === "game" && renderGame()}
