@@ -805,7 +805,8 @@ class ApiService {
     Array<{
       sessionId: string;
       gameType: string;
-      host: string;
+      hostId: string;
+      hostUsername: string;
       players: number;
     }>
   > {

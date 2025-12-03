@@ -5,7 +5,6 @@ import InfoTooltip from "@/components/infoTooltip";
 import QrSessionManager from "@/components/qrCodeManager";
 import ThisWeekGadget from "@/components/thisWeekGadget";
 import { useApp } from "@/providers/AppProvider";
-import { useAnalytics } from "@/utils/analytics";
 import { getCoefInfo } from "@/utils/levels";
 import { useAuth } from "@clerk/clerk-expo";
 import {

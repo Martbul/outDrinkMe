@@ -1,17 +1,25 @@
 import { useDrunkGame } from "@/providers/DrunkGameProvider";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
-import { ScrollView, Text, TouchableOpacity, View, Image, ActivityIndicator } from "react-native";
+import {
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+  Image,
+  ActivityIndicator,
+} from "react-native";
 import { useApp } from "@/providers/AppProvider";
 
 export default function RenderMafiaBoard() {
-  const { isHost, gameState, leaveGame, sendGameAction } =
-    useDrunkGame();
+  const { isHost, gameState, leaveGame, sendGameAction } = useDrunkGame();
   const { userData } = useApp();
+
+  const [persistedRole, setPersistedRole] = useState("UNKNOWN");
 
   const state = gameState as any;
   const phase = state?.phase || "LOBBY";
-  const myRole = state?.myRole || "UNKNOWN";
+  const myRole = persistedRole; 
   const message = state?.message || "";
   const timeLeft = state?.timeLeft || 0;
   const alivePlayers = state?.alivePlayers || [];
@@ -31,6 +39,12 @@ export default function RenderMafiaBoard() {
     );
     return () => clearInterval(interval);
   }, [timeLeft, phase]);
+
+   useEffect(() => {
+     if (state?.myRole && state.myRole !== "UNKNOWN") {
+       setPersistedRole(state.myRole);
+     }
+   }, [state?.myRole]);
 
   // Role Reveal Color
   const roleColor = myRole === "MAFIA" ? "#ef4444" : "#ccc";
@@ -97,7 +111,7 @@ export default function RenderMafiaBoard() {
       {/* PHASE HEADER */}
       <View className="items-center mb-6 px-6">
         <Text className="text-orange-500 font-black tracking-[4px] uppercase text-[14px] mb-2">
-         {phase}
+          {phase}
         </Text>
         <Text className="text-white font-black text-2xl text-center leading-8">
           {message}
@@ -206,13 +220,13 @@ export default function RenderMafiaBoard() {
                     </View>
                   )}
 
-                  {isMe && (
-                    <View className="absolute bottom-1 bg-white/10 px-2 py-0.5 rounded-full">
+                  {/* {isMe && (
+                    <View className="absolute bottom-1/2 bg-white/10 px-2 py-0.5 rounded-full">
                       <Text className="text-[8px] text-white/50 font-bold uppercase">
                         YOU
                       </Text>
                     </View>
-                  )}
+                  )} */}
                 </TouchableOpacity>
               );
             })}

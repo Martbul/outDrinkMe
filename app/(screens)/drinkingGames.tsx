@@ -1,28 +1,27 @@
-import React, { useState, useEffect } from "react";
+import RenderBurnBookBoard from "@/components/drink_games/burn_book";
+import RenderKingsCupBoard from "@/components/drink_games/kings_cup";
+import RenderMafiaBoard from "@/components/drink_games/mafia";
+import NestedScreenHeader from "@/components/nestedScreenHeader";
+import { useApp } from "@/providers/AppProvider";
+import { KingsCupState, useDrunkGame } from "@/providers/DrunkGameProvider";
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  ActivityIndicator,
-  RefreshControl,
-  Modal,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import {
-  MaterialCommunityIcons,
   FontAwesome5,
   Ionicons,
+  MaterialCommunityIcons,
   MaterialIcons,
 } from "@expo/vector-icons";
-import NestedScreenHeader from "@/components/nestedScreenHeader";
-import { useDrunkGame, KingsCupState } from "@/providers/DrunkGameProvider";
-import RenderMafiaBoard from "@/components/drink_games/mafia";
-import RenderBurnBookBoard from "@/components/drink_games/burn_book";
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import QRCode from "react-native-qrcode-svg";
-import { useApp } from "@/providers/AppProvider";
-import RenderKingsCupBoard from "@/components/drink_games/kings_cup";
-
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const MIN_PLAYER_COUNTS: Record<string, number> = {
   Mafia: 4,
@@ -176,7 +175,6 @@ export default function GameLobbyScreen() {
       : { icon: "gamepad-variant", type: "MCI" };
   };
 
-
   const renderLobby = () => (
     <View style={{ paddingBottom: insets.bottom + 20 }}>
       <NestedScreenHeader
@@ -272,41 +270,54 @@ export default function GameLobbyScreen() {
                 <TouchableOpacity
                   key={game.sessionId}
                   onPress={() =>
-                    joinGame(game.sessionId, game.gameType, game.host)
+                    joinGame(game.sessionId, game.gameType, game.hostId)
                   }
-                  className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-4 flex-row items-center active:bg-white/[0.08] mb-2"
+                  // Added active opacity and simplified border/bg
+                  className="bg-white/[0.05] border border-white/10 rounded-2xl p-4 mb-3 flex-row items-center"
+                  style={{ gap: 12 }} // Consistent spacing between elements
                 >
-                  <View className="w-10 h-10 rounded-full bg-orange-600/20 items-center justify-center mr-3 border border-[#ff8c00]">
+                  {/* Icon Section */}
+                  <View className="w-12 h-12 rounded-xl bg-orange-500/10 items-center justify-center border border-orange-500/20">
                     {type === "MCI" ? (
                       <MaterialCommunityIcons
                         name={icon as any}
-                        size={20}
+                        size={22}
                         color="#ff8c00"
                       />
                     ) : (
                       <FontAwesome5
                         name={icon as any}
-                        size={16}
+                        size={18}
                         color="#ff8c00"
                       />
                     )}
                   </View>
-                  <View className="flex-1">
-                    <Text className="text-white font-bold text-base capitalize">
+
+                  {/* Text Section - Fixed Spacing & Labels */}
+                  <View className="flex-1 justify-center">
+                    {/* Title: Cleaned up to just show the game name */}
+                    <Text className="text-white font-bold text-base capitalize tracking-wide">
                       {game.gameType.replace("-", " ")}
                     </Text>
-                    <Text className="text-white/40 text-xs">
-                      Host: {game.host}
+
+                    {/* Subtitle: "Hosted by" looks much cleaner than "Host username:" */}
+                    <Text className="text-neutral-400 text-xs mt-0.5">
+                      Hosted by{" "}
+                      <Text className="text-orange-400 font-medium">
+                        {game.hostUsername}
+                      </Text>
                     </Text>
                   </View>
-                  <View className="flex-row items-center bg-black/40 px-3 py-1.5 rounded-lg border border-white/[0.05]">
+
+                  {/* Player Count Pill - Fixed alignment */}
+                  <View className="flex-row items-center bg-black/40 px-3 py-1.5 rounded-full border border-white/10">
                     <Ionicons
                       name="people"
-                      size={14}
-                      color="#888"
-                      style={{ marginRight: 4 }}
+                      size={12}
+                      color="#9ca3af"
+                      style={{ marginRight: 6 }}
                     />
-                    <Text className="text-white/70 font-bold text-xs">
+                    <Text className="text-gray-300 font-bold text-xs">
                       {game.players}
                     </Text>
                   </View>
@@ -632,7 +643,10 @@ export default function GameLobbyScreen() {
   );
 
   return (
-    <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
+    <View
+      className="flex-1 bg-black"
+      style={{ paddingTop: insets.top, paddingBottom: insets.bottom + 5 }}
+    >
       {loading && stage === "lobby" && (
         <View className="absolute inset-0 bg-black/80 z-50 justify-center items-center">
           <ActivityIndicator size="large" color="#EA580C" />

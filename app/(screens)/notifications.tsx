@@ -10,6 +10,8 @@ import {
   Linking,
   Platform,
   Alert,
+  SafeAreaView, // 1. Changed import
+  StatusBar,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import * as Notifications from "expo-notifications";
@@ -29,29 +31,17 @@ export default function NotificationsScreen() {
   } = useApp();
 
   const [refreshing, setRefreshing] = useState(false);
-
-  // 1. Default to "unread" as requested
   const [filter, setFilter] = useState<"all" | "unread">("unread");
-
-  // --- Permission State ---
   const [hasPermission, setHasPermission] = useState(true);
   const appState = useRef(AppState.currentState);
 
-  // --- NEW: Mark as Read on Exit Logic ---
   useEffect(() => {
-    // A. When entering: Refresh to get the latest state
     refreshNotifications();
-
-    // B. When leaving (Unmounting): Mark everything as read
     return () => {
-      // We use a clean function here.
-      // Even though the component is unmounting, the Context provider
-      // (where markAllNotificationsRead lives) stays alive, so the API call works.
       markAllNotificationsRead();
     };
-  }, []); // Empty array ensures this runs only on Mount and Unmount
+  }, []);
 
-  // --- Check Permissions Logic ---
   const checkPermissions = async () => {
     const { status } = await Notifications.getPermissionsAsync();
     setHasPermission(status === "granted");
@@ -59,27 +49,22 @@ export default function NotificationsScreen() {
 
   const handleEnablePermissions = async () => {
     const { status } = await Notifications.requestPermissionsAsync();
-
     if (status === "granted") {
       setHasPermission(true);
       const token = await registerForPushNotificationsAsync();
-      if (token) {
-        registerPushDevice(token);
-      }
+      if (token) registerPushDevice(token);
     } else {
       Alert.alert(
         "Notifications Disabled",
-        "To receive updates, you need to enable notifications in your device settings.",
+        "Enable notifications in settings?",
         [
           { text: "Cancel", style: "cancel" },
           {
             text: "Open Settings",
             onPress: () => {
-              if (Platform.OS === "ios") {
-                Linking.openURL("app-settings:");
-              } else {
-                Linking.openSettings();
-              }
+              Platform.OS === "ios"
+                ? Linking.openURL("app-settings:")
+                : Linking.openSettings();
             },
           },
         ]
@@ -98,9 +83,7 @@ export default function NotificationsScreen() {
       }
       appState.current = nextAppState;
     });
-    return () => {
-      subscription.remove();
-    };
+    return () => subscription.remove();
   }, []);
 
   const onRefresh = async () => {
@@ -110,11 +93,11 @@ export default function NotificationsScreen() {
     setRefreshing(false);
   };
 
+  // Helper functions remain the same...
   const getTimeAgo = (dateString: string) => {
     const now = new Date();
     const date = new Date(dateString);
     const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
     if (seconds < 60) return "just now";
     const minutes = Math.floor(seconds / 60);
     if (minutes < 60) return `${minutes}m ago`;
@@ -144,7 +127,7 @@ export default function NotificationsScreen() {
       case "level_up":
         return <Feather name="star" size={20} color="#EA580C" />;
       case "mentioned_in_post":
-      case "friend_posted_mix": // Added your new type icon
+      case "friend_posted_mix":
         return <Ionicons name="images" size={20} color="#EA580C" />;
       case "weekly_recap":
         return <Ionicons name="calendar" size={20} color="#EA580C" />;
@@ -155,15 +138,14 @@ export default function NotificationsScreen() {
 
   const PermissionBanner = () => {
     if (hasPermission) return null;
-
     return (
-      <View className="mb-4 bg-orange-600/10 border border-orange-600/30 rounded-2xl p-4 flex-row items-center justify-between">
+      <View className="mb-4 bg-orange-600/10 border border-orange-600/30 rounded-2xl p-4 flex-row items-center justify-between mx-4 mt-2">
         <View className="flex-1 mr-2">
           <Text className="text-white font-bold text-sm">
-            Notifications are disabled
+            Notifications disabled
           </Text>
           <Text className="text-white/60 text-xs mt-0.5">
-            Enable them to get streak updates & friend activity.
+            Enable for streak updates.
           </Text>
         </View>
         <TouchableOpacity
@@ -176,54 +158,60 @@ export default function NotificationsScreen() {
     );
   };
 
+  // 2. Fixed Notification Tabs
   const notificationListHeader = () => {
     return (
-      <View className="bg-white/[0.03] rounded-2xl p-1.5 flex-row border border-white/[0.08]">
-        <TouchableOpacity
-          onPress={() => setFilter("unread")}
-          className={`flex-1 py-3 rounded-xl items-center ${
-            filter === "unread" ? "bg-orange-600" : ""
-          }`}
-        >
-          <View className="flex-row items-center">
-            <Text
-              className={`text-sm font-black tracking-wider ${
-                filter === "unread" ? "text-black" : "text-white/30"
-              }`}
-            >
-              UNREAD
-            </Text>
-            {unreadNotificationCount > 0 && (
-              <View
-                className={`ml-2 px-2 py-0.5 rounded-full ${
-                  filter === "unread" ? "bg-black/20" : "bg-orange-600/30"
-                }`}
-              >
-                <Text
-                  className={`text-xs font-black ${
-                    filter === "unread" ? "text-black" : "text-orange-600"
-                  }`}
-                >
-                  {unreadNotificationCount}
-                </Text>
-              </View>
-            )}
-          </View>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => setFilter("all")}
-          className={`flex-1 py-3 rounded-xl items-center ${
-            filter === "all" ? "bg-orange-600" : ""
-          }`}
-        >
-          <Text
-            className={`text-sm font-black tracking-wider ${
-              filter === "all" ? "text-black" : "text-white/30"
+      <View className="bg-black px-4 pb-4 pt-2">
+        <View className="bg-white/[0.03] rounded-2xl p-1.5 flex-row border border-white/[0.08] w-full">
+          {/* UNREAD TAB */}
+          <TouchableOpacity
+            onPress={() => setFilter("unread")}
+            className={`flex-1 py-3 rounded-xl items-center justify-center ${
+              filter === "unread" ? "bg-orange-600" : ""
             }`}
           >
-            ALL
-          </Text>
-        </TouchableOpacity>
+            <View className="flex-row items-center justify-center">
+              <Text
+                className={`text-sm font-black tracking-wider ${
+                  filter === "unread" ? "text-black" : "text-white/30"
+                }`}
+              >
+                UNREAD
+              </Text>
+              {unreadNotificationCount > 0 && (
+                <View
+                  className={`ml-2 px-2 py-0.5 rounded-full ${
+                    filter === "unread" ? "bg-black/20" : "bg-orange-600/30"
+                  }`}
+                >
+                  <Text
+                    className={`text-xs font-black ${
+                      filter === "unread" ? "text-black" : "text-orange-600"
+                    }`}
+                  >
+                    {unreadNotificationCount}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
+
+          {/* ALL TAB */}
+          <TouchableOpacity
+            onPress={() => setFilter("all")}
+            className={`flex-1 py-3 rounded-xl items-center justify-center ${
+              filter === "all" ? "bg-orange-600" : ""
+            }`}
+          >
+            <Text
+              className={`text-sm font-black tracking-wider ${
+                filter === "all" ? "text-black" : "text-white/30"
+              }`}
+            >
+              ALL
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   };
@@ -237,7 +225,7 @@ export default function NotificationsScreen() {
       <TouchableOpacity
         key={notification.id}
         onPress={() => markNotificationRead(notification.id)}
-        className={`mb-3 rounded-2xl border overflow-hidden ${
+        className={`mb-3 mx-4 rounded-2xl border overflow-hidden ${
           isUnread
             ? "bg-orange-600/10 border-orange-600/30"
             : "bg-white/[0.03] border-white/[0.08]"
@@ -265,20 +253,15 @@ export default function NotificationsScreen() {
               </View>
             )}
           </View>
-
           <View className="flex-1">
             <Text
-              className={`text-base font-bold mb-1 ${
-                isUnread ? "text-orange-600" : "text-white"
-              }`}
+              className={`text-base font-bold mb-1 ${isUnread ? "text-orange-600" : "text-white"}`}
             >
               {notification.title}
             </Text>
-
             <Text className="text-white/70 text-sm font-semibold mb-2">
               {notification.body}
             </Text>
-
             <Text className="text-white/40 text-xs font-semibold">
               {getTimeAgo(notification.created_at)}
             </Text>
@@ -293,43 +276,47 @@ export default function NotificationsScreen() {
       ? notifications.filter((n) => !n.read_at)
       : notifications;
 
+  // 3. Main Return Fixes
   return (
-    <View className="flex-1 bg-black" style={{ paddingTop: 10 }}>
-      {unreadNotificationCount > 0 ? (
-        <NestedScreenHeader
-          heading="Notifications"
-          secondaryHeading="UPDATES"
-          buttonHeading="CLEAR"
-          buttonAction={markAllNotificationsRead}
-        />
-      ) : (
-        <NestedScreenHeader
-          heading="Notifications"
-          secondaryHeading="UPDATES"
-        />
-      )}
+    // Changed View to SafeAreaView to fix Notch/Header cutting off
+    <SafeAreaView
+      className="flex-1 bg-black"
+      style={{
+        paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
+      }}
+    >
+      <NestedScreenHeader
+        heading="Notifications"
+        secondaryHeading="UPDATES"
+        buttonHeading={unreadNotificationCount > 0 ? "CLEAR" : undefined}
+        buttonAction={
+          unreadNotificationCount > 0 ? markAllNotificationsRead : undefined
+        }
+      />
 
       <ScrollView
-        className="flex-1 px-4"
-        contentContainerStyle={{ paddingTop: 16, paddingBottom: 100 }}
+        className="flex-1"
+        contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
-        stickyHeaderIndices={[0]}
+        stickyHeaderIndices={[0]} // This keeps the tabs stuck to top
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor="#EA580C"
             colors={["#EA580C"]}
+            progressViewOffset={40} // Helps refresh spinner appear correctly below headers
           />
         }
       >
-        <View className="bg-black pb-4">
+        {/* Container for Sticky Header Elements */}
+        <View>
           <PermissionBanner />
           {notificationListHeader()}
         </View>
 
         {filteredNotifications.length === 0 ? (
-          <View className="bg-white/[0.03] rounded-2xl p-8 border border-white/[0.08] items-center">
+          <View className="mx-4 bg-white/[0.03] rounded-2xl p-8 border border-white/[0.08] items-center mt-4">
             <View className="w-24 h-24 rounded-2xl bg-orange-600/20 items-center justify-center mb-4">
               <Ionicons
                 name="notifications-outline"
@@ -347,9 +334,12 @@ export default function NotificationsScreen() {
             </Text>
           </View>
         ) : (
-          filteredNotifications.map(renderNotification)
+          // Add top margin to first item so it doesn't touch the sticky header immediately
+          <View className="mt-2">
+            {filteredNotifications.map(renderNotification)}
+          </View>
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }

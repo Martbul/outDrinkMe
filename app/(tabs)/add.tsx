@@ -586,39 +586,48 @@ const handleImageSelection = async (source: "camera" | "library") => {
           </View>
         </View>
 
-        <View className="mb-6 mx-4">
+        <View className="mb-6 w-full px-4 items-center">
           <TouchableOpacity
             onPressIn={startHold}
             onPressOut={cancelHold}
             disabled={isSubmitting}
             activeOpacity={0.9}
-            className="bg-white/[0.05] rounded-3xl border-2 border-white/[0.08] overflow-hidden relative items-center justify-center"
-            style={{ height: 170 }}
+            className="w-full max-w-md bg-white/[0.05] rounded-3xl border-2 border-white/[0.08] overflow-hidden relative"
+            // Use minHeight instead of fixed height to prevent cutoff on accessibility font scaling
+            style={{ minHeight: 170 }}
           >
-            <View className="flex-1 items-center justify-center">
-              <Text className="text-black text-3xl font-black mb-2">
-                <View className="z-10 items-center">
-                  <Ionicons
-                    color={isHolding ? "#000" : "#EA580C"}
-                    name={isHolding ? "beer" : "finger-print"}
-                    size={48}
-                    style={{ marginBottom: 16 }}
-                  />
-                  <Text
-                    className={`text-2xl font-black tracking-widest ${
-                      holdProgress > 50 ? "text-black" : "text-white"
-                    }`}
-                  >
-                    {isHolding ? "HOLDING..." : "HOLD TO LOG"}
-                  </Text>
-                </View>
+            {/* Content Container - Use padding (py) instead of fixed height */}
+            <View className="flex-1 items-center justify-center py-8 z-20">
+              {/* Icon */}
+              <Ionicons
+                color={isHolding ? "#000" : "#EA580C"}
+                name={isHolding ? "beer" : "finger-print"}
+                size={48}
+                style={{ marginBottom: 16 }}
+              />
+
+              {/* Main Text */}
+              <Text
+                className={`text-2xl font-black tracking-widest text-center mb-2 ${
+                  holdProgress > 50 ? "text-black" : "text-white"
+                }`}
+              >
+                {isHolding ? "HOLDING..." : "HOLD TO LOG"}
               </Text>
-              <Text className="text-white/30 text-xs text-center font-semibold">
+
+              {/* Subtitle */}
+              <Text
+                className={`text-xs text-center font-semibold ${
+                  holdProgress > 50 ? "text-black/50" : "text-white/30"
+                }`}
+              >
                 Keep pressing to confirm
               </Text>
             </View>
+
+            {/* Progress Bar Background */}
             <View
-              className="absolute bottom-0 left-0 right-0 bg-orange-600"
+              className="absolute bottom-0 left-0 right-0 bg-orange-600 z-10"
               style={{ height: `${holdProgress}%` }}
             />
           </TouchableOpacity>
@@ -632,13 +641,18 @@ const handleImageSelection = async (source: "camera" | "library") => {
       </ScrollView>
     );
   };
+
   const renderDetailsView = () => (
     <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
-      <View className="items-center mb-8 mt-4">
-        <Text className="text-orange-500 text-sm font-black tracking-widest mb-2">
+     
+      <View className="w-full px-6 items-center mb-8 mt-4">
+        {/* Subtitle: Added text-center to prevent left-align if it wraps on tiny screens */}
+        <Text className="text-orange-500 text-sm font-black tracking-widest mb-2 text-center uppercase">
           STREAK SECURED
         </Text>
-        <Text className="text-white text-3xl font-black text-center">
+
+        {/* Title: Added leading-tight to fix spacing if it wraps to 2 lines */}
+        <Text className="text-white text-3xl font-black text-center leading-tight">
           Make it memorable
         </Text>
       </View>
