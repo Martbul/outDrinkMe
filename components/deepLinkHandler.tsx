@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import * as Linking from "expo-linking";
 import { useDrunkGame } from "@/providers/DrunkGameProvider";
 
@@ -8,7 +8,7 @@ export default function DeepLinkHandler() {
   useEffect(() => {
     const handleUrl = (url: string | null) => {
       if (!url) return;
-
+console.log(url)
       // Parse the URL: outdrinkme://game?id=XYZ
       const parsed = Linking.parse(url);
 
@@ -38,5 +38,5 @@ export default function DeepLinkHandler() {
     };
   }, [joinViaDeepLink, stage]);
 
-  return null; // This component renders nothing
+  return null; 
 }

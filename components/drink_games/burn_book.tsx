@@ -13,7 +13,7 @@ import {
 } from "react-native";
 
 export default function RenderBurnBookBoard() {
-  const { stage, isHost, gameState, sendGameAction, leaveGame } =
+  const { stage, isHost, gameState, sendGameAction, startGame, backToWaiting } =
     useDrunkGame();
 
   const [inputMsg, setInputMsg] = useState("");
@@ -32,33 +32,53 @@ export default function RenderBurnBookBoard() {
   const phase = state?.phase || "collecting";
 
   // Common State
-  const players = state?.players || [];
+  // FIX: Sort the players so they don't shuffle when the server sends an update
+  const rawPlayers = state?.players || [];
+  const players = [...rawPlayers].sort((a: any, b: any) => {
+    const nameA = a.username || a.name || "";
+    const nameB = b.username || b.name || "";
+    return nameA.localeCompare(nameB);
+  });
+
   const collectedCount = state?.collectedCount || 0;
 
   // Voting Specific State
   const currentQuestionText = state?.questionText || null;
   const currentNumber = state?.currentNumber || 1;
   const totalQuestions = state?.totalQuestions || 1;
+  const [timeLeft, setTimeLeft] = useState(30);
 
   // Results Specific State
   const roundResults = state?.roundResults || { winnerId: "", results: [] };
 
   const MAX_QUESTIONS = 3;
 
-  const [timeLeft, setTimeLeft] = useState(30);
-
+  // 2. Reset timer whenever the server indicates a new question number
   useEffect(() => {
     setTimeLeft(30);
-  }, [currentNumber]);
+  }, [currentNumber, phase]); // Added phase dependency to reset if we re-enter voting
 
+  // 3. Countdown logic
   useEffect(() => {
     if (phase !== "voting") return;
+
+    // If the server says we are done, stop counting locally
+    if (state?.hasVoted && timeLeft > 0) {
+      // Optional: You could keep counting or pause.
+      // Usually, it's better to keep counting to show how much time
+      // OTHER players have left, or just let it run.
+    }
+
     if (timeLeft <= 0) return;
-    const intervalId = setInterval(() => setTimeLeft((t) => t - 1), 1000);
+
+    const intervalId = setInterval(() => {
+      setTimeLeft((t) => Math.max(0, t - 1));
+    }, 1000);
+
     return () => clearInterval(intervalId);
   }, [timeLeft, phase]);
 
-  const timerColor = timeLeft <= 10 ? "#ef4444" : "#f97316";
+  const timerColor = timeLeft <= 10 ? "#ef4444" : "#EA580C";
 
   // --- ACTIONS ---
   const handleSubmitQuestion = () => {
@@ -177,7 +197,6 @@ export default function RenderBurnBookBoard() {
         </KeyboardAvoidingView>
       )}
 
-      {/* --- PHASE 2: VOTING (AUTO TIMER) --- */}
       {phase === "voting" && (
         <View className="flex-1">
           {/* Phase Header */}
@@ -283,7 +302,7 @@ export default function RenderBurnBookBoard() {
                   style={{ marginRight: 8 }}
                 />
                 <Text className="text-white/50 text-sm">
-                  Voted! Waiting for the others...
+                  Waiting for others to vote...
                 </Text>
               </View>
             ) : (
@@ -295,7 +314,7 @@ export default function RenderBurnBookBoard() {
         </View>
       )}
 
-      {/* --- PHASE 3: RESULTS (UPDATED) --- */}
+      {/* --- PHASE 3: RESULTS (UPDATED FOR TIES) --- */}
       {phase === "results" && (
         <View className="flex-1 w-full relative">
           <ScrollView
@@ -303,14 +322,13 @@ export default function RenderBurnBookBoard() {
               flexGrow: 1,
               justifyContent: "center",
               alignItems: "center",
-              paddingBottom: 100, // Space for the bottom button
+              paddingBottom: 100,
               paddingHorizontal: 20,
             }}
             showsVerticalScrollIndicator={false}
           >
             {/* QUESTION QUOTE CARD */}
             <View className="w-full bg-orange-500/5 border border-orange-500/20 p-8 rounded-3xl mb-8 relative overflow-hidden mt-6">
-              {/* Decorative Icon (Background) */}
               <MaterialCommunityIcons
                 name="format-quote-open"
                 size={80}
@@ -323,7 +341,6 @@ export default function RenderBurnBookBoard() {
                   transform: [{ rotate: "10deg" }],
                 }}
               />
-
               <MaterialCommunityIcons
                 name="format-quote-close"
                 size={80}
@@ -336,35 +353,41 @@ export default function RenderBurnBookBoard() {
                   transform: [{ rotate: "10deg" }],
                 }}
               />
-
-              {/* Main Text */}
               <Text className="text-white font-black text-2xl text-center leading-9 italic tracking-wide">
                 "{currentQuestionText}"
               </Text>
             </View>
 
             {(() => {
-              // 1. Extract Data from Server Response
+              // 1. Extract Data
               const resultList = roundResults.results || [];
-              const winnerId = roundResults.winnerId;
 
-              // 2. Find Winner Details
-              const winnerPlayer = players.find((p: any) => p.id === winnerId);
-              // Fallback if winner left game but exists in results
-              const winnerName =
-                winnerPlayer?.username ||
-                winnerPlayer?.name ||
-                (winnerId ? "Unknown" : "Nobody");
-
-              // Get votes specifically for the winner
-              const winnerData = resultList.find(
-                (r: any) => r.userId === winnerId
-              );
-              const winnerVotes = winnerData?.votes || 0;
-
-              // 3. Determine Max Votes for Progress Bars
-              // Since server sorts descending, index 0 is max
+              // 2. Determine Max Votes
               const maxVotes = resultList.length > 0 ? resultList[0].votes : 0;
+
+              // 3. Find ALL winners (handle ties)
+              const tiedWinners = resultList.filter(
+                (r: any) => r.votes === maxVotes && r.votes > 0
+              );
+
+              // If nobody voted (maxVotes 0), handle gracefully
+              const hasVotes = maxVotes > 0;
+
+              // Map winners to player data
+              const winningPlayers = tiedWinners.map((w: any) => {
+                const p = players.find((player: any) => player.id === w.userId);
+                return {
+                  id: w.userId,
+                  votes: w.votes,
+                  name: p?.username || p?.name || "Unknown",
+                  initial: (p?.username || p?.name || "?")[0]?.toUpperCase(),
+                };
+              });
+
+              // Create display string (e.g. "Alice & Bob")
+              const winnerNamesString = winningPlayers
+                .map((w: any) => w.name)
+                .join(" & ");
 
               return (
                 <View className="w-full items-center">
@@ -372,46 +395,65 @@ export default function RenderBurnBookBoard() {
                     THE GROUP VOTED
                   </Text>
 
-                  {/* WINNER HERO */}
-                  <View className="relative mb-2">
-                    <View className="w-36 h-36 rounded-full bg-gradient-to-b from-orange-500 to-red-600 items-center justify-center border-4 border-white/10 shadow-[0_0_40px_rgba(234,88,12,0.6)]">
-                      <Text className="text-white font-black text-6xl">
-                        {winnerName[0]?.toUpperCase()}
-                      </Text>
-                    </View>
-                    <View className="absolute -bottom-3 bg-white px-4 py-1 rounded-full shadow-lg">
-                      <Text className="text-black font-black text-xs tracking-widest">
-                        VICTIM
-                      </Text>
-                    </View>
+                  {/* --- WINNER HERO SECTION (Handles Single or Multiple) --- */}
+                  <View className="flex-row flex-wrap justify-center gap-4 mb-2">
+                    {hasVotes ? (
+                      winningPlayers.map((winner: any) => (
+                        <View key={winner.id} className="items-center relative">
+                          <View className="w-28 h-28 rounded-full bg-gradient-to-b from-orange-500 to-red-600 items-center justify-center border-4 border-white/10 shadow-[0_0_40px_rgba(234,88,12,0.6)]">
+                            <Text className="text-white font-black text-5xl">
+                              {winner.initial}
+                            </Text>
+                          </View>
+                          {/* Badge for each winner */}
+                          <View className="absolute -bottom-3 bg-white px-3 py-1 rounded-full shadow-lg z-10">
+                            <Text className="text-black font-black text-[10px] tracking-widest">
+                              VICTIM
+                            </Text>
+                          </View>
+                        </View>
+                      ))
+                    ) : (
+                      <View className="w-28 h-28 rounded-full bg-gray-700 items-center justify-center border-4 border-white/10">
+                        <MaterialCommunityIcons
+                          name="ghost"
+                          size={40}
+                          color="white"
+                        />
+                      </View>
+                    )}
                   </View>
 
-                  <Text className="text-white font-black text-4xl mt-4 text-center">
-                    {winnerName}
-                  </Text>
-                  <Text className="text-white/50 text-sm mb-8">
-                    received {winnerVotes} vote{winnerVotes !== 1 && "s"}
+                  <Text className="text-white font-black text-3xl mt-6 text-center px-4 leading-tight">
+                    {hasVotes ? winnerNamesString : "Nobody"}
                   </Text>
 
-                  <View className="w-full bg-orange-500/20 border border-orange-500/40 p-4 rounded-2xl items-center flex-row justify-center gap-3 mb-8">
-                    <MaterialCommunityIcons
-                      name="glass-mug-variant"
-                      size={28}
-                      color="#EA580C"
-                    />
-                    <Text className="text-orange-600 font-black text-xl uppercase tracking-widest">
-                      Drink!
-                    </Text>
-                  </View>
+                  <Text className="text-white/50 text-sm mb-8 mt-1">
+                    {hasVotes
+                      ? `received ${maxVotes} vote${maxVotes !== 1 ? "s" : ""}`
+                      : "No votes cast"}
+                  </Text>
 
-                  {/* VOTE BREAKDOWN LIST */}
+                  {hasVotes && (
+                    <View className="w-full bg-orange-500/20 border border-orange-500/40 p-4 rounded-2xl items-center flex-row justify-center gap-3 mb-8">
+                      <MaterialCommunityIcons
+                        name="glass-mug-variant"
+                        size={28}
+                        color="#EA580C"
+                      />
+                      <Text className="text-orange-600 font-black text-xl uppercase tracking-widest">
+                        Drink!
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* --- VOTE BREAKDOWN LIST --- */}
                   <View className="w-full bg-white/[0.03] border border-white/[0.08] rounded-2xl p-4">
                     <Text className="text-white/40 text-[10px] font-bold uppercase tracking-widest mb-4 border-b border-white/[0.05] pb-2">
                       Vote Breakdown
                     </Text>
 
                     {resultList.map((item: any) => {
-                      // Find player info for this result item
                       const playerInfo = players.find(
                         (p: any) => p.id === item.userId
                       );
@@ -421,7 +463,9 @@ export default function RenderBurnBookBoard() {
                       const count = item.votes;
                       const percentage =
                         maxVotes > 0 ? (count / maxVotes) * 100 : 0;
-                      const isWinner = item.userId === winnerId;
+
+                      // Check if this user is ONE of the winners
+                      const isWinner = count === maxVotes && count > 0;
 
                       return (
                         <View key={item.userId} className="mb-4">
@@ -486,17 +530,52 @@ export default function RenderBurnBookBoard() {
 
       {/* --- PHASE 4: GAME OVER --- */}
       {phase === "game_over" && (
-        <View className="flex-1 justify-center items-center">
-          <MaterialCommunityIcons name="fire-off" size={60} color="#666" />
-          <Text className="text-white font-black text-2xl mt-4">
+        <View className="flex-1 justify-center items-center px-6">
+          {/* 1. Icon with a glow effect background */}
+          <View className="w-24 h-24 bg-red-500/10 rounded-full items-center justify-center mb-6 border border-red-500/20">
+            <MaterialCommunityIcons name="fire-off" size={48} color="#ff8c00" />
+          </View>
+
+          {/* 2. Text Content */}
+          <Text className="text-white font-black text-3xl text-center mb-2">
             The Book is Closed
           </Text>
-          <TouchableOpacity
-            onPress={() => leaveGame()}
-            className="mt-8 bg-white/10 px-6 py-3 rounded-full"
-          >
-            <Text className="text-white font-bold">Back to Lobby</Text>
-          </TouchableOpacity>
+          <Text className="text-white/40 text-center text-base mb-12 px-4">
+            This session has ended. Would you like to start a new journey or
+            return to the lobby?
+          </Text>
+
+          <View className="w-full gap-4">
+            {/* <TouchableOpacity
+              onPress={() => startGame()}
+              className="w-full bg-orange-600 py-4 rounded-xl flex-row items-center justify-center shadow-lg shadow-orange-500/20"
+            >
+              <MaterialCommunityIcons
+                name="plus-circle"
+                size={20}
+                color="white"
+                style={{ marginRight: 8 }}
+              />
+              <Text className="text-white font-bold text-lg">
+                Start New Game
+              </Text>
+            </TouchableOpacity> */}
+
+            <TouchableOpacity
+              onPress={() => backToWaiting()}
+              className="w-full bg-orange-600 py-4 rounded-xl flex-row items-center justify-center shadow-lg shadow-orange-500/20"
+            >
+              <MaterialCommunityIcons
+                name="home-variant"
+                size={20}
+                color="white"
+                style={{ marginRight: 8 }}
+              />
+              <Text className="text-white font-bold text-lg">
+                Back to Lobby
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 

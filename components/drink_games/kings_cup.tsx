@@ -4,7 +4,6 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Dimensions,
   Image,
   KeyboardAvoidingView,
@@ -21,7 +20,7 @@ const { width, height } = Dimensions.get("window");
 const THEME_ORANGE = "#ff8c00";
 
 export default function RenderKingsCupBoard() {
-  const { gameState, sendGameAction } = useDrunkGame();
+  const { gameState, sendGameAction, backToWaiting } = useDrunkGame();
   const { userData } = useApp();
 
   // Modals
@@ -35,7 +34,10 @@ export default function RenderKingsCupBoard() {
   >(null);
 
   const state = gameState as KingsCupState;
+
+  // 1. Critical Check: Is it the current user's turn?
   const isMyTurn = userData?.clerkId === state?.currentPlayerTurnID;
+
   const currentCard = state?.currentCard;
   const cardsRemaining = state?.cardsRemaining ?? 52;
   const gameOver = state?.gameOver ?? false;
@@ -59,6 +61,7 @@ export default function RenderKingsCupBoard() {
   }, [currentCardSignature, handledCardSignature, currentCard]);
 
   useEffect(() => {
+    // 2. Only trigger modal logic if it is MY turn
     if (!gameStarted || !isMyTurn || !currentCard) return;
     if (handledCardSignature === currentCardSignature) return;
 
@@ -78,27 +81,28 @@ export default function RenderKingsCupBoard() {
   const currentTurnPlayer = gamePlayers.find(
     (p) => p.id === state?.currentPlayerTurnID
   );
+
+  // Reuse this boolean for consistency
   const isMyTurnForGame = userData?.clerkId === state?.currentPlayerTurnID;
 
   // Functions for buddy/rule actions
   const chooseBuddy = (buddyId: string) => {
+    if (!isMyTurnForGame) return;
+
     setHandledCardSignature(currentCardSignature);
     sendGameAction("choose_buddy", { chosen_buddie_id: buddyId });
     setBuddyModalVisible(false);
   };
 
   const setRule = () => {
-    if (newRuleInput.trim() === "") {
-      Alert.alert("Rule Empty", "Please enter a rule for the King's Cup!");
-      return;
-    }
+    if (!isMyTurnForGame) return;
+   
     setHandledCardSignature(currentCardSignature);
     sendGameAction("set_rule", { new_rule: newRuleInput });
     setRuleModalVisible(false);
     setNewRuleInput("");
   };
 
-  // --- RENDER LOGIC ---
 
   if (!gameStarted && !gameOver) {
     return (
@@ -127,6 +131,18 @@ export default function RenderKingsCupBoard() {
             {kingCupDrinker.username} drinks the King's Cup!
           </Text>
         )}
+        <TouchableOpacity
+          onPress={() => backToWaiting()}
+          className="w-full bg-orange-600 my-4 py-4 rounded-xl flex-row items-center justify-center shadow-lg shadow-orange-500/20"
+        >
+          <MaterialCommunityIcons
+            name="plus-circle"
+            size={20}
+            color="white"
+            style={{ marginRight: 8 }}
+          />
+          <Text className="text-white font-bold text-lg">Start new game</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -136,7 +152,8 @@ export default function RenderKingsCupBoard() {
     <Modal
       animationType="slide"
       transparent={true}
-      visible={buddyModalVisible}
+      // 4. FIX: Explicitly ensure modal is only visible if it is MY turn
+      visible={buddyModalVisible && isMyTurnForGame}
       onRequestClose={() => {}}
     >
       <View className="flex-1 bg-black/80 justify-end">
@@ -178,52 +195,70 @@ export default function RenderKingsCupBoard() {
   );
 
   // Modal for Rule Setting
-  const renderRuleSettingModal = () => (
-    <Modal
-      animationType="slide"
-      transparent={true}
-      visible={ruleModalVisible}
-      onRequestClose={() => {}}
-    >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1"
+  const renderRuleSettingModal = () => {
+    const isDisabled = newRuleInput.trim() === "";
+
+    return (
+      <Modal
+        animationType="slide"
+        transparent={true}
+        // 4. FIX: Explicitly ensure modal is only visible if it is MY turn
+        visible={ruleModalVisible && isMyTurnForGame}
+        onRequestClose={() => {}}
       >
-        <View className="flex-1 bg-black/80 justify-end">
-          <View className="bg-[#1a1a1a] rounded-t-3xl border-t border-white/10 p-6 h-[60%]">
-            <Text className="text-white font-black text-2xl mb-2 text-center">
-              Set a New Rule!
-            </Text>
-            <Text className="text-white/70 text-sm text-center mb-6">
-              Pour into the King's Cup! ({kingsInCup}/4 Kings)
-            </Text>
-            <TextInput
-              className="bg-white/10 rounded-xl p-4 text-white text-base mb-6 border border-white/20 min-h-[100px]"
-              placeholder="E.g., 'No pointing', 'Drink twice'"
-              placeholderTextColor="#999"
-              value={newRuleInput}
-              onChangeText={setNewRuleInput}
-              multiline
-              textAlignVertical="top"
-            />
-            <TouchableOpacity
-              onPress={setRule}
-              className="bg-orange-600 py-4 rounded-2xl items-center flex-row justify-center gap-2"
-            >
-              <Text className="text-black text-lg font-black tracking-widest">
-                SET RULE
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          className="flex-1"
+        >
+          <View className="flex-1 bg-black/80 justify-end">
+            <View className="bg-[#1a1a1a] rounded-t-3xl border-t border-white/10 p-6 h-[60%]">
+              <Text className="text-white font-black text-2xl mb-2 text-center">
+                Set a New Rule!
               </Text>
-              <MaterialCommunityIcons
-                name="arrow-right"
-                size={20}
-                color="black"
+              <Text className="text-white/70 text-sm text-center mb-6">
+                Pour into the King's Cup! ({kingsInCup}/4 Kings)
+              </Text>
+              <TextInput
+                className="bg-white/10 rounded-xl p-4 text-white text-base mb-6 border border-white/20 min-h-[100px]"
+                placeholder="E.g., 'No pointing', 'Drink twice'"
+                placeholderTextColor="#999"
+                value={newRuleInput}
+                onChangeText={setNewRuleInput}
+                multiline
+                textAlignVertical="top"
               />
-            </TouchableOpacity>
+         
+              <TouchableOpacity
+                disabled={isDisabled}
+                onPress={setRule}
+                // Toggle background: Translucent gray vs Bright Orange
+                className={`py-4 rounded-2xl items-center flex-row justify-center gap-2 ${
+                  isDisabled ? "bg-white/10" : "bg-orange-600"
+                }`}
+              >
+                <Text
+                  // Toggle text color: Faded white vs Black
+                  className={`text-lg font-black tracking-widest ${
+                    isDisabled ? "text-white/20" : "text-black"
+                  }`}
+                >
+                  SET RULE
+                </Text>
+
+                <MaterialCommunityIcons
+                  name="arrow-right"
+                  size={20}
+                  // Toggle icon color
+                  color={isDisabled ? "rgba(255,255,255,0.2)" : "black"}
+                />
+              </TouchableOpacity>
+              
+            </View>
           </View>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
-  );
+        </KeyboardAvoidingView>
+      </Modal>
+    );
+  }
 
   // --- GAME BOARD RENDER ---
   return (

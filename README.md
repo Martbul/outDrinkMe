@@ -101,19 +101,31 @@ eas submit --platform ios --profile production
 
 
 
-{
-    "action": "join_room",
-    "username": "Player1",
-    "userId": "some-unique-user-id",
-    "isHost": false
-}
+    {
+        "action": "join_room",
+        "username": "Player1",
+        "userId": "some-unique-user-id",
+        "isHost": false
+    }
 
 
-{
-    "action": "start_game"
-}
 
 {
     "action": "game_action",
     "type": "draw_card"
+}
+
+{
+    "action": "game_action",
+    "type": "set_rule",
+    "new_rule" :"testing new rule",
+}
+
+
+
+
+{
+    "action": "game_action",
+    "type": "vote_player",
+    "targetId": "user_34yuItC85hEk5xAPE9pnVQzgm5q"
 }
