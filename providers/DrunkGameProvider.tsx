@@ -188,6 +188,15 @@ export const DrunkGameProvider: React.FC<{ children: React.ReactNode }> = ({
         setMessages((prev) => [`${data.sender}: ${data.content}`, ...prev]);
         break;
 
+      case "action_request":
+        // This is a private message (e.g., "Choose a target to KILL")
+        // We inject this into gameState so the UI can display it
+        setGameState((prev: any) => ({
+          ...prev,
+          actionPrompt: data.content,
+        }));
+        break;
+
       case "join_room":
         setMessages((prev) => [`${data.username} joined.`, ...prev]);
         if (data.gameType) {
@@ -219,13 +228,23 @@ export const DrunkGameProvider: React.FC<{ children: React.ReactNode }> = ({
       case "game_update":
         console.log("Update received:", data.gameState);
 
-        // 3. CHECK THE REF: Safe check specifically for Mafia
+        // 3. MAFIA SPECIFIC MERGE
         if (gameTypeRef.current === "mafia") {
-          // MAFIA: Merge state to preserve 'myRole'
-          setGameState((prev: any) => ({
-            ...prev,
-            ...data.gameState,
-          }));
+          setGameState((prev: any) => {
+            // We want to keep 'myRole' from previous state if the new packet doesn't have it
+            // We also want to keep 'actionPrompt' unless the phase changed
+            const newState = {
+              ...prev,
+              ...data.gameState,
+            };
+
+            // If phase changed (e.g. Night -> Day), clear the old action prompt
+            if (prev.phase !== data.gameState.phase) {
+              delete newState.actionPrompt;
+            }
+
+            return newState;
+          });
         } else {
           setGameState(data.gameState);
         }

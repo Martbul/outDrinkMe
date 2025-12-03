@@ -6,299 +6,276 @@ import {
   Text,
   TouchableOpacity,
   View,
-  Image,
   ActivityIndicator,
 } from "react-native";
 import { useApp } from "@/providers/AppProvider";
 
+const ROLE_CONFIG: Record<
+  string,
+  { color: string; icon: any; actionName: string }
+> = {
+  MAFIA: { color: "#ef4444", icon: "domino-mask", actionName: "KILL" },
+  DOCTOR: { color: "#22c55e", icon: "medical-bag", actionName: "HEAL" },
+  POLICE: { color: "#3b82f6", icon: "police-badge", actionName: "CHECK" },
+  SPY: { color: "#a855f7", icon: "eye-plus", actionName: "SPY" },
+  WHORE: { color: "#ec4899", icon: "lipstick", actionName: "BLOCK" },
+  CIVILIAN: { color: "#9ca3af", icon: "account", actionName: "" },
+  UNKNOWN: { color: "#666", icon: "help", actionName: "" },
+};
+
 export default function RenderMafiaBoard() {
-  const { isHost, gameState, leaveGame, sendGameAction } = useDrunkGame();
+  const { isHost, gameState, sendGameAction, messages } = useDrunkGame();
   const { userData } = useApp();
 
   const [persistedRole, setPersistedRole] = useState("UNKNOWN");
+  const [selectedTarget, setSelectedTarget] = useState<string | null>(null);
+
+  // 1. NEW STATE: Track if action is locked in
+  const [hasSubmitted, setHasSubmitted] = useState(false);
 
   const state = gameState as any;
   const phase = state?.phase || "LOBBY";
-  const myRole = persistedRole; 
+
+  const myRole =
+    state?.myRole && state.myRole !== "UNKNOWN" ? state.myRole : persistedRole;
+  const privatePrompt = state?.actionPrompt || "";
   const message = state?.message || "";
-  const timeLeft = state?.timeLeft || 0;
   const alivePlayers = state?.alivePlayers || [];
   const deadPlayers = state?.deadPlayers || [];
+  const currentVotes = state?.votes || {};
 
-  // Determine if I am alive
-  const amIDead = deadPlayers.some((p: any) => p.id === userData?.clerkId);
-
-  // Timer Logic
-  const [localTime, setLocalTime] = useState(timeLeft);
   useEffect(() => {
-    setLocalTime(timeLeft);
-    if (timeLeft <= 0) return;
-    const interval = setInterval(
-      () => setLocalTime((t: number) => (t > 0 ? t - 1 : 0)),
-      1000
-    );
-    return () => clearInterval(interval);
-  }, [timeLeft, phase]);
+    if (state?.myRole && state.myRole !== "UNKNOWN") {
+      setPersistedRole(state.myRole);
+    }
+  }, [state?.myRole]);
 
-   useEffect(() => {
-     if (state?.myRole && state.myRole !== "UNKNOWN") {
-       setPersistedRole(state.myRole);
-     }
-   }, [state?.myRole]);
+  // 2. RESET ON PHASE CHANGE: Unlock controls when phase changes
+  useEffect(() => {
+    setSelectedTarget(null);
+    setHasSubmitted(false);
+  }, [phase]);
 
-  // Role Reveal Color
-  const roleColor = myRole === "MAFIA" ? "#ef4444" : "#ccc";
+  const amIDead = deadPlayers.some((p: any) => p.id === userData?.clerkId);
+  const roleConfig = ROLE_CONFIG[myRole] || ROLE_CONFIG.UNKNOWN;
+  const isNight = phase === "NIGHT";
+  const isDay = phase === "DAY" || phase === "VOTING";
 
-  // --- ACTIONS ---
+  const canAct =
+    !amIDead &&
+    ((isNight && myRole !== "CIVILIAN" && myRole !== "UNKNOWN") || isDay);
+
   const handleAction = (targetId: string) => {
-    if (phase === "NIGHT" && myRole === "MAFIA") {
-      sendGameAction("kill", { targetId });
-    } else if (phase === "VOTING") {
+    // 3. CHECK LOCK: If already submitted, stop here
+    if (!canAct || hasSubmitted) return;
+
+    if (targetId === userData?.clerkId && myRole !== "DOCTOR") return;
+
+    setSelectedTarget(targetId);
+    setHasSubmitted(true); // 4. LOCK THE UI
+
+    if (isNight) {
+      sendGameAction("night_action", { targetId });
+    } else if (isDay) {
       sendGameAction("vote", { targetId });
     }
   };
 
-  const THEME_ORANGE = "#ff8c00";
-
   return (
     <View className="flex-1 bg-black w-full h-full">
-      <View className="flex-row justify-between items-center mb-6 px-4 pt-4">
-        <View className="flex-row items-center gap-2">
+      {/* HEADER */}
+      <View className="flex-row justify-between items-center mb-6 px-4 pt-4 border-b border-white/10 pb-4">
+        <View className="flex-row items-center gap-3">
           <View
-            className={`px-4 py-1.5 rounded-full border border-white/10 flex-row items-center gap-2`}
+            className="px-4 py-2 rounded-xl flex-row items-center gap-2 border"
             style={{
-              backgroundColor: `${roleColor}20`,
-              borderColor: `${roleColor}40`,
+              backgroundColor: `${roleConfig.color}20`,
+              borderColor: `${roleConfig.color}50`,
             }}
           >
             <MaterialCommunityIcons
-              name={myRole === "MAFIA" ? "domino-mask" : "account"}
-              size={14}
-              color={roleColor}
+              name={roleConfig.icon}
+              size={18}
+              color={roleConfig.color}
             />
             <Text
-              className="font-black uppercase text-[10px] tracking-widest"
-              style={{ color: roleColor }}
+              className="font-black uppercase text-xs tracking-widest"
+              style={{ color: roleConfig.color }}
             >
               {myRole}
             </Text>
           </View>
-
           {amIDead && (
-            <View className="bg-gray-800/80 px-3 py-1.5 rounded-full border border-gray-700 flex-row items-center gap-1">
-              <MaterialCommunityIcons name="ghost" size={12} color="#9ca3af" />
-              <Text className="text-gray-400 text-[10px] font-bold">DEAD</Text>
+            <View className="bg-red-900/40 px-3 py-2 rounded-full border border-red-500/30 flex-row items-center gap-1">
+              <MaterialCommunityIcons name="skull" size={14} color="#ef4444" />
+              <Text className="text-red-400 text-[10px] font-bold">DEAD</Text>
             </View>
           )}
         </View>
-
-        {/* Timer */}
-        <View className="flex-row items-center bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
-          <MaterialCommunityIcons
-            name="clock-outline"
-            size={14}
-            color={localTime < 10 ? "#ef4444" : "#fbbf24"}
-            style={{ marginRight: 6 }}
-          />
+        <View className="items-end">
+          <Text className="text-white/40 text-[10px] font-bold uppercase tracking-widest mb-0.5">
+            Phase
+          </Text>
           <Text
-            className={`font-mono font-bold text-xs ${localTime < 10 ? "text-red-500" : "text-amber-400"}`}
+            className={`font-black text-lg ${isNight ? "text-[#ff8c00]" : "text-[#ff8c00]"}`}
           >
-            {localTime < 10 ? `0${localTime}` : localTime}
+            {phase}
           </Text>
         </View>
       </View>
 
-      {/* PHASE HEADER */}
-      <View className="items-center mb-6 px-6">
-        <Text className="text-orange-500 font-black tracking-[4px] uppercase text-[14px] mb-2">
-          {phase}
-        </Text>
-        <Text className="text-white font-black text-2xl text-center leading-8">
-          {message}
-        </Text>
-      </View>
-
-      {/* INTERACTIVE AREA */}
       <ScrollView
         className="flex-1 px-4"
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingBottom: 100 }}
       >
-        {/* LOBBY STATE */}
+        {/* STATUS MESSAGES */}
+        <View className="items-center mb-8 px-2">
+          <MaterialCommunityIcons
+            name={isNight ? "weather-night" : "white-balance-sunny"}
+            size={32}
+            color={isNight ? "#818cf8" : "#fbbf24"}
+            style={{ marginBottom: 10 }}
+          />
+
+          <Text className="text-white font-bold text-xl text-center leading-7 mb-2">
+            {message}
+          </Text>
+
+          {/* Action Prompts */}
+          {hasSubmitted ? (
+            <View className="mt-2 flex-row items-center bg-orange-500/10 px-4 py-2 rounded-lg border border-orange-500/20">
+              <MaterialCommunityIcons name="lock" size={14} color="#ff8c00" />
+              <Text className="text-[#ff8c00] text-sm font-bold ml-2 uppercase tracking-wide">
+                Locked
+              </Text>
+            </View>
+          ) : privatePrompt ? (
+            <View className="bg-white/10 px-4 py-2 rounded-lg mt-2 border border-white/20">
+              <Text className="text-amber-300 font-bold text-sm text-center">
+                {privatePrompt}
+              </Text>
+            </View>
+          ) : (
+            canAct && (
+              <Text className="text-white/60 text-sm mt-2 font-medium bg-white/5 px-3 py-1 rounded-lg">
+                {isNight ? "Waiting for your action..." : "Cast your vote."}
+              </Text>
+            )
+          )}
+        </View>
+
+        {/* LOBBY VIEW */}
         {phase === "LOBBY" && (
           <View className="items-center justify-center py-10 bg-white/[0.03] rounded-3xl border border-white/[0.08] mx-2">
-            <View className="w-24 h-24 rounded-full bg-white/[0.05] items-center justify-center mb-6 border border-white/10">
-              <MaterialCommunityIcons name="incognito" size={48} color="#666" />
-            </View>
-            <Text className="text-white font-bold text-lg mb-1">
-              Secrets & Lies
-            </Text>
-            <Text className="text-white/40 text-sm text-center px-8 mb-8">
-              Waiting for the host to assign roles. Prepare your poker face.
-            </Text>
-
             {isHost ? (
               <TouchableOpacity
                 onPress={() => sendGameAction("start_game")}
-                className="bg-orange-600 w-[80%] py-4 rounded-2xl flex-row items-center justify-center gap-2"
+                className="bg-white w-[80%] py-4 rounded-xl flex-row items-center justify-center gap-2"
               >
                 <Text className="text-black font-black tracking-widest text-sm">
-                  ASSIGN ROLES
+                  START GAME
                 </Text>
-                <MaterialCommunityIcons
-                  name="cards-playing-outline"
-                  size={18}
-                  color="black"
-                />
               </TouchableOpacity>
             ) : (
-              <View className="bg-white/5 px-6 py-3 rounded-full flex-row items-center gap-2">
-                <ActivityIndicator size="small" color="#666" />
-                <Text className="text-white/30 text-xs font-bold uppercase tracking-wide">
-                  Host is starting...
-                </Text>
-              </View>
+              <Text className="text-white/30 text-xs font-bold uppercase">
+                Waiting for Host
+              </Text>
             )}
           </View>
         )}
 
-        {/* ACTIVE GAME STATE */}
-        {(phase === "NIGHT" || phase === "VOTING" || phase === "DAY") && (
+        {/* PLAYER GRID */}
+        {(isNight || isDay) && (
           <View className="flex-row flex-wrap gap-3 justify-center">
             {alivePlayers.map((p: any) => {
               const isMe = p.id === userData?.clerkId;
+              const isSelected = selectedTarget === p.id;
+              const voteCount = Object.values(currentVotes).filter(
+                (v) => v === p.id
+              ).length;
 
-              // Interaction Logic
-              let canInteract = false;
-              let actionLabel = "";
-              let actionColor = ""; // Tailwind class prefix essentially
+              // 5. INTERACTION LOGIC:
+              // - Must be able to act generaly
+              // - Must not be me (unless doc)
+              // - Must NOT have submitted yet
+              const isInteractable =
+                canAct && (!isMe || myRole === "DOCTOR") && !hasSubmitted;
 
-              if (phase === "NIGHT" && myRole === "MAFIA" && !isMe) {
-                canInteract = true;
-                actionLabel = "KILL";
-                actionColor = "red";
-              } else if (phase === "VOTING" && !isMe) {
-                canInteract = true;
-                actionLabel = "VOTE";
-                actionColor = "orange";
-              }
+              // 6. STYLING LOGIC:
+              // - If I have submitted and this is NOT the selected one -> Dim it out heavily
+              const isDimmed = hasSubmitted && !isSelected;
 
               return (
                 <TouchableOpacity
                   key={p.id}
-                  disabled={!canInteract}
+                  disabled={!isInteractable}
                   onPress={() => handleAction(p.id)}
-                  className={`w-[30%] aspect-[0.85] rounded-2xl items-center justify-center border relative overflow-hidden ${
-                    canInteract
-                      ? `bg-white/[0.08] border-white/20 active:bg-${actionColor}-500/20 active:border-${actionColor}-500`
-                      : "bg-white/[0.03] border-white/[0.05] opacity-60"
-                  }`}
+                  className={`w-[30%] aspect-[0.9] rounded-2xl items-center justify-center border relative overflow-hidden
+                    ${isSelected ? `bg-${roleConfig.actionName === "KILL" ? "red" : "blue"}-500/20 border-${roleConfig.color}` : "bg-white/[0.05] border-white/[0.05]"}
+                    ${!isInteractable && !isSelected ? "opacity-30" : "opacity-100"} 
+                    ${isInteractable ? "active:bg-white/10" : ""}
+                  `}
+                  style={{
+                    borderColor: isSelected
+                      ? roleConfig.color
+                      : "rgba(255,255,255,0.1)",
+                    opacity: isDimmed
+                      ? 0.3
+                      : isInteractable || isSelected
+                        ? 1
+                        : 0.5,
+                  }}
                 >
-                  <View
-                    className={`w-12 h-12 rounded-full items-center justify-center mb-2 bg-${canInteract ? "white/10" : "black/20"}`}
-                  >
+                  <View className="w-10 h-10 rounded-full items-center justify-center mb-2 bg-black/30">
                     <Text className="text-white font-black text-lg">
                       {p.username?.[0]?.toUpperCase()}
                     </Text>
                   </View>
-
                   <Text
-                    className="text-white font-bold text-[11px] text-center px-1"
+                    className="text-white font-bold text-[10px] text-center px-1"
                     numberOfLines={1}
                   >
                     {p.username}
                   </Text>
 
-                  {canInteract && (
-                    <View
-                      className={`absolute top-0 right-0 rounded-bl-xl px-2 py-1 bg-${actionColor}-500/20 border-l border-b border-${actionColor}-500/30`}
-                    >
-                      <MaterialCommunityIcons
-                        name={actionLabel === "KILL" ? "knife" : "vote"}
-                        size={12}
-                        color={actionLabel === "KILL" ? "#ef4444" : "#f97316"}
-                      />
+                  {isDay && voteCount > 0 && (
+                    <View className="absolute top-1 right-1 bg-amber-500 rounded-full w-5 h-5 items-center justify-center">
+                      <Text className="text-black text-[10px] font-bold">
+                        {voteCount}
+                      </Text>
                     </View>
                   )}
 
-                  {/* {isMe && (
-                    <View className="absolute bottom-1/2 bg-white/10 px-2 py-0.5 rounded-full">
-                      <Text className="text-[8px] text-white/50 font-bold uppercase">
-                        YOU
-                      </Text>
+                  {/* Selected Indicator Icon */}
+                  {isSelected && (
+                    <View className="absolute inset-0 items-center justify-center bg-black/40">
+                      <MaterialCommunityIcons
+                        name={roleConfig.icon}
+                        size={24}
+                        color={roleConfig.color}
+                      />
                     </View>
-                  )} */}
+                  )}
                 </TouchableOpacity>
               );
             })}
-          </View>
-        )}
 
-        {/* GRAVEYARD */}
-        {deadPlayers.length > 0 && (
-          <View className="mt-10 border-t border-white/10 pt-6">
-            <View className="flex-row items-center justify-center mb-4 opacity-50">
-              <View className="h-[1px] bg-white/20 w-8 mr-2" />
-              <Text className="text-white/40 text-[10px] font-bold uppercase tracking-[3px]">
-                THE FALLEN
-              </Text>
-              <View className="h-[1px] bg-white/20 w-8 ml-2" />
-            </View>
-
-            <View className="flex-row flex-wrap justify-center gap-2">
-              {deadPlayers.map((p: any) => (
-                <View
-                  key={p.id}
-                  className="bg-[#1a1a1a] border border-white/5 pl-2 pr-3 py-1.5 rounded-lg flex-row items-center"
-                >
-                  <MaterialCommunityIcons
-                    name="skull"
-                    size={14}
-                    color="#4b5563"
-                    style={{ marginRight: 6 }}
-                  />
-                  <Text className="text-gray-500 text-xs font-medium line-through decoration-gray-600">
-                    {p.username}
-                  </Text>
-                </View>
-              ))}
-            </View>
+            {/* CIVILIAN SLEEP SCREEN */}
+            {isNight && myRole === "CIVILIAN" && !amIDead && (
+              <View className="w-full mt-6 bg-indigo-900/20 p-6 rounded-2xl border border-indigo-500/20 items-center">
+                <MaterialCommunityIcons
+                  name="sleep"
+                  size={32}
+                  color="#818cf8"
+                />
+                <Text className="text-indigo-200 mt-2 font-bold">
+                  You are sleeping...
+                </Text>
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
-
-      {/* GAME OVER MODAL */}
-      {phase === "GAME_OVER" && (
-        <View className="absolute inset-0 bg-black/95 z-50 justify-center items-center p-6">
-          <View className="bg-[#1a1a1a] w-full p-8 rounded-3xl border border-white/10 items-center">
-            <View className="w-20 h-20 bg-white/5 rounded-full items-center justify-center mb-6 border border-white/10">
-              <MaterialCommunityIcons
-                name="trophy"
-                size={40}
-                color={message.includes("MAFIA") ? "#ef4444" : "#3b82f6"}
-              />
-            </View>
-
-            <Text
-              className={`font-black text-2xl mb-2 text-center uppercase tracking-widest ${message.includes("MAFIA") ? "text-red-500" : "text-gray-500"}`}
-            >
-              {message.includes("MAFIA") ? "Mafia Wins" : "Civilians Win"}
-            </Text>
-
-            <Text className="text-white/60 text-center text-sm mb-8 leading-5 font-medium px-4">
-              {message}
-            </Text>
-
-            <TouchableOpacity
-              onPress={leaveGame}
-              className="bg-white px-8 py-4 rounded-2xl w-full items-center"
-            >
-              <Text className="text-black font-black tracking-widest text-sm">
-                RETURN TO LOBBY
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
     </View>
   );
 }
