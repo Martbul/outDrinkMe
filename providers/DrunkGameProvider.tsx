@@ -228,20 +228,22 @@ export const DrunkGameProvider: React.FC<{ children: React.ReactNode }> = ({
       case "game_update":
         console.log("Update received:", data.gameState);
 
-        // 3. MAFIA SPECIFIC MERGE
-        if (gameTypeRef.current === "mafia") {
+        if (gameTypeRef.current === "mafia" || gameType === "mafia") {
           setGameState((prev: any) => {
-            // We want to keep 'myRole' from previous state if the new packet doesn't have it
-            // We also want to keep 'actionPrompt' unless the phase changed
             const newState = {
               ...prev,
               ...data.gameState,
             };
 
-            // If phase changed (e.g. Night -> Day), clear the old action prompt
+            // --- FIX START ---
+            // If the phase has changed (e.g. GAME_OVER -> NIGHT),
+            // we MUST clear the old action prompt and selection data
             if (prev.phase !== data.gameState.phase) {
               delete newState.actionPrompt;
+              // We can also clear votes here if we want to be extra safe
+              newState.votes = {};
             }
+            // --- FIX END ---
 
             return newState;
           });
@@ -258,6 +260,7 @@ export const DrunkGameProvider: React.FC<{ children: React.ReactNode }> = ({
         console.log("Unknown WS action:", data);
     }
   };
+  // In DrunkGameProvider.tsx
 
   const createGame = async (gameId: string, label: string) => {
     setLoading(true);
@@ -270,10 +273,11 @@ export const DrunkGameProvider: React.FC<{ children: React.ReactNode }> = ({
       setHostName(getMyUsername());
 
       setGameType(gameId);
+      gameTypeRef.current = gameId;
       setGameLabel(label);
 
       setPlayers([]);
-      setGameState({}); // Reset game state for new game
+      setGameState({});
       await connectSocket(data.sessionId, true);
     } catch (error) {
       Alert.alert("Error", "Failed to create game");

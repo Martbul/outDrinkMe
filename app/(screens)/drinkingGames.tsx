@@ -22,6 +22,8 @@ import {
 } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as Linking from "expo-linking";
+
 
 const MIN_PLAYER_COUNTS: Record<string, number> = {
   Mafia: 4,
@@ -57,11 +59,10 @@ const GAME_RULES: Record<string, any> = {
   Mafia: {
     title: "How to Play Mafia",
     steps: [
-      "The game is split into Day and Night phases.",
-      "NIGHT: The Mafia secretly chooses a victim to kill. The Doctor saves one person. The Sheriff investigates one person.",
-      "DAY: Everyone discusses who they think the Mafia is.",
-      "VOTE: Players vote to eliminate a suspect. The person with the most votes is removed.",
-      "WIN: Civilians win if all Mafia are eliminated. Mafia wins if they outnumber Civilians.",
+      "The game is split into Day and Night phases",
+      "NIGHT: The Mafia secretly chooses a victim to kill. The Doctor saves one person. The Sheriff investigates one person",
+      "DAY: Everyone discusses who they think the Mafia is and vote to eliminate a suspect. The person with the most votes is removed",
+      "WIN: Civilians win if all Mafia are eliminated. Mafia wins if they outnumber Civilians",
     ],
   },
   "King's Cup": {
@@ -165,8 +166,14 @@ export default function GameLobbyScreen() {
     setRefreshing(false);
   };
 
-  const scheme = "outdrinkme";
-  const inviteLink = `${scheme}://game?id=${sessionId}`;
+  const inviteLink = Linking.createURL("", {
+    queryParams: { id: sessionId },
+  });
+
+   console.log("QR Code Link:", inviteLink);
+  // const scheme = "outdrinkme";
+  // const inviteLink = `${scheme}://game?id=${sessionId}`;
+  // console.log(inviteLink)
 
   const getGameIcon = (gameId: string) => {
     const game = GAMES.find((g) => g.id === gameId);
