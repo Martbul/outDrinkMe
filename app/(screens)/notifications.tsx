@@ -10,7 +10,6 @@ import {
   Linking,
   Platform,
   Alert,
-  SafeAreaView, // 1. Changed import
   StatusBar,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
@@ -19,6 +18,7 @@ import NestedScreenHeader from "@/components/nestedScreenHeader";
 import { useApp } from "@/providers/AppProvider";
 import { NotificationItem } from "@/types/api.types";
 import { registerForPushNotificationsAsync } from "@/utils/registerPushNotification";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function NotificationsScreen() {
   const {

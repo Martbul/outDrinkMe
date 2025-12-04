@@ -10,7 +10,6 @@ import React, {
 import { useAuth } from "@clerk/clerk-expo";
 import type {
   UserStats,
-  Leaderboard,
   LeaderboardsResponse,
   Achievement,
   CalendarResponse,
@@ -28,6 +27,9 @@ import type {
 } from "../types/api.types";
 import { apiService } from "@/api";
 import { usePostHog } from "posthog-react-native";
+import { useRouter } from "expo-router";
+import * as Notifications from "expo-notifications";
+import { registerForPushNotificationsAsync } from "@/utils/registerPushNotification";
 
 interface AppContextType {
   // Data
@@ -102,6 +104,7 @@ interface AppProviderProps {
 }
 
 export function AppProvider({ children }: AppProviderProps) {
+  const router = useRouter();
   const { getToken, isSignedIn } = useAuth();
   const posthog = usePostHog();
 
@@ -139,8 +142,40 @@ export function AppProvider({ children }: AppProviderProps) {
   );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const hasInitialized = useRef(false);
 
+  const hasInitialized = useRef(false);
+  const responseListener = useRef<Notifications.EventSubscription | null>(null);
+
+  useEffect(() => {
+    if (isSignedIn) {
+      // Register token
+      registerForPushNotificationsAsync().then((token) => {
+        if (token) registerPushDevice(token);
+      });
+
+      // Listener: User CLICKED the notification
+      responseListener.current =
+        Notifications.addNotificationResponseReceivedListener((response) => {
+          const data = response.notification.request.content.data;
+
+          // Handle Deep Link
+          if (data?.action_url) {
+            console.log("Deep linking to:", data.action_url);
+            // router.push(data.action_url);
+          }
+
+          // Refresh notifications locally
+          refreshNotifications();
+        });
+    }
+
+    // FIX 3: Cleanup using the modern .remove() method
+    return () => {
+      if (responseListener.current) {
+        responseListener.current.remove();
+      }
+    };
+  }, [isSignedIn]);
   // ============================================
   // Centralized Loading/Error Handler
   // ============================================

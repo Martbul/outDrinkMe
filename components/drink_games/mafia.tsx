@@ -252,6 +252,9 @@ export default function RenderMafiaBoard() {
                       name={finalRoleConfig.icon}
                       size={10}
                       color={finalRoleConfig.color}
+
+
+  
                     />
                     <Text
                       style={{ color: finalRoleConfig.color }}
