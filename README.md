@@ -129,3 +129,68 @@ eas submit --platform ios --profile production
     "type": "vote_player",
     "targetId": "user_34yuItC85hEk5xAPE9pnVQzgm5q"
 }
+
+-------------------------------------------------------------
+MAFIA
+
+{
+    "action": "join_room",
+    "username": "BossMafia",
+    "userId": "player_1",
+    "isHost": true
+}
+
+Mafia Action (Kill)
+{
+    "action": "game_action",
+    "type": "night_action",
+    "targetId": "player_2"
+}
+
+
+Doctor Action (Heal)
+{
+    "action": "game_action",
+    "type": "night_action",
+    "targetId": "player_2" 
+}
+
+
+Police Action (Investigate)
+{
+    "action": "game_action",
+    "type": "night_action",
+    "targetId": "player_1"
+}
+
+
+Spy Action (Reveal Role)
+{
+    "action": "game_action",
+    "type": "night_action",
+    "targetId": "player_1"
+}
+
+
+Whore Action (Block)
+{
+    "action": "game_action",
+    "type": "night_action",
+    "targetId": "player_3" 
+}
+
+
+
+Vote (Sent by Player 1)
+{
+    "action": "game_action",
+    "type": "vote",
+    "targetId": "player_2"
+}
+
+Vote (Sent by Player 2)
+{
+    "action": "game_action",
+    "type": "vote",
+    "targetId": "player_1"
+}

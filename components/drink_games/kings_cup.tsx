@@ -133,15 +133,11 @@ export default function RenderKingsCupBoard() {
         )}
         <TouchableOpacity
           onPress={() => backToWaiting()}
-          className="w-full bg-orange-600 my-4 py-4 rounded-xl flex-row items-center justify-center shadow-lg shadow-orange-500/20"
+          className="bg-white px-8 py-4 rounded-full shadow-lg items-center"
         >
-          <MaterialCommunityIcons
-            name="plus-circle"
-            size={20}
-            color="white"
-            style={{ marginRight: 8 }}
-          />
-          <Text className="text-white font-bold text-lg">Start new game</Text>
+          <Text className="text-black font-black tracking-widest">
+            PLAY AGAIN
+          </Text>
         </TouchableOpacity>
       </View>
     );

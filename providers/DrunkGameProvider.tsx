@@ -188,6 +188,15 @@ export const DrunkGameProvider: React.FC<{ children: React.ReactNode }> = ({
         setMessages((prev) => [`${data.sender}: ${data.content}`, ...prev]);
         break;
 
+      case "action_request":
+        // This is a private message (e.g., "Choose a target to KILL")
+        // We inject this into gameState so the UI can display it
+        setGameState((prev: any) => ({
+          ...prev,
+          actionPrompt: data.content,
+        }));
+        break;
+
       case "join_room":
         setMessages((prev) => [`${data.username} joined.`, ...prev]);
         if (data.gameType) {
@@ -219,13 +228,25 @@ export const DrunkGameProvider: React.FC<{ children: React.ReactNode }> = ({
       case "game_update":
         console.log("Update received:", data.gameState);
 
-        // 3. CHECK THE REF: Safe check specifically for Mafia
-        if (gameTypeRef.current === "mafia") {
-          // MAFIA: Merge state to preserve 'myRole'
-          setGameState((prev: any) => ({
-            ...prev,
-            ...data.gameState,
-          }));
+        if (gameTypeRef.current === "mafia" || gameType === "mafia") {
+          setGameState((prev: any) => {
+            const newState = {
+              ...prev,
+              ...data.gameState,
+            };
+
+            // --- FIX START ---
+            // If the phase has changed (e.g. GAME_OVER -> NIGHT),
+            // we MUST clear the old action prompt and selection data
+            if (prev.phase !== data.gameState.phase) {
+              delete newState.actionPrompt;
+              // We can also clear votes here if we want to be extra safe
+              newState.votes = {};
+            }
+            // --- FIX END ---
+
+            return newState;
+          });
         } else {
           setGameState(data.gameState);
         }
@@ -239,6 +260,7 @@ export const DrunkGameProvider: React.FC<{ children: React.ReactNode }> = ({
         console.log("Unknown WS action:", data);
     }
   };
+  // In DrunkGameProvider.tsx
 
   const createGame = async (gameId: string, label: string) => {
     setLoading(true);
@@ -251,10 +273,11 @@ export const DrunkGameProvider: React.FC<{ children: React.ReactNode }> = ({
       setHostName(getMyUsername());
 
       setGameType(gameId);
+      gameTypeRef.current = gameId;
       setGameLabel(label);
 
       setPlayers([]);
-      setGameState({}); // Reset game state for new game
+      setGameState({});
       await connectSocket(data.sessionId, true);
     } catch (error) {
       Alert.alert("Error", "Failed to create game");

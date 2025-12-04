@@ -565,3 +565,8 @@ export interface RoundResult {
   winnerId: string;
   results: PlayerRoundInfo[];
 }
+
+export interface ActionRequest {
+  action: string;
+  content: string;
+}
