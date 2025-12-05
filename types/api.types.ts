@@ -570,3 +570,9 @@ export interface ActionRequest {
   action: string;
   content: string;
 }
+
+export interface MinVersionResponse {
+  min_android_version_code: number;
+  min_ios_version_code: number;
+  update_message?: string;
+}

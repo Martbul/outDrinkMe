@@ -30,6 +30,7 @@ import { usePostHog } from "posthog-react-native";
 import { useRouter } from "expo-router";
 import * as Notifications from "expo-notifications";
 import { registerForPushNotificationsAsync } from "@/utils/registerPushNotification";
+import { Alert } from "react-native";
 
 interface AppContextType {
   // Data
@@ -148,34 +149,42 @@ export function AppProvider({ children }: AppProviderProps) {
 
   useEffect(() => {
     if (isSignedIn) {
-      // Register token
       registerForPushNotificationsAsync().then((token) => {
         if (token) registerPushDevice(token);
       });
 
-      // Listener: User CLICKED the notification
       responseListener.current =
         Notifications.addNotificationResponseReceivedListener((response) => {
           const data = response.notification.request.content.data;
+          const recipientId = data?.recipient_user_id;
 
-          // Handle Deep Link
+          // CHECK: Is this notification for the currently logged-in user?
+          if (userData && recipientId && recipientId !== userData.id) {
+            // SCENARIO: Wrong Account
+            Alert.alert(
+              "Switch Account",
+              `This notification is for another account. Please switch accounts to view it.`,
+              [{ text: "OK" }]
+            );
+            return; // STOP execution so we don't crash the app trying to load data
+          }
+
+          // SCENARIO: Correct Account - Proceed as normal
           if (data?.action_url) {
             console.log("Deep linking to:", data.action_url);
             // router.push(data.action_url);
           }
 
-          // Refresh notifications locally
           refreshNotifications();
         });
     }
 
-    // FIX 3: Cleanup using the modern .remove() method
     return () => {
       if (responseListener.current) {
         responseListener.current.remove();
       }
     };
-  }, [isSignedIn]);
+  }, [isSignedIn, userData]); // Add userData to dependency array
   // ============================================
   // Centralized Loading/Error Handler
   // ============================================

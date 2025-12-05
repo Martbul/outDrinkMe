@@ -225,9 +225,14 @@ export const DrunkGameProvider: React.FC<{ children: React.ReactNode }> = ({
         setMessages((prev) => ["--- GAME STARTED ---", ...prev]);
         break;
 
-      case "game_update":
-        console.log("Update received:", data.gameState);
+      case "intel":
+        setGameState((prev: any) => ({
+          ...prev,
+          intelMessage: data.content,
+        }));
+        break;
 
+      case "game_update":
         if (gameTypeRef.current === "mafia" || gameType === "mafia") {
           setGameState((prev: any) => {
             const newState = {
@@ -235,15 +240,11 @@ export const DrunkGameProvider: React.FC<{ children: React.ReactNode }> = ({
               ...data.gameState,
             };
 
-            // --- FIX START ---
-            // If the phase has changed (e.g. GAME_OVER -> NIGHT),
-            // we MUST clear the old action prompt and selection data
             if (prev.phase !== data.gameState.phase) {
-              delete newState.actionPrompt;
-              // We can also clear votes here if we want to be extra safe
-              newState.votes = {};
+              if (data.gameState.phase !== "DAY") {
+                delete newState.intelMessage;
+              }
             }
-            // --- FIX END ---
 
             return newState;
           });
