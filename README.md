@@ -164,15 +164,8 @@ Police Action (Investigate)
 }
 
 
-Spy Action (Reveal Role)
-{
-    "action": "game_action",
-    "type": "night_action",
-    "targetId": "player_1"
-}
 
-
-Whore Action (Block)
+Whore Action (Fuck)
 {
     "action": "game_action",
     "type": "night_action",

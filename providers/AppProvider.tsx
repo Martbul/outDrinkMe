@@ -10,7 +10,6 @@ import React, {
 import { useAuth } from "@clerk/clerk-expo";
 import type {
   UserStats,
-  Leaderboard,
   LeaderboardsResponse,
   Achievement,
   CalendarResponse,
@@ -28,6 +27,10 @@ import type {
 } from "../types/api.types";
 import { apiService } from "@/api";
 import { usePostHog } from "posthog-react-native";
+import { useRouter } from "expo-router";
+import * as Notifications from "expo-notifications";
+import { registerForPushNotificationsAsync } from "@/utils/registerPushNotification";
+import { Alert } from "react-native";
 
 interface AppContextType {
   // Data
@@ -102,6 +105,7 @@ interface AppProviderProps {
 }
 
 export function AppProvider({ children }: AppProviderProps) {
+  const router = useRouter();
   const { getToken, isSignedIn } = useAuth();
   const posthog = usePostHog();
 
@@ -139,8 +143,48 @@ export function AppProvider({ children }: AppProviderProps) {
   );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const hasInitialized = useRef(false);
 
+  const hasInitialized = useRef(false);
+  const responseListener = useRef<Notifications.EventSubscription | null>(null);
+
+  useEffect(() => {
+    if (isSignedIn) {
+      registerForPushNotificationsAsync().then((token) => {
+        if (token) registerPushDevice(token);
+      });
+
+      responseListener.current =
+        Notifications.addNotificationResponseReceivedListener((response) => {
+          const data = response.notification.request.content.data;
+          const recipientId = data?.recipient_user_id;
+
+          // CHECK: Is this notification for the currently logged-in user?
+          if (userData && recipientId && recipientId !== userData.id) {
+            // SCENARIO: Wrong Account
+            Alert.alert(
+              "Switch Account",
+              `This notification is for another account. Please switch accounts to view it.`,
+              [{ text: "OK" }]
+            );
+            return; // STOP execution so we don't crash the app trying to load data
+          }
+
+          // SCENARIO: Correct Account - Proceed as normal
+          if (data?.action_url) {
+            console.log("Deep linking to:", data.action_url);
+            // router.push(data.action_url);
+          }
+
+          refreshNotifications();
+        });
+    }
+
+    return () => {
+      if (responseListener.current) {
+        responseListener.current.remove();
+      }
+    };
+  }, [isSignedIn, userData]); // Add userData to dependency array
   // ============================================
   // Centralized Loading/Error Handler
   // ============================================
