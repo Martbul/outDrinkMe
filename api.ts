@@ -13,6 +13,7 @@ import {
   Leaderboard,
   LeaderboardEntry,
   LeaderboardsResponse,
+  MinVersionResponse,
   NotificationListResponse,
   ReviewSubmissionRequest,
   SearchDbAlcoholResult,
@@ -815,6 +816,14 @@ class ApiService {
       token,
     });
   }
+
+    async getMinRequiredAppVersion(token: string): Promise<MinVersionResponse> {
+      return this.makeRequest<any>("/api/v1/min-version", {
+      method: "GET",
+      token,
+    });
+  }
+
 
   getWebSocketUrl(sessionId: string): string {
     // 1. Strip http/https

@@ -17,7 +17,7 @@ import {
   Platform,
   Dimensions,
 } from "react-native";
-import { useRouter, useFocusEffect } from "expo-router"; 
+import { useRouter, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/providers/AppProvider";
 import Entypo from "@expo/vector-icons/Entypo";
@@ -26,7 +26,7 @@ import * as ImagePicker from "expo-image-picker";
 import type { UserData } from "@/types/api.types";
 import { ImagePickerModal } from "@/components/imagePickerModal";
 import { usePostHog } from "posthog-react-native";
-import * as ImageManipulator from 'expo-image-manipulator'; 
+import * as ImageManipulator from "expo-image-manipulator";
 
 export default function AddDrinks() {
   const posthog = usePostHog();
@@ -80,7 +80,6 @@ export default function AddDrinks() {
       setImageUri(null);
       setMentionedBuddies([]);
       setLocationText("");
-
     }, [])
   );
 
@@ -90,69 +89,68 @@ export default function AddDrinks() {
     }
   }, [drunkThought]);
 
+  const uploadToCloudinary = async (
+    localUri: string
+  ): Promise<string | null> => {
+    try {
+      posthog?.capture("image_upload_started");
 
+      // 1. OPTIMIZE IMAGE BEFORE UPLOAD
+      // Resize to max width 1080px, compress to 80% quality
+      // This turns a 10MB file into ~300KB without visible quality loss on phone screens
+      const manipulatedResult = await ImageManipulator.manipulateAsync(
+        localUri,
+        [{ resize: { width: 1080 } }],
+        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+      );
 
-const uploadToCloudinary = async (localUri: string): Promise<string | null> => {
-  try {
-    posthog?.capture("image_upload_started");
+      const uriToUpload = manipulatedResult.uri;
 
-    // 1. OPTIMIZE IMAGE BEFORE UPLOAD
-    // Resize to max width 1080px, compress to 80% quality
-    // This turns a 10MB file into ~300KB without visible quality loss on phone screens
-    const manipulatedResult = await ImageManipulator.manipulateAsync(
-      localUri,
-      [{ resize: { width: 1080 } }],
-      { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
-    );
+      const CLOUDINARY_CLOUD_NAME =
+        process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
+      const CLOUDINARY_UPLOAD_PRESET =
+        process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
-    const uriToUpload = manipulatedResult.uri;
-
-    const CLOUDINARY_CLOUD_NAME = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
-    const CLOUDINARY_UPLOAD_PRESET =
-      process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
-
-    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
-      throw new Error("Cloudinary credentials are not configured.");
-    }
-
-    const formData = new FormData();
-    formData.append("file", {
-      uri: uriToUpload, // Use the optimized URI
-      type: "image/jpeg",
-      name: `drank_${Date.now()}.jpg`,
-    } as any);
-
-    formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-    formData.append("folder", "drank-images");
-
-    const response = await fetch(
-      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
-      {
-        method: "POST",
-        body: formData,
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+      if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+        throw new Error("Cloudinary credentials are not configured.");
       }
-    );
 
-    const data = await response.json();
+      const formData = new FormData();
+      formData.append("file", {
+        uri: uriToUpload, // Use the optimized URI
+        type: "image/jpeg",
+        name: `drank_${Date.now()}.jpg`,
+      } as any);
 
-    if (data.secure_url) {
-      posthog?.capture("image_upload_success");
-      return data.secure_url;
+      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+      formData.append("folder", "drank-images");
+
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: "POST",
+          body: formData,
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.secure_url) {
+        posthog?.capture("image_upload_success");
+        return data.secure_url;
+      }
+
+      return null;
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      posthog?.capture("image_upload_failed", { error: error.message });
+      Alert.alert("Upload Error", "Failed to upload image. Please try again.");
+      return null;
     }
-
-    return null;
-  } catch (error: any) {
-    console.error("Upload error:", error);
-    posthog?.capture("image_upload_failed", { error: error.message });
-    Alert.alert("Upload Error", "Failed to upload image. Please try again.");
-    return null;
-  }
-};
-
-
+  };
 
   // const uploadToCloudinary = async (
   //   localUri: string
@@ -207,46 +205,46 @@ const uploadToCloudinary = async (localUri: string): Promise<string | null> => {
   //     return null;
   //   }
   // };
-const handleImageSelection = async (source: "camera" | "library") => {
-  setImagePickerVisible(false);
-  posthog?.capture("image_picker_opened", { source });
+  const handleImageSelection = async (source: "camera" | "library") => {
+    setImagePickerVisible(false);
+    posthog?.capture("image_picker_opened", { source });
 
-  try {
-    let result;
+    try {
+      let result;
 
-    // --- ENABLE NATIVE CROPPER ---
-    const pickerOptions: ImagePicker.ImagePickerOptions = {
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true, // <--- CHANGED TO TRUE: Enables the crop/edit screen
-      quality: 0.8,
-      // aspect: [4, 3],   // Keep this commented out if you want freeform cropping (Android)
-      // or default cropping (iOS)
-    };
+      // --- ENABLE NATIVE CROPPER ---
+      const pickerOptions: ImagePicker.ImagePickerOptions = {
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true, // <--- CHANGED TO TRUE: Enables the crop/edit screen
+        quality: 0.8,
+        // aspect: [4, 3],   // Keep this commented out if you want freeform cropping (Android)
+        // or default cropping (iOS)
+      };
 
-    if (source === "camera") {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Permission needed", "Camera access is required");
-        return;
+      if (source === "camera") {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== "granted") {
+          Alert.alert("Permission needed", "Camera access is required");
+          return;
+        }
+        result = await ImagePicker.launchCameraAsync(pickerOptions);
+      } else {
+        const { status } =
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== "granted") {
+          Alert.alert("Permission needed", "Gallery access is required");
+          return;
+        }
+        result = await ImagePicker.launchImageLibraryAsync(pickerOptions);
       }
-      result = await ImagePicker.launchCameraAsync(pickerOptions);
-    } else {
-      const { status } =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Permission needed", "Gallery access is required");
-        return;
-      }
-      result = await ImagePicker.launchImageLibraryAsync(pickerOptions);
-    }
 
-    if (!result.canceled && result.assets[0]) {
-      setImageUri(result.assets[0].uri);
+      if (!result.canceled && result.assets[0]) {
+        setImageUri(result.assets[0].uri);
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to pick image");
     }
-  } catch (error) {
-    Alert.alert("Error", "Failed to pick image");
-  }
-};
+  };
 
   const toggleBuddy = (buddy: UserData) => {
     setMentionedBuddies((prev) => {
@@ -255,7 +253,6 @@ const handleImageSelection = async (source: "camera" | "library") => {
       return [...prev, buddy];
     });
   };
-
 
   const startHold = () => {
     if (viewState !== "logging" || alreadyLogged) return;
@@ -297,7 +294,6 @@ const handleImageSelection = async (source: "camera" | "library") => {
     }
   };
 
-
   const handleFinalSubmit = async (skipDetails = false) => {
     if (isSubmitting) return;
     setIsSubmitting(true);
@@ -330,8 +326,7 @@ const handleImageSelection = async (source: "camera" | "library") => {
       setImageUri(null);
       setMentionedBuddies([]);
       setViewState("logging");
-      await refreshAll()
-
+      await refreshAll();
     } catch (error: any) {
       Alert.alert("Error", "Failed to log drink.");
     } finally {
@@ -339,11 +334,10 @@ const handleImageSelection = async (source: "camera" | "library") => {
     }
   };
 
-
   const renderHeader = () => (
     <View
       className="flex-row items-center justify-between mb-6"
-      style={{ paddingTop: insets.top + 10}}
+      style={{ paddingTop: insets.top + 10 }}
     >
       <TouchableOpacity
         onPress={() => router.back()}
@@ -357,7 +351,6 @@ const handleImageSelection = async (source: "camera" | "library") => {
       <View className="w-10" />
     </View>
   );
-
 
   // 1. Get Screen Dimensions to handle small devices
   const { height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -540,7 +533,7 @@ const handleImageSelection = async (source: "camera" | "library") => {
       </KeyboardAvoidingView>
     );
   };
-  
+
   const renderLoggingView = () => {
     const potentialStreak = (userStats?.current_streak || 0) + 1;
 
@@ -601,7 +594,7 @@ const handleImageSelection = async (source: "camera" | "library") => {
               {/* Icon */}
               <Ionicons
                 color={isHolding ? "#000" : "#EA580C"}
-                name={isHolding ? "beer" : "finger-print"}
+                name={isHolding ? "beer" : "beer-outline"} // Transitions from empty to full
                 size={48}
                 style={{ marginBottom: 16 }}
               />
@@ -644,7 +637,6 @@ const handleImageSelection = async (source: "camera" | "library") => {
 
   const renderDetailsView = () => (
     <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
-     
       <View className="w-full px-6 items-center mb-8 mt-4">
         {/* Subtitle: Added text-center to prevent left-align if it wraps on tiny screens */}
         <Text className="text-orange-500 text-sm font-black tracking-widest mb-2 text-center uppercase">
@@ -762,9 +754,7 @@ const handleImageSelection = async (source: "camera" | "library") => {
       style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}
     >
       {alreadyLogged && viewState === "logging" ? (
-        <>
-          {renderAlreadyLogged()}
-        </>
+        <>{renderAlreadyLogged()}</>
       ) : viewState === "details" ? (
         <>
           {renderHeader()}

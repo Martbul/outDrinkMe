@@ -16,6 +16,7 @@ import { AppStorage } from "@/utils/storage";
 import "../global.css";
 import { DrunkGameProvider } from "@/providers/DrunkGameProvider";
 import DeepLinkHandler from "@/components/deepLinkHandler";
+import MandatoryUpdateModal from "@/components/mandatoryUpdateModal";
 
 let posthog: PostHog;
 
@@ -122,6 +123,7 @@ export default function RootLayout() {
                   <AdsProvider>
                     <TailwindProvider>
                       <AuthenticatedAppContent />
+                        <MandatoryUpdateModal  />
                     </TailwindProvider>
                   </AdsProvider>
                 </DrunkGameProvider>
