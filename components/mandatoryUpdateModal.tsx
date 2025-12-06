@@ -16,7 +16,7 @@ const MandatoryUpdateModal = () => {
       } else {
         // Fallback if Application.applicationId somehow fails.
         // You MUST replace 'YOUR_ANDROID_PACKAGE_NAME' with your actual package name (e.g., com.yourcompany.yourapp)
-        url = `https://play.google.com/store/apps/details?id=YOUR_ANDROID_PACKAGE_NAME`;
+        url = `https://play.google.com/store/apps/details?id=com.martbul.outDrinkMe`;
         console.warn("Could not get Android package name via Application.applicationId, using fallback Play Store URL. Please set EXPO_PUBLIC_ANDROID_PACKAGE_NAME env variable or replace 'YOUR_ANDROID_PACKAGE_NAME' manually.");
       }
     } else if (Platform.OS === "ios") {
@@ -48,8 +48,7 @@ const MandatoryUpdateModal = () => {
       // onRequestClose is for Android back button. If update is mandatory, prevent closing.
       onRequestClose={() => {
         Alert.alert("Update Required", "You must update the app to continue.");
-        // Optionally, you might want to `BackHandler.exitApp()` here for a truly forced exit,
-        // but generally, forcing a modal to stay is better for user experience.
+        
       }}
     >
       <View style={styles.centeredView}>

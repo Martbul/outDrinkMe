@@ -6,17 +6,16 @@ import { ClerkLoaded, ClerkProvider, useUser } from "@clerk/clerk-expo";
 import { tokenCache } from "@clerk/clerk-expo/token-cache";
 import { useFonts } from "expo-font";
 import { Slot, usePathname } from "expo-router";
-import { PostHogProvider, usePostHog } from "posthog-react-native";
+import PostHog, { PostHogProvider, usePostHog } from "posthog-react-native";
 import { useEffect } from "react";
-import PostHog from "posthog-react-native";
 import { Platform, Text, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { TailwindProvider } from "tailwindcss-react-native";
-import { AppStorage } from "@/utils/storage"; 
-import "../global.css";
+import { AppStorage } from "@/utils/storage";
 import { DrunkGameProvider } from "@/providers/DrunkGameProvider";
 import DeepLinkHandler from "@/components/deepLinkHandler";
 import MandatoryUpdateModal from "@/components/mandatoryUpdateModal";
+import "../global.css";
 
 let posthog: PostHog;
 
@@ -68,13 +67,14 @@ function AuthenticatedAppContent() {
     });
   }, [posthog]);
 
- return (
-   <>
-     <DeepLinkHandler />
+  return (
+    <>
+      <DeepLinkHandler />
 
-     <Slot />
-   </>
- );}
+      <Slot />
+    </>
+  );
+}
 
 export default function RootLayout() {
   const [loaded] = useFonts({
@@ -123,7 +123,7 @@ export default function RootLayout() {
                   <AdsProvider>
                     <TailwindProvider>
                       <AuthenticatedAppContent />
-                        <MandatoryUpdateModal  />
+                      <MandatoryUpdateModal />
                     </TailwindProvider>
                   </AdsProvider>
                 </DrunkGameProvider>

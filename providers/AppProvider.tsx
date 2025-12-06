@@ -1482,7 +1482,7 @@ export function AppProvider({ children }: AppProviderProps) {
 
           if (data?.action_url) {
             console.log("Deep linking to:", data.action_url);
-            // router.push(data.action_url);
+            router.push("/(tabs)/mix");
           }
 
           refreshNotifications();
@@ -1494,7 +1494,7 @@ export function AppProvider({ children }: AppProviderProps) {
         responseListener.current.remove();
       }
     };
-  }, [isSignedIn, userData, refreshNotifications, registerPushDevice]);
+  }, [isSignedIn, userData, router, refreshNotifications, registerPushDevice]);
 
   // ============================================
   // IN-APP UPDATE LOGIC (Defined after its state setters)
@@ -1571,10 +1571,6 @@ export function AppProvider({ children }: AppProviderProps) {
   }, [isSignedIn, getToken, posthog, setUpdateMessage, setShowMandatoryUpdateModal, withLoadingAndError]);
 
 
-  // ============================================
-  // All other Refresh Functions (These can stay where they are or be grouped logically)
-  // ============================================
-  // (Your existing refreshUserData, refreshUserStats, refreshLeaderboard, etc. go here)
   const refreshUserData = useCallback(async () => {
     if (!isSignedIn) return;
     await withLoadingAndError(

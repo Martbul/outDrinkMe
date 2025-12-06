@@ -262,7 +262,7 @@ export default function CoeffInfoScreen() {
                   style={{ marginRight: 12, marginTop: 2 }}
                 />
                 <Text className="text-white/70 text-sm flex-1 leading-6">
-                  <Text className="text-white font-bold">Streaks:</Text> Don't
+                  <Text className="text-white font-bold">Streaks:</Text> Dona&apos;t
                   break the chain. Long streaks multiply your points.
                 </Text>
               </View>
