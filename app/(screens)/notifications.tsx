@@ -7,15 +7,25 @@ import {
   Image,
   RefreshControl,
   AppState,
+  Linking,
+  Platform,
+  Alert,
+  StatusBar,
   ActivityIndicator,
+  // NO SafeAreaView import here at all
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
+import * as Notifications from "expo-notifications";
 import { useApp } from "@/providers/AppProvider";
 import { NotificationItem } from "@/types/api.types";
+import { registerForPushNotificationsAsync } from "@/utils/registerPushNotification";
 import { useRouter } from "expo-router";
+
+// 1. IMPORT THE HOOK INSTEAD OF THE COMPONENT
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function NotificationsScreen() {
+  // 2. GET THE INSETS (Just numbers, no crash risk)
   const insets = useSafeAreaInsets();
 
   const router = useRouter();
@@ -25,6 +35,7 @@ export default function NotificationsScreen() {
     refreshNotifications,
     markNotificationRead,
     markAllNotificationsRead,
+    registerPushDevice,
   } = useApp();
 
   const [refreshing, setRefreshing] = useState(false);
@@ -100,7 +111,7 @@ export default function NotificationsScreen() {
 
   useEffect(() => {
     refreshNotifications();
-  }, [refreshNotifications]);
+  }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -254,6 +265,7 @@ export default function NotificationsScreen() {
     );
   };
 
+  // --- SAFE MAIN RENDER ---
   if (!notifications) {
     return (
       <View

@@ -1,8 +1,16 @@
-// components/MandatoryUpdateModal.tsx
-import React from 'react';
-import { Modal, View, Text, Button, StyleSheet, Platform, Alert, Linking } from 'react-native';
-import { useApp } from '@/providers/AppProvider'; // Adjust path as needed
-import * as Application from 'expo-application';
+import React from "react";
+import {
+  Modal,
+  View,
+  Text,
+  Platform,
+  Alert,
+  Linking,
+  TouchableOpacity,
+} from "react-native";
+import { useApp } from "@/providers/AppProvider";
+import * as Application from "expo-application";
+import { MaterialCommunityIcons } from "@expo/vector-icons"; // Optional: Adds a nice icon
 
 const MandatoryUpdateModal = () => {
   const { showMandatoryUpdateModal, updateMessage } = useApp();
@@ -14,25 +22,27 @@ const MandatoryUpdateModal = () => {
       if (packageName) {
         url = `market://details?id=${packageName}`;
       } else {
-        // Fallback if Application.applicationId somehow fails.
-        // You MUST replace 'YOUR_ANDROID_PACKAGE_NAME' with your actual package name (e.g., com.yourcompany.yourapp)
         url = `https://play.google.com/store/apps/details?id=com.martbul.outDrinkMe`;
-        console.warn("Could not get Android package name via Application.applicationId, using fallback Play Store URL. Please set EXPO_PUBLIC_ANDROID_PACKAGE_NAME env variable or replace 'YOUR_ANDROID_PACKAGE_NAME' manually.");
+        console.warn(
+          "Could not get Android package name, using fallback Play Store URL."
+        );
       }
     } else if (Platform.OS === "ios") {
-      // For iOS, you typically link to the App Store using your app's Apple ID (a numeric ID).
-      // You MUST replace 'YOUR_APPLE_APP_ID' with your actual Apple App ID from App Store Connect.
+      // REPLACE WITH YOUR ACTUAL APP ID
       url = `itms-apps://itunes.apple.com/app/idYOUR_APPLE_APP_ID`;
-      console.warn("Please replace 'YOUR_APPLE_APP_ID' with your actual Apple App Store ID for iOS updates.");
+      console.warn("Please replace 'YOUR_APPLE_APP_ID' with your actual ID.");
     }
 
     if (url) {
-      Linking.openURL(url).catch(err => {
+      Linking.openURL(url).catch((err) => {
         console.error("Failed to open app store link:", err);
-        Alert.alert("Error", "Could not open the app store. Please try updating manually.");
+        Alert.alert(
+          "Error",
+          "Could not open the app store. Please update manually."
+        );
       });
     } else {
-      Alert.alert("Error", "Could not determine the app store URL for your platform. Please update manually.");
+      Alert.alert("Error", "Could not determine the app store URL.");
     }
   };
 
@@ -45,60 +55,47 @@ const MandatoryUpdateModal = () => {
       animationType="fade"
       transparent={true}
       visible={showMandatoryUpdateModal}
-      // onRequestClose is for Android back button. If update is mandatory, prevent closing.
+      statusBarTranslucent
       onRequestClose={() => {
+        // Prevent closing on Android back button
         Alert.alert("Update Required", "You must update the app to continue.");
-        
       }}
     >
-      <View style={styles.centeredView}>
-        <View style={styles.modalView}>
-          <Text style={styles.modalTitle}>Update Required!</Text>
-          <Text style={styles.modalText}>{updateMessage}</Text>
-          <Button title="Update Now" onPress={handleUpdatePress} />
+      {/* Dark Overlay */}
+      <View className="flex-1 justify-center items-center bg-black/80 px-4">
+        
+        {/* Modal Card */}
+        <View className="w-full max-w-[340px] bg-orange-600 rounded-3xl p-6 items-center shadow-xl shadow-black">
+          
+          {/* Icon Header */}
+          <View className="bg-white/20 p-4 rounded-full mb-4 border border-white/10">
+            <MaterialCommunityIcons name="rocket-launch" size={32} color="white" />
+          </View>
+
+          {/* Title */}
+          <Text className="text-2xl font-black text-white text-center mb-2 tracking-wide uppercase">
+            Update Required
+          </Text>
+
+          {/* Message Body */}
+          <Text className="text-white/90 text-center text-base mb-8 leading-6 font-medium">
+            {updateMessage || "A new version is available. Please update to continue using the app."}
+          </Text>
+
+          {/* Action Button */}
+          <TouchableOpacity
+            onPress={handleUpdatePress}
+            activeOpacity={0.8}
+            className="w-full bg-white py-4 rounded-2xl items-center shadow-sm"
+          >
+            <Text className="text-orange-600 font-black text-lg uppercase tracking-widest">
+              Update Now
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
     </Modal>
   );
 };
-
-const styles = StyleSheet.create({
-  centeredView: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: 'rgba(0,0,0,0.7)', // Dark semi-transparent overlay
-  },
-  modalView: {
-    margin: 20,
-    backgroundColor: "white",
-    borderRadius: 10,
-    padding: 30,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-    width: '80%', // Make modal a bit narrower
-    maxWidth: 400, // Max width for larger screens
-  },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    color: '#333',
-    textAlign: 'center',
-  },
-  modalText: {
-    marginBottom: 20,
-    textAlign: "center",
-    fontSize: 16,
-    color: '#555',
-  }
-});
 
 export default MandatoryUpdateModal;
