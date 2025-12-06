@@ -604,7 +604,7 @@ export default function GameLobbyScreen() {
                   className="mt-4 bg-white py-4 rounded-xl items-center"
                 >
                   <Text className="text-black font-bold text-base">
-                    Got it, let's play!
+                    Got it, let&apos;s play!
                   </Text>
                 </TouchableOpacity>
               </ScrollView>

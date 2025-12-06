@@ -8,7 +8,7 @@ export const drunkQuotes = [
   "You don't need fun to have alcohol",
   "Alcohol is not the answer, it is the question and the answer is yes",
   "I'm either at work or drunk and that's about it",
-  "I'm only haveing 1 drink",
+  "I'm only having 1 drink",
   "Everything you want is waiting for you on the other side of a drunk cig",
   "Wish you were beer",
   "Hangovers only last for a day, memories last for a lifetime",
