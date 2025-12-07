@@ -1480,8 +1480,8 @@ export function AppProvider({ children }: AppProviderProps) {
             return;
           }
 
-          if (data?.action_url) {
-            console.log("Deep linking to:", data.action_url);
+          if (data) {
+            // console.log("Deep linking to:", data.action_url);
             router.push("/(tabs)/mix");
           }
 
@@ -1494,7 +1494,7 @@ export function AppProvider({ children }: AppProviderProps) {
         responseListener.current.remove();
       }
     };
-  }, [isSignedIn, userData, router, refreshNotifications, registerPushDevice]);
+  }, [isSignedIn, userData, refreshNotifications, registerPushDevice]);
 
   // ============================================
   // IN-APP UPDATE LOGIC (Defined after its state setters)
@@ -2285,6 +2285,8 @@ export function AppProvider({ children }: AppProviderProps) {
     }
     return false;
   }, [isSignedIn, getToken, withLoadingAndError, posthog]);
+
+
 
   const markNotificationRead = useCallback(
     async (id: string) => {
