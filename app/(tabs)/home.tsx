@@ -1,4 +1,5 @@
 import { apiService } from "@/api";
+import AlcoholismChart from "@/components/charts/lineChart";
 import DrunkThought from "@/components/drunkThought";
 import { Header } from "@/components/header";
 import InfoTooltip from "@/components/infoTooltip";
@@ -406,6 +407,7 @@ export default function HomeScreen() {
           </Text>
         </TouchableOpacity> */}
 
+        {/* <AlcoholismChart /> */}
         <ThisWeekGadget />
 
         <View className="flex-row gap-3 mb-4">

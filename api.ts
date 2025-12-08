@@ -349,16 +349,16 @@ class ApiService {
       console.log(response);
 
       const transformed = response.map((post) => ({
-        id: post.ID,
-        userId: post.UserID,
-        userImageUrl: post.UserImageURL,
-        date: post.Date,
-        drankToday: post.DrankToday,
-        loggedAt: post.LoggedAt,
-        imageUrl: post.ImageURL,
-        locationText: post.LocationText,
-        mentionedBuddies: post.MentionedBuddies || [],
-        sourceType: post.SourceType,
+        id: post.id,
+        userId: post.user_id,
+        userImageUrl: post.user_image_url,
+        date: post.date,
+        drankToday: post.drank_today,
+        loggedAt: post.logged_at,
+        imageUrl: post.image_url,
+        locationText: post.location_text,
+        mentionedBuddies: post.mentioned_buddies || [],
+        sourceType: post.source_type,
       }));
 
       return transformed;
@@ -378,17 +378,17 @@ class ApiService {
         }
       );
 
-      const transformed = response.map((post) => ({
-        id: post.ID,
-        userId: post.UserID,
-        userImageUrl: post.UserImageURL,
-        date: post.Date,
-        drankToday: post.DrankToday,
-        loggedAt: post.LoggedAt,
-        imageUrl: post.ImageURL,
-        locationText: post.LocationText,
-        mentionedBuddies: post.MentionedBuddies || [],
-        sourceType: post.SourceType,
+      const transformed: YourMixPostData[] = response.map((post) => ({
+        id: post.id,
+        userId: post.user_id,
+        userImageUrl: post.user_image_url,
+        date: post.date, // Changed from post.data to post.date
+        drankToday: post.drank_today,
+        loggedAt: post.logged_at,
+        imageUrl: post.image_url,
+        locationText: post.location_text,
+        mentionedBuddies: post.mentioned_buddies || [],
+        sourceType: post.source_type,
       }));
 
       return transformed;
@@ -523,14 +523,58 @@ class ApiService {
   async getFriendDiscoveryDisplayProfile(
     friendDiscoveryId: string,
     token: string
-  ) {
-    return this.makeRequest<FriendDiscoveryDisplayProfileResponse>(
-      `/api/v1/user/friend-discovery/display-profile?friendDiscoveryId=${friendDiscoveryId}`,
-      {
-        method: "GET",
-        token,
-      }
-    );
+  ): Promise<
+    Omit<FriendDiscoveryDisplayProfileResponse, "mix_posts"> & {
+      mix_posts: YourMixPostData[];
+    }
+  > {
+    try {
+      const response =
+        await this.makeRequest<FriendDiscoveryDisplayProfileResponse>(
+          `/api/v1/user/friend-discovery/display-profile?friendDiscoveryId=${friendDiscoveryId}`,
+          {
+            method: "GET",
+            token,
+          }
+        );
+
+      // Transform the mix_posts array within the profile response
+      const transformedMixPosts: YourMixPostData[] = response.mix_posts.map(
+        (post) => ({
+          id: post.id,
+          userId: post.user_id,
+          userImageUrl: post.user_image_url,
+          date: post.date,
+          drankToday: post.drank_today,
+          loggedAt: post.logged_at,
+          imageUrl: post.image_url,
+          locationText: post.location_text,
+          mentionedBuddies: post.mentioned_buddies || [],
+          sourceType: post.source_type,
+        })
+      );
+
+      return {
+        ...response,
+        mix_posts: transformedMixPosts,
+      };
+    } catch (error) {
+      console.error(
+        `Failed to fetch friend discovery profile for ${friendDiscoveryId}:`,
+        error
+      );
+      return {
+        user: {} as UserData,
+        stats: {
+          current_streak: 0,
+          total_weeks_won: 0,
+          friends_count: 0,
+        } as UserStats,
+        achievements: [],
+        mix_posts: [],
+        is_friend: false,
+      };
+    }
   }
 
   async deleteUserAccount(token: string) {
@@ -760,7 +804,6 @@ class ApiService {
     );
   }
 
-
   //!create is basicly creating and joingin
   async createDrinkingGame(
     gameType: string,
@@ -817,13 +860,25 @@ class ApiService {
     });
   }
 
-    async getMinRequiredAppVersion(token: string): Promise<MinVersionResponse> {
-      return this.makeRequest<any>("/api/v1/min-version", {
+  async getMinRequiredAppVersion(token: string): Promise<MinVersionResponse> {
+    return this.makeRequest<any>("/api/v1/min-version", {
       method: "GET",
       token,
     });
   }
 
+  async getAlcoholismChart(
+    token: string,
+    period: string
+  ): Promise<any> {
+    return this.makeRequest<any>(
+      `/api/v1/user/alcoholisum_chart?period=${period}`,
+      {
+        method: "GET",
+        token,
+      }
+    );
+  }
 
   getWebSocketUrl(sessionId: string): string {
     // 1. Strip http/https

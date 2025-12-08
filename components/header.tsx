@@ -40,7 +40,7 @@ export const Header = () => {
         <View className="flex-row items-center flex-1">
           {userData?.imageUrl ? (
             <TouchableOpacity
-              onPress={() => router.push("/(screens)/userProfile")}
+              onPress={() => router.push("/(screens)/userInfo")}
             >
               <Image
                 source={{ uri: userData.imageUrl }}
