@@ -1,25 +1,147 @@
-import React, { useEffect, useMemo } from "react";
-import { View, Text, ScrollView, Image } from "react-native";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  Image,
+  Dimensions,
+  TouchableOpacity,
+  StatusBar,
+  ActivityIndicator,
+  Vibration,
+  RefreshControl,
+} from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/providers/AppProvider";
-import { getCoefInfo, getLevelInfo } from "@/utils/levels";
-import { FriendButton } from "@/components/friendButton";
-import SplashScreen from "@/components/spashScreen";
-import BackHeader from "@/components/backHeader";
+import { getLevelInfo } from "@/utils/levels";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import type { YourMixPostData } from "@/types/api.types";
+import NestedScreenHeader from "@/components/nestedScreenHeader";
+import MixPostModal from "@/components/mixPostModal";
 
-const ACHIEVEMENT_IMAGES = {
-  lightning: require("../../assets/images/achievements/lightning.png"),
-  druid: require("../../assets/images/achievements/druid.png"),
-  campfire: require("../../assets/images/achievements/campfire.png"),
-  target: require("../../assets/images/achievements/target.png"),
-  crown: require("../../assets/images/achievements/crown.png"),
-  trophy: require("../../assets/images/achievements/trophy.png"),
-  star: require("../../assets/images/achievements/star.png"),
-  hundred: require("../../assets/images/achievements/100.png"),
+// --- CONSTANTS ---
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const GAP = 12;
+const SCREEN_PADDING = 16;
+const COLUMN_WIDTH = (SCREEN_WIDTH - SCREEN_PADDING * 2 - GAP) / 2;
+
+// --- HELPER COMPONENTS ---
+
+const ActionButton = ({
+  initialIsFriend,
+  onToggle,
+  isCurrentUser,
+}: {
+  initialIsFriend: boolean;
+  onToggle: (state: boolean) => void;
+  isCurrentUser: boolean;
+}) => {
+  if (isCurrentUser) return null;
+
+  const [isFriend, setIsFriend] = useState(initialIsFriend);
+  const [loading, setLoading] = useState(false);
+
+  const handlePress = async () => {
+    Vibration.vibrate(10);
+    setLoading(true);
+    const newState = !isFriend;
+    setIsFriend(newState);
+    await onToggle(newState);
+    setLoading(false);
+  };
+
+  return (
+    <TouchableOpacity
+      onPress={handlePress}
+      disabled={loading}
+      activeOpacity={0.8}
+      className={`py-3 rounded-xl items-center justify-center mt-6 border ${
+        isFriend
+          ? "bg-white/[0.03] border-white/[0.08]"
+          : "bg-orange-600 border-orange-600"
+      }`}
+    >
+      {loading ? (
+        <ActivityIndicator size="small" color={isFriend ? "white" : "black"} />
+      ) : (
+        <Text
+          className={`text-sm font-black tracking-widest ${
+            isFriend ? "text-white" : "text-black"
+          }`}
+        >
+          {isFriend ? "REMOVE FRIEND" : "ADD FRIEND"}
+        </Text>
+      )}
+    </TouchableOpacity>
+  );
 };
 
+const GalleryItem = ({
+  item,
+  setExpandedId,
+}: {
+  item: YourMixPostData;
+  setExpandedId: (id: string) => void;
+}) => {
+  const [height, setHeight] = useState(COLUMN_WIDTH * 1.3);
+
+  useEffect(() => {
+    if (item.imageUrl) {
+      Image.getSize(
+        item.imageUrl,
+        (w, h) => {
+          const ratio = Math.min(h / w, 1.5);
+          setHeight(COLUMN_WIDTH * ratio);
+        },
+        () => {}
+      );
+    }
+  }, [item.imageUrl]);
+
+  const getOptimizedImageUrl = (url: string | undefined) => {
+    if (!url || !url.includes("cloudinary.com")) return url;
+    return url.replace("/upload/", "/upload/f_auto,q_auto,w_500/");
+  };
+
+  return (
+    <TouchableOpacity
+      onPress={() => setExpandedId(item.id)}
+      activeOpacity={0.8}
+      className="mb-4"
+    >
+      <View className="bg-white/[0.03] rounded-2xl overflow-hidden border border-white/[0.08] p-2">
+        <View className="rounded-xl overflow-hidden relative">
+          <Image
+            source={{ uri: getOptimizedImageUrl(item.imageUrl) }}
+            style={{ width: "100%", height: height - 16 }}
+            resizeMode="cover"
+          />
+          <View className="absolute top-2 right-2 bg-black/50 backdrop-blur-md px-2 py-1 rounded border border-white/10">
+            <Text className="text-orange-500 text-[9px] font-bold">
+              {new Date(item.date).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+              })}
+            </Text>
+          </View>
+          {item.locationText && (
+            <View className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/90 to-transparent">
+              <Text
+                className="text-white text-[11px] font-bold"
+                numberOfLines={1}
+              >
+                {item.locationText}
+              </Text>
+            </View>
+          )}
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+};
+
+// --- MAIN COMPONENT ---
 const UserInfoScreen = () => {
   const insets = useSafeAreaInsets();
   const { userId: rawUserId } = useLocalSearchParams();
@@ -29,773 +151,404 @@ const UserInfoScreen = () => {
     getFriendDiscoveryDisplayProfile,
     addFriend,
     removeFriend,
+    storeItems,
     isLoading,
   } = useApp();
 
+  // --- STATE ---
+  const [activeTab, setActiveTab] = useState<"overview" | "inventory">(
+    "overview"
+  );
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Modal State
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedItem, setExpandedItem] = useState<YourMixPostData | undefined>(
+    undefined
+  );
+  const [currentAspectRatio, setCurrentAspectRatio] = useState(4 / 3);
+
+  // 1. DETERMINE TARGET ID
+  // If rawUserId is present, use it. Otherwise, default to the logged-in user's ID.
+  const targetUserId = useMemo(() => {
+    const paramId = Array.isArray(rawUserId) ? rawUserId[0] : rawUserId;
+    return paramId || userData?.id;
+  }, [rawUserId, userData?.id]);
+
+  // 2. FETCH DATA ON MOUNT OR ID CHANGE
   useEffect(() => {
-    const friendDiscoveryId = Array.isArray(rawUserId)
-      ? rawUserId[0]
-      : rawUserId;
+    if (targetUserId) {
+      getFriendDiscoveryDisplayProfile(targetUserId);
+    }
+  }, [targetUserId]);
 
-    if (!friendDiscoveryId) return;
+  // 3. CHECK IF DATA IS STALE
+  // If the loaded profile ID doesn't match the target ID, we are looking at stale data.
+  const isDataStale = friendDiscoveryProfile?.user?.id !== targetUserId;
 
-    const loadData = async () => {
-      await getFriendDiscoveryDisplayProfile(friendDiscoveryId);
-    };
+  // --- OTHER EFFECTS ---
+  useEffect(() => {
+    if (expandedId && friendDiscoveryProfile?.mix_posts) {
+      const item = friendDiscoveryProfile.mix_posts.find(
+        (post) => post.id === expandedId
+      );
+      setExpandedItem(item);
+    } else {
+      setExpandedItem(undefined);
+    }
+  }, [expandedId, friendDiscoveryProfile?.mix_posts]);
 
-    loadData();
-  }, [rawUserId]);
+  useEffect(() => {
+    if (expandedItem?.imageUrl) {
+      Image.getSize(
+        expandedItem.imageUrl,
+        (width, height) => {
+          if (width && height) setCurrentAspectRatio(width / height);
+        },
+        (error) => console.log("Failed to get size for modal image", error)
+      );
+    } else {
+      setCurrentAspectRatio(4 / 3);
+    }
+  }, [expandedItem]);
 
-   const coefInfo = getCoefInfo(userData?.alcoholism_coefficient);
- 
-  const levelInfo = getLevelInfo(userData?.xp);
-  const achievements = friendDiscoveryProfile?.achievements;
+  // --- LOGIC ---
+  const isCurrentUser =
+    userData?.clerkId === friendDiscoveryProfile?.user?.clerkId ||
+    userData?.id === friendDiscoveryProfile?.user?.id;
 
-  const groupedAchievements = useMemo(() => {
-    if (!achievements) return { streaks: [], competition: [], social: [] };
+  const { leftColumn, rightColumn } = useMemo(() => {
+    // If data is stale, return empty columns to avoid flash
+    if (isDataStale) return { leftColumn: [], rightColumn: [] };
 
-    return {
-      streaks: achievements.filter(
-        (a) =>
-          a.criteria_type === "streak" ||
-          a.criteria_type === "perfect_week" ||
-          a.criteria_type === "total_days"
-      ),
-      competition: achievements.filter((a) => a.criteria_type === "weeks_won"),
-      social: achievements.filter((a) => a.criteria_type === "friends"),
-    };
-  }, [achievements]);
+    const left: YourMixPostData[] = [];
+    const right: YourMixPostData[] = [];
+    const userPosts = friendDiscoveryProfile?.mix_posts || [];
+    userPosts.forEach((item, index) => {
+      index % 2 === 0 ? left.push(item) : right.push(item);
+    });
+    return { leftColumn: left, rightColumn: right };
+  }, [friendDiscoveryProfile, isDataStale]);
 
-  const getAchievementImage = (name: string) => {
-    const imageMap: { [key: string]: any } = {
-      Lightning: ACHIEVEMENT_IMAGES.lightning,
-      "Beast Mode": ACHIEVEMENT_IMAGES.druid,
-      "Fire Starter": ACHIEVEMENT_IMAGES.campfire,
-      Sharpshooter: ACHIEVEMENT_IMAGES.target,
-      King: ACHIEVEMENT_IMAGES.crown,
-      Champion: ACHIEVEMENT_IMAGES.trophy,
-      Legend: ACHIEVEMENT_IMAGES.star,
-      Century: ACHIEVEMENT_IMAGES.hundred,
-    };
-    return imageMap[name] || ACHIEVEMENT_IMAGES.lightning;
+  const levelInfo = getLevelInfo(friendDiscoveryProfile?.user?.xp || 0);
+
+  const onRefresh = async () => {
+    if (targetUserId) {
+      setRefreshing(true);
+      await getFriendDiscoveryDisplayProfile(targetUserId);
+      setRefreshing(false);
+    }
   };
 
   const handleFriendToggle = async (newState: boolean) => {
     if (!friendDiscoveryProfile?.user) return;
-
-    if (newState) {
-      await addFriend(friendDiscoveryProfile.user.clerkId);
-    } else {
-      await removeFriend(friendDiscoveryProfile.user.clerkId);
-    }
+    newState
+      ? await addFriend(friendDiscoveryProfile.user.clerkId)
+      : await removeFriend(friendDiscoveryProfile.user.clerkId);
   };
 
-  const renderAchievementCategory = (
-    title: string,
-    achievements: any[],
-  ) => {
-    if (achievements.length === 0) return null;
+  // --- RENDER HELPERS ---
+
+  const renderOverview = () => {
+    if (leftColumn.length === 0 && rightColumn.length === 0) {
+      return (
+        <View className="bg-white/[0.03] rounded-2xl p-8 border border-white/[0.08] items-center mt-2 mx-4">
+          <View className="w-20 h-20 rounded-2xl bg-orange-600/20 items-center justify-center mb-4">
+            <MaterialCommunityIcons
+              name="image-off-outline"
+              size={32}
+              color="#EA580C"
+            />
+          </View>
+          <Text className="text-white text-lg font-black mb-2">
+            No Mixes Found
+          </Text>
+          <Text className="text-white/50 text-xs text-center font-semibold">
+            {isCurrentUser
+              ? "You haven't posted any drinking memories yet."
+              : "This user has not posted any drinking memories yet."}
+          </Text>
+        </View>
+      );
+    }
 
     return (
-      <View className="mb-6">
-        <View className="flex-row items-center mb-3">
-          <Text className="text-white text-base font-bold">{title}</Text>
-          <View className="ml-auto bg-white/[0.05] px-2.5 py-1 rounded-full">
-            <Text className="text-white/50 text-xs font-bold">
-              {achievements.filter((a) => a.unlocked).length}/
-              {achievements.length}
-            </Text>
-          </View>
-        </View>
-
-        <View className="flex-row flex-wrap gap-2.5">
-          {achievements.map((achievement) => (
-            <View
-              key={achievement.id}
-              className={`w-[30%] aspect-square rounded-xl items-center justify-center border ${
-                achievement.unlocked
-                  ? "bg-orange-600/20 border-orange-600/50"
-                  : "bg-white/[0.03] border-white/[0.08]"
-              }`}
-            >
-              <Image
-                source={getAchievementImage(achievement.name)}
-                style={{
-                  width: 56,
-                  height: 56,
-                  opacity: achievement.unlocked ? 1 : 0.3,
-                }}
-                resizeMode="contain"
+      <View className="px-4">
+        <View className="flex-row w-full justify-between">
+          <View style={{ width: COLUMN_WIDTH }}>
+            {leftColumn.map((item) => (
+              <GalleryItem
+                key={item.id}
+                item={item}
+                setExpandedId={setExpandedId}
               />
-              {achievement.unlocked && (
-                <View className="absolute top-1.5 right-1.5 bg-orange-600 rounded-full w-4 h-4 items-center justify-center">
-                  <Text className="text-white text-[10px] font-black">✓</Text>
-                </View>
-              )}
-            </View>
-          ))}
+            ))}
+          </View>
+          <View style={{ width: COLUMN_WIDTH }}>
+            {rightColumn.map((item) => (
+              <GalleryItem
+                key={item.id}
+                item={item}
+                setExpandedId={setExpandedId}
+              />
+            ))}
+          </View>
         </View>
       </View>
     );
   };
 
-  // Show splash screen style loader only on initial load
-  if (isLoading && !friendDiscoveryProfile) {
-    return <SplashScreen />;
+  const renderInventory = () => {
+    const inventory = friendDiscoveryProfile?.inventory || {
+      flag: [],
+      smoking: [],
+    };
+
+    const renderSection = (
+      title: string,
+      items: any[],
+      storeCategory: any[],
+      icon: any
+    ) => {
+      const total = items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
+
+      return (
+        <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08] mb-4">
+          <View className="flex-row justify-between items-center mb-4">
+            <View>
+              <Text className="text-orange-600 text-[10px] font-bold tracking-widest mb-1 uppercase">
+                {title}
+              </Text>
+              <Text className="text-white text-xl font-black">Collection</Text>
+            </View>
+            <View className="bg-orange-600 rounded-lg px-3 py-1.5 items-center">
+              <Text className="text-black text-xs font-black">
+                {total} ITEMS
+              </Text>
+            </View>
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingRight: 10 }}
+          >
+            {items && items.length > 0 ? (
+              items.map((item) => {
+                const storeItem = storeCategory?.find(
+                  (si) => si.id === item.item_id
+                );
+                return (
+                  <View
+                    key={item.id}
+                    className={`bg-black/40 rounded-xl p-3 mr-3 items-center border ${
+                      item.is_equipped ? "border-orange-600" : "border-white/10"
+                    }`}
+                    style={{ width: 140, height: 180 }}
+                  >
+                    {item.is_equipped && (
+                      <View className="absolute top-2 right-2 bg-orange-600 px-1.5 py-0.5 rounded">
+                        <Text className="text-[8px] font-bold text-white">
+                          EQUIPPED
+                        </Text>
+                      </View>
+                    )}
+
+                    <View className="flex-1 items-center justify-center">
+                      {storeItem?.image_url ? (
+                        <Image
+                          source={{ uri: storeItem.image_url }}
+                          style={{ width: 80, height: 80 }}
+                          resizeMode="contain"
+                        />
+                      ) : (
+                        <View className="w-16 h-16 bg-white/5 rounded-full items-center justify-center">
+                          <MaterialCommunityIcons
+                            name={icon}
+                            size={30}
+                            color="#666"
+                          />
+                        </View>
+                      )}
+                    </View>
+                    <Text
+                      className="text-white text-sm font-bold text-center mb-1"
+                      numberOfLines={1}
+                    >
+                      {storeItem?.name || "Unknown Item"}
+                    </Text>
+                    <Text className="text-white/40 text-xs font-bold">
+                      x{item.quantity}
+                    </Text>
+                  </View>
+                );
+              })
+            ) : (
+              <View className="w-full items-center py-6">
+                <Text className="text-white/30 text-xs font-bold italic">
+                  No items in this collection.
+                </Text>
+              </View>
+            )}
+          </ScrollView>
+        </View>
+      );
+    };
+
+    return (
+      <View className="px-4">
+        {renderSection("Sexuality", inventory.flag, storeItems?.flag, "flag")}
+        {renderSection(
+          "Smoking",
+          inventory.smoking,
+          storeItems?.smoking,
+          "smoking"
+        )}
+      </View>
+    );
+  };
+
+  // --- LOADING / STALE CHECK ---
+  // If we are loading OR the data currently in state belongs to someone else, show loader
+  if ((isLoading || isDataStale) && !refreshing) {
+    return (
+      <View className="flex-1 bg-black items-center justify-center">
+        <ActivityIndicator color="#EA580C" size="large" />
+      </View>
+    );
+  }
+
+  // Ensure friendDiscoveryProfile exists before rendering
+  if (!friendDiscoveryProfile) {
+    return (
+      <View className="flex-1 bg-black items-center justify-center">
+        <ActivityIndicator color="#EA580C" size="large" />
+      </View>
+    );
   }
 
   return (
-    <View className="flex-1 bg-black" style={{ paddingTop: insets.top - 15 }}>
+    <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
+      <StatusBar barStyle="light-content" />
+      <NestedScreenHeader heading="Profile" secondaryHeading="USER" />
+
       <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingBottom: insets.bottom + 10 }}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#EA580C"
+            colors={["#EA580C"]}
+          />
+        }
       >
-        <BackHeader className="top-12" />
-
-        {/* Profile Header */}
-        <View className="items-center pt-8 pb-6 px-4">
-          {/* Avatar with Level & Coef Badge */}
-          <View className="relative mb-4">
-            <View className="w-32 h-32 rounded-full items-center justify-center border-4 border-black">
-              {friendDiscoveryProfile?.user?.imageUrl ? (
-                <Image
-                  source={{ uri: friendDiscoveryProfile.user.imageUrl }}
-                  className="w-full h-full rounded-full"
-                />
-              ) : (
-                <Text className="text-black text-5xl font-black">
-                  {friendDiscoveryProfile?.user?.username?.[0]?.toUpperCase()}
-                </Text>
-              )}
-            </View>
-
-            {/* Level Badge - Bottom Left */}
-            <View className="absolute -bottom-2 -left-2 bg-gray-900 px-3 py-1 rounded-full border-2 border-orange-600">
-              <Text className="text-orange-600 text-xs font-black">
-                {coefInfo.coef}
-              </Text>
-            </View>
-
-            {/* Coef Badge - Bottom Right */}
-            <View className="absolute -bottom-2 -right-2 bg-gray-900 px-3 py-1 rounded-full border-2 border-[#666666]">
-              <Text className="text-neutral-500 text-xs font-black">
-                LV. {levelInfo.level}
-              </Text>
-            </View>
-          </View>
-
-          {/* Name & Username */}
-          <Text className="text-white text-2xl font-black mb-1">
-            {`${friendDiscoveryProfile?.user?.firstName} ${friendDiscoveryProfile?.user?.lastName}`}
-          </Text>
-          <Text className="text-white/50 text-base mb-4">
-            {friendDiscoveryProfile?.user?.username}
-          </Text>
-
-          {/* Friend Button */}
-          {friendDiscoveryProfile?.user && (
-            <FriendButton
-              initialIsFriend={friendDiscoveryProfile.is_friend}
-              onToggle={handleFriendToggle}
-            />
-          )}
-        </View>
-
-        {/* Streak Section */}
-        <View className="px-4 mb-4">
+        {/* --- IDENTITY CARD --- */}
+        <View className="px-4 pb-6">
           <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
-            <View className="flex-row justify-between items-center">
+            <View className="flex-row justify-between items-start mb-2">
               <View>
-                <Text className="text-white/50 text-[11px] font-bold tracking-[1.5px] mb-2">
-                  CURRENT STREAK
+                <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">
+                  IDENTITY
                 </Text>
-                <View className="flex-row items-center">
-                  <Text className="text-white text-[32px] font-black">
-                    {friendDiscoveryProfile?.stats?.current_streak || 0} Days
-                  </Text>
-                  <MaterialCommunityIcons
-                    name="fire"
-                    size={48}
-                    color="#EA580C"
-                  />
-                </View>
+                <Text className="text-white text-[28px] font-black leading-8">
+                  {friendDiscoveryProfile?.user?.firstName}
+                </Text>
+                <Text className="text-white/50 text-xl font-black uppercase">
+                  {friendDiscoveryProfile?.user?.lastName}
+                </Text>
               </View>
-              {friendDiscoveryProfile?.stats &&
-                friendDiscoveryProfile.stats.current_streak > 0 && (
-                  <View className="bg-orange-600/20 px-3.5 py-1.5 rounded-lg">
-                    <Text className="text-orange-600 text-[11px] font-black tracking-wide">
-                      ACTIVE
-                    </Text>
-                  </View>
-                )}
+              <View className="w-20 h-20 rounded-2xl border-2 border-orange-600 p-0.5">
+                <Image
+                  source={{ uri: friendDiscoveryProfile?.user?.imageUrl }}
+                  className="w-full h-full rounded-xl bg-zinc-800"
+                />
+              </View>
             </View>
+
+            {/* Level Bar */}
+            <View className="flex-row items-center gap-3 mt-4 mb-6">
+              <View className="bg-orange-600/20 px-3 py-1.5 rounded-lg">
+                <Text className="text-orange-600 text-[10px] font-black tracking-widest">
+                  LEVEL {levelInfo.level}
+                </Text>
+              </View>
+              <Text className="text-white/50 text-xs font-bold tracking-widest">
+                @{friendDiscoveryProfile?.user?.username?.toUpperCase()}
+              </Text>
+            </View>
+
+            {/* Stats Row */}
+            <View className="bg-white/[0.03] rounded-xl p-4 border border-white/[0.08] flex-row justify-between">
+              <View className="items-center flex-1 border-r border-white/[0.08]">
+                <Text className="text-white text-xl font-black">
+                  {friendDiscoveryProfile?.stats?.current_streak || 0}
+                </Text>
+                <Text className="text-white/40 text-[9px] font-bold mt-1 tracking-wider">
+                  STREAK
+                </Text>
+              </View>
+              <View className="items-center flex-1 border-r border-white/[0.08]">
+                <Text className="text-orange-600 text-xl font-black">
+                  {friendDiscoveryProfile?.stats?.total_weeks_won || 0}
+                </Text>
+                <Text className="text-white/40 text-[9px] font-bold mt-1 tracking-wider">
+                  WINS
+                </Text>
+              </View>
+              <View className="items-center flex-1">
+                <Text className="text-white text-xl font-black">
+                  {friendDiscoveryProfile?.stats?.friends_count || 0}
+                </Text>
+                <Text className="text-white/40 text-[9px] font-bold mt-1 tracking-wider">
+                  BUDDIES
+                </Text>
+              </View>
+            </View>
+
+            <ActionButton
+              initialIsFriend={friendDiscoveryProfile?.is_friend ? true : false}
+              onToggle={handleFriendToggle}
+              isCurrentUser={!!isCurrentUser}
+            />
           </View>
         </View>
 
-        {/* This Week Progress */}
         <View className="px-4 mb-4">
-          <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
-            <Text className="text-white/50 text-[11px] font-bold tracking-[1.5px] mb-3">
-              THIS WEEK
-            </Text>
-            <View className="flex-row justify-between mb-2">
-              {[0, 1, 2, 3, 4, 5, 6].map((day) => (
-                <View
-                  key={day}
-                  className={`w-10 h-10 rounded-lg items-center justify-center ${
-                    day < (friendDiscoveryProfile?.stats?.days_this_week || 0)
-                      ? "bg-orange-600"
-                      : "bg-white/[0.05]"
+          <View className="bg-white/[0.03] rounded-xl p-1.5 border border-white/[0.08] flex-row">
+            {(["overview", "inventory"] as const).map((tab) => (
+              <TouchableOpacity
+                key={tab}
+                onPress={() => setActiveTab(tab)}
+                className={`flex-1 py-2.5 rounded-lg items-center ${
+                  activeTab === tab ? "bg-orange-600" : ""
+                }`}
+              >
+                <Text
+                  className={`text-[10px] font-black tracking-wider uppercase ${
+                    activeTab === tab ? "text-black" : "text-white/40"
                   }`}
                 >
-                  <Text
-                    className={`text-xs font-bold ${
-                      day < (friendDiscoveryProfile?.stats?.days_this_week || 0)
-                        ? "text-black"
-                        : "text-white/30"
-                    }`}
-                  >
-                    {["M", "T", "W", "T", "F", "S", "S"][day]}
-                  </Text>
-                </View>
-              ))}
-            </View>
-            <Text className="text-white text-lg font-bold mt-2">
-              {friendDiscoveryProfile?.stats?.days_this_week || 0}/7 days
-            </Text>
-          </View>
-        </View>
-
-        {/* Stats Grid */}
-        <View className="px-4 mb-4">
-          <View className="flex-row gap-3 mb-3">
-            <View className="flex-1 bg-white/[0.03] rounded-xl p-4 border border-white/[0.08]">
-              <Text className="text-white/50 text-[10px] font-bold tracking-[1.5px] mb-1.5">
-                RANK
-              </Text>
-              <Text className="text-white text-2xl font-black">
-                #{friendDiscoveryProfile?.stats?.rank || 0}
-              </Text>
-            </View>
-
-            <View className="flex-1 bg-white/[0.03] rounded-xl p-4 border border-white/[0.08]">
-              <Text className="text-white/50 text-[10px] font-bold tracking-[1.5px] mb-1.5">
-                TOTAL
-              </Text>
-              <Text className="text-white text-2xl font-black">
-                {friendDiscoveryProfile?.stats?.total_days_drank || 0}
-              </Text>
-              <Text className="text-white/40 text-[11px] font-semibold mt-0.5">
-                days
-              </Text>
-            </View>
-
-            <View className="flex-1 bg-white/[0.03] rounded-xl p-4 border border-white/[0.08]">
-              <Text className="text-white/50 text-[10px] font-bold tracking-[1.5px] mb-1.5">
-                WINS
-              </Text>
-              <Text className="text-white text-2xl font-black">
-                {friendDiscoveryProfile?.stats?.total_weeks_won || 0}
-              </Text>
-              <Text className="text-white/40 text-[11px] font-semibold mt-0.5">
-                weeks
-              </Text>
-            </View>
-          </View>
-
-          <View className="flex-row gap-3">
-            <View className="flex-1 bg-white/[0.03] rounded-xl p-4 border border-white/[0.08]">
-              <Text className="text-white/50 text-[10px] font-bold tracking-[1.5px] mb-1.5">
-                BEST STREAK
-              </Text>
-              <Text className="text-white text-2xl font-black">
-                {friendDiscoveryProfile?.stats?.longest_streak || 0}
-              </Text>
-              <Text className="text-white/40 text-[11px] font-semibold mt-0.5">
-                days
-              </Text>
-            </View>
-
-            <View className="flex-1 bg-white/[0.03] rounded-xl p-4 border border-white/[0.08]">
-              <Text className="text-white/50 text-[10px] font-bold tracking-[1.5px] mb-1.5">
-                FRIENDS
-              </Text>
-              <Text className="text-white text-2xl font-black">
-                {friendDiscoveryProfile?.stats?.friends_count || 0}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Additional Stats */}
-        <View className="px-4 mb-4">
-          <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
-            <Text className="text-white/50 text-[11px] font-bold tracking-[1.5px] mb-3">
-              DETAILED STATS
-            </Text>
-
-            <View className="flex-row justify-between items-center py-3 border-b border-white/[0.05]">
-              <Text className="text-white/50 text-[13px] font-semibold">
-                This Month
-              </Text>
-              <Text className="text-white text-[15px] font-bold">
-                {friendDiscoveryProfile?.stats?.days_this_month || 0} days
-              </Text>
-            </View>
-
-            <View className="flex-row justify-between items-center py-3 border-b border-white/[0.05]">
-              <Text className="text-white/50 text-[13px] font-semibold">
-                This Year
-              </Text>
-              <Text className="text-white text-[15px] font-bold">
-                {friendDiscoveryProfile?.stats?.days_this_year || 0} days
-              </Text>
-            </View>
-
-            <View className="flex-row justify-between items-center py-3">
-              <Text className="text-white/50 text-[13px] font-semibold">
-                Achievements
-              </Text>
-              <Text className="text-white text-[15px] font-bold">
-                {friendDiscoveryProfile?.stats?.achievements_count || 0}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Achievements Preview */}
-        <View className="px-4 mb-6">
-          <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
-            <View className="flex-row justify-between items-center mb-4">
-              <View>
-                <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-1">
-                  ACHIEVEMENTS
+                  {tab}
                 </Text>
-                <Text className="text-white text-xl font-black">
-                  Badges Earned
-                </Text>
-              </View>
-              <View className="bg-orange-600/20 px-3.5 py-1.5 rounded-lg">
-                <Text className="text-orange-600 text-xs font-black">
-                  {achievements?.filter((a) => a.unlocked).length}/
-                  {achievements?.length}
-                </Text>
-              </View>
-            </View>
-            {renderAchievementCategory(
-              "Streaks & Days",
-              groupedAchievements.streaks,
-          
-            )}
-            {renderAchievementCategory(
-              "Competition",
-              groupedAchievements.competition,
-             
-            )}
-            {renderAchievementCategory(
-              "Social",
-              groupedAchievements.social,
-         
-            )}
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
+
+        {activeTab === "overview" && renderOverview()}
+        {activeTab === "inventory" && renderInventory()}
       </ScrollView>
+
+      <MixPostModal
+        expandedItem={expandedItem}
+        expandedId={expandedId}
+        setExpandedId={setExpandedId}
+        currentAspectRatio={currentAspectRatio}
+      />
     </View>
   );
 };
 
 export default UserInfoScreen;
-
-
-
-// import React, { useEffect, useMemo } from "react";
-// import {
-//   View,
-//   Text,
-//   ScrollView,
-//   ImageBackground,
-//   Dimensions,
-//   TouchableOpacity,
-//   Platform,
-// } from "react-native";
-// import { Image } from "expo-image";
-// import { useLocalSearchParams, useRouter } from "expo-router";
-// import { useSafeAreaInsets } from "react-native-safe-area-context";
-// import { useApp } from "@/providers/AppProvider";
-// import { getCoefInfo, getLevelInfo } from "@/utils/levels";
-// import { FriendButton } from "@/components/friendButton";
-// import SplashScreen from "@/components/spashScreen";
-// import {
-//   Ionicons,
-//   MaterialCommunityIcons,
-//   FontAwesome5,
-// } from "@expo/vector-icons";
-// import { LinearGradient } from "expo-linear-gradient"; // Assuming you have this, if not, standard Views work too
-
-// const { width } = Dimensions.get("window");
-// const IMG_HEIGHT = 300;
-
-// const ACHIEVEMENT_IMAGES = {
-//   lightning: require("../../assets/images/achievements/lightning.png"),
-//   druid: require("../../assets/images/achievements/druid.png"),
-//   campfire: require("../../assets/images/achievements/campfire.png"),
-//   target: require("../../assets/images/achievements/target.png"),
-//   crown: require("../../assets/images/achievements/crown.png"),
-//   trophy: require("../../assets/images/achievements/trophy.png"),
-//   star: require("../../assets/images/achievements/star.png"),
-//   hundred: require("../../assets/images/achievements/100.png"),
-// };
-
-// export default function UserInfoScreen() {
-//   const insets = useSafeAreaInsets();
-//   const router = useRouter();
-//   const { userId: rawUserId } = useLocalSearchParams();
-//   const {
-//     userData,
-//     friendDiscoveryProfile,
-//     getFriendDiscoveryDisplayProfile,
-//     addFriend,
-//     removeFriend,
-//     isLoading,
-//   } = useApp();
-
-//   useEffect(() => {
-//     const friendDiscoveryId = Array.isArray(rawUserId)
-//       ? rawUserId[0]
-//       : rawUserId;
-
-//     if (!friendDiscoveryId) return;
-//     getFriendDiscoveryDisplayProfile(friendDiscoveryId);
-//   }, [rawUserId]);
-
-//   const coefInfo = getCoefInfo(userData?.alcoholism_coefficient);
-//   const levelInfo = getLevelInfo(userData?.xp);
-//   const achievements = friendDiscoveryProfile?.achievements || [];
-
-//   const handleFriendToggle = async (newState: boolean) => {
-//     if (!friendDiscoveryProfile?.user) return;
-//     newState
-//       ? await addFriend(friendDiscoveryProfile.user.clerkId)
-//       : await removeFriend(friendDiscoveryProfile.user.clerkId);
-//   };
-
-//   const getAchievementImage = (name: string) => {
-//     const imageMap: { [key: string]: any } = {
-//       Lightning: ACHIEVEMENT_IMAGES.lightning,
-//       "Beast Mode": ACHIEVEMENT_IMAGES.druid,
-//       "Fire Starter": ACHIEVEMENT_IMAGES.campfire,
-//       Sharpshooter: ACHIEVEMENT_IMAGES.target,
-//       King: ACHIEVEMENT_IMAGES.crown,
-//       Champion: ACHIEVEMENT_IMAGES.trophy,
-//       Legend: ACHIEVEMENT_IMAGES.star,
-//       Century: ACHIEVEMENT_IMAGES.hundred,
-//     };
-//     return imageMap[name] || ACHIEVEMENT_IMAGES.lightning;
-//   };
-
-//   if (isLoading && !friendDiscoveryProfile) return <SplashScreen />;
-
-//   return (
-//     <View className="flex-1 bg-black">
-//       <ScrollView
-//         showsVerticalScrollIndicator={false}
-//         contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
-//       >
-//         {/* --- 1. IMMERSIVE HEADER SECTION --- */}
-//         <View className="relative h-[420px]">
-//           {/* Blurred Background Cover */}
-//           <Image
-//             source={{ uri: friendDiscoveryProfile?.user?.imageUrl }}
-//             style={{ width: "100%", height: "100%", position: "absolute" }}
-//             contentFit="cover"
-//             blurRadius={30}
-//           />
-//           {/* Gradient Overlay for text readability */}
-//           <View className="absolute inset-0 bg-black/60" />
-//           <View className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
-
-//           {/* Navigation Header */}
-//           <View
-//             style={{ paddingTop: insets.top + 10 }}
-//             className="flex-row justify-between px-4 z-10"
-//           >
-//             <TouchableOpacity
-//               onPress={() => router.back()}
-//               className="w-10 h-10 rounded-full bg-white/10 items-center justify-center border border-white/20"
-//             >
-//               <Ionicons name="arrow-back" size={20} color="white" />
-//             </TouchableOpacity>
-
-//             {/* Share/Menu Icon could go here */}
-//             <TouchableOpacity className="w-10 h-10 rounded-full bg-white/10 items-center justify-center border border-white/20">
-//               <Ionicons name="share-outline" size={20} color="white" />
-//             </TouchableOpacity>
-//           </View>
-
-//           {/* Main Profile Info */}
-//           <View className="absolute bottom-0 w-full px-6 pb-10">
-//             <View className="flex-row items-end justify-between">
-//               {/* Avatar & Badges */}
-//               <View>
-//                 <View className="relative">
-//                   <Image
-//                     source={{ uri: friendDiscoveryProfile?.user?.imageUrl }}
-//                     style={{ width: 100, height: 100, borderRadius: 30 }}
-//                     className="border-2 border-white/20"
-//                   />
-//                   {/* Level Badge overlapping avatar */}
-//                   <View className="absolute -bottom-3 -right-3 bg-orange-600 px-3 py-1 rounded-xl shadow-lg border-2 border-black">
-//                     <Text className="text-white text-xs font-black">
-//                       LVL {levelInfo.level}
-//                     </Text>
-//                   </View>
-//                 </View>
-
-//                 <View className="mt-4">
-//                   <Text className="text-white text-3xl font-black tracking-tight shadow-md">
-//                     {friendDiscoveryProfile?.user?.firstName}{" "}
-//                     {friendDiscoveryProfile?.user?.lastName}
-//                   </Text>
-//                   <Text className="text-orange-500 font-bold text-sm tracking-widest uppercase opacity-90">
-//                     @{friendDiscoveryProfile?.user?.username}
-//                   </Text>
-//                 </View>
-//               </View>
-
-//               {/* Action Button */}
-//               <View className="mb-2">
-//                 <FriendButton
-//                   initialIsFriend={friendDiscoveryProfile?.is_friend}
-//                   onToggle={handleFriendToggle}
-//                 />
-//               </View>
-//             </View>
-//           </View>
-//         </View>
-
-//         {/* --- 2. HERO STATS (BENTO GRID) --- */}
-//         <View className="px-4 -mt-6">
-//           <View className="flex-row gap-3 mb-3 h-32">
-//             {/* MAIN STAT: Streak */}
-//             <View className="flex-[2] bg-[#1a1a1a] rounded-3xl p-5 border border-white/10 justify-between overflow-hidden relative">
-//               <View className="absolute right-0 top-0 opacity-10">
-//                 <MaterialCommunityIcons
-//                   name="fire"
-//                   size={100}
-//                   color="#EA580C"
-//                 />
-//               </View>
-
-//               <View className="flex-row items-center gap-2">
-//                 <View className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" />
-//                 <Text className="text-white/50 text-[10px] font-black uppercase tracking-widest">
-//                   Streak
-//                 </Text>
-//               </View>
-
-//               <View>
-//                 <Text className="text-white text-5xl font-black tracking-tighter">
-//                   {friendDiscoveryProfile?.stats?.current_streak || 0}
-//                 </Text>
-//                 <Text className="text-orange-500 font-bold text-xs">
-//                   Days Active
-//                 </Text>
-//               </View>
-//             </View>
-
-//             {/* SECONDARY: Rank */}
-//             <View className="flex-1 bg-[#1a1a1a] rounded-3xl p-4 border border-white/10 justify-between items-center">
-//               <Text className="text-white/40 text-[10px] font-black uppercase tracking-widest">
-//                 Rank
-//               </Text>
-//               <View className="items-center">
-//                 <Text className="text-white text-3xl font-black">
-//                   #{friendDiscoveryProfile?.stats?.rank || "-"}
-//                 </Text>
-//                 <Ionicons
-//                   name="trophy"
-//                   size={16}
-//                   color="#fbbf24"
-//                   style={{ marginTop: 4 }}
-//                 />
-//               </View>
-//               <View />
-//             </View>
-//           </View>
-
-//           {/* SECONDARY ROW */}
-//           <View className="flex-row gap-3 mb-8">
-//             {/* Total Drinks */}
-//             <View className="flex-1 bg-[#1a1a1a] rounded-3xl p-4 border border-white/10 h-28 justify-center items-center">
-//               <Text className="text-white text-2xl font-black mb-1">
-//                 {friendDiscoveryProfile?.stats?.total_days_drank || 0}
-//               </Text>
-//               <Text className="text-white/40 text-[10px] font-bold uppercase text-center">
-//                 Total Days
-//               </Text>
-//             </View>
-
-//             {/* Wins */}
-//             <View className="flex-1 bg-[#1a1a1a] rounded-3xl p-4 border border-white/10 h-28 justify-center items-center">
-//               <Text className="text-orange-500 text-2xl font-black mb-1">
-//                 {friendDiscoveryProfile?.stats?.total_weeks_won || 0}
-//               </Text>
-//               <Text className="text-white/40 text-[10px] font-bold uppercase text-center">
-//                 Weeks Won
-//               </Text>
-//             </View>
-
-//             {/* Friends */}
-//             <View className="flex-1 bg-[#1a1a1a] rounded-3xl p-4 border border-white/10 h-28 justify-center items-center">
-//               <Text className="text-white text-2xl font-black mb-1">
-//                 {friendDiscoveryProfile?.stats?.friends_count || 0}
-//               </Text>
-//               <Text className="text-white/40 text-[10px] font-bold uppercase text-center">
-//                 Buddies
-//               </Text>
-//             </View>
-//           </View>
-//         </View>
-
-//         {/* --- 3. WEEKLY ACTIVITY (BAR CHART STYLE) --- */}
-//         <View className="px-4 mb-8">
-//           <View className="bg-white/[0.03] rounded-[32px] p-6 border border-white/10">
-//             <View className="flex-row justify-between items-end mb-6">
-//               <View>
-//                 <Text className="text-white text-lg font-black">This Week</Text>
-//                 <Text className="text-white/40 text-xs font-medium">
-//                   Activity Breakdown
-//                 </Text>
-//               </View>
-//               <Text className="text-orange-500 text-2xl font-black">
-//                 {friendDiscoveryProfile?.stats?.days_this_week || 0}
-//                 <Text className="text-white/30 text-base">/7</Text>
-//               </Text>
-//             </View>
-
-//             <View className="flex-row justify-between items-end h-24 px-2">
-//               {["M", "T", "W", "T", "F", "S", "S"].map((day, index) => {
-//                 const isActive =
-//                   index < (friendDiscoveryProfile?.stats?.days_this_week || 0);
-//                 const height = isActive ? "80%" : "20%"; // Mocking bar height based on activity
-
-//                 return (
-//                   <View key={index} className="items-center gap-3">
-//                     <View
-//                       className={`w-3 rounded-full ${isActive ? "bg-orange-500 shadow-lg shadow-orange-500/50" : "bg-white/10"}`}
-//                       style={{ height }}
-//                     />
-//                     <Text
-//                       className={`text-[10px] font-bold ${isActive ? "text-white" : "text-white/30"}`}
-//                     >
-//                       {day}
-//                     </Text>
-//                   </View>
-//                 );
-//               })}
-//             </View>
-//           </View>
-//         </View>
-
-//         {/* --- 4. TROPHY SHELF (SCROLLABLE) --- */}
-//         <View className="mb-8">
-//           <View className="px-6 flex-row justify-between items-center mb-4">
-//             <Text className="text-white text-xl font-black">Trophy Case</Text>
-//             <TouchableOpacity>
-//               <Text className="text-orange-500 text-xs font-bold">
-//                 View All
-//               </Text>
-//             </TouchableOpacity>
-//           </View>
-
-//           <ScrollView
-//             horizontal
-//             showsHorizontalScrollIndicator={false}
-//             contentContainerStyle={{ paddingHorizontal: 24, gap: 12 }}
-//           >
-//             {/* Completion Card */}
-//             <View className="w-32 h-40 bg-orange-600 rounded-3xl p-4 justify-between items-start">
-//               <View className="bg-black/20 p-2 rounded-full">
-//                 <Ionicons name="star" size={16} color="white" />
-//               </View>
-//               <View>
-//                 <Text className="text-black text-3xl font-black">
-//                   {achievements.filter((a) => a.unlocked).length}
-//                 </Text>
-//                 <Text className="text-black/60 text-xs font-bold leading-tight">
-//                   Unlocked Badges
-//                 </Text>
-//               </View>
-//             </View>
-
-//             {/* Achievement Items */}
-//             {achievements.map((item, index) => (
-//               <View
-//                 key={index}
-//                 className={`w-32 h-40 rounded-3xl p-3 justify-center items-center border ${
-//                   item.unlocked
-//                     ? "bg-[#1A1A1A] border-orange-500/30"
-//                     : "bg-[#111] border-white/5"
-//                 }`}
-//               >
-//                 <Image
-//                   source={getAchievementImage(item.name)}
-//                   style={{
-//                     width: 64,
-//                     height: 64,
-//                     opacity: item.unlocked ? 1 : 0.2,
-//                     marginBottom: 12,
-//                   }}
-//                   contentFit="contain"
-//                 />
-//                 <Text
-//                   numberOfLines={1}
-//                   className={`text-xs font-bold text-center ${item.unlocked ? "text-white" : "text-white/30"}`}
-//                 >
-//                   {item.name}
-//                 </Text>
-//               </View>
-//             ))}
-//           </ScrollView>
-//         </View>
-
-//         {/* --- 5. DETAILED DATA --- */}
-//         <View className="px-4">
-//           <View className="bg-[#111] rounded-3xl p-1 border border-white/5">
-//             {[
-//               {
-//                 label: "Current Level XP",
-//                 value: `${userData?.xp || 0} XP`,
-//                 icon: "flash",
-//               },
-//               { label: "Account Age", value: "Nov 2024", icon: "calendar" }, // Mock data, replace if avail
-//               {
-//                 label: "Alcohol Coefficient",
-//                 value: coefInfo.coef,
-//                 icon: "analytics",
-//               },
-//             ].map((stat, i) => (
-//               <View
-//                 key={i}
-//                 className="flex-row items-center justify-between p-5 border-b border-white/5 last:border-0"
-//               >
-//                 <View className="flex-row items-center gap-4">
-//                   <View className="w-10 h-10 rounded-full bg-white/5 items-center justify-center">
-//                     <Ionicons name={stat.icon as any} size={18} color="#666" />
-//                   </View>
-//                   <Text className="text-white/60 font-medium">
-//                     {stat.label}
-//                   </Text>
-//                 </View>
-//                 <Text className="text-white font-bold text-base">
-//                   {stat.value}
-//                 </Text>
-//               </View>
-//             ))}
-//           </View>
-//         </View>
-//       </ScrollView>
-//     </View>
-//   );
-// }

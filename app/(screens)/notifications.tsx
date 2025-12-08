@@ -225,7 +225,10 @@ export default function NotificationsScreen() {
     return (
       <TouchableOpacity
         key={notification.id}
-        onPress={() => markNotificationRead(notification.id)}
+        onPress={() => {
+          console.log("Marking notification read with ID:", notification.id); 
+          markNotificationRead(notification.id);
+        }}
         className={`mb-3 mx-4 rounded-2xl border overflow-hidden ${
           isUnread
             ? "bg-orange-600/10 border-orange-600/30"

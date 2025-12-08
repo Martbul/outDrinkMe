@@ -121,34 +121,38 @@ export interface FriendDiscoveryDisplayProfileResponse {
   user: UserData;
   stats: UserStats;
   achievements: Achievement[];
+  mix_posts: DailyDrinkingPostResponse[] | []; // The raw response for posts
   is_friend: boolean;
 }
 
 export interface DailyDrinkingPostResponse {
-  ID: string;
-  UserID: string;
-  UserImageURL: string;
-  Date: string;
-  DrankToday: boolean;
-  LoggedAt: string;
-  ImageURL: string;
-  LocationText: string | null;
-  MentionedBuddies: UserData[] | null;
-  SourceType: "friend" | "other";
+  id: string;
+  user_id: string;
+  user_image_url: string | null;
+  date: string; // Changed from 'data' to 'date'
+  drank_today: boolean;
+  logged_at: string;
+  image_url: string | null;
+  location_text: string | null;
+  mentioned_buddies: UserData[] | null;
+  source_type: string;
 }
+
 
 export interface YourMixPostData {
   id: string;
   userId: string;
-  userImageUrl: string;
-  date: string;
+  userImageUrl?: string; // Optional in Go, so make it optional/nullable here
+  date: string; // Will be ISO string from Go's time.Time
   drankToday: boolean;
-  loggedAt: string;
-  imageUrl: string;
-  locationText: string | null;
-  mentionedBuddies: UserData[];
-  sourceType: "friend" | "other";
+  loggedAt: string; // Will be ISO string from Go's time.Time
+  imageUrl?: string; // Optional in Go, so make it optional/nullable here
+  locationText?: string; // Optional in Go, so make it optional/nullable here
+  mentionedBuddies: UserData[]; // Always an array, even if empty
+  sourceType: string; // The Go string type
 }
+
+
 
 export interface DrunkThought {
   id: string;
