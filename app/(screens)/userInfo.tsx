@@ -10,24 +10,92 @@ import {
   ActivityIndicator,
   Vibration,
   RefreshControl,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
 } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/providers/AppProvider";
 import { getLevelInfo } from "@/utils/levels";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import {
+  Entypo,
+  Feather,
+  FontAwesome5,
+  Ionicons,
+  MaterialCommunityIcons,
+  MaterialIcons,
+} from "@expo/vector-icons";
 import type { YourMixPostData } from "@/types/api.types";
-import NestedScreenHeader from "@/components/nestedScreenHeader";
 import MixPostModal from "@/components/mixPostModal";
+import { onBackPress } from "@/utils/navigation";
+import LogoutButton from "@/components/logoutButton";
+import { FriendButton } from "@/components/friendButton";
 
-// --- CONSTANTS ---
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const GAP = 12;
 const SCREEN_PADDING = 16;
 const COLUMN_WIDTH = (SCREEN_WIDTH - SCREEN_PADDING * 2 - GAP) / 2;
 
-// --- HELPER COMPONENTS ---
+const ModalOption = ({
+  icon,
+  label,
+  subLabel,
+  onPress,
+  isDestructive = false,
+  component,
+}: {
+  icon?: any;
+  label?: string;
+  subLabel?: string;
+  onPress?: () => void;
+  isDestructive?: boolean;
+  component?: React.ReactNode;
+}) => {
+  if (component) {
+    return <View className="mb-3">{component}</View>;
+  }
 
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.7}
+      className={`flex-row items-center p-4 mb-3 rounded-2xl border ${
+        isDestructive
+          ? "bg-red-500/10 border-red-500/20"
+          : "bg-white/5 border-white/5"
+      }`}
+    >
+      <View
+        className={`w-10 h-10 rounded-xl items-center justify-center mr-4 ${
+          isDestructive ? "bg-red-500/20" : "bg-white/5"
+        }`}
+      >
+        {icon}
+      </View>
+      <View className="flex-1">
+        <Text
+          className={`text-base font-bold ${
+            isDestructive ? "text-red-500" : "text-white"
+          }`}
+        >
+          {label}
+        </Text>
+        {subLabel && (
+          <Text className="text-white/40 text-xs font-semibold mt-0.5">
+            {subLabel}
+          </Text>
+        )}
+      </View>
+      <MaterialIcons
+        name="chevron-right"
+        size={20}
+        color={isDestructive ? "#ef4444" : "#666"}
+      />
+    </TouchableOpacity>
+  );
+};
 const ActionButton = ({
   initialIsFriend,
   onToggle,
@@ -141,10 +209,10 @@ const GalleryItem = ({
   );
 };
 
-// --- MAIN COMPONENT ---
 const UserInfoScreen = () => {
   const insets = useSafeAreaInsets();
   const { userId: rawUserId } = useLocalSearchParams();
+  const router = useRouter();
   const {
     userData,
     friendDiscoveryProfile,
@@ -153,40 +221,34 @@ const UserInfoScreen = () => {
     removeFriend,
     storeItems,
     isLoading,
+    userInventory: currentUserInventory,
   } = useApp();
 
-  // --- STATE ---
   const [activeTab, setActiveTab] = useState<"overview" | "inventory">(
     "overview"
   );
   const [refreshing, setRefreshing] = useState(false);
 
-  // Modal State
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [expandedItem, setExpandedItem] = useState<YourMixPostData | undefined>(
     undefined
   );
   const [currentAspectRatio, setCurrentAspectRatio] = useState(4 / 3);
+  const [settingsModalVisible, setSettingsModalVisible] = useState(false);
 
-  // 1. DETERMINE TARGET ID
-  // If rawUserId is present, use it. Otherwise, default to the logged-in user's ID.
   const targetUserId = useMemo(() => {
     const paramId = Array.isArray(rawUserId) ? rawUserId[0] : rawUserId;
     return paramId || userData?.id;
   }, [rawUserId, userData?.id]);
 
-  // 2. FETCH DATA ON MOUNT OR ID CHANGE
   useEffect(() => {
     if (targetUserId) {
       getFriendDiscoveryDisplayProfile(targetUserId);
     }
   }, [targetUserId]);
 
-  // 3. CHECK IF DATA IS STALE
-  // If the loaded profile ID doesn't match the target ID, we are looking at stale data.
   const isDataStale = friendDiscoveryProfile?.user?.id !== targetUserId;
 
-  // --- OTHER EFFECTS ---
   useEffect(() => {
     if (expandedId && friendDiscoveryProfile?.mix_posts) {
       const item = friendDiscoveryProfile.mix_posts.find(
@@ -212,13 +274,11 @@ const UserInfoScreen = () => {
     }
   }, [expandedItem]);
 
-  // --- LOGIC ---
   const isCurrentUser =
     userData?.clerkId === friendDiscoveryProfile?.user?.clerkId ||
     userData?.id === friendDiscoveryProfile?.user?.id;
 
   const { leftColumn, rightColumn } = useMemo(() => {
-    // If data is stale, return empty columns to avoid flash
     if (isDataStale) return { leftColumn: [], rightColumn: [] };
 
     const left: YourMixPostData[] = [];
@@ -240,14 +300,27 @@ const UserInfoScreen = () => {
     }
   };
 
-  const handleFriendToggle = async (newState: boolean) => {
-    if (!friendDiscoveryProfile?.user) return;
-    newState
-      ? await addFriend(friendDiscoveryProfile.user.clerkId)
-      : await removeFriend(friendDiscoveryProfile.user.clerkId);
+  const openDotsModal = () => {
+    Vibration.vibrate(10);
+    setSettingsModalVisible(true);
   };
 
-  // --- RENDER HELPERS ---
+  // const handleFriendToggle = async (newState: boolean) => {
+  //   if (!friendDiscoveryProfile?.user) return;
+  //   newState
+  //     ? await addFriend(friendDiscoveryProfile.user.clerkId)
+  //     : await removeFriend(friendDiscoveryProfile.user.clerkId);
+  // };
+    const handleFriendToggle = async (newState: boolean) => {
+      if (!friendDiscoveryProfile?.user) return;
+
+      if (newState) {
+        await addFriend(friendDiscoveryProfile.user.clerkId);
+      } else {
+        await removeFriend(friendDiscoveryProfile.user.clerkId);
+      }
+    };
+
 
   const renderOverview = () => {
     if (leftColumn.length === 0 && rightColumn.length === 0) {
@@ -298,10 +371,21 @@ const UserInfoScreen = () => {
     );
   };
 
+
+    const closeSettingsModal = () => {
+      setSettingsModalVisible(false);
+    };
+
+
   const renderInventory = () => {
-    const inventory = friendDiscoveryProfile?.inventory || {
+    const rawInventory = isCurrentUser
+      ? currentUserInventory
+      : friendDiscoveryProfile?.inventory;
+
+    const inventory = rawInventory || {
       flag: [],
       smoking: [],
+      energy: [],
     };
 
     const renderSection = (
@@ -397,28 +481,24 @@ const UserInfoScreen = () => {
 
     return (
       <View className="px-4">
-        {renderSection("Sexuality", inventory.flag, storeItems?.flag, "flag")}
         {renderSection(
           "Smoking",
           inventory.smoking,
           storeItems?.smoking,
           "smoking"
         )}
+        {renderSection(
+          "Energy",
+          inventory.energy,
+          storeItems?.energy,
+          "energy"
+        )}
+        {renderSection("Sexuality", inventory.flag, storeItems?.flag, "flag")}
       </View>
     );
   };
 
-  // --- LOADING / STALE CHECK ---
-  // If we are loading OR the data currently in state belongs to someone else, show loader
-  if ((isLoading || isDataStale) && !refreshing) {
-    return (
-      <View className="flex-1 bg-black items-center justify-center">
-        <ActivityIndicator color="#EA580C" size="large" />
-      </View>
-    );
-  }
 
-  // Ensure friendDiscoveryProfile exists before rendering
   if (!friendDiscoveryProfile) {
     return (
       <View className="flex-1 bg-black items-center justify-center">
@@ -430,7 +510,32 @@ const UserInfoScreen = () => {
   return (
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
       <StatusBar barStyle="light-content" />
-      <NestedScreenHeader heading="Profile" secondaryHeading="USER" />
+      <View className="px-4 pt-4 border-b border-white/[0.08]">
+        <View className="flex-row items-center mb-2">
+          <TouchableOpacity
+            onPress={onBackPress}
+            className="w-10 h-10 rounded-xl bg-white/[0.03] items-center justify-center border border-white/[0.08] mr-3"
+          >
+            <Feather name="arrow-left" size={22} color="#999999" />
+          </TouchableOpacity>
+
+          <View className="flex-1">
+            <Text className="text-orange-600 text-[11px] font-bold tracking-widest">
+              USER
+            </Text>
+            <Text className="text-white text-3xl font-black">Profile</Text>
+          </View>
+
+          {isCurrentUser && (
+            <TouchableOpacity
+              onPress={openDotsModal}
+              className="px-3 py-2 rounded-xl "
+            >
+              <Entypo name="dots-three-vertical" size={22} color="white" />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -444,13 +549,12 @@ const UserInfoScreen = () => {
           />
         }
       >
-        {/* --- IDENTITY CARD --- */}
         <View className="px-4 pb-6">
           <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
             <View className="flex-row justify-between items-start mb-2">
               <View>
                 <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">
-                  IDENTITY
+                  ALCOHOLIC
                 </Text>
                 <Text className="text-white text-[28px] font-black leading-8">
                   {friendDiscoveryProfile?.user?.firstName}
@@ -506,12 +610,16 @@ const UserInfoScreen = () => {
                 </Text>
               </View>
             </View>
-
-            <ActionButton
-              initialIsFriend={friendDiscoveryProfile?.is_friend ? true : false}
-              onToggle={handleFriendToggle}
-              isCurrentUser={!!isCurrentUser}
-            />
+            {!isCurrentUser && (
+              <View className="flex mt-2">
+                {friendDiscoveryProfile?.user && (
+                  <FriendButton
+                    initialIsFriend={friendDiscoveryProfile.is_friend}
+                    onToggle={handleFriendToggle}
+                  />
+                )}
+              </View>
+            )}
           </View>
         </View>
 
@@ -547,6 +655,110 @@ const UserInfoScreen = () => {
         setExpandedId={setExpandedId}
         currentAspectRatio={currentAspectRatio}
       />
+
+      <Modal
+        transparent
+        visible={settingsModalVisible}
+        onRequestClose={closeSettingsModal}
+        animationType="slide"
+      >
+        <TouchableWithoutFeedback onPress={closeSettingsModal}>
+          <View className="flex-1 bg-black/60 justify-end">
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View className="bg-neutral-900 rounded-t-[32px] border-t border-white/10 w-full overflow-hidden">
+                {/* Drag Handle */}
+                <View className="items-center pt-4 pb-2">
+                  <View className="w-12 h-1.5 bg-white/20 rounded-full" />
+                </View>
+
+                {/* Header */}
+                <View className="px-6 pb-6 pt-2 border-b border-white/5">
+                  <Text className="text-white text-xl font-black tracking-tight text-center">
+                    {isCurrentUser ? "Manage Profile" : "User Actions"}
+                  </Text>
+                  <Text className="text-white/40 text-xs font-semibold text-center mt-1">
+                    {isCurrentUser
+                      ? "Update your settings and preferences"
+                      : "Manage your connection with this user"}
+                  </Text>
+                </View>
+
+                {/* Content */}
+                <View
+                  className="p-6"
+                  style={{ paddingBottom: Math.max(insets.bottom, 24) + 10 }}
+                >
+                  {isCurrentUser ? (
+                    <>
+                      <ModalOption
+                        label="Edit Profile"
+                        subLabel="Change name, bio, and photo"
+                        icon={
+                          <MaterialIcons
+                            name="mode-edit"
+                            size={20}
+                            color="#EA580C"
+                          />
+                        }
+                        onPress={() => {
+                          closeSettingsModal();
+                          router.push("/(screens)/editProfile");
+                        }}
+                      />
+
+                      {/* Logout Button Wrapped for consistent style */}
+                      <View className="mt-4">
+                        <Text className="text-white/30 text-[10px] font-bold uppercase tracking-widest mb-2 pl-2">
+                          Danger Zone
+                        </Text>
+                        <View className="overflow-hidden rounded-2xl">
+                          <LogoutButton />
+                        </View>
+                      </View>
+                    </>
+                  ) : (
+                    <>
+                      <ModalOption
+                        label="Report User"
+                        subLabel="Flag inappropriate content or behavior"
+                        isDestructive
+                        icon={
+                          <FontAwesome5 name="flag" size={16} color="#ef4444" />
+                        }
+                        onPress={() => {
+                          // Placeholder for report logic
+                          Vibration.vibrate(10);
+                          closeSettingsModal();
+                        }}
+                      />
+                      <ModalOption
+                        label="Block User"
+                        subLabel="They won't be able to see your posts"
+                        isDestructive
+                        icon={<Entypo name="block" size={18} color="#ef4444" />}
+                        onPress={() => {
+                          // Placeholder for block logic
+                          Vibration.vibrate(10);
+                          closeSettingsModal();
+                        }}
+                      />
+                    </>
+                  )}
+
+                  {/* Cancel Button */}
+                  <TouchableOpacity
+                    onPress={closeSettingsModal}
+                    className="mt-4 py-4 rounded-2xl bg-black border border-white/10 items-center justify-center"
+                    activeOpacity={0.8}
+                  >
+                    <Text className="text-white font-bold text-sm">Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 };

@@ -352,6 +352,7 @@ class ApiService {
         id: post.id,
         userId: post.user_id,
         userImageUrl: post.user_image_url,
+        username: post.username,
         date: post.date,
         drankToday: post.drank_today,
         loggedAt: post.logged_at,
@@ -382,6 +383,7 @@ class ApiService {
         id: post.id,
         userId: post.user_id,
         userImageUrl: post.user_image_url,
+        username: post.username,
         date: post.date, // Changed from post.data to post.date
         drankToday: post.drank_today,
         loggedAt: post.logged_at,
@@ -519,7 +521,6 @@ class ApiService {
       body: JSON.stringify({ gems }),
     });
   }
-
   async getFriendDiscoveryDisplayProfile(
     friendDiscoveryId: string,
     token: string
@@ -539,24 +540,27 @@ class ApiService {
         );
 
       // Transform the mix_posts array within the profile response
-      const transformedMixPosts: YourMixPostData[] = response.mix_posts.map(
-        (post) => ({
-          id: post.id,
-          userId: post.user_id,
-          userImageUrl: post.user_image_url,
-          date: post.date,
-          drankToday: post.drank_today,
-          loggedAt: post.logged_at,
-          imageUrl: post.image_url,
-          locationText: post.location_text,
-          mentionedBuddies: post.mentioned_buddies || [],
-          sourceType: post.source_type,
-        })
-      );
+      const transformedMixPosts: YourMixPostData[] = (
+        response.mix_posts || []
+      ).map((post) => ({
+        id: post.id,
+        userId: post.user_id,
+        userImageUrl: post.user_image_url,
+        username: post.username,
+        date: post.date,
+        drankToday: post.drank_today,
+        loggedAt: post.logged_at,
+        imageUrl: post.image_url,
+        locationText: post.location_text,
+        mentionedBuddies: post.mentioned_buddies || [],
+        sourceType: post.source_type,
+      }));
 
       return {
         ...response,
         mix_posts: transformedMixPosts,
+        // Ensure inventory is passed through (or default to empty if missing from partial response)
+        inventory: response.inventory || {},
       };
     } catch (error) {
       console.error(
@@ -573,6 +577,7 @@ class ApiService {
         achievements: [],
         mix_posts: [],
         is_friend: false,
+        inventory: {}, // Return empty inventory on error
       };
     }
   }
@@ -867,10 +872,7 @@ class ApiService {
     });
   }
 
-  async getAlcoholismChart(
-    token: string,
-    period: string
-  ): Promise<any> {
+  async getAlcoholismChart(token: string, period: string): Promise<any> {
     return this.makeRequest<any>(
       `/api/v1/user/alcoholisum_chart?period=${period}`,
       {

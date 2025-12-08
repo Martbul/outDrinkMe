@@ -58,16 +58,11 @@ export default function RenderKingsCupBoard() {
     }
   }, [currentCardSignature, handledCardSignature, currentCard]);
 
-  // --- FIX 1: MODAL POPUP LOGIC ---
   useEffect(() => {
-    // Only proceed if game started and we have a card
     if (!gameStarted || !currentCard) return;
 
-    // Safety check: Has this specific card event already been handled?
     if (handledCardSignature === currentCardSignature) return;
 
-    // CRITICAL FIX: Only open the modal if it is *MY* turn.
-    // Other players just see the card and wait.
     if (isMyTurn) {
       if (currentCard.value === "8" && !buddyModalVisible) {
         setBuddyModalVisible(true);
@@ -139,7 +134,6 @@ export default function RenderKingsCupBoard() {
     );
   }
 
-  // --- MODALS RENDER (No Changes needed inside render, logic is in useEffect) ---
   const renderBuddySelectionModal = () => (
     <Modal
       animationType="slide"

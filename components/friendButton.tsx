@@ -37,7 +37,7 @@ export const FriendButton: React.FC<FriendButtonProps> = ({
 
   return (
     <TouchableOpacity
-      className={`px-8 py-3 rounded-xl ${
+      className={`px-8 py-3 rounded-xl items-center ${
         isFriend
           ? "bg-white/[0.03] border border-white/[0.08]"
           : "bg-orange-600"

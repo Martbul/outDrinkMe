@@ -586,7 +586,7 @@ export default function HomeScreen() {
                 <>
                   <Ionicons name="add-circle" size={32} color="#000000" />
                   <Text className="text-black text-lg font-black tracking-wider mt-2">
-                    LOG TODAY'S DRINKS
+                    LOG TODAY'S DRINKING
                   </Text>
                   <Text className="text-black/60 text-xs font-semibold mt-1">
                     Keep your streak alive
