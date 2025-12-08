@@ -360,6 +360,7 @@ const MixScreen = () => {
             refreshing={isLoading}
             onRefresh={refreshYourMixData}
             tintColor="#ff8c00"
+            colors={["#ff8c00"]}
           />
         }
         showsVerticalScrollIndicator={false}
