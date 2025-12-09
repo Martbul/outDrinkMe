@@ -284,19 +284,24 @@ class ApiService {
       token,
     });
   }
+
   async getCalendar(
     year: number,
     month: number,
-    token: string
+    token: string,
+    displyUserId?: string 
   ): Promise<CalendarResponse> {
+    const userIdParam = displyUserId || "";
+
     return this.makeRequest<CalendarResponse>(
-      `/api/v1/user/calendar?year=${year}&month=${month}`,
+      `/api/v1/user/calendar?year=${year}&month=${month}&displyUserId=${userIdParam}`,
       {
         method: "GET",
         token,
       }
     );
   }
+
   async getCurrentMonthCalendar(token: string): Promise<CalendarResponse> {
     const now = new Date();
     return this.getCalendar(now.getFullYear(), now.getMonth() + 1, token);

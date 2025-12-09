@@ -17,6 +17,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/providers/AppProvider";
 import { getLevelInfo } from "@/utils/levels";
+import { useAuth } from "@clerk/clerk-expo"; 
 import {
   Entypo,
   Feather,
@@ -24,11 +25,12 @@ import {
   MaterialCommunityIcons,
   MaterialIcons,
 } from "@expo/vector-icons";
-import type { YourMixPostData } from "@/types/api.types";
+import type { YourMixPostData, CalendarResponse } from "@/types/api.types";
 import MixPostModal from "@/components/mixPostModal";
 import { onBackPress } from "@/utils/navigation";
 import LogoutButton from "@/components/logoutButton";
 import { FriendButton } from "@/components/friendButton";
+import { apiService } from "@/api";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const GAP = 12;
@@ -49,6 +51,7 @@ const MONTH_NAMES = [
   "November",
   "December",
 ];
+
 
 const ModalOption = ({
   icon,
@@ -133,8 +136,7 @@ const GalleryItem = ({
 
   const getOptimizedImageUrl = (url: string | undefined) => {
     if (!url || !url.includes("cloudinary.com")) return url;
-    // return url.replace("/upload/", "/upload/f_auto,q_auto,w_500/");
-    return url
+    return url;
   };
 
   return (
@@ -178,6 +180,7 @@ const UserInfoScreen = () => {
   const insets = useSafeAreaInsets();
   const { userId: rawUserId } = useLocalSearchParams();
   const router = useRouter();
+  const { getToken } = useAuth(); // Auth hook
   const {
     userData,
     friendDiscoveryProfile,
@@ -197,6 +200,10 @@ const UserInfoScreen = () => {
   // Calendar State
   const [statsMonth, setStatsMonth] = useState(new Date().getMonth() + 1);
   const [statsYear, setStatsYear] = useState(new Date().getFullYear());
+  const [calendarData, setCalendarData] = useState<CalendarResponse | null>(
+    null
+  );
+  const [isCalendarLoading, setIsCalendarLoading] = useState(false);
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [expandedItem, setExpandedItem] = useState<YourMixPostData | undefined>(
@@ -215,6 +222,36 @@ const UserInfoScreen = () => {
       getFriendDiscoveryDisplayProfile(targetUserId);
     }
   }, [targetUserId]);
+
+  // Fetch Calendar Data when Month/Year or User changes
+  useEffect(() => {
+    const fetchUserCalendar = async () => {
+      if (!targetUserId) return;
+
+      setIsCalendarLoading(true);
+      try {
+        const token = await getToken();
+        if (token) {
+          // Passing targetUserId as the displayUserId
+          const data = await apiService.getCalendar(
+            statsYear,
+            statsMonth,
+            token,
+            targetUserId
+          );
+          setCalendarData(data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch user calendar:", error);
+      } finally {
+        setIsCalendarLoading(false);
+      }
+    };
+
+    if (activeTab === "stats") {
+      fetchUserCalendar();
+    }
+  }, [statsMonth, statsYear, targetUserId, activeTab]);
 
   const isDataStale = friendDiscoveryProfile?.user?.id !== targetUserId;
 
@@ -259,25 +296,25 @@ const UserInfoScreen = () => {
     return { leftColumn: left, rightColumn: right };
   }, [friendDiscoveryProfile, isDataStale]);
 
-  // Derive a Set of active dates from mix_posts for the calendar
-  const activeDates = useMemo(() => {
-    const dates = new Set<string>();
-    if (friendDiscoveryProfile?.mix_posts) {
-      friendDiscoveryProfile.mix_posts.forEach((post) => {
-        // Assume post.date is ISO string or YYYY-MM-DD
-        const dateStr = post.date.split("T")[0];
-        dates.add(dateStr);
-      });
-    }
-    return dates;
-  }, [friendDiscoveryProfile?.mix_posts]);
-
   const levelInfo = getLevelInfo(friendDiscoveryProfile?.user?.xp || 0);
 
   const onRefresh = async () => {
     if (targetUserId) {
       setRefreshing(true);
       await getFriendDiscoveryDisplayProfile(targetUserId);
+      // Also refresh calendar if active
+      if (activeTab === "stats") {
+        const token = await getToken();
+        if (token) {
+          const data = await apiService.getCalendar(
+            statsYear,
+            statsMonth,
+            token,
+            targetUserId
+          );
+          setCalendarData(data);
+        }
+      }
       setRefreshing(false);
     }
   };
@@ -482,9 +519,10 @@ const UserInfoScreen = () => {
   const renderCalendar = () => {
     const getDaysInMonth = (month: number, year: number) =>
       new Date(year, month, 0).getDate();
+
     const getFirstDayOfMonth = (month: number, year: number) => {
       const day = new Date(year, month - 1, 1).getDay();
-      return day === 0 ? 6 : day - 1; // Mon=0, Sun=6
+      return day === 0 ? 6 : day - 1;
     };
 
     const navigateMonth = (direction: "prev" | "next") => {
@@ -505,11 +543,21 @@ const UserInfoScreen = () => {
       }
     };
 
+    const getDayData = (day: number) => {
+      if (!calendarData?.days) return null;
+      return (
+        calendarData.days.find((d) => {
+          const dayDate = new Date(d.date).getDate();
+          return dayDate === day;
+        }) || null
+      );
+    };
+
     const daysInMonth = getDaysInMonth(statsMonth, statsYear);
     const firstDay = getFirstDayOfMonth(statsMonth, statsYear);
     const days = [];
 
-    // Empty slots
+    // Empty slots for previous month
     for (let i = 0; i < firstDay; i++) {
       days.push(
         <View
@@ -522,13 +570,9 @@ const UserInfoScreen = () => {
 
     // Days
     for (let day = 1; day <= daysInMonth; day++) {
-      const dateStr = `${statsYear}-${String(statsMonth).padStart(
-        2,
-        "0"
-      )}-${String(day).padStart(2, "0")}`;
-      const isLogged = activeDates.has(dateStr);
-      const isToday =
-        dateStr === new Date().toISOString().split("T")[0] && isLogged;
+      const dayData = getDayData(day);
+      const isLogged = dayData?.drank_today || false;
+      const isToday = dayData?.is_today || false;
 
       days.push(
         <View
@@ -540,15 +584,23 @@ const UserInfoScreen = () => {
             className={`
             flex-1 items-center justify-center rounded-lg border
             ${
-              isLogged
-                ? "bg-orange-600/30 border-orange-600/50"
-                : "bg-white/[0.03] border-white/[0.08]"
+              isToday && isLogged
+                ? "bg-orange-600/30 border-orange-600"
+                : isToday
+                  ? "bg-white/[0.12] border-orange-600"
+                  : isLogged
+                    ? "bg-orange-600/30 border-orange-600/50"
+                    : "bg-white/[0.03] border-white/[0.08]"
             }
           `}
           >
             <Text
               className={`text-xs font-bold ${
-                isLogged ? "text-orange-500" : "text-white/30"
+                isToday
+                  ? "text-white"
+                  : isLogged
+                    ? "text-orange-500"
+                    : "text-white/30"
               }`}
             >
               {day}
@@ -599,13 +651,25 @@ const UserInfoScreen = () => {
           ))}
         </View>
 
-        <View className="flex-row flex-wrap">{days}</View>
+        {isCalendarLoading ? (
+          <View className="items-center justify-center py-8">
+            <ActivityIndicator size="small" color="#EA580C" />
+          </View>
+        ) : (
+          <View className="flex-row flex-wrap">{days}</View>
+        )}
 
         <View className="mt-4 pt-4 border-t border-white/5 flex-row items-center justify-center gap-4">
           <View className="flex-row items-center">
             <View className="w-3 h-3 rounded bg-orange-600/30 border border-orange-600/50 mr-2" />
             <Text className="text-white/50 text-[10px] font-bold uppercase">
               Logged
+            </Text>
+          </View>
+          <View className="flex-row items-center">
+            <View className="w-3 h-3 rounded bg-white/[0.12] border border-orange-600 mr-2" />
+            <Text className="text-white/50 text-[10px] font-bold uppercase">
+              Today
             </Text>
           </View>
         </View>
@@ -757,8 +821,8 @@ const UserInfoScreen = () => {
               </Text>
             </View>
 
-            {/* Stats Row */}
-            <View className="bg-white/[0.03] rounded-xl p-4 border border-white/[0.08] flex-row justify-between">
+            <View className="bg-white/[0.03] rounded-xl py-4 border border-white/[0.08] flex-row">
+              {/* Column 1: Streak (Add Border Right) */}
               <View className="items-center flex-1 border-r border-white/[0.08]">
                 <Text className="text-white text-xl font-black">
                   {friendDiscoveryProfile?.stats?.current_streak || 0}
@@ -768,7 +832,8 @@ const UserInfoScreen = () => {
                 </Text>
               </View>
 
-              <View className="items-center flex-1">
+              {/* Column 2: Buddies (Add Border Right, Remove Border Left) */}
+              <View className="items-center flex-1 border-r border-white/[0.08]">
                 <Text className="text-orange-600 text-xl font-black">
                   {friendDiscoveryProfile?.stats?.friends_count || 0}
                 </Text>
@@ -776,7 +841,9 @@ const UserInfoScreen = () => {
                   BUDDIES
                 </Text>
               </View>
-              <View className="items-center flex-1 border-r border-white/[0.08]">
+
+              {/* Column 3: Longest Streak (No Border) */}
+              <View className="items-center flex-1">
                 <Text className="text-white text-xl font-black">
                   {friendDiscoveryProfile?.stats?.longest_streak || 0}
                 </Text>
@@ -802,7 +869,7 @@ const UserInfoScreen = () => {
           <View className="bg-white/[0.03] rounded-xl p-1.5 border border-white/[0.08] flex-row">
             {(isCurrentUser
               ? ["overview", "inventory"]
-              : ["overview", "stats" ,"inventory", ]
+              : ["overview", "stats", "inventory"]
             ).map((tab) => (
               <TouchableOpacity
                 key={tab}

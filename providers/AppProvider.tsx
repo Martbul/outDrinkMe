@@ -448,6 +448,7 @@ export function AppProvider({ children }: AppProviderProps) {
       "refresh_achievements"
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
+  
   const refreshCalendar = useCallback(
     async (year?: number, month?: number) => {
       if (!isSignedIn) return;
@@ -623,6 +624,7 @@ export function AppProvider({ children }: AppProviderProps) {
       "refresh_sidequest_board"
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
+
 
   // ============================================
   // Refresh All - Using Parallel Execution
