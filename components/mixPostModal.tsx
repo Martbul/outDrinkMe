@@ -1,6 +1,7 @@
 import { useApp } from "@/providers/AppProvider";
 import { YourMixPostData } from "@/types/api.types";
 import { FontAwesome5, Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import {
   // REMOVE Animated FROM HERE IF YOU HAVE IT
   Image,
@@ -34,10 +35,11 @@ export default function MixPostModal({
   setExpandedId,
   currentAspectRatio,
 }: MixPostModalProps) {
-   console.log(expandedItem);
-   console.log(expandedId);
+  console.log(expandedItem);
+  console.log(expandedId);
   const { userData } = useApp();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -92,27 +94,34 @@ export default function MixPostModal({
                     source={{ uri: expandedItem.imageUrl }}
                     style={{
                       width: "100%",
-                      aspectRatio: currentAspectRatio, // 3. Uses dynamic calculated ratio
+                      aspectRatio: currentAspectRatio, 
                     }}
-                    resizeMode="contain" // 4. Ensures full image visibility
+                    resizeMode="contain"
                   />
                 </View>
               </Animated.View>
 
-              {/* Details */}
               <Animated.View
                 entering={FadeInDown.delay(200).duration(400)}
                 className="p-6 space-y-4"
               >
-                {/* User Info */}
                 <View className="flex-row items-center gap-3 mb-4">
-                  <Animated.Image
-                    entering={ZoomIn.delay(300).duration(400)}
-                    source={{ uri: expandedItem.userImageUrl }}
-                    className="w-12 h-12 rounded-full border-2 border-orange-600"
-                  />
+                  <TouchableOpacity
+                    onPress={() =>
+                      router.push(`/(screens)/userInfo?userId=${expandedItem.userId}`)
+                    }
+                  >
+                    <Animated.Image
+                      entering={ZoomIn.delay(300).duration(400)}
+                      source={{ uri: expandedItem.userImageUrl }}
+                      className="w-12 h-12 rounded-full border-2 border-orange-600"
+                    />
+                  </TouchableOpacity>
+
                   <Animated.View entering={FadeInLeft.delay(350).duration(400)}>
-                    <Text className="text-white font-bold">{expandedItem?.username}</Text>
+                    <Text className="text-white font-bold">
+                      {expandedItem?.username}
+                    </Text>
                     <Text className="text-white/50 text-sm">
                       {formatTime(expandedItem.loggedAt)}
                     </Text>

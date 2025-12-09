@@ -28,7 +28,7 @@ interface CalendarDayProps {
   isSelected: boolean;
 }
 
-interface DayData {
+export interface DayData {
   date: string;
   drank_today: boolean;
 }
@@ -499,6 +499,7 @@ const CalendarScreen = () => {
 
   const getDayData = (day: number): DayData | null => {
     if (!calendar?.days) return null;
+
     return (
       calendar.days.find((d) => {
         const dayDate = new Date(d.date).getDate();
