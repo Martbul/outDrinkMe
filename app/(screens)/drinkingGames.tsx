@@ -377,7 +377,7 @@ export default function GameLobbyScreen() {
 
         <ScrollView className="flex-1">
           <View className="px-4 pt-6">
-            <View className="bg-white/[0.05] rounded-2xl p-6 items-center border border-white/[0.1] mb-6 relative overflow-hidden">
+            {/* <View className="bg-white/[0.05] rounded-2xl p-6 items-center border border-white/[0.1] mb-6 relative overflow-hidden">
               {gameLabel === "Mafia" && (
                 <MaterialCommunityIcons
                   name="domino-mask"
@@ -431,7 +431,7 @@ export default function GameLobbyScreen() {
                   backgroundColor="white"
                 />
               </View>
-            </View>
+            </View> */}
 
             <View className="flex-row items-center justify-between mb-4 px-1">
               <Text className="text-white font-bold text-lg">

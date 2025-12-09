@@ -10,69 +10,101 @@ import {
   ActivityIndicator,
   Vibration,
   RefreshControl,
+  Modal,
+  TouchableWithoutFeedback,
 } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/providers/AppProvider";
 import { getLevelInfo } from "@/utils/levels";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import {
+  Entypo,
+  Feather,
+  FontAwesome5,
+  MaterialCommunityIcons,
+  MaterialIcons,
+} from "@expo/vector-icons";
 import type { YourMixPostData } from "@/types/api.types";
-import NestedScreenHeader from "@/components/nestedScreenHeader";
 import MixPostModal from "@/components/mixPostModal";
+import { onBackPress } from "@/utils/navigation";
+import LogoutButton from "@/components/logoutButton";
+import { FriendButton } from "@/components/friendButton";
 
-// --- CONSTANTS ---
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const GAP = 12;
 const SCREEN_PADDING = 16;
 const COLUMN_WIDTH = (SCREEN_WIDTH - SCREEN_PADDING * 2 - GAP) / 2;
 
-// --- HELPER COMPONENTS ---
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
 
-const ActionButton = ({
-  initialIsFriend,
-  onToggle,
-  isCurrentUser,
+const ModalOption = ({
+  icon,
+  label,
+  subLabel,
+  onPress,
+  isDestructive = false,
+  component,
 }: {
-  initialIsFriend: boolean;
-  onToggle: (state: boolean) => void;
-  isCurrentUser: boolean;
+  icon?: any;
+  label?: string;
+  subLabel?: string;
+  onPress?: () => void;
+  isDestructive?: boolean;
+  component?: React.ReactNode;
 }) => {
-  if (isCurrentUser) return null;
-
-  const [isFriend, setIsFriend] = useState(initialIsFriend);
-  const [loading, setLoading] = useState(false);
-
-  const handlePress = async () => {
-    Vibration.vibrate(10);
-    setLoading(true);
-    const newState = !isFriend;
-    setIsFriend(newState);
-    await onToggle(newState);
-    setLoading(false);
-  };
+  if (component) {
+    return <View className="mb-3">{component}</View>;
+  }
 
   return (
     <TouchableOpacity
-      onPress={handlePress}
-      disabled={loading}
-      activeOpacity={0.8}
-      className={`py-3 rounded-xl items-center justify-center mt-6 border ${
-        isFriend
-          ? "bg-white/[0.03] border-white/[0.08]"
-          : "bg-orange-600 border-orange-600"
+      onPress={onPress}
+      activeOpacity={0.7}
+      className={`flex-row items-center p-4 mb-3 rounded-2xl border ${
+        isDestructive
+          ? "bg-red-500/10 border-red-500/20"
+          : "bg-white/5 border-white/5"
       }`}
     >
-      {loading ? (
-        <ActivityIndicator size="small" color={isFriend ? "white" : "black"} />
-      ) : (
+      <View
+        className={`w-10 h-10 rounded-xl items-center justify-center mr-4 ${
+          isDestructive ? "bg-red-500/20" : "bg-white/5"
+        }`}
+      >
+        {icon}
+      </View>
+      <View className="flex-1">
         <Text
-          className={`text-sm font-black tracking-widest ${
-            isFriend ? "text-white" : "text-black"
+          className={`text-base font-bold ${
+            isDestructive ? "text-red-500" : "text-white"
           }`}
         >
-          {isFriend ? "REMOVE FRIEND" : "ADD FRIEND"}
+          {label}
         </Text>
-      )}
+        {subLabel && (
+          <Text className="text-white/40 text-xs font-semibold mt-0.5">
+            {subLabel}
+          </Text>
+        )}
+      </View>
+      <MaterialIcons
+        name="chevron-right"
+        size={20}
+        color={isDestructive ? "#ef4444" : "#666"}
+      />
     </TouchableOpacity>
   );
 };
@@ -101,7 +133,8 @@ const GalleryItem = ({
 
   const getOptimizedImageUrl = (url: string | undefined) => {
     if (!url || !url.includes("cloudinary.com")) return url;
-    return url.replace("/upload/", "/upload/f_auto,q_auto,w_500/");
+    // return url.replace("/upload/", "/upload/f_auto,q_auto,w_500/");
+    return url
   };
 
   return (
@@ -141,10 +174,10 @@ const GalleryItem = ({
   );
 };
 
-// --- MAIN COMPONENT ---
 const UserInfoScreen = () => {
   const insets = useSafeAreaInsets();
   const { userId: rawUserId } = useLocalSearchParams();
+  const router = useRouter();
   const {
     userData,
     friendDiscoveryProfile,
@@ -153,40 +186,38 @@ const UserInfoScreen = () => {
     removeFriend,
     storeItems,
     isLoading,
+    userInventory: currentUserInventory,
   } = useApp();
 
-  // --- STATE ---
-  const [activeTab, setActiveTab] = useState<"overview" | "inventory">(
-    "overview"
-  );
+  const [activeTab, setActiveTab] = useState<
+    "overview" | "stats" | "inventory"
+  >("overview");
   const [refreshing, setRefreshing] = useState(false);
 
-  // Modal State
+  // Calendar State
+  const [statsMonth, setStatsMonth] = useState(new Date().getMonth() + 1);
+  const [statsYear, setStatsYear] = useState(new Date().getFullYear());
+
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [expandedItem, setExpandedItem] = useState<YourMixPostData | undefined>(
     undefined
   );
   const [currentAspectRatio, setCurrentAspectRatio] = useState(4 / 3);
+  const [settingsModalVisible, setSettingsModalVisible] = useState(false);
 
-  // 1. DETERMINE TARGET ID
-  // If rawUserId is present, use it. Otherwise, default to the logged-in user's ID.
   const targetUserId = useMemo(() => {
     const paramId = Array.isArray(rawUserId) ? rawUserId[0] : rawUserId;
     return paramId || userData?.id;
   }, [rawUserId, userData?.id]);
 
-  // 2. FETCH DATA ON MOUNT OR ID CHANGE
   useEffect(() => {
     if (targetUserId) {
       getFriendDiscoveryDisplayProfile(targetUserId);
     }
   }, [targetUserId]);
 
-  // 3. CHECK IF DATA IS STALE
-  // If the loaded profile ID doesn't match the target ID, we are looking at stale data.
   const isDataStale = friendDiscoveryProfile?.user?.id !== targetUserId;
 
-  // --- OTHER EFFECTS ---
   useEffect(() => {
     if (expandedId && friendDiscoveryProfile?.mix_posts) {
       const item = friendDiscoveryProfile.mix_posts.find(
@@ -212,13 +243,11 @@ const UserInfoScreen = () => {
     }
   }, [expandedItem]);
 
-  // --- LOGIC ---
   const isCurrentUser =
     userData?.clerkId === friendDiscoveryProfile?.user?.clerkId ||
     userData?.id === friendDiscoveryProfile?.user?.id;
 
   const { leftColumn, rightColumn } = useMemo(() => {
-    // If data is stale, return empty columns to avoid flash
     if (isDataStale) return { leftColumn: [], rightColumn: [] };
 
     const left: YourMixPostData[] = [];
@@ -230,6 +259,19 @@ const UserInfoScreen = () => {
     return { leftColumn: left, rightColumn: right };
   }, [friendDiscoveryProfile, isDataStale]);
 
+  // Derive a Set of active dates from mix_posts for the calendar
+  const activeDates = useMemo(() => {
+    const dates = new Set<string>();
+    if (friendDiscoveryProfile?.mix_posts) {
+      friendDiscoveryProfile.mix_posts.forEach((post) => {
+        // Assume post.date is ISO string or YYYY-MM-DD
+        const dateStr = post.date.split("T")[0];
+        dates.add(dateStr);
+      });
+    }
+    return dates;
+  }, [friendDiscoveryProfile?.mix_posts]);
+
   const levelInfo = getLevelInfo(friendDiscoveryProfile?.user?.xp || 0);
 
   const onRefresh = async () => {
@@ -240,14 +282,20 @@ const UserInfoScreen = () => {
     }
   };
 
-  const handleFriendToggle = async (newState: boolean) => {
-    if (!friendDiscoveryProfile?.user) return;
-    newState
-      ? await addFriend(friendDiscoveryProfile.user.clerkId)
-      : await removeFriend(friendDiscoveryProfile.user.clerkId);
+  const openDotsModal = () => {
+    Vibration.vibrate(10);
+    setSettingsModalVisible(true);
   };
 
-  // --- RENDER HELPERS ---
+  const handleFriendToggle = async (newState: boolean) => {
+    if (!friendDiscoveryProfile?.user) return;
+
+    if (newState) {
+      await addFriend(friendDiscoveryProfile.user.clerkId);
+    } else {
+      await removeFriend(friendDiscoveryProfile.user.clerkId);
+    }
+  };
 
   const renderOverview = () => {
     if (leftColumn.length === 0 && rightColumn.length === 0) {
@@ -298,10 +346,19 @@ const UserInfoScreen = () => {
     );
   };
 
+  const closeSettingsModal = () => {
+    setSettingsModalVisible(false);
+  };
+
   const renderInventory = () => {
-    const inventory = friendDiscoveryProfile?.inventory || {
+    const rawInventory = isCurrentUser
+      ? currentUserInventory
+      : friendDiscoveryProfile?.inventory;
+
+    const inventory = rawInventory || {
       flag: [],
       smoking: [],
+      energy: [],
     };
 
     const renderSection = (
@@ -319,7 +376,15 @@ const UserInfoScreen = () => {
               <Text className="text-orange-600 text-[10px] font-bold tracking-widest mb-1 uppercase">
                 {title}
               </Text>
-              <Text className="text-white text-xl font-black">Collection</Text>
+              {title === "Smoking" && (
+                <Text className="text-white text-xl font-black">Kit</Text>
+              )}
+              {title === "Energy" && (
+                <Text className="text-white text-xl font-black">Cans</Text>
+              )}
+              {title === "Sexuality" && (
+                <Text className="text-white text-xl font-black">Flags</Text>
+              )}
             </View>
             <View className="bg-orange-600 rounded-lg px-3 py-1.5 items-center">
               <Text className="text-black text-xs font-black">
@@ -386,7 +451,7 @@ const UserInfoScreen = () => {
             ) : (
               <View className="w-full items-center py-6">
                 <Text className="text-white/30 text-xs font-bold italic">
-                  No items in this collection.
+                  No items
                 </Text>
               </View>
             )}
@@ -397,28 +462,217 @@ const UserInfoScreen = () => {
 
     return (
       <View className="px-4">
-        {renderSection("Sexuality", inventory.flag, storeItems?.flag, "flag")}
         {renderSection(
           "Smoking",
           inventory.smoking,
           storeItems?.smoking,
           "smoking"
         )}
+        {renderSection(
+          "Energy",
+          inventory.energy,
+          storeItems?.energy,
+          "energy"
+        )}
+        {renderSection("Sexuality", inventory.flag, storeItems?.flag, "flag")}
       </View>
     );
   };
 
-  // --- LOADING / STALE CHECK ---
-  // If we are loading OR the data currently in state belongs to someone else, show loader
-  if ((isLoading || isDataStale) && !refreshing) {
+  const renderCalendar = () => {
+    const getDaysInMonth = (month: number, year: number) =>
+      new Date(year, month, 0).getDate();
+    const getFirstDayOfMonth = (month: number, year: number) => {
+      const day = new Date(year, month - 1, 1).getDay();
+      return day === 0 ? 6 : day - 1; // Mon=0, Sun=6
+    };
+
+    const navigateMonth = (direction: "prev" | "next") => {
+      if (direction === "next") {
+        if (statsMonth === 12) {
+          setStatsMonth(1);
+          setStatsYear(statsYear + 1);
+        } else {
+          setStatsMonth(statsMonth + 1);
+        }
+      } else {
+        if (statsMonth === 1) {
+          setStatsMonth(12);
+          setStatsYear(statsYear - 1);
+        } else {
+          setStatsMonth(statsMonth - 1);
+        }
+      }
+    };
+
+    const daysInMonth = getDaysInMonth(statsMonth, statsYear);
+    const firstDay = getFirstDayOfMonth(statsMonth, statsYear);
+    const days = [];
+
+    // Empty slots
+    for (let i = 0; i < firstDay; i++) {
+      days.push(
+        <View
+          key={`empty-${i}`}
+          style={{ width: "14.28%" }}
+          className="aspect-square p-[2px]"
+        />
+      );
+    }
+
+    // Days
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = `${statsYear}-${String(statsMonth).padStart(
+        2,
+        "0"
+      )}-${String(day).padStart(2, "0")}`;
+      const isLogged = activeDates.has(dateStr);
+      const isToday =
+        dateStr === new Date().toISOString().split("T")[0] && isLogged;
+
+      days.push(
+        <View
+          key={day}
+          style={{ width: "14.28%" }}
+          className="aspect-square p-[2px]"
+        >
+          <View
+            className={`
+            flex-1 items-center justify-center rounded-lg border
+            ${
+              isLogged
+                ? "bg-orange-600/30 border-orange-600/50"
+                : "bg-white/[0.03] border-white/[0.08]"
+            }
+          `}
+          >
+            <Text
+              className={`text-xs font-bold ${
+                isLogged ? "text-orange-500" : "text-white/30"
+              }`}
+            >
+              {day}
+            </Text>
+          </View>
+        </View>
+      );
+    }
+
     return (
-      <View className="flex-1 bg-black items-center justify-center">
-        <ActivityIndicator color="#EA580C" size="large" />
+      <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08] mb-4">
+        <View className="flex-row justify-between items-center mb-4">
+          <TouchableOpacity
+            onPress={() => navigateMonth("prev")}
+            className="w-10 h-10 rounded-lg bg-white/[0.05] items-center justify-center border border-white/[0.08]"
+          >
+            <Feather name="arrow-left" size={20} color="#999" />
+          </TouchableOpacity>
+
+          <View className="items-center">
+            <Text className="text-white text-lg font-black">
+              {MONTH_NAMES[statsMonth - 1]}
+            </Text>
+            <Text className="text-white/50 text-xs font-semibold">
+              {statsYear}
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            onPress={() => navigateMonth("next")}
+            className="w-10 h-10 rounded-lg bg-white/[0.05] items-center justify-center border border-white/[0.08]"
+          >
+            <Feather name="arrow-right" size={20} color="#999" />
+          </TouchableOpacity>
+        </View>
+
+        <View className="flex-row flex-wrap mb-2">
+          {["M", "T", "W", "T", "F", "S", "S"].map((day, i) => (
+            <View
+              key={i}
+              style={{ width: "14.28%" }}
+              className="items-center justify-center pb-2"
+            >
+              <Text className="text-white/30 font-bold text-[10px] uppercase">
+                {day}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        <View className="flex-row flex-wrap">{days}</View>
+
+        <View className="mt-4 pt-4 border-t border-white/5 flex-row items-center justify-center gap-4">
+          <View className="flex-row items-center">
+            <View className="w-3 h-3 rounded bg-orange-600/30 border border-orange-600/50 mr-2" />
+            <Text className="text-white/50 text-[10px] font-bold uppercase">
+              Logged
+            </Text>
+          </View>
+        </View>
       </View>
     );
-  }
+  };
 
-  // Ensure friendDiscoveryProfile exists before rendering
+  const renderStats = () => {
+    const stats = friendDiscoveryProfile?.stats;
+
+    if (!stats) {
+      return (
+        <View className="px-4">
+          <View className="bg-white/[0.03] rounded-2xl p-8 border border-white/[0.08] items-center">
+            <Text className="text-white/50 text-xs font-bold">
+              No stats available for this user.
+            </Text>
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View className="px-4 pb-6">
+        {/* Rank & Coefficient Card */}
+        <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08] mb-4">
+          <View className="flex-row items-center justify-between mb-6">
+            <View>
+              <Text className="text-orange-600 text-[10px] font-bold tracking-widest mb-1">
+                GLOBAL RANKING
+              </Text>
+              <Text className="text-white text-[32px] font-black">
+                #{stats.rank}
+              </Text>
+            </View>
+            <View className="w-12 h-12 rounded-full bg-orange-600/20 items-center justify-center">
+              <MaterialCommunityIcons name="trophy" size={24} color="#EA580C" />
+            </View>
+          </View>
+
+          <View className="h-[1px] bg-white/[0.08] mb-6" />
+
+          <View className="flex-row items-center justify-between">
+            <View>
+              <Text className="text-white text-xl font-black">
+                {stats.alcoholism_coefficient?.toFixed(2) || "0.00"}
+              </Text>
+              <Text className="text-white/40 text-[10px] font-bold tracking-wider mt-1">
+                COEFFICIENT
+              </Text>
+            </View>
+            <View className="items-end">
+              <Text className="text-white text-xl font-black">
+                {stats.total_days_drank}
+              </Text>
+              <Text className="text-white/40 text-[10px] font-bold tracking-wider mt-1">
+                TOTAL DRUNK DAYS
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {renderCalendar()}
+      </View>
+    );
+  };
+
   if (!friendDiscoveryProfile) {
     return (
       <View className="flex-1 bg-black items-center justify-center">
@@ -430,7 +684,32 @@ const UserInfoScreen = () => {
   return (
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
       <StatusBar barStyle="light-content" />
-      <NestedScreenHeader heading="Profile" secondaryHeading="USER" />
+      <View className="px-4 pt-4 border-b border-white/[0.08]">
+        <View className="flex-row items-center mb-2">
+          <TouchableOpacity
+            onPress={onBackPress}
+            className="w-10 h-10 rounded-xl bg-white/[0.03] items-center justify-center border border-white/[0.08] mr-3"
+          >
+            <Feather name="arrow-left" size={22} color="#999999" />
+          </TouchableOpacity>
+
+          <View className="flex-1">
+            <Text className="text-orange-600 text-[11px] font-bold tracking-widest">
+              USER
+            </Text>
+            <Text className="text-white text-3xl font-black">Profile</Text>
+          </View>
+
+          {isCurrentUser && (
+            <TouchableOpacity
+              onPress={openDotsModal}
+              className="px-3 py-2 rounded-xl "
+            >
+              <Entypo name="dots-three-vertical" size={22} color="white" />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -444,13 +723,12 @@ const UserInfoScreen = () => {
           />
         }
       >
-        {/* --- IDENTITY CARD --- */}
         <View className="px-4 pb-6">
           <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
             <View className="flex-row justify-between items-start mb-2">
               <View>
                 <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">
-                  IDENTITY
+                  ALCOHOLIC
                 </Text>
                 <Text className="text-white text-[28px] font-black leading-8">
                   {friendDiscoveryProfile?.user?.firstName}
@@ -486,41 +764,49 @@ const UserInfoScreen = () => {
                   {friendDiscoveryProfile?.stats?.current_streak || 0}
                 </Text>
                 <Text className="text-white/40 text-[9px] font-bold mt-1 tracking-wider">
-                  STREAK
+                  CURRENT STREAK
                 </Text>
               </View>
-              <View className="items-center flex-1 border-r border-white/[0.08]">
-                <Text className="text-orange-600 text-xl font-black">
-                  {friendDiscoveryProfile?.stats?.total_weeks_won || 0}
-                </Text>
-                <Text className="text-white/40 text-[9px] font-bold mt-1 tracking-wider">
-                  WINS
-                </Text>
-              </View>
+
               <View className="items-center flex-1">
-                <Text className="text-white text-xl font-black">
+                <Text className="text-orange-600 text-xl font-black">
                   {friendDiscoveryProfile?.stats?.friends_count || 0}
                 </Text>
                 <Text className="text-white/40 text-[9px] font-bold mt-1 tracking-wider">
                   BUDDIES
                 </Text>
               </View>
+              <View className="items-center flex-1 border-r border-white/[0.08]">
+                <Text className="text-white text-xl font-black">
+                  {friendDiscoveryProfile?.stats?.longest_streak || 0}
+                </Text>
+                <Text className="text-white/40 text-[9px] font-bold mt-1 tracking-wider">
+                  LONGEST STREAK
+                </Text>
+              </View>
             </View>
-
-            <ActionButton
-              initialIsFriend={friendDiscoveryProfile?.is_friend ? true : false}
-              onToggle={handleFriendToggle}
-              isCurrentUser={!!isCurrentUser}
-            />
+            {!isCurrentUser && (
+              <View className="flex mt-2">
+                {friendDiscoveryProfile?.user && (
+                  <FriendButton
+                    initialIsFriend={friendDiscoveryProfile.is_friend}
+                    onToggle={handleFriendToggle}
+                  />
+                )}
+              </View>
+            )}
           </View>
         </View>
 
         <View className="px-4 mb-4">
           <View className="bg-white/[0.03] rounded-xl p-1.5 border border-white/[0.08] flex-row">
-            {(["overview", "inventory"] as const).map((tab) => (
+            {(isCurrentUser
+              ? ["overview", "inventory"]
+              : ["overview", "stats" ,"inventory", ]
+            ).map((tab) => (
               <TouchableOpacity
                 key={tab}
-                onPress={() => setActiveTab(tab)}
+                onPress={() => setActiveTab(tab as any)}
                 className={`flex-1 py-2.5 rounded-lg items-center ${
                   activeTab === tab ? "bg-orange-600" : ""
                 }`}
@@ -539,6 +825,7 @@ const UserInfoScreen = () => {
 
         {activeTab === "overview" && renderOverview()}
         {activeTab === "inventory" && renderInventory()}
+        {activeTab === "stats" && renderStats()}
       </ScrollView>
 
       <MixPostModal
@@ -547,6 +834,110 @@ const UserInfoScreen = () => {
         setExpandedId={setExpandedId}
         currentAspectRatio={currentAspectRatio}
       />
+
+      <Modal
+        transparent
+        visible={settingsModalVisible}
+        onRequestClose={closeSettingsModal}
+        animationType="slide"
+      >
+        <TouchableWithoutFeedback onPress={closeSettingsModal}>
+          <View className="flex-1 bg-black/60 justify-end">
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View className="bg-neutral-900 rounded-t-[32px] border-t border-white/10 w-full overflow-hidden">
+                {/* Drag Handle */}
+                <View className="items-center pt-4 pb-2">
+                  <View className="w-12 h-1.5 bg-white/20 rounded-full" />
+                </View>
+
+                {/* Header */}
+                <View className="px-6 pb-6 pt-2 border-b border-white/5">
+                  <Text className="text-white text-xl font-black tracking-tight text-center">
+                    {isCurrentUser ? "Manage Profile" : "User Actions"}
+                  </Text>
+                  <Text className="text-white/40 text-xs font-semibold text-center mt-1">
+                    {isCurrentUser
+                      ? "Update your settings and preferences"
+                      : "Manage your connection with this user"}
+                  </Text>
+                </View>
+
+                {/* Content */}
+                <View
+                  className="p-6"
+                  style={{ paddingBottom: Math.max(insets.bottom, 24) + 10 }}
+                >
+                  {isCurrentUser ? (
+                    <>
+                      <ModalOption
+                        label="Edit Profile"
+                        subLabel="Change name, bio, and photo"
+                        icon={
+                          <MaterialIcons
+                            name="mode-edit"
+                            size={20}
+                            color="#EA580C"
+                          />
+                        }
+                        onPress={() => {
+                          closeSettingsModal();
+                          router.push("/(screens)/editProfile");
+                        }}
+                      />
+
+                      {/* Logout Button Wrapped for consistent style */}
+                      <View className="mt-4">
+                        <Text className="text-white/30 text-[10px] font-bold uppercase tracking-widest mb-2 pl-2">
+                          Danger Zone
+                        </Text>
+                        <View className="overflow-hidden rounded-2xl">
+                          <LogoutButton />
+                        </View>
+                      </View>
+                    </>
+                  ) : (
+                    <>
+                      <ModalOption
+                        label="Report User"
+                        subLabel="Flag inappropriate content or behavior"
+                        isDestructive
+                        icon={
+                          <FontAwesome5 name="flag" size={16} color="#ef4444" />
+                        }
+                        onPress={() => {
+                          // Placeholder for report logic
+                          Vibration.vibrate(10);
+                          closeSettingsModal();
+                        }}
+                      />
+                      <ModalOption
+                        label="Block User"
+                        subLabel="They won't be able to see your posts"
+                        isDestructive
+                        icon={<Entypo name="block" size={18} color="#ef4444" />}
+                        onPress={() => {
+                          // Placeholder for block logic
+                          Vibration.vibrate(10);
+                          closeSettingsModal();
+                        }}
+                      />
+                    </>
+                  )}
+
+                  {/* Cancel Button */}
+                  <TouchableOpacity
+                    onPress={closeSettingsModal}
+                    className="mt-4 py-4 rounded-2xl bg-black border border-white/10 items-center justify-center"
+                    activeOpacity={0.8}
+                  >
+                    <Text className="text-white font-bold text-sm">Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 };

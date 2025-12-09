@@ -1,7 +1,7 @@
 import { useApp } from "@/providers/AppProvider";
 import type { YourMixPostData } from "@/types/api.types";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router"; // Added useLocalSearchParams
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import {
   ActivityIndicator,
@@ -27,12 +27,9 @@ const GAP = 10;
 const COLUMN_WIDTH = (SCREEN_WIDTH - SCREEN_PADDING * 2 - GAP) / 2;
 
 const MAX_CARD_HEIGHT = COLUMN_WIDTH * 1.8;
-const MIN_CARD_HEIGHT = COLUMN_WIDTH * 0.8; // Increased slightly for back content
+const MIN_CARD_HEIGHT = COLUMN_WIDTH * 0.8;
 
 const getOptimizedImageUrl = (url: string, width = 600) => {
-  // if (!url || !url.includes("cloudinary.com")) return url;
-  // const parts = url.split("/upload/");
-  // return `${parts[0]}/upload/f_auto,q_auto,w_${width},c_limit/${parts[1]}`;
   return url;
 };
 
@@ -252,7 +249,7 @@ const YourMixCard = ({ item, onCardPress }: YourMixCardProps) => {
           height: cardHeight,
           transform: [
             {
-              rotateY: rotateInterpolate, 
+              rotateY: rotateInterpolate,
             },
           ],
         }}
@@ -272,11 +269,30 @@ const MixScreen = () => {
   const flatListRef = useRef<FlatList>(null);
   const insets = useSafeAreaInsets();
 
+  // 1. Get Params from the router
+  const { openPostId } = useLocalSearchParams();
+
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [expandedItem, setExpandedItem] = useState<YourMixPostData | undefined>(
     undefined
   );
   const [currentAspectRatio, setCurrentAspectRatio] = useState(4 / 3);
+
+  // 2. Add Effect to handle deep linking/notification clicks
+  useEffect(() => {
+    if (openPostId && yourMixData.length > 0) {
+      // Ensure openPostId is a string
+      const idToFind = Array.isArray(openPostId) ? openPostId[0] : openPostId;
+
+      const foundPost = yourMixData.find((p) => p.id === idToFind);
+
+      if (foundPost) {
+        setExpandedId(idToFind);
+        // Optional: clear the param from url if desired, but often not necessary
+        console.log("Opening post from notification:", idToFind);
+      }
+    }
+  }, [openPostId, yourMixData]);
 
   const screens = [{ key: "yourmix", title: "YOUR MIX" }];
 

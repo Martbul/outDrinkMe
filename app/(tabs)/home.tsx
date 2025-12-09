@@ -11,6 +11,7 @@ import { useAuth } from "@clerk/clerk-expo";
 import {
   AntDesign,
   Feather,
+  FontAwesome,
   FontAwesome6,
   Ionicons,
   MaterialCommunityIcons,
@@ -292,12 +293,11 @@ export default function HomeScreen() {
 
               {isCoefTooltipVisible && (
                 <InfoTooltip
-                  title="Coefficient"
                   visible={isCoefTooltipVisible}
-                  description="Your drinking coefficient calculated from your drunk performance. Higher number means more fun nights!"
+                  title="Coefficient"
+                  description="Your drinking coefficient calculated from your drunk performance."
                   onClose={() => setIsCoefTooltipVisible(false)}
-                  position="bottom"
-                />
+                ></InfoTooltip>
               )}
             </TouchableOpacity>
             {/* <View className="rounded-full bg-orange-600/15 border-orange-600 ">
@@ -312,14 +312,15 @@ export default function HomeScreen() {
                 />
               </TouchableOpacity>
             </View> */}
+            {/* <View className="rounded-full bg-orange-600/15 border-orange-600"> */}
             <View className="rounded-full bg-orange-600/15 border-orange-600 opacity-0 disabled ">
               <TouchableOpacity
-                onPress={() => router.push("/(screens)/sideQuestBoard")}
+                onPress={() => router.push("/(screens)/squads")}
                 className="w-16 h-16 rounded-full  items-center justify-center"
               >
                 <MaterialCommunityIcons
-                  name="sword"
-                  size={34}
+                  name="account-group-outline"
+                  size={32}
                   color="#EA580C"
                 />
               </TouchableOpacity>
@@ -419,7 +420,7 @@ export default function HomeScreen() {
               <MaterialIcons name="leaderboard" size={20} color="#EA580C" />
             </View>
             <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">
-              RANK
+              GLOBAL RANK
             </Text>
             <Text className="text-white text-2xl font-black">
               #{leaderboard?.global?.user_position?.rank}
@@ -433,7 +434,7 @@ export default function HomeScreen() {
               <Ionicons name="calendar" size={20} color="#EA580C" />
             </View>
             <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">
-              TOTAL
+              TOTAL DAYS DRUNK
             </Text>
             <Text className="text-white text-2xl font-black">
               {userStats?.total_days_drank || 0}
@@ -444,13 +445,13 @@ export default function HomeScreen() {
             className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]"
           >
             <View className="w-10 h-10 rounded-xl bg-orange-600/20 items-center justify-center mb-2">
-              <Ionicons name="trophy" size={20} color="#EA580C" />
+              <MaterialCommunityIcons name="fire" size={26} color="#EA580C" />
             </View>
             <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">
-              WINS
+              LONGEST STREAK
             </Text>
             <Text className="text-white text-2xl font-black">
-              {userStats?.total_weeks_won || 0}
+              {userStats?.longest_streak || 0}
             </Text>
           </TouchableOpacity>
         </View>
@@ -478,7 +479,7 @@ export default function HomeScreen() {
             )}
           </View>
         </View> */}
-
+        {/* 
         <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
           <Text className="text-white text-lg font-black mb-4">
             Your Progress
@@ -491,7 +492,7 @@ export default function HomeScreen() {
                   <Ionicons name="calendar-outline" size={16} color="#EA580C" />
                 </View>
                 <Text className="text-white/60 text-sm font-semibold">
-                  This Month
+                  Drunk This Month
                 </Text>
               </View>
               <Text className="text-white text-lg font-black">
@@ -509,7 +510,7 @@ export default function HomeScreen() {
                   />
                 </View>
                 <Text className="text-white/60 text-sm font-semibold">
-                  This Year
+                  Drunk This Year
                 </Text>
               </View>
               <Text className="text-white text-lg font-black">
@@ -549,7 +550,7 @@ export default function HomeScreen() {
               </Text>
             </View>
           </View>
-        </View>
+        </View> */}
         <TouchableOpacity
           className={`rounded-2xl py-6 items-center mb-4 shadow-lg ${
             userStats?.today_status
@@ -586,7 +587,7 @@ export default function HomeScreen() {
                 <>
                   <Ionicons name="add-circle" size={32} color="#000000" />
                   <Text className="text-black text-lg font-black tracking-wider mt-2">
-                    LOG TODAY'S DRINKS
+                    LOG TODAY'S DRINKING
                   </Text>
                   <Text className="text-black/60 text-xs font-semibold mt-1">
                     Keep your streak alive
@@ -604,8 +605,8 @@ export default function HomeScreen() {
         style={{
           bottom: 100 + insets.bottom,
           right: 16,
-          width: 56,
-          height: 56,
+          width: 40,
+          height: 40,
           justifyContent: "center",
           alignItems: "center",
           shadowColor: "#EA580C",
@@ -615,7 +616,7 @@ export default function HomeScreen() {
           elevation: 8,
         }}
       >
-        <FontAwesome6 name="wrench" size={26} color="black" />
+        <Ionicons name="bug-outline" size={24} color="black" />
       </TouchableOpacity>
 
       <Modal
@@ -732,7 +733,6 @@ export default function HomeScreen() {
                     </Text>
                   </View>
 
-                  {/* Submit Button */}
                   <View className="px-6">
                     <TouchableOpacity
                       onPress={handleSubmitFeedback}
@@ -901,4 +901,3 @@ function SessionDiskView({
     </View>
   );
 }
-

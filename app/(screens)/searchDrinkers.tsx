@@ -16,6 +16,7 @@ import { UserCard } from "@/components/userCard";
 import { UserData } from "@/types/api.types";
 import { onBackPress } from "@/utils/navigation";
 import Header from "@/components/header";
+import NestedScreenHeader from "@/components/nestedScreenHeader";
 
 export default function AddByUsername() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -105,30 +106,8 @@ export default function AddByUsername() {
       className="flex-1 bg-black"
       style={{ paddingBottom: insets.bottom + 40 }}
     >
-      <Header />
+      <NestedScreenHeader heading="Drinkers" secondaryHeading="SEARCH" />
       <ScrollView className="flex-1 px-4 pt-6">
-        {/* Page Header */}
-        <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
-          <View className="flex-row items-center mb-2">
-            <TouchableOpacity
-              onPress={onBackPress}
-              className="w-10 h-10 rounded-xl bg-white/[0.03] items-center justify-center border border-white/[0.08]"
-            >
-              <Feather name="arrow-left" size={24} color="#999999" />
-            </TouchableOpacity>
-
-            <View className="flex-1 items-end">
-              <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-2">
-                FIND FRIENDS
-              </Text>
-              <Text className="text-white text-[32px] font-black">
-                Search Drinkers
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Search Bar Card */}
         <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
           <View className="bg-white/[0.05] rounded-xl px-4 py-3 flex-row items-center border border-white/[0.08]">
             <Ionicons name="search" size={20} color="#ff8c00" />

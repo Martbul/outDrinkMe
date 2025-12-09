@@ -105,7 +105,7 @@ export const DrunkGameProvider: React.FC<{ children: React.ReactNode }> = ({
   const [gameType, setGameType] = useState("");
   const [gameLabel, setGameLabel] = useState("");
 
-  const [players, setPlayers] = useState<Player[]>([]); // Lobby players
+  const [players, setPlayers] = useState<Player[]>([]);
   const [messages, setMessages] = useState<string[]>([]);
   const [publicGames, setPublicGames] = useState<PublicGame[]>([]);
 

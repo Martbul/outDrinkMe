@@ -121,15 +121,16 @@ export interface FriendDiscoveryDisplayProfileResponse {
   user: UserData;
   stats: UserStats;
   achievements: Achievement[];
-  mix_posts: DailyDrinkingPostResponse[] | []; // The raw response for posts
+  mix_posts: DailyDrinkingPostResponse[] | [];
   is_friend: boolean;
+  inventory: { [itemType: string]: InventoryItem[] };
 }
-
 export interface DailyDrinkingPostResponse {
   id: string;
   user_id: string;
   user_image_url: string | null;
-  date: string; // Changed from 'data' to 'date'
+  username: string;
+  date: string;
   drank_today: boolean;
   logged_at: string;
   image_url: string | null;
@@ -138,21 +139,19 @@ export interface DailyDrinkingPostResponse {
   source_type: string;
 }
 
-
 export interface YourMixPostData {
   id: string;
   userId: string;
-  userImageUrl?: string; // Optional in Go, so make it optional/nullable here
-  date: string; // Will be ISO string from Go's time.Time
+  userImageUrl?: string;
+  username: string;
+  date: string;
   drankToday: boolean;
-  loggedAt: string; // Will be ISO string from Go's time.Time
-  imageUrl?: string; // Optional in Go, so make it optional/nullable here
-  locationText?: string; // Optional in Go, so make it optional/nullable here
-  mentionedBuddies: UserData[]; // Always an array, even if empty
-  sourceType: string; // The Go string type
+  loggedAt: string;
+  imageUrl?: string;
+  locationText?: string;
+  mentionedBuddies: UserData[];
+  sourceType: string;
 }
-
-
 
 export interface DrunkThought {
   id: string;
@@ -160,7 +159,7 @@ export interface DrunkThought {
   username: string;
   user_image_url: string;
   thought: string;
-  created_at: string; // ISO 8601 date string from JSON
+  created_at: string;
 }
 
 export interface AlcoholDbItem {

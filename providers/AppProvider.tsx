@@ -261,6 +261,7 @@ export function AppProvider({ children }: AppProviderProps) {
         Notifications.addNotificationResponseReceivedListener((response) => {
           const data = response.notification.request.content.data;
           const recipientId = data?.recipient_user_id;
+          const postId = data?.post_id;
 
           if (userData && recipientId && recipientId !== userData.id) {
             Alert.alert(
@@ -272,8 +273,14 @@ export function AppProvider({ children }: AppProviderProps) {
           }
 
           if (data) {
-            // console.log("Deep linking to:", data.action_url);
-            router.push("/(tabs)/mix");
+            if (postId) {
+              router.push({
+                pathname: "/(tabs)/mix",
+                params: { openPostId: postId as any },
+              });
+            } else {
+              router.push("/(tabs)/mix");
+            }
           }
 
           refreshNotifications();
@@ -299,19 +306,22 @@ export function AppProvider({ children }: AppProviderProps) {
     try {
       // Use withLoadingAndError but skip global loading as this check
       // might happen very early and we might show a different UI (the modal).
-      const minVersionResponse: MinVersionResponse | null = await withLoadingAndError(
-        async () => {
-          const token = await getToken();
-          if (!token) throw new Error("No auth token");
-          return await apiService.getMinRequiredAppVersion(token);
-        },
-        undefined,
-        "get_min_required_version",
-        true // Skip global loading for this call
-      );
+      const minVersionResponse: MinVersionResponse | null =
+        await withLoadingAndError(
+          async () => {
+            const token = await getToken();
+            if (!token) throw new Error("No auth token");
+            return await apiService.getMinRequiredAppVersion(token);
+          },
+          undefined,
+          "get_min_required_version",
+          true // Skip global loading for this call
+        );
 
       if (!minVersionResponse) {
-        console.warn("Failed to retrieve minimum version response from server.");
+        console.warn(
+          "Failed to retrieve minimum version response from server."
+        );
         return false;
       }
 
@@ -336,8 +346,13 @@ export function AppProvider({ children }: AppProviderProps) {
       }
 
       if (currentAppVersionCode < minRequiredVersion) {
-        console.log(`Current version (${currentAppVersionCode}) is older than minimum required (${minRequiredVersion}).`);
-        setUpdateMessage(minVersionResponse.update_message || "A new version of the app is available. Please update to continue.");
+        console.log(
+          `Current version (${currentAppVersionCode}) is older than minimum required (${minRequiredVersion}).`
+        );
+        setUpdateMessage(
+          minVersionResponse.update_message ||
+            "A new version of the app is available. Please update to continue."
+        );
         setShowMandatoryUpdateModal(true);
         posthog?.capture("mandatory_update_prompted", {
           current_version: currentAppVersionCode,
@@ -351,7 +366,9 @@ export function AppProvider({ children }: AppProviderProps) {
       }
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : "Unknown error during update check";
+        err instanceof Error
+          ? err.message
+          : "Unknown error during update check";
       console.error("Error checking for mandatory update:", errorMessage);
       posthog?.capture("mandatory_update_check_failed", {
         error_message: errorMessage,
@@ -359,8 +376,14 @@ export function AppProvider({ children }: AppProviderProps) {
       });
       return false;
     }
-  }, [isSignedIn, getToken, posthog, setUpdateMessage, setShowMandatoryUpdateModal, withLoadingAndError]);
-
+  }, [
+    isSignedIn,
+    getToken,
+    posthog,
+    setUpdateMessage,
+    setShowMandatoryUpdateModal,
+    withLoadingAndError,
+  ]);
 
   const refreshUserData = useCallback(async () => {
     if (!isSignedIn) return;
@@ -1077,8 +1100,6 @@ export function AppProvider({ children }: AppProviderProps) {
     return false;
   }, [isSignedIn, getToken, withLoadingAndError, posthog]);
 
-
-
   const markNotificationRead = useCallback(
     async (id: string) => {
       if (!isSignedIn) return;
@@ -1139,7 +1160,9 @@ export function AppProvider({ children }: AppProviderProps) {
         setIsInitialLoading(true);
         // Also hide any update modal if user signs out
         setShowMandatoryUpdateModal(false);
-        setUpdateMessage("A new version of the app is available. Please update to continue.");
+        setUpdateMessage(
+          "A new version of the app is available. Please update to continue."
+        );
       }
     };
 
@@ -1207,7 +1230,7 @@ export function AppProvider({ children }: AppProviderProps) {
 
     // Versioning (Exposed via context)
     showMandatoryUpdateModal, // <--- ADDED TO CONTEXT
-    updateMessage,            // <--- ADDED TO CONTEXT
+    updateMessage, // <--- ADDED TO CONTEXT
 
     // Global State
     isLoading,

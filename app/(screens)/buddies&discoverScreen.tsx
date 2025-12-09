@@ -242,7 +242,7 @@ const BuddiesDiscoverScreen = () => {
     () => (
       <View>
         {/* Header Card */}
-        <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
+        {/* <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
           <View className="flex-row justify-between items-center mb-2">
             <View>
               <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-2">
@@ -256,7 +256,7 @@ const BuddiesDiscoverScreen = () => {
               </Text>
             </View>
           </View>
-        </View>
+        </View> */}
 
         {/* Search Bar */}
         <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
@@ -308,7 +308,7 @@ const BuddiesDiscoverScreen = () => {
       <>
         <View>
           {/* Header Card */}
-          <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
+          {/* <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
             <View className="flex-row justify-between items-center mb-2">
               <View>
                 <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-2">
@@ -324,7 +324,7 @@ const BuddiesDiscoverScreen = () => {
                 </Text>
               </View>
             </View>
-          </View>
+          </View> */}
 
           {/* Results Label */}
         </View>
@@ -366,7 +366,7 @@ const BuddiesDiscoverScreen = () => {
       className="flex-1 bg-black"
       style={{ paddingBottom: insets.bottom + 40 }}
     >
-      <NestedScreenHeader heading="Buddies" secondaryHeading="Your" />
+      <NestedScreenHeader heading="Buddies" secondaryHeading="ALCOHOLIC" />
 
       <TabSelection />
 

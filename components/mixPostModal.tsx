@@ -83,10 +83,9 @@ export default function MixPostModal({
                 </TouchableOpacity>
               </Animated.View>
 
-              {/* Full Image Display - MODIFIED HERE */}
               <Animated.View
                 entering={FadeInDown.delay(100).duration(400)}
-                className="p-1" // Reduced padding slightly to give max width to image
+                className="p-1"
               >
                 <View className="rounded-2xl overflow-hidden bg-white/5">
                   <Image
@@ -113,9 +112,7 @@ export default function MixPostModal({
                     className="w-12 h-12 rounded-full border-2 border-orange-600"
                   />
                   <Animated.View entering={FadeInLeft.delay(350).duration(400)}>
-                    <Text className="text-white font-bold">
-                      {userData?.username}
-                    </Text>
+                    <Text className="text-white font-bold">{expandedItem?.username}</Text>
                     <Text className="text-white/50 text-sm">
                       {formatTime(expandedItem.loggedAt)}
                     </Text>

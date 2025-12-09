@@ -17,7 +17,7 @@ export default function NestedScreenHeader({
   buttonAction,
 }: NestedScreenHeaderProps) {
   return (
-          <View className="px-4 pt-4 border-b border-white/[0.08]">
+    <View className="px-4 pt-4 border-b border-white/[0.08]">
 
     <View className="flex-row items-center mb-4">
       <TouchableOpacity
