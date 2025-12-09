@@ -11,8 +11,6 @@ import {
   Vibration,
   RefreshControl,
   Modal,
-  KeyboardAvoidingView,
-  Platform,
   TouchableWithoutFeedback,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -23,7 +21,6 @@ import {
   Entypo,
   Feather,
   FontAwesome5,
-  Ionicons,
   MaterialCommunityIcons,
   MaterialIcons,
 } from "@expo/vector-icons";
@@ -37,6 +34,21 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const GAP = 12;
 const SCREEN_PADDING = 16;
 const COLUMN_WIDTH = (SCREEN_WIDTH - SCREEN_PADDING * 2 - GAP) / 2;
+
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
 
 const ModalOption = ({
   icon,
@@ -96,54 +108,6 @@ const ModalOption = ({
     </TouchableOpacity>
   );
 };
-const ActionButton = ({
-  initialIsFriend,
-  onToggle,
-  isCurrentUser,
-}: {
-  initialIsFriend: boolean;
-  onToggle: (state: boolean) => void;
-  isCurrentUser: boolean;
-}) => {
-  if (isCurrentUser) return null;
-
-  const [isFriend, setIsFriend] = useState(initialIsFriend);
-  const [loading, setLoading] = useState(false);
-
-  const handlePress = async () => {
-    Vibration.vibrate(10);
-    setLoading(true);
-    const newState = !isFriend;
-    setIsFriend(newState);
-    await onToggle(newState);
-    setLoading(false);
-  };
-
-  return (
-    <TouchableOpacity
-      onPress={handlePress}
-      disabled={loading}
-      activeOpacity={0.8}
-      className={`py-3 rounded-xl items-center justify-center mt-6 border ${
-        isFriend
-          ? "bg-white/[0.03] border-white/[0.08]"
-          : "bg-orange-600 border-orange-600"
-      }`}
-    >
-      {loading ? (
-        <ActivityIndicator size="small" color={isFriend ? "white" : "black"} />
-      ) : (
-        <Text
-          className={`text-sm font-black tracking-widest ${
-            isFriend ? "text-white" : "text-black"
-          }`}
-        >
-          {isFriend ? "REMOVE FRIEND" : "ADD FRIEND"}
-        </Text>
-      )}
-    </TouchableOpacity>
-  );
-};
 
 const GalleryItem = ({
   item,
@@ -169,7 +133,8 @@ const GalleryItem = ({
 
   const getOptimizedImageUrl = (url: string | undefined) => {
     if (!url || !url.includes("cloudinary.com")) return url;
-    return url.replace("/upload/", "/upload/f_auto,q_auto,w_500/");
+    // return url.replace("/upload/", "/upload/f_auto,q_auto,w_500/");
+    return url
   };
 
   return (
@@ -224,10 +189,14 @@ const UserInfoScreen = () => {
     userInventory: currentUserInventory,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<"overview" | "inventory">(
-    "overview"
-  );
+  const [activeTab, setActiveTab] = useState<
+    "overview" | "stats" | "inventory"
+  >("overview");
   const [refreshing, setRefreshing] = useState(false);
+
+  // Calendar State
+  const [statsMonth, setStatsMonth] = useState(new Date().getMonth() + 1);
+  const [statsYear, setStatsYear] = useState(new Date().getFullYear());
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [expandedItem, setExpandedItem] = useState<YourMixPostData | undefined>(
@@ -290,6 +259,19 @@ const UserInfoScreen = () => {
     return { leftColumn: left, rightColumn: right };
   }, [friendDiscoveryProfile, isDataStale]);
 
+  // Derive a Set of active dates from mix_posts for the calendar
+  const activeDates = useMemo(() => {
+    const dates = new Set<string>();
+    if (friendDiscoveryProfile?.mix_posts) {
+      friendDiscoveryProfile.mix_posts.forEach((post) => {
+        // Assume post.date is ISO string or YYYY-MM-DD
+        const dateStr = post.date.split("T")[0];
+        dates.add(dateStr);
+      });
+    }
+    return dates;
+  }, [friendDiscoveryProfile?.mix_posts]);
+
   const levelInfo = getLevelInfo(friendDiscoveryProfile?.user?.xp || 0);
 
   const onRefresh = async () => {
@@ -305,22 +287,15 @@ const UserInfoScreen = () => {
     setSettingsModalVisible(true);
   };
 
-  // const handleFriendToggle = async (newState: boolean) => {
-  //   if (!friendDiscoveryProfile?.user) return;
-  //   newState
-  //     ? await addFriend(friendDiscoveryProfile.user.clerkId)
-  //     : await removeFriend(friendDiscoveryProfile.user.clerkId);
-  // };
-    const handleFriendToggle = async (newState: boolean) => {
-      if (!friendDiscoveryProfile?.user) return;
+  const handleFriendToggle = async (newState: boolean) => {
+    if (!friendDiscoveryProfile?.user) return;
 
-      if (newState) {
-        await addFriend(friendDiscoveryProfile.user.clerkId);
-      } else {
-        await removeFriend(friendDiscoveryProfile.user.clerkId);
-      }
-    };
-
+    if (newState) {
+      await addFriend(friendDiscoveryProfile.user.clerkId);
+    } else {
+      await removeFriend(friendDiscoveryProfile.user.clerkId);
+    }
+  };
 
   const renderOverview = () => {
     if (leftColumn.length === 0 && rightColumn.length === 0) {
@@ -371,11 +346,9 @@ const UserInfoScreen = () => {
     );
   };
 
-
-    const closeSettingsModal = () => {
-      setSettingsModalVisible(false);
-    };
-
+  const closeSettingsModal = () => {
+    setSettingsModalVisible(false);
+  };
 
   const renderInventory = () => {
     const rawInventory = isCurrentUser
@@ -403,7 +376,15 @@ const UserInfoScreen = () => {
               <Text className="text-orange-600 text-[10px] font-bold tracking-widest mb-1 uppercase">
                 {title}
               </Text>
-              <Text className="text-white text-xl font-black">Collection</Text>
+              {title === "Smoking" && (
+                <Text className="text-white text-xl font-black">Kit</Text>
+              )}
+              {title === "Energy" && (
+                <Text className="text-white text-xl font-black">Cans</Text>
+              )}
+              {title === "Sexuality" && (
+                <Text className="text-white text-xl font-black">Flags</Text>
+              )}
             </View>
             <View className="bg-orange-600 rounded-lg px-3 py-1.5 items-center">
               <Text className="text-black text-xs font-black">
@@ -470,7 +451,7 @@ const UserInfoScreen = () => {
             ) : (
               <View className="w-full items-center py-6">
                 <Text className="text-white/30 text-xs font-bold italic">
-                  No items in this collection.
+                  No items
                 </Text>
               </View>
             )}
@@ -498,6 +479,199 @@ const UserInfoScreen = () => {
     );
   };
 
+  const renderCalendar = () => {
+    const getDaysInMonth = (month: number, year: number) =>
+      new Date(year, month, 0).getDate();
+    const getFirstDayOfMonth = (month: number, year: number) => {
+      const day = new Date(year, month - 1, 1).getDay();
+      return day === 0 ? 6 : day - 1; // Mon=0, Sun=6
+    };
+
+    const navigateMonth = (direction: "prev" | "next") => {
+      if (direction === "next") {
+        if (statsMonth === 12) {
+          setStatsMonth(1);
+          setStatsYear(statsYear + 1);
+        } else {
+          setStatsMonth(statsMonth + 1);
+        }
+      } else {
+        if (statsMonth === 1) {
+          setStatsMonth(12);
+          setStatsYear(statsYear - 1);
+        } else {
+          setStatsMonth(statsMonth - 1);
+        }
+      }
+    };
+
+    const daysInMonth = getDaysInMonth(statsMonth, statsYear);
+    const firstDay = getFirstDayOfMonth(statsMonth, statsYear);
+    const days = [];
+
+    // Empty slots
+    for (let i = 0; i < firstDay; i++) {
+      days.push(
+        <View
+          key={`empty-${i}`}
+          style={{ width: "14.28%" }}
+          className="aspect-square p-[2px]"
+        />
+      );
+    }
+
+    // Days
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = `${statsYear}-${String(statsMonth).padStart(
+        2,
+        "0"
+      )}-${String(day).padStart(2, "0")}`;
+      const isLogged = activeDates.has(dateStr);
+      const isToday =
+        dateStr === new Date().toISOString().split("T")[0] && isLogged;
+
+      days.push(
+        <View
+          key={day}
+          style={{ width: "14.28%" }}
+          className="aspect-square p-[2px]"
+        >
+          <View
+            className={`
+            flex-1 items-center justify-center rounded-lg border
+            ${
+              isLogged
+                ? "bg-orange-600/30 border-orange-600/50"
+                : "bg-white/[0.03] border-white/[0.08]"
+            }
+          `}
+          >
+            <Text
+              className={`text-xs font-bold ${
+                isLogged ? "text-orange-500" : "text-white/30"
+              }`}
+            >
+              {day}
+            </Text>
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08] mb-4">
+        <View className="flex-row justify-between items-center mb-4">
+          <TouchableOpacity
+            onPress={() => navigateMonth("prev")}
+            className="w-10 h-10 rounded-lg bg-white/[0.05] items-center justify-center border border-white/[0.08]"
+          >
+            <Feather name="arrow-left" size={20} color="#999" />
+          </TouchableOpacity>
+
+          <View className="items-center">
+            <Text className="text-white text-lg font-black">
+              {MONTH_NAMES[statsMonth - 1]}
+            </Text>
+            <Text className="text-white/50 text-xs font-semibold">
+              {statsYear}
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            onPress={() => navigateMonth("next")}
+            className="w-10 h-10 rounded-lg bg-white/[0.05] items-center justify-center border border-white/[0.08]"
+          >
+            <Feather name="arrow-right" size={20} color="#999" />
+          </TouchableOpacity>
+        </View>
+
+        <View className="flex-row flex-wrap mb-2">
+          {["M", "T", "W", "T", "F", "S", "S"].map((day, i) => (
+            <View
+              key={i}
+              style={{ width: "14.28%" }}
+              className="items-center justify-center pb-2"
+            >
+              <Text className="text-white/30 font-bold text-[10px] uppercase">
+                {day}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        <View className="flex-row flex-wrap">{days}</View>
+
+        <View className="mt-4 pt-4 border-t border-white/5 flex-row items-center justify-center gap-4">
+          <View className="flex-row items-center">
+            <View className="w-3 h-3 rounded bg-orange-600/30 border border-orange-600/50 mr-2" />
+            <Text className="text-white/50 text-[10px] font-bold uppercase">
+              Logged
+            </Text>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  const renderStats = () => {
+    const stats = friendDiscoveryProfile?.stats;
+
+    if (!stats) {
+      return (
+        <View className="px-4">
+          <View className="bg-white/[0.03] rounded-2xl p-8 border border-white/[0.08] items-center">
+            <Text className="text-white/50 text-xs font-bold">
+              No stats available for this user.
+            </Text>
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View className="px-4 pb-6">
+        {/* Rank & Coefficient Card */}
+        <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08] mb-4">
+          <View className="flex-row items-center justify-between mb-6">
+            <View>
+              <Text className="text-orange-600 text-[10px] font-bold tracking-widest mb-1">
+                GLOBAL RANKING
+              </Text>
+              <Text className="text-white text-[32px] font-black">
+                #{stats.rank}
+              </Text>
+            </View>
+            <View className="w-12 h-12 rounded-full bg-orange-600/20 items-center justify-center">
+              <MaterialCommunityIcons name="trophy" size={24} color="#EA580C" />
+            </View>
+          </View>
+
+          <View className="h-[1px] bg-white/[0.08] mb-6" />
+
+          <View className="flex-row items-center justify-between">
+            <View>
+              <Text className="text-white text-xl font-black">
+                {stats.alcoholism_coefficient?.toFixed(2) || "0.00"}
+              </Text>
+              <Text className="text-white/40 text-[10px] font-bold tracking-wider mt-1">
+                COEFFICIENT
+              </Text>
+            </View>
+            <View className="items-end">
+              <Text className="text-white text-xl font-black">
+                {stats.total_days_drank}
+              </Text>
+              <Text className="text-white/40 text-[10px] font-bold tracking-wider mt-1">
+                TOTAL DRUNK DAYS
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {renderCalendar()}
+      </View>
+    );
+  };
 
   if (!friendDiscoveryProfile) {
     return (
@@ -590,23 +764,24 @@ const UserInfoScreen = () => {
                   {friendDiscoveryProfile?.stats?.current_streak || 0}
                 </Text>
                 <Text className="text-white/40 text-[9px] font-bold mt-1 tracking-wider">
-                  STREAK
+                  CURRENT STREAK
                 </Text>
               </View>
-              <View className="items-center flex-1 border-r border-white/[0.08]">
-                <Text className="text-orange-600 text-xl font-black">
-                  {friendDiscoveryProfile?.stats?.total_weeks_won || 0}
-                </Text>
-                <Text className="text-white/40 text-[9px] font-bold mt-1 tracking-wider">
-                  WINS
-                </Text>
-              </View>
+
               <View className="items-center flex-1">
-                <Text className="text-white text-xl font-black">
+                <Text className="text-orange-600 text-xl font-black">
                   {friendDiscoveryProfile?.stats?.friends_count || 0}
                 </Text>
                 <Text className="text-white/40 text-[9px] font-bold mt-1 tracking-wider">
                   BUDDIES
+                </Text>
+              </View>
+              <View className="items-center flex-1 border-r border-white/[0.08]">
+                <Text className="text-white text-xl font-black">
+                  {friendDiscoveryProfile?.stats?.longest_streak || 0}
+                </Text>
+                <Text className="text-white/40 text-[9px] font-bold mt-1 tracking-wider">
+                  LONGEST STREAK
                 </Text>
               </View>
             </View>
@@ -625,10 +800,13 @@ const UserInfoScreen = () => {
 
         <View className="px-4 mb-4">
           <View className="bg-white/[0.03] rounded-xl p-1.5 border border-white/[0.08] flex-row">
-            {(["overview", "inventory"] as const).map((tab) => (
+            {(isCurrentUser
+              ? ["overview", "inventory"]
+              : ["overview", "stats" ,"inventory", ]
+            ).map((tab) => (
               <TouchableOpacity
                 key={tab}
-                onPress={() => setActiveTab(tab)}
+                onPress={() => setActiveTab(tab as any)}
                 className={`flex-1 py-2.5 rounded-lg items-center ${
                   activeTab === tab ? "bg-orange-600" : ""
                 }`}
@@ -647,6 +825,7 @@ const UserInfoScreen = () => {
 
         {activeTab === "overview" && renderOverview()}
         {activeTab === "inventory" && renderInventory()}
+        {activeTab === "stats" && renderStats()}
       </ScrollView>
 
       <MixPostModal

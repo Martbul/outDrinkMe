@@ -9,7 +9,6 @@ import {
   Text,
   TouchableOpacity,
   View,
-  Dimensions,
 } from "react-native";
 import Header from "@/components/header";
 import { AntDesign, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -21,7 +20,6 @@ import CustomModal, {
 } from "@/components/customModal";
 import { usePostHog } from "posthog-react-native";
 
-// --- INTERFACES ---
 interface CalendarDayProps {
   day: number;
   drank: boolean;
@@ -45,11 +43,9 @@ interface DayDetailModalProps {
   isLoadingThought: boolean;
 }
 
-// --- COMPONENTS ---
 
 const CalendarDay = ({ day, drank, onPress, isToday }: CalendarDayProps) => {
   return (
-    // Outer wrapper handles the Grid layout (1/7th width)
     <View style={{ width: "14.28%" }} className="aspect-square p-[2px]">
       <TouchableOpacity
         onPress={() => onPress(day, drank)}
@@ -152,7 +148,6 @@ const DayDetailModal = ({
         onRequestClose={onClose}
       >
         <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
-          {/* Header */}
           <View className="flex-row justify-between items-center px-4 py-4 border-b border-white/[0.08]">
             <View>
               <Text className="text-white text-2xl font-black">
@@ -178,7 +173,6 @@ const DayDetailModal = ({
             className="flex-1 px-4 pt-6"
             contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
           >
-            {/* Status */}
             <View className="bg-white/[0.03] rounded-2xl p-6 mb-4 border border-white/[0.08]">
               <Text className="text-white/50 text-[11px] font-bold tracking-widest uppercase mb-3">
                 Status
@@ -208,7 +202,6 @@ const DayDetailModal = ({
               </View>
             </View>
 
-            {/* Drunk Thought Section */}
             {dayData.drank_today && (
               <View className="bg-white/[0.03] rounded-2xl p-6 mb-4 border border-white/[0.08]">
                 <Text className="text-white/50 text-[11px] font-bold tracking-widest uppercase mb-3">
@@ -238,7 +231,6 @@ const DayDetailModal = ({
               </View>
             )}
 
-            {/* Current Stats Context */}
             {dayData.drank_today && userStats && (
               <View className="bg-white/[0.03] rounded-2xl p-6 mb-4 border border-white/[0.08]">
                 <Text className="text-white/50 text-[11px] font-bold tracking-widest uppercase mb-3">
@@ -272,7 +264,6 @@ const DayDetailModal = ({
             )}
           </ScrollView>
 
-          {/* Bottom Actions */}
           {(() => {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
@@ -325,7 +316,6 @@ const DayDetailModal = ({
         </View>
       </Modal>
 
-      {/* Confirmation Modals */}
       <CustomModal
         visible={showForgotModal}
         onClose={() => setShowForgotModal(false)}
@@ -344,7 +334,6 @@ const DayDetailModal = ({
           </View>
         }
       >
-        {/* Forgot Content */}
         <View className="bg-white/[0.03] rounded-2xl p-6 border border-white/[0.08]">
           <View className="items-center mb-4">
             <View className="w-20 h-20 rounded-full bg-orange-600/20 items-center justify-center mb-4">
@@ -388,7 +377,6 @@ const DayDetailModal = ({
           </View>
         }
       >
-        {/* Remove Content */}
         <View className="bg-white/[0.03] rounded-2xl p-6 border border-white/[0.08]">
           <View className="items-center mb-4">
             <View className="w-20 h-20 rounded-full bg-red-600/20 items-center justify-center mb-4">
@@ -458,9 +446,7 @@ const CalendarScreen = () => {
   };
 
   const getFirstDayOfMonth = (month: number, year: number) => {
-    // 0 = Sunday, 1 = Monday...
     const firstDay = new Date(year, month - 1, 1).getDay();
-    // Transform to Monday-start (Monday=0 ... Sunday=6)
     return firstDay === 0 ? 6 : firstDay - 1;
   };
 
@@ -535,7 +521,6 @@ const CalendarScreen = () => {
     const firstDay = getFirstDayOfMonth(currentMonth, currentYear);
     const days = [];
 
-    // Empty slots for start of month
     for (let i = 0; i < firstDay; i++) {
       days.push(
         <View
@@ -546,7 +531,6 @@ const CalendarScreen = () => {
       );
     }
 
-    // Actual days
     for (let day = 1; day <= daysInMonth; day++) {
       const dayData = getDayData(day);
       const isToday = isTodayInCalendar(day);
@@ -633,7 +617,6 @@ const CalendarScreen = () => {
             </TouchableOpacity>
           </View>
 
-          {/* Weekday Headers - Matched to Grid */}
           <View className="flex-row flex-wrap mb-2">
             {["M", "T", "W", "T", "F", "S", "S"].map((day, index) => (
               <View

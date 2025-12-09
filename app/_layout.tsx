@@ -20,13 +20,11 @@ import "../global.css";
 let posthog: PostHog;
 
 if (Platform.OS === "web") {
-  // WEB: Uses the real LocalStorage wrapper from storage.web.ts
   posthog = new PostHog(process.env.EXPO_PUBLIC_POSTHOG_API_KEY!, {
     host: "https://us.i.posthog.com",
     customStorage: AppStorage,
   });
 } else {
-  // MOBILE: Uses 'memory'. The AppStorage import exists but is ignored here.
   posthog = new PostHog(process.env.EXPO_PUBLIC_POSTHOG_API_KEY!, {
     host: "https://us.i.posthog.com",
     persistence: "memory",

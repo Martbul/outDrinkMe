@@ -1,24 +1,20 @@
-// utils/registerPushNotification.ts
 import { Platform } from "react-native";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
-import Constants from "expo-constants";
 
-// 1. Configure "Instagram-like" behavior when app is FOREGROUNDED
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
-    shouldShowBanner: true, // Required for strict typing (iOS Banner)
-    shouldShowList: true, // Required for strict typing (iOS Notification Center)
+    shouldShowBanner: true, 
+    shouldShowList: true, 
   }),
 });
 export async function registerForPushNotificationsAsync() {
   let token;
 
   if (Platform.OS === "android") {
-    // Android 8.0+ requires channels
     await Notifications.setNotificationChannelAsync("default", {
       name: "default",
       importance: Notifications.AndroidImportance.MAX,
@@ -42,8 +38,6 @@ export async function registerForPushNotificationsAsync() {
       return null;
     }
 
-    // 2. GET THE NATIVE TOKEN (FCM)
-    // We use getDevicePushTokenAsync because your Go backend talks directly to FCM.
     try {
       const tokenData = await Notifications.getDevicePushTokenAsync();
       token = tokenData.data;
