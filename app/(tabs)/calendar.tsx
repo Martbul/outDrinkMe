@@ -578,7 +578,7 @@ const CalendarScreen = () => {
           <View className="flex-row justify-between items-center mb-2">
             <View>
               <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-2">
-                YOUR JOURNEY
+                YOUR DRUNK
               </Text>
               <Text className="text-white text-[32px] font-black">
                 Calendar

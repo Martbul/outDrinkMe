@@ -148,7 +148,6 @@ export default function HomeScreen() {
   } = useApp();
 
   const coefInfo = getCoefInfo(userData?.alcoholism_coefficient);
-  console.log("||||", leaderboard);
 
   const onRefresh = async () => {
     setRefreshing(true);
