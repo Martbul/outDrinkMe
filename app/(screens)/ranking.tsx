@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -8,16 +8,17 @@ import {
   RefreshControl,
   Platform,
   UIManager,
+  Image,
 } from "react-native";
-import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 import { useApp } from "@/providers/AppProvider";
 import type { LeaderboardEntry } from "@/types/api.types";
 import { LinearGradient } from "expo-linear-gradient";
 import NestedScreenHeader from "@/components/nestedScreenHeader";
+import { getCoefInfo } from "@/utils/levels";
+import { useRouter } from "expo-router";
 
-// Enable LayoutAnimation for Android
 if (
   Platform.OS === "android" &&
   UIManager.setLayoutAnimationEnabledExperimental
@@ -26,12 +27,12 @@ if (
 }
 
 export default function Leaderboard() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { leaderboard, refreshLeaderboard, userData, isLoading } = useApp();
   const [activeTab, setActiveTab] = useState<"friends" | "global">("friends");
   const [refreshing, setRefreshing] = useState(false);
 
-  // Determine which dataset to use
   const currentLeaderboard =
     activeTab === "global" ? leaderboard?.global : leaderboard?.friends;
 
@@ -40,6 +41,9 @@ export default function Leaderboard() {
     [currentLeaderboard]
   );
   const userPosition = currentLeaderboard?.user_position;
+
+  console.log("-----------------------------------------------");
+  console.log(entries);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -51,15 +55,7 @@ export default function Leaderboard() {
     setActiveTab(tab);
   };
 
-  const getTitle = (score: number) => {
-    if (score >= 90) return "LEGEND";
-    if (score >= 75) return "HEAVYWEIGHT";
-    if (score >= 50) return "PARTY ANIMAL";
-    if (score >= 25) return "SOCIAL DRINKER";
-    return "NOVICE";
-  };
 
-  // --- 1. Podium (Ranks 1, 2, 3) ---
   const renderPodium = () => {
     if (entries.length === 0) return null;
 
@@ -69,18 +65,22 @@ export default function Leaderboard() {
 
     return (
       <View className="flex-row justify-center items-end mb-10 mt-6 px-4 gap-3">
-        {/* Second Place */}
         {second && (
           <View className="items-center w-1/3 mb-4">
-            <View className="p-1 bg-black mb-2">
+            <TouchableOpacity
+              onPress={() =>
+                router.push(`/(screens)/userInfo?userId=${second.user_id}`)
+              }
+              className="p-1 bg-black mb-2"
+            >
               <Image
                 source={{
-                  uri: second.image_url || "https://github.com/shadcn.png",
+                  uri: second?.image_url || "https://github.com/shadcn.png",
                 }}
                 className="w-16 h-16 rounded-full"
                 style={{ opacity: 0.8 }}
               />
-            </View>
+            </TouchableOpacity>
             <Text
               className="text-white font-bold text-sm mb-1"
               numberOfLines={1}
@@ -96,7 +96,6 @@ export default function Leaderboard() {
           </View>
         )}
 
-        {/* First Place */}
         {first && (
           <View className="items-center w-1/3 z-10">
             <MaterialCommunityIcons
@@ -105,14 +104,19 @@ export default function Leaderboard() {
               color="#EA580C"
               style={{ marginBottom: -10, zIndex: 10 }}
             />
-            <View className=" p-1 bg-black shadow-lg shadow-orange-600/50 mb-2">
+            <TouchableOpacity
+              onPress={() =>
+                router.push(`/(screens)/userInfo?userId=${first.user_id}`)
+              }
+              className=" p-1 bg-black shadow-lg shadow-orange-600/50 mb-2"
+            >
               <Image
                 source={{
                   uri: first.image_url || "https://github.com/shadcn.png",
                 }}
                 className="w-24 h-24 rounded-full"
               />
-            </View>
+            </TouchableOpacity>
             <Text
               className="text-white font-bold text-base mb-1"
               numberOfLines={1}
@@ -121,7 +125,7 @@ export default function Leaderboard() {
             </Text>
             <View className="bg-orange-600/20 px-3 py-1 rounded-full mb-1 border border-orange-600/30">
               <Text className="text-orange-500 text-[10px] font-black tracking-wider uppercase">
-                {getTitle(first.alcoholism_coefficient)}
+                {getCoefInfo(first.alcoholism_coefficient).title}
               </Text>
             </View>
             <Text className="text-white/60 text-xs font-bold">
@@ -139,10 +143,14 @@ export default function Leaderboard() {
           </View>
         )}
 
-        {/* Third Place */}
         {third && (
           <View className="items-center w-1/3 mb-2">
-            <View className="p-1 bg-black mb-2">
+            <TouchableOpacity
+              onPress={() =>
+                router.push(`/(screens)/userInfo?userId=${third.user_id}`)
+              }
+              className="p-1 bg-black mb-2"
+            >
               <Image
                 source={{
                   uri: third.image_url || "https://github.com/shadcn.png",
@@ -150,7 +158,7 @@ export default function Leaderboard() {
                 className="w-16 h-16 rounded-full"
                 style={{ opacity: 0.6 }}
               />
-            </View>
+            </TouchableOpacity>
             <Text
               className="text-white font-bold text-sm mb-1"
               numberOfLines={1}
@@ -205,67 +213,69 @@ export default function Leaderboard() {
       </View>
     );
   };
-const renderRankItem = ({ item }: { item: LeaderboardEntry }) => {
-  // --- UPDATED LOGIC HERE ---
-  // Only hide the #1 Rank (Winner).
-  // Ranks #2 and #3 will appear in the Podium AND here in the list.
-  if (item.rank === 1) return null;
+  const renderRankItem = ({ item }: { item: LeaderboardEntry }) => {
+    if (item.rank === 1) return null;
 
-  const isMe = item.user_id === userData?.id;
+    const isMe = item.user_id === userData?.id;
 
-  return (
-    <View
-      className={`flex-row items-center p-4 mx-4 mb-3 rounded-2xl border ${
-        isMe
-          ? "bg-orange-600/10 border-orange-600"
-          : "bg-white/[0.03] border-white/[0.08]"
-      }`}
-    >
-      <Text
-        className={`text-xl font-black w-10 text-center mr-2 ${
-          isMe ? "text-orange-500" : "text-white/30"
+    return (
+      <TouchableOpacity
+        onPress={() =>
+          router.push(`/(screens)/userInfo?userId=${item.user_id}`)
+        }
+        className={`flex-row items-center p-4 mx-4 mb-3 rounded-2xl border ${
+          isMe
+            ? "bg-orange-600/10 border-orange-600"
+            : "bg-white/[0.03] border-white/[0.08]"
         }`}
       >
-        {item.rank}
-      </Text>
+        <Text
+          className={`text-xl font-black w-10 text-center mr-2 ${
+            isMe ? "text-orange-500" : "text-white/30"
+          }`}
+        >
+          {item.rank}
+        </Text>
 
-      <View className="w-12 h-12 rounded-full overflow-hidden mr-4 bg-white/5 border border-white/10">
-        <Image
-          source={{ uri: item.image_url || "https://github.com/shadcn.png" }}
-          className="w-full h-full"
-          contentFit="cover"
-        />
-      </View>
-
-      <View className="flex-1">
-        <View className="flex-row items-center gap-2">
-          <Text
-            className={`font-bold text-base ${
-              isMe ? "text-orange-500" : "text-white"
-            }`}
-          >
-            {item.username}
-          </Text>
-          {isMe && (
-            <View className="bg-orange-600/20 px-2 rounded-md">
-              <Text className="text-orange-600 text-[9px] font-bold">YOU</Text>
-            </View>
-          )}
+        <View className="w-12 h-12 rounded-full overflow-hidden mr-4 bg-white/5 border border-white/10">
+          <Image
+            source={{ uri: item.image_url || "https://github.com/shadcn.png" }}
+            className="w-full h-full"
+            resizeMode="cover"
+          />
         </View>
-        <Text className="text-white/30 text-[10px] font-bold tracking-widest uppercase mt-0.5">
-          {getTitle(item.alcoholism_coefficient)}
-        </Text>
-      </View>
 
-      <View className="items-end">
-        <Text className="text-white font-black text-lg">
-          {item.alcoholism_coefficient.toFixed(0)}
-        </Text>
-        <Text className="text-white/30 text-[9px] font-bold">PTS</Text>
-      </View>
-    </View>
-  );
-};
+        <View className="flex-1">
+          <View className="flex-row items-center gap-2">
+            <Text
+              className={`font-bold text-base ${
+                isMe ? "text-orange-500" : "text-white"
+              }`}
+            >
+              {item.username}
+            </Text>
+            {isMe && (
+              <View className="bg-orange-600/20 px-2 rounded-md">
+                <Text className="text-orange-600 text-[9px] font-bold">
+                  YOU
+                </Text>
+              </View>
+            )}
+          </View>
+          <Text className="text-white/30 text-[10px] font-bold tracking-widest uppercase mt-0.5">
+            {getCoefInfo(item.alcoholism_coefficient).title}
+          </Text>
+        </View>
+
+        <View className="items-end">
+          <Text className="text-white font-black text-lg">
+            {item.alcoholism_coefficient.toFixed(0)}
+          </Text>
+          <Text className="text-white/30 text-[9px] font-bold">PTS</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top + 6 }}>
@@ -306,7 +316,6 @@ const renderRankItem = ({ item }: { item: LeaderboardEntry }) => {
         />
       )}
 
-      {/* Sticky User Position Bar (At bottom) */}
       {userPosition && (
         <View
           className="absolute bottom-0 left-0 right-0 bg-[#0F0F0F] border-t-2 border-orange-600 pb-10 pt-4 px-4 shadow-2xl"
@@ -333,7 +342,7 @@ const renderRankItem = ({ item }: { item: LeaderboardEntry }) => {
                   Your Position
                 </Text>
                 <Text className="text-white/40 text-[10px] font-bold tracking-widest uppercase">
-                  {getTitle(userPosition.alcoholism_coefficient)}
+                  {getCoefInfo(userPosition.alcoholism_coefficient).title}
                 </Text>
               </View>
             </View>

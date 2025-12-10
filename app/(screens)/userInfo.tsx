@@ -16,8 +16,8 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/providers/AppProvider";
-import { getLevelInfo } from "@/utils/levels";
-import { useAuth } from "@clerk/clerk-expo"; 
+import { getCoefInfo, getLevelInfo } from "@/utils/levels";
+import { useAuth } from "@clerk/clerk-expo";
 import {
   Entypo,
   Feather,
@@ -51,7 +51,6 @@ const MONTH_NAMES = [
   "November",
   "December",
 ];
-
 
 const ModalOption = ({
   icon,
@@ -792,7 +791,12 @@ const UserInfoScreen = () => {
             <View className="flex-row justify-between items-start mb-2">
               <View>
                 <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">
-                  ALCOHOLIC
+                  {/* ALCOHOLIC */}
+                  {
+                    getCoefInfo(
+                      friendDiscoveryProfile.user.alcoholism_coefficient
+                    ).title
+                  }
                 </Text>
                 <Text className="text-white text-[28px] font-black leading-8">
                   {friendDiscoveryProfile?.user?.firstName}
