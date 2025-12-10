@@ -179,7 +179,7 @@ const UserInfoScreen = () => {
   const insets = useSafeAreaInsets();
   const { userId: rawUserId } = useLocalSearchParams();
   const router = useRouter();
-  const { getToken } = useAuth(); // Auth hook
+  const { getToken } = useAuth();
   const {
     userData,
     friendDiscoveryProfile,
@@ -196,7 +196,6 @@ const UserInfoScreen = () => {
   >("overview");
   const [refreshing, setRefreshing] = useState(false);
 
-  // Calendar State
   const [statsMonth, setStatsMonth] = useState(new Date().getMonth() + 1);
   const [statsYear, setStatsYear] = useState(new Date().getFullYear());
   const [calendarData, setCalendarData] = useState<CalendarResponse | null>(
@@ -222,7 +221,6 @@ const UserInfoScreen = () => {
     }
   }, [targetUserId]);
 
-  // Fetch Calendar Data when Month/Year or User changes
   useEffect(() => {
     const fetchUserCalendar = async () => {
       if (!targetUserId) return;
@@ -231,7 +229,6 @@ const UserInfoScreen = () => {
       try {
         const token = await getToken();
         if (token) {
-          // Passing targetUserId as the displayUserId
           const data = await apiService.getCalendar(
             statsYear,
             statsMonth,
@@ -745,7 +742,7 @@ const UserInfoScreen = () => {
   }
 
   return (
-    <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-black " style={{ paddingTop: insets.top }}>
       <StatusBar barStyle="light-content" />
       <View className="px-4 pt-4 border-b border-white/[0.08]">
         <View className="flex-row items-center mb-2">
@@ -786,7 +783,7 @@ const UserInfoScreen = () => {
           />
         }
       >
-        <View className="px-4 pb-6">
+        <View className="px-4 pb-4 mt-4">
           <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
             <View className="flex-row justify-between items-start mb-2">
               <View>
