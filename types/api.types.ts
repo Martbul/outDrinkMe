@@ -106,6 +106,7 @@ export interface AddDrinkingRequest {
   drank_today: boolean;
   image_url?: string | null;
   location_text?: string;
+  alcohols?: string[];
   mentioned_buddies?: UserData[] | [];
 }
 
@@ -134,7 +135,10 @@ export interface DailyDrinkingPostResponse {
   drank_today: boolean;
   logged_at: string;
   image_url: string | null;
+  latitude?: number;
+  longitude?: number;
   location_text: string | null;
+  alcohol: string[] | null;
   mentioned_buddies: UserData[] | null;
   source_type: string;
 }

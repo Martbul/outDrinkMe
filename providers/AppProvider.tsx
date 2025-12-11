@@ -81,6 +81,7 @@ interface AppContextType {
     drinkToday: boolean,
     imageUri?: string | null,
     locationText?: string,
+    alcohols?: string[] | [],
     mentionedBuddies?: UserData[] | []
   ) => Promise<void>;
   addFriend: (friendId: string) => Promise<void>;
@@ -115,9 +116,7 @@ export function AppProvider({ children }: AppProviderProps) {
   const { getToken, isSignedIn } = useAuth();
   const posthog = usePostHog();
 
-  // ============================================
-  // State Declarations
-  // ============================================
+
   const [userData, setUserData] = useState<UserData | null>(null);
   const [userStats, setUserStats] = useState<UserStats | null>(null);
   const [userInventory, setUserInventory] = useState<InventoryItems | null>(
@@ -133,6 +132,7 @@ export function AppProvider({ children }: AppProviderProps) {
   const [friends, setFriends] = useState<UserData[] | []>([]);
   const [discovery, setDiscovery] = useState<UserData[] | []>([]);
   const [yourMixData, setYourMixData] = useState<YourMixPostData[] | []>([]);
+  // ============================================
   const [mixTimelineData, setMixTimelineData] = useState<
     YourMixPostData[] | []
   >([]);
@@ -153,7 +153,6 @@ export function AppProvider({ children }: AppProviderProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Mandatory Update States
   const [showMandatoryUpdateModal, setShowMandatoryUpdateModal] =
     useState(false);
   const [updateMessage, setUpdateMessage] = useState(
@@ -163,9 +162,7 @@ export function AppProvider({ children }: AppProviderProps) {
   const hasInitialized = useRef(false);
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
 
-  // ============================================
-  // Centralized Loading/Error Handler
-  // ============================================
+
   const withLoadingAndError = useCallback(
     async <T,>(
       apiCall: () => Promise<T>,
@@ -204,9 +201,7 @@ export function AppProvider({ children }: AppProviderProps) {
     [posthog]
   );
 
-  // ============================================
-  // PUSH NOTIFICATION RELATED FUNCTIONS (Defined before useEffect using them)
-  // ============================================
+
   const registerPushDevice = useCallback(
     async (deviceToken: string) => {
       if (!isSignedIn) return;
@@ -856,6 +851,7 @@ export function AppProvider({ children }: AppProviderProps) {
       drinkToday: boolean,
       imageUri?: string | null,
       locationText?: string,
+      alcohols? : string[] | [],
       mentionedBuddies?: UserData[] | []
     ) => {
       if (!isSignedIn) throw new Error("Must be signed in");
@@ -870,6 +866,7 @@ export function AppProvider({ children }: AppProviderProps) {
               drank_today: drinkToday,
               image_url: imageUri,
               location_text: locationText,
+              alcohols: alcohols,
               mentioned_buddies: mentionedBuddies,
             },
             token
@@ -1080,7 +1077,6 @@ export function AppProvider({ children }: AppProviderProps) {
         const token = await getToken();
         if (!token) throw new Error("No auth token");
 
-        // 10. Track Account Deletion (Crucial Business Metric)
         posthog?.capture("account_deleted_initiated");
 
         return await apiService.deleteUserAccount(token);
@@ -1090,9 +1086,8 @@ export function AppProvider({ children }: AppProviderProps) {
     );
 
     if (result === true) {
-      posthog?.reset(); // Reset PostHog session on deletion
+      posthog?.reset();
       setUserData(null);
-      // ... (reset other state)
       setFriends([]);
       setDiscovery([]);
       setError(null);
@@ -1126,7 +1121,6 @@ export function AppProvider({ children }: AppProviderProps) {
   const markAllNotificationsRead = useCallback(async () => {
     if (!isSignedIn) return;
 
-    // Optimistic Update
     setNotifications((prev) =>
       prev.map((n) => ({ ...n, read_at: new Date().toISOString() }))
     );
@@ -1138,19 +1132,14 @@ export function AppProvider({ children }: AppProviderProps) {
     }
   }, [isSignedIn, getToken]);
 
-  // ============================================
-  // Initial Load / Lifecycle
-  // ============================================
 
   useEffect(() => {
     const initApp = async () => {
       if (isSignedIn && !hasInitialized.current) {
         hasInitialized.current = true;
-        // The check for mandatory update is now inside refreshAll for initial load
         refreshAll();
       }
 
-      // Reset initialization flag when user signs out
       if (!isSignedIn) {
         hasInitialized.current = false;
         setUserData(null);
@@ -1160,7 +1149,6 @@ export function AppProvider({ children }: AppProviderProps) {
         setCalendar(null);
         setWeeklyStats(null);
         setIsInitialLoading(true);
-        // Also hide any update modal if user signs out
         setShowMandatoryUpdateModal(false);
         setUpdateMessage(
           "A new version of the app is available. Please update to continue."
@@ -1171,9 +1159,6 @@ export function AppProvider({ children }: AppProviderProps) {
     initApp();
   }, [isSignedIn, refreshAll]);
 
-  // ============================================
-  // Context Value
-  // ============================================
 
   const value: AppContextType = {
     // Data
@@ -1230,9 +1215,8 @@ export function AppProvider({ children }: AppProviderProps) {
     markAllNotificationsRead,
     registerPushDevice,
 
-    // Versioning (Exposed via context)
-    showMandatoryUpdateModal, // <--- ADDED TO CONTEXT
-    updateMessage, // <--- ADDED TO CONTEXT
+    showMandatoryUpdateModal, 
+    updateMessage,
 
     // Global State
     isLoading,
@@ -1243,9 +1227,6 @@ export function AppProvider({ children }: AppProviderProps) {
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
 
-// ============================================
-// Hook to use the context
-// ============================================
 
 export function useApp() {
   const context = useContext(AppContext);
