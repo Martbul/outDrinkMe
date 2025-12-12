@@ -94,7 +94,7 @@ export default function MixPostModal({
                     source={{ uri: expandedItem.imageUrl }}
                     style={{
                       width: "100%",
-                      aspectRatio: currentAspectRatio, 
+                      aspectRatio: currentAspectRatio,
                     }}
                     resizeMode="contain"
                   />
@@ -108,7 +108,9 @@ export default function MixPostModal({
                 <View className="flex-row items-center gap-3 mb-4">
                   <TouchableOpacity
                     onPress={() =>
-                      router.push(`/(screens)/userInfo?userId=${expandedItem.userId}`)
+                      router.push(
+                        `/(screens)/userInfo?userId=${expandedItem.userId}`
+                      )
                     }
                   >
                     <Animated.Image
@@ -141,19 +143,29 @@ export default function MixPostModal({
                     </View>
                     <View className="flex-row flex-wrap gap-2">
                       {expandedItem.mentionedBuddies.map((buddy, idx) => (
-                        <Animated.View
-                          key={buddy.id}
-                          entering={FadeIn.delay(450 + idx * 50).duration(300)}
-                          className="flex-row items-center gap-2 bg-white/[0.05] rounded-full pl-1 pr-3 py-1"
+                        <TouchableOpacity
+                          onPress={() =>
+                            router.push(
+                              `/(screens)/userInfo?userId=${buddy.id}`
+                            )
+                          }
                         >
-                          <Image
-                            source={{ uri: buddy.imageUrl }}
-                            className="w-6 h-6 rounded-full"
-                          />
-                          <Text className="text-white text-sm font-medium">
-                            {buddy.firstName}
-                          </Text>
-                        </Animated.View>
+                          <Animated.View
+                            key={buddy.id}
+                            entering={FadeIn.delay(450 + idx * 50).duration(
+                              300
+                            )}
+                            className="flex-row items-center gap-2 bg-white/[0.05] rounded-full pl-1 pr-3 py-1"
+                          >
+                            <Image
+                              source={{ uri: buddy.imageUrl }}
+                              className="w-6 h-6 rounded-full"
+                            />
+                            <Text className="text-white text-sm font-medium">
+                              {buddy.firstName}
+                            </Text>
+                          </Animated.View>
+                        </TouchableOpacity>
                       ))}
                     </View>
                   </Animated.View>

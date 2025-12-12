@@ -75,6 +75,10 @@ export default function AddDrinks() {
 
   // --- STATE FOR DRINK & LOCATION ---
   const [locationText, setLocationText] = useState("");
+  const [locationCoords, setLocationCoords] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
 
   // Drink Selection State
@@ -101,8 +105,9 @@ export default function AddDrinks() {
       setImageUri(null);
       setMentionedBuddies([]);
       setLocationText("");
+      setLocationCoords(null);
       setAlcohols([]);
-      setIsDrinkMenuExpanded(false); // Reset expansion
+      setIsDrinkMenuExpanded(false);
       setIsFetchingLocation(false);
     }, [])
   );
@@ -113,7 +118,6 @@ export default function AddDrinks() {
     }
   }, [drunkThought]);
 
-  // --- DRINK SELECTION LOGIC ---
   const toggleDrinkType = (type: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setAlcohols((prev) => {
@@ -168,6 +172,10 @@ export default function AddDrinks() {
         const locString = [mainPart, cityPart].filter(Boolean).join(", ");
 
         setLocationText(locString);
+        setLocationCoords({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        });
         posthog?.capture("location_added_to_drink");
       }
     } catch (error) {
@@ -336,6 +344,7 @@ export default function AddDrinks() {
         true,
         skipDetails ? null : finalImageUri,
         skipDetails ? "" : locationText,
+        skipDetails ? null : locationCoords,
         skipDetails ? [] : alcohols,
         skipDetails ? [] : mentionedBuddies
       );
@@ -351,6 +360,8 @@ export default function AddDrinks() {
       setImageUri(null);
       setMentionedBuddies([]);
       setLocationText("");
+      setLocationCoords(null);
+
       setAlcohols([]);
       setViewState("logging");
       await refreshAll();
@@ -806,7 +817,10 @@ export default function AddDrinks() {
                 {locationText}
               </Text>
               <TouchableOpacity
-                onPress={() => setLocationText("")}
+                onPress={() => {
+                  setLocationText("");
+                  setLocationCoords(null);
+                }}
                 className="p-2"
               >
                 <Ionicons name="close-circle" size={20} color="#ffffff50" />
@@ -885,7 +899,6 @@ export default function AddDrinks() {
         renderLoggingView()
       )}
 
-      {/* Helper Modal */}
       <ImagePickerModal
         visible={imagePickerVisible}
         onClose={() => setImagePickerVisible(false)}
@@ -1070,6 +1083,7 @@ function AdditionalInfoModal({
 
   const handleSkip = async () => {
     setImageUri(null);
+    setLocationText("");
     setLocationText("");
     setMentionedBuddies([]);
     await handleUpload(true);

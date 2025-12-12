@@ -32,7 +32,7 @@ import { useRouter } from "expo-router";
 import * as Notifications from "expo-notifications";
 import { registerForPushNotificationsAsync } from "@/utils/registerPushNotification";
 import { Alert, Platform } from "react-native";
-import * as Application from "expo-application"; // Correctly imported
+import * as Application from "expo-application";
 
 interface AppContextType {
   // Data
@@ -55,6 +55,7 @@ interface AppContextType {
   notifications: NotificationItem[];
   unreadNotificationCount: number;
   sideQuestBoards: SideQuestBoard | null;
+  mapFriendPosts: YourMixPostData[] | [];
 
   // Refresh Functions
   refreshUserData: () => Promise<void>;
@@ -81,6 +82,10 @@ interface AppContextType {
     drinkToday: boolean,
     imageUri?: string | null,
     locationText?: string,
+    locationCoords?: {
+      latitude: number;
+      longitude: number;
+    } | null,
     alcohols?: string[] | [],
     mentionedBuddies?: UserData[] | []
   ) => Promise<void>;
@@ -116,7 +121,6 @@ export function AppProvider({ children }: AppProviderProps) {
   const { getToken, isSignedIn } = useAuth();
   const posthog = usePostHog();
 
-
   const [userData, setUserData] = useState<UserData | null>(null);
   const [userStats, setUserStats] = useState<UserStats | null>(null);
   const [userInventory, setUserInventory] = useState<InventoryItems | null>(
@@ -132,7 +136,9 @@ export function AppProvider({ children }: AppProviderProps) {
   const [friends, setFriends] = useState<UserData[] | []>([]);
   const [discovery, setDiscovery] = useState<UserData[] | []>([]);
   const [yourMixData, setYourMixData] = useState<YourMixPostData[] | []>([]);
-  // ============================================
+  const [mapFriendPosts, setMapFriendPosts] = useState<YourMixPostData[] | []>(
+    []
+  );
   const [mixTimelineData, setMixTimelineData] = useState<
     YourMixPostData[] | []
   >([]);
@@ -161,7 +167,6 @@ export function AppProvider({ children }: AppProviderProps) {
 
   const hasInitialized = useRef(false);
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
-
 
   const withLoadingAndError = useCallback(
     async <T,>(
@@ -200,7 +205,6 @@ export function AppProvider({ children }: AppProviderProps) {
     },
     [posthog]
   );
-
 
   const registerPushDevice = useCallback(
     async (deviceToken: string) => {
@@ -443,7 +447,7 @@ export function AppProvider({ children }: AppProviderProps) {
       "refresh_achievements"
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
-  
+
   const refreshCalendar = useCallback(
     async (year?: number, month?: number) => {
       if (!isSignedIn) return;
@@ -620,6 +624,19 @@ export function AppProvider({ children }: AppProviderProps) {
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
 
+  const refreshMapFriendPosts = useCallback(async () => {
+    if (!isSignedIn) return;
+
+    await withLoadingAndError(
+      async () => {
+        const token = await getToken();
+        if (!token) throw new Error("No auth token");
+        return await apiService.getMapFriendsPosts(token);
+      },
+      (data) => setMapFriendPosts(data),
+      "refresh_map_friends_posts"
+    );
+  }, [isSignedIn, getToken, withLoadingAndError]);
 
   // ============================================
   // Refresh All - Using Parallel Execution
@@ -663,6 +680,7 @@ export function AppProvider({ children }: AppProviderProps) {
         apiService.getAllNotifications(token, 1, 50),
         apiService.getUnreadNotificationsCount(token),
         apiService.getBoardQuests(token),
+        apiService.getMapFriendsPosts(token),
       ]);
 
       // Extract successful results and handle failures
@@ -685,6 +703,7 @@ export function AppProvider({ children }: AppProviderProps) {
         notifListResult,
         notifCountResult,
         SideQuestBoardResult,
+        mapFriendsPostsResult,
       ] = results;
 
       if (userResult.status === "fulfilled") {
@@ -819,7 +838,17 @@ export function AppProvider({ children }: AppProviderProps) {
           SideQuestBoardResult.reason
         );
       }
-      // Collect any errors
+
+      if (mapFriendsPostsResult.status === "fulfilled") {
+        setMapFriendPosts(mapFriendsPostsResult.value);
+      } else {
+        setMapFriendPosts([]);
+        console.error(
+          "Failed to fetch friends posts:",
+          mapFriendsPostsResult.reason
+        );
+      }
+
       const failedCalls = results.filter((r) => r.status === "rejected");
       if (failedCalls.length > 0) {
         posthog?.capture("bulk_refresh_partial_failure", {
@@ -841,17 +870,18 @@ export function AppProvider({ children }: AppProviderProps) {
       setIsInitialLoading(false);
       setIsLoading(false);
     }
-  }, [isSignedIn, getToken, checkForMandatoryUpdate, posthog]); // Added checkForMandatoryUpdate to dependencies
+  }, [isSignedIn, getToken, checkForMandatoryUpdate, posthog]);
 
-  // ============================================
-  // Actions
-  // ============================================
   const addDrinking = useCallback(
     async (
       drinkToday: boolean,
       imageUri?: string | null,
       locationText?: string,
-      alcohols? : string[] | [],
+      locationCoords?: {
+        latitude: number;
+        longitude: number;
+      } | null,
+      alcohols?: string[] | [],
       mentionedBuddies?: UserData[] | []
     ) => {
       if (!isSignedIn) throw new Error("Must be signed in");
@@ -866,6 +896,7 @@ export function AppProvider({ children }: AppProviderProps) {
               drank_today: drinkToday,
               image_url: imageUri,
               location_text: locationText,
+              location_coords: locationCoords,
               alcohols: alcohols,
               mentioned_buddies: mentionedBuddies,
             },
@@ -1132,7 +1163,6 @@ export function AppProvider({ children }: AppProviderProps) {
     }
   }, [isSignedIn, getToken]);
 
-
   useEffect(() => {
     const initApp = async () => {
       if (isSignedIn && !hasInitialized.current) {
@@ -1159,7 +1189,6 @@ export function AppProvider({ children }: AppProviderProps) {
     initApp();
   }, [isSignedIn, refreshAll]);
 
-
   const value: AppContextType = {
     // Data
     userData,
@@ -1181,6 +1210,7 @@ export function AppProvider({ children }: AppProviderProps) {
     notifications,
     unreadNotificationCount,
     sideQuestBoards,
+    mapFriendPosts,
 
     // Refresh Functions
     refreshUserData,
@@ -1215,7 +1245,7 @@ export function AppProvider({ children }: AppProviderProps) {
     markAllNotificationsRead,
     registerPushDevice,
 
-    showMandatoryUpdateModal, 
+    showMandatoryUpdateModal,
     updateMessage,
 
     // Global State
@@ -1226,7 +1256,6 @@ export function AppProvider({ children }: AppProviderProps) {
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
-
 
 export function useApp() {
   const context = useContext(AppContext);

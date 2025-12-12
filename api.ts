@@ -216,8 +216,6 @@ class ApiService {
     token: string,
     date?: string
   ): Promise<{ message: string }> {
-    console.log("devbug for add drinking");
-    console.log(data, token);
     const url = date
       ? `/api/v1/user/drink?date=${encodeURIComponent(date)}`
       : `/api/v1/user/drink`;
@@ -289,7 +287,7 @@ class ApiService {
     year: number,
     month: number,
     token: string,
-    displyUserId?: string 
+    displyUserId?: string
   ): Promise<CalendarResponse> {
     const userIdParam = displyUserId || "";
 
@@ -341,6 +339,7 @@ class ApiService {
     );
     return response || [];
   }
+
   async getYourMixData(token: string): Promise<YourMixPostData[]> {
     try {
       const response = await this.makeRequest<DailyDrinkingPostResponse[]>(
@@ -885,6 +884,42 @@ class ApiService {
         token,
       }
     );
+  }
+
+  async getMapFriendsPosts(token: string): Promise<YourMixPostData[]> {
+    try {
+      const response = await this.makeRequest<DailyDrinkingPostResponse[]>(
+        "/api/v1/user/map-friend-posts",
+        {
+          method: "GET",
+          token,
+        }
+      );
+
+      console.log(response);
+
+      const transformed = response.map((post) => ({
+        id: post.id,
+        userId: post.user_id,
+        userImageUrl: post.user_image_url,
+        username: post.username,
+        date: post.date,
+        drankToday: post.drank_today,
+        loggedAt: post.logged_at,
+        imageUrl: post.image_url,
+        locationText: post.location_text,
+        latitude: post.latitude,
+        longitude: post.longitude,
+        alcohol: post.alcohol,
+        mentionedBuddies: post.mentioned_buddies || [],
+        sourceType: post.source_type,
+      }));
+
+      return transformed;
+    } catch (error) {
+      console.error("Failed to fetch Your Mix:", error);
+      return [];
+    }
   }
 
   getWebSocketUrl(sessionId: string): string {
