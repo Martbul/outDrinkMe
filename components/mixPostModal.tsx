@@ -37,7 +37,6 @@ export default function MixPostModal({
 }: MixPostModalProps) {
   console.log(expandedItem);
   console.log(expandedId);
-  const { userData } = useApp();
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -144,6 +143,7 @@ export default function MixPostModal({
                     <View className="flex-row flex-wrap gap-2">
                       {expandedItem.mentionedBuddies.map((buddy, idx) => (
                         <TouchableOpacity
+                          key={buddy.id}
                           onPress={() =>
                             router.push(
                               `/(screens)/userInfo?userId=${buddy.id}`
