@@ -111,6 +111,13 @@
         }
       ],
       [
+        "@rnmapbox/maps",
+        {
+          "RNMapboxMapsImpl": "mapbox",
+          "downloadToken": "MAPBOX_SECRET_TOKEN_PLACEHOLDER"
+        }
+      ],
+      [
         "react-native-google-mobile-ads",
         {
           "androidAppId": "ca-app-pub-1167503921437683~3406815046",

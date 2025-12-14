@@ -106,6 +106,11 @@ export interface AddDrinkingRequest {
   drank_today: boolean;
   image_url?: string | null;
   location_text?: string;
+  location_coords?: {
+    latitude: number;
+    longitude: number;
+  } | null;
+  alcohols?: string[];
   mentioned_buddies?: UserData[] | [];
 }
 
@@ -134,7 +139,10 @@ export interface DailyDrinkingPostResponse {
   drank_today: boolean;
   logged_at: string;
   image_url: string | null;
+  latitude?: number;
+  longitude?: number;
   location_text: string | null;
+  alcohol: string[] | null;
   mentioned_buddies: UserData[] | null;
   source_type: string;
 }
@@ -142,13 +150,16 @@ export interface DailyDrinkingPostResponse {
 export interface YourMixPostData {
   id: string;
   userId: string;
-  userImageUrl?: string;
+  userImageUrl: string | undefined;
   username: string;
   date: string;
   drankToday: boolean;
   loggedAt: string;
   imageUrl?: string;
   locationText?: string;
+  latitude?: number;
+  longitude?: number;
+  alcohol: string[];
   mentionedBuddies: UserData[];
   sourceType: string;
 }

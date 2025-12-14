@@ -3,6 +3,7 @@ import AlcoholismChart from "@/components/charts/lineChart";
 import DrunkThought from "@/components/drunkThought";
 import { Header } from "@/components/header";
 import InfoTooltip from "@/components/infoTooltip";
+import DrinkingMap from "@/components/map";
 import QrSessionManager from "@/components/qrCodeManager";
 import ThisWeekGadget from "@/components/thisWeekGadget";
 import { useApp } from "@/providers/AppProvider";
@@ -408,6 +409,11 @@ export default function HomeScreen() {
         </TouchableOpacity> */}
 
         {/* <AlcoholismChart /> */}
+
+        <View className="flex-row gap-3 mb-4">
+          <DrinkingMap />
+        </View>
+
         <ThisWeekGadget />
 
         <View className="flex-row gap-3 mb-4">

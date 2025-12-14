@@ -100,8 +100,6 @@ const YourMixCard = ({ item, onCardPress }: YourMixCardProps) => {
     const calculateNextState = (current: number) => {
       if (current === 0) {
         return hasBuddies ? 1 : hasLocation ? 2 : 0;
-      } else if (current === 1) {
-        return hasLocation ? 2 : 0;
       } else {
         return 0;
       }

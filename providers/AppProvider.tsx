@@ -32,7 +32,7 @@ import { useRouter } from "expo-router";
 import * as Notifications from "expo-notifications";
 import { registerForPushNotificationsAsync } from "@/utils/registerPushNotification";
 import { Alert, Platform } from "react-native";
-import * as Application from "expo-application"; // Correctly imported
+import * as Application from "expo-application";
 
 interface AppContextType {
   // Data
@@ -55,6 +55,7 @@ interface AppContextType {
   notifications: NotificationItem[];
   unreadNotificationCount: number;
   sideQuestBoards: SideQuestBoard | null;
+  mapFriendPosts: YourMixPostData[] | [];
 
   // Refresh Functions
   refreshUserData: () => Promise<void>;
@@ -81,6 +82,11 @@ interface AppContextType {
     drinkToday: boolean,
     imageUri?: string | null,
     locationText?: string,
+    locationCoords?: {
+      latitude: number;
+      longitude: number;
+    } | null,
+    alcohols?: string[] | [],
     mentionedBuddies?: UserData[] | []
   ) => Promise<void>;
   addFriend: (friendId: string) => Promise<void>;
@@ -115,9 +121,6 @@ export function AppProvider({ children }: AppProviderProps) {
   const { getToken, isSignedIn } = useAuth();
   const posthog = usePostHog();
 
-  // ============================================
-  // State Declarations
-  // ============================================
   const [userData, setUserData] = useState<UserData | null>(null);
   const [userStats, setUserStats] = useState<UserStats | null>(null);
   const [userInventory, setUserInventory] = useState<InventoryItems | null>(
@@ -133,6 +136,9 @@ export function AppProvider({ children }: AppProviderProps) {
   const [friends, setFriends] = useState<UserData[] | []>([]);
   const [discovery, setDiscovery] = useState<UserData[] | []>([]);
   const [yourMixData, setYourMixData] = useState<YourMixPostData[] | []>([]);
+  const [mapFriendPosts, setMapFriendPosts] = useState<YourMixPostData[] | []>(
+    []
+  );
   const [mixTimelineData, setMixTimelineData] = useState<
     YourMixPostData[] | []
   >([]);
@@ -153,7 +159,6 @@ export function AppProvider({ children }: AppProviderProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Mandatory Update States
   const [showMandatoryUpdateModal, setShowMandatoryUpdateModal] =
     useState(false);
   const [updateMessage, setUpdateMessage] = useState(
@@ -163,9 +168,6 @@ export function AppProvider({ children }: AppProviderProps) {
   const hasInitialized = useRef(false);
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
 
-  // ============================================
-  // Centralized Loading/Error Handler
-  // ============================================
   const withLoadingAndError = useCallback(
     async <T,>(
       apiCall: () => Promise<T>,
@@ -204,9 +206,6 @@ export function AppProvider({ children }: AppProviderProps) {
     [posthog]
   );
 
-  // ============================================
-  // PUSH NOTIFICATION RELATED FUNCTIONS (Defined before useEffect using them)
-  // ============================================
   const registerPushDevice = useCallback(
     async (deviceToken: string) => {
       if (!isSignedIn) return;
@@ -448,7 +447,7 @@ export function AppProvider({ children }: AppProviderProps) {
       "refresh_achievements"
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
-  
+
   const refreshCalendar = useCallback(
     async (year?: number, month?: number) => {
       if (!isSignedIn) return;
@@ -625,6 +624,19 @@ export function AppProvider({ children }: AppProviderProps) {
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
 
+  const refreshMapFriendPosts = useCallback(async () => {
+    if (!isSignedIn) return;
+
+    await withLoadingAndError(
+      async () => {
+        const token = await getToken();
+        if (!token) throw new Error("No auth token");
+        return await apiService.getMapFriendsPosts(token);
+      },
+      (data) => setMapFriendPosts(data),
+      "refresh_map_friends_posts"
+    );
+  }, [isSignedIn, getToken, withLoadingAndError]);
 
   // ============================================
   // Refresh All - Using Parallel Execution
@@ -668,6 +680,7 @@ export function AppProvider({ children }: AppProviderProps) {
         apiService.getAllNotifications(token, 1, 50),
         apiService.getUnreadNotificationsCount(token),
         apiService.getBoardQuests(token),
+        apiService.getMapFriendsPosts(token),
       ]);
 
       // Extract successful results and handle failures
@@ -690,6 +703,7 @@ export function AppProvider({ children }: AppProviderProps) {
         notifListResult,
         notifCountResult,
         SideQuestBoardResult,
+        mapFriendsPostsResult,
       ] = results;
 
       if (userResult.status === "fulfilled") {
@@ -824,7 +838,17 @@ export function AppProvider({ children }: AppProviderProps) {
           SideQuestBoardResult.reason
         );
       }
-      // Collect any errors
+
+      if (mapFriendsPostsResult.status === "fulfilled") {
+        setMapFriendPosts(mapFriendsPostsResult.value);
+      } else {
+        setMapFriendPosts([]);
+        console.error(
+          "Failed to fetch friends posts:",
+          mapFriendsPostsResult.reason
+        );
+      }
+
       const failedCalls = results.filter((r) => r.status === "rejected");
       if (failedCalls.length > 0) {
         posthog?.capture("bulk_refresh_partial_failure", {
@@ -846,16 +870,18 @@ export function AppProvider({ children }: AppProviderProps) {
       setIsInitialLoading(false);
       setIsLoading(false);
     }
-  }, [isSignedIn, getToken, checkForMandatoryUpdate, posthog]); // Added checkForMandatoryUpdate to dependencies
+  }, [isSignedIn, getToken, checkForMandatoryUpdate, posthog]);
 
-  // ============================================
-  // Actions
-  // ============================================
   const addDrinking = useCallback(
     async (
       drinkToday: boolean,
       imageUri?: string | null,
       locationText?: string,
+      locationCoords?: {
+        latitude: number;
+        longitude: number;
+      } | null,
+      alcohols?: string[] | [],
       mentionedBuddies?: UserData[] | []
     ) => {
       if (!isSignedIn) throw new Error("Must be signed in");
@@ -870,6 +896,8 @@ export function AppProvider({ children }: AppProviderProps) {
               drank_today: drinkToday,
               image_url: imageUri,
               location_text: locationText,
+              location_coords: locationCoords,
+              alcohols: alcohols,
               mentioned_buddies: mentionedBuddies,
             },
             token
@@ -1080,7 +1108,6 @@ export function AppProvider({ children }: AppProviderProps) {
         const token = await getToken();
         if (!token) throw new Error("No auth token");
 
-        // 10. Track Account Deletion (Crucial Business Metric)
         posthog?.capture("account_deleted_initiated");
 
         return await apiService.deleteUserAccount(token);
@@ -1090,9 +1117,8 @@ export function AppProvider({ children }: AppProviderProps) {
     );
 
     if (result === true) {
-      posthog?.reset(); // Reset PostHog session on deletion
+      posthog?.reset();
       setUserData(null);
-      // ... (reset other state)
       setFriends([]);
       setDiscovery([]);
       setError(null);
@@ -1126,7 +1152,6 @@ export function AppProvider({ children }: AppProviderProps) {
   const markAllNotificationsRead = useCallback(async () => {
     if (!isSignedIn) return;
 
-    // Optimistic Update
     setNotifications((prev) =>
       prev.map((n) => ({ ...n, read_at: new Date().toISOString() }))
     );
@@ -1138,19 +1163,13 @@ export function AppProvider({ children }: AppProviderProps) {
     }
   }, [isSignedIn, getToken]);
 
-  // ============================================
-  // Initial Load / Lifecycle
-  // ============================================
-
   useEffect(() => {
     const initApp = async () => {
       if (isSignedIn && !hasInitialized.current) {
         hasInitialized.current = true;
-        // The check for mandatory update is now inside refreshAll for initial load
         refreshAll();
       }
 
-      // Reset initialization flag when user signs out
       if (!isSignedIn) {
         hasInitialized.current = false;
         setUserData(null);
@@ -1160,7 +1179,6 @@ export function AppProvider({ children }: AppProviderProps) {
         setCalendar(null);
         setWeeklyStats(null);
         setIsInitialLoading(true);
-        // Also hide any update modal if user signs out
         setShowMandatoryUpdateModal(false);
         setUpdateMessage(
           "A new version of the app is available. Please update to continue."
@@ -1170,10 +1188,6 @@ export function AppProvider({ children }: AppProviderProps) {
 
     initApp();
   }, [isSignedIn, refreshAll]);
-
-  // ============================================
-  // Context Value
-  // ============================================
 
   const value: AppContextType = {
     // Data
@@ -1196,6 +1210,7 @@ export function AppProvider({ children }: AppProviderProps) {
     notifications,
     unreadNotificationCount,
     sideQuestBoards,
+    mapFriendPosts,
 
     // Refresh Functions
     refreshUserData,
@@ -1230,9 +1245,8 @@ export function AppProvider({ children }: AppProviderProps) {
     markAllNotificationsRead,
     registerPushDevice,
 
-    // Versioning (Exposed via context)
-    showMandatoryUpdateModal, // <--- ADDED TO CONTEXT
-    updateMessage, // <--- ADDED TO CONTEXT
+    showMandatoryUpdateModal,
+    updateMessage,
 
     // Global State
     isLoading,
@@ -1242,10 +1256,6 @@ export function AppProvider({ children }: AppProviderProps) {
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
-
-// ============================================
-// Hook to use the context
-// ============================================
 
 export function useApp() {
   const context = useContext(AppContext);
