@@ -1,10 +1,18 @@
 import React, { useRef, useMemo, useState, useEffect } from "react";
-import { StyleSheet, View, Text, Image, TouchableOpacity, ActivityIndicator, Dimensions } from "react-native";
+import {
+  StyleSheet,
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  ActivityIndicator,
+  ViewStyle,
+} from "react-native";
 import MapboxGL from "@rnmapbox/maps";
 import { useApp } from "@/providers/AppProvider";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import * as Location from 'expo-location'; 
+import * as Location from "expo-location";
 import { YourMixPostData } from "@/types/api.types";
 
 MapboxGL.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_TOKEN_PUBLIC || "");
@@ -13,8 +21,15 @@ interface DrinkingMapProps {
   variant?: "preview" | "full";
 }
 
-// --- 1. Separated the Card Logic into its own component ---
-const PostCard = ({ post, onClose }: { post: YourMixPostData; onClose: () => void }) => {
+const PostCard = ({
+  post,
+  position,
+  onClose,
+}: {
+  post: YourMixPostData;
+  position: { x: number; y: number };
+  onClose: () => void;
+}) => {
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
 
@@ -33,33 +48,30 @@ const PostCard = ({ post, onClose }: { post: YourMixPostData; onClose: () => voi
           .join(", ") + (buddyCount > 2 ? ` +${buddyCount - 2}` : "")
       : null;
 
-  return (
-    <View style={styles.floatingCardWrapper}>
-      <View style={styles.calloutCard}>
-        <View style={styles.calloutHeader}>
-          <Text style={styles.calloutUsername} numberOfLines={1}>
-            {post.username}
-          </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <View style={styles.calloutTimeBadge}>
-              <Text style={styles.calloutTimeText}>
-                {new Date(post.loggedAt).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </Text>
-            </View>
-            <TouchableOpacity onPress={onClose} hitSlop={10}>
-              <Ionicons name="close-circle" size={20} color="rgba(255,255,255,0.4)" />
-            </TouchableOpacity>
-          </View>
-        </View>
+  // Reduced offset for the smaller pin (Head 32 + Tip 6 + padding)
+  const PIN_HEIGHT_OFFSET = 42;
 
+  return (
+    <View
+      style={[
+        styles.absoluteCardWrapper,
+        {
+          left: position.x,
+          top: position.y - PIN_HEIGHT_OFFSET,
+        },
+      ]}
+    >
+      <View style={styles.calloutCard}>
+        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+          <Ionicons name="close-circle" size={28} color="#EA580C" />
+        </TouchableOpacity>
+
+        {/* Post Image */}
         {post.imageUrl && (
-          <View style={styles.imageWrapper}>
+          <View style={styles.imageSection}>
             <Image
               source={{ uri: post.imageUrl }}
-              style={styles.calloutPostImage}
+              style={styles.postImage}
               resizeMode="cover"
               onLoad={handleImageLoad}
               onError={handleImageError}
@@ -69,104 +81,159 @@ const PostCard = ({ post, onClose }: { post: YourMixPostData; onClose: () => voi
                 <ActivityIndicator size="small" color="#EA580C" />
               </View>
             )}
-            {imageError && (
-              <View style={styles.imageErrorOverlay}>
-                <Ionicons name="image-outline" size={24} color="rgba(255,255,255,0.3)" />
-                <Text style={styles.imageErrorText}>Image unavailable</Text>
-              </View>
-            )}
           </View>
         )}
 
-        {(post.locationText || (post.alcohol && post.alcohol.length > 0) || buddiesText) && <View style={styles.calloutDivider} />}
-        
-        <View style={styles.calloutContent}>
-          {post.locationText && (
-            <View style={styles.infoRow}>
-              <Ionicons name="location-sharp" size={12} color="#EA580C" />
-              <Text style={styles.infoText} numberOfLines={1}>{post.locationText}</Text>
+        <View style={styles.infoSection}>
+          <View style={styles.userHeader}>
+            <View style={styles.avatarContainer}>
+              {post.userImageUrl ? (
+                <Image
+                  source={{ uri: post.userImageUrl }}
+                  style={styles.avatar}
+                />
+              ) : (
+                <View style={styles.avatarFallback}>
+                  <Text style={styles.avatarText}>
+                    {post.username?.[0]?.toUpperCase()}
+                  </Text>
+                </View>
+              )}
             </View>
-          )}
-          {post.alcohol && post.alcohol.length > 0 && (
-            <View style={styles.infoRow}>
-              <MaterialCommunityIcons name="glass-cocktail" size={12} color="#EA580C" />
-              <Text style={styles.infoText} numberOfLines={1}>{post.alcohol.join(", ")}</Text>
+            <View style={styles.userTextContainer}>
+              <Text style={styles.username} numberOfLines={1}>
+                {post.username}
+              </Text>
+              <Text style={styles.timestamp}>
+                {new Date(post.loggedAt).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </Text>
             </View>
-          )}
-          {buddiesText && (
-            <View style={styles.infoRow}>
-              <Ionicons name="people" size={12} color="#EA580C" />
-              <Text style={styles.infoText} numberOfLines={1}>with {buddiesText}</Text>
+          </View>
+
+          {(post.locationText ||
+            (post.alcohol && post.alcohol.length > 0) ||
+            buddiesText) && (
+            <View style={styles.detailsContainer}>
+              {post.locationText && (
+                <View style={styles.detailRow}>
+                  <Ionicons
+                    name="location-sharp"
+                    size={14}
+                    color="rgba(255,255,255,0.5)"
+                  />
+                  <Text style={styles.detailText} numberOfLines={2}>
+                    {post.locationText}
+                  </Text>
+                </View>
+              )}
+              {post.alcohol && post.alcohol.length > 0 && (
+                <View style={styles.detailRow}>
+                  <MaterialCommunityIcons
+                    name="glass-cocktail"
+                    size={14}
+                    color="rgba(255,255,255,0.5)"
+                  />
+                  <Text style={styles.detailText} numberOfLines={2}>
+                    {post.alcohol.join(", ")}
+                  </Text>
+                </View>
+              )}
             </View>
           )}
         </View>
       </View>
+      {/* Little arrow pointing down */}
+      <View style={styles.cardArrow} />
     </View>
   );
 };
 
-// --- 2. Marker Component (Now simpler, handles Selection via callback) ---
-const PostMarker = React.memo(({ post, isInteractive, onSelect }: { post: YourMixPostData; isInteractive: boolean; onSelect: (post: YourMixPostData) => void }) => {
-  const annotationRef = useRef<MapboxGL.PointAnnotation>(null);
-  const [markerImageLoading, setMarkerImageLoading] = useState(true);
+// --- 2. Marker Component (Compact Version) ---
+const PostMarker = React.memo(
+  ({
+    post,
+    isInteractive,
+    onSelect,
+    zoomLevel,
+  }: {
+    post: YourMixPostData;
+    isInteractive: boolean;
+    onSelect: (post: YourMixPostData) => void;
+    zoomLevel: number;
+  }) => {
+    const annotationRef = useRef<MapboxGL.PointAnnotation>(null);
+    const [markerImageLoading, setMarkerImageLoading] = useState(true);
 
-  const handleMarkerImageLoad = () => {
-    setMarkerImageLoading(false);
-    // Refresh to ensure image renders inside annotation on Android
-    setTimeout(() => {
-      annotationRef.current?.refresh();
-    }, 100);
-  };
+    const handleMarkerImageLoad = () => {
+      setMarkerImageLoading(false);
+      setTimeout(() => {
+        annotationRef.current?.refresh();
+      }, 100);
+    };
 
-  const pinImage = post.userImageUrl || post.imageUrl;
+    // Adjusted scaling logic for smaller base size:
+    // Don't shrink too much (min 0.6) so they remain visible
+    const scale = Math.min(Math.max(zoomLevel / 18, 0.6), 1.2);
+    const pinImage = post.userImageUrl || post.imageUrl;
 
-  return (
-    <MapboxGL.PointAnnotation
-      ref={annotationRef}
-      id={post.id}
-      coordinate={[post.longitude!, post.latitude!]}
-      anchor={{ x: 0.5, y: 1 }}
-      onSelected={() => isInteractive && onSelect(post)} // Use onSelected event
-    >
-      <View style={styles.markerContainer}>
-        <View style={styles.pinBackground} />
-        <View style={styles.imageContainer}>
-          {pinImage ? (
-            <Image
-              source={{ uri: pinImage }}
-              style={styles.markerImage}
-              resizeMode="cover"
-              onLoad={handleMarkerImageLoad}
-            />
-          ) : (
-            <View style={styles.fallbackAvatar}>
-              <Text style={styles.fallbackText}>
-                {post.username?.[0]?.toUpperCase() || "?"}
-              </Text>
+    return (
+      <MapboxGL.PointAnnotation
+        ref={annotationRef}
+        id={post.id}
+        coordinate={[post.longitude!, post.latitude!]}
+        anchor={{ x: 0.5, y: 1 }}
+        onSelected={() => isInteractive && onSelect(post)}
+      >
+        <View style={[styles.markerContainer, { transform: [{ scale }] }]}>
+          <View style={styles.pinShadow}>
+            <View style={styles.pinHead}>
+              {pinImage ? (
+                <Image
+                  source={{ uri: pinImage }}
+                  style={styles.markerImage}
+                  resizeMode="cover"
+                  onLoad={handleMarkerImageLoad}
+                />
+              ) : (
+                <View style={styles.fallbackAvatarMarker}>
+                  <Text style={styles.fallbackTextMarker}>
+                    {post.username?.[0]?.toUpperCase() || "?"}
+                  </Text>
+                </View>
+              )}
             </View>
-          )}
-        </View>
-        {!pinImage && (
-          <View style={styles.drinkBadge}>
-            <Ionicons name="wine" size={12} color="white" />
+            <View style={styles.pinPoint} />
           </View>
-        )}
-      </View>
-      {/* We removed the MapboxGL.Callout here entirely */}
-    </MapboxGL.PointAnnotation>
-  );
-});
+        </View>
+      </MapboxGL.PointAnnotation>
+    );
+  }
+);
 
 PostMarker.displayName = "PostMarker";
 
 export default function DrinkingMap({ variant = "preview" }: DrinkingMapProps) {
   const { mapFriendPosts } = useApp();
   const router = useRouter();
+
+  const mapRef = useRef<MapboxGL.MapView>(null);
   const cameraRef = useRef<MapboxGL.Camera>(null);
-  
-  // --- 3. State to track the currently selected post ---
-  const [selectedPost, setSelectedPost] = useState<YourMixPostData | null>(null);
-  const [initialUserLocation, setInitialUserLocation] = useState<[number, number] | null>(null);
+
+  const [selectedPost, setSelectedPost] = useState<YourMixPostData | null>(
+    null
+  );
+  const [cardPosition, setCardPosition] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+
+  const [initialUserLocation, setInitialUserLocation] = useState<
+    [number, number] | null
+  >(null);
+  const [currentZoom, setCurrentZoom] = useState<number>(12);
 
   const isInteractive = variant === "full";
 
@@ -174,9 +241,12 @@ export default function DrinkingMap({ variant = "preview" }: DrinkingMapProps) {
     (async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') return;
+        if (status !== "granted") return;
         const location = await Location.getCurrentPositionAsync({});
-        setInitialUserLocation([location.coords.longitude, location.coords.latitude]);
+        setInitialUserLocation([
+          location.coords.longitude,
+          location.coords.latitude,
+        ]);
       } catch (error) {
         console.error("Error fetching location:", error);
       }
@@ -194,9 +264,11 @@ export default function DrinkingMap({ variant = "preview" }: DrinkingMapProps) {
   }, [mapFriendPosts]);
 
   const cameraSettings = useMemo(() => {
-    // Camera logic remains the same...
     if (validPosts.length > 0) {
-      let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+      let minLat = 90,
+        maxLat = -90,
+        minLng = 180,
+        maxLng = -180;
       validPosts.forEach((p) => {
         if (p.latitude! < minLat) minLat = p.latitude!;
         if (p.latitude! > maxLat) maxLat = p.latitude!;
@@ -205,17 +277,42 @@ export default function DrinkingMap({ variant = "preview" }: DrinkingMapProps) {
       });
       const latDiff = maxLat - minLat;
       const lngDiff = maxLng - minLng;
-      if (latDiff < 0.005) { minLat -= 0.01; maxLat += 0.01; }
-      if (lngDiff < 0.005) { minLng -= 0.01; maxLng += 0.01; }
+      if (latDiff < 0.005) {
+        minLat -= 0.01;
+        maxLat += 0.01;
+      }
+      if (lngDiff < 0.005) {
+        minLng -= 0.01;
+        maxLng += 0.01;
+      }
 
       return {
-        type: 'bounds',
-        bounds: { ne: [maxLng, maxLat], sw: [minLng, minLat], paddingBottom: 40, paddingLeft: 40, paddingRight: 40, paddingTop: 40 },
-        zoom: undefined, center: undefined
+        type: "bounds",
+        bounds: {
+          ne: [maxLng, maxLat],
+          sw: [minLng, minLat],
+          paddingBottom: 40,
+          paddingLeft: 40,
+          paddingRight: 40,
+          paddingTop: 40,
+        },
+        zoom: undefined,
+        center: undefined,
       };
     }
-    if (initialUserLocation) return { type: 'location', bounds: undefined, center: initialUserLocation, zoom: 6 };
-    return { type: 'default', bounds: undefined, center: [23.3219, 42.6977], zoom: 4 };
+    if (initialUserLocation)
+      return {
+        type: "location",
+        bounds: undefined,
+        center: initialUserLocation,
+        zoom: 6,
+      };
+    return {
+      type: "default",
+      bounds: undefined,
+      center: [23.3219, 42.6977],
+      zoom: 4,
+    };
   }, [validPosts, initialUserLocation]);
 
   const handlePreviewPress = () => {
@@ -223,24 +320,63 @@ export default function DrinkingMap({ variant = "preview" }: DrinkingMapProps) {
   };
 
   const handleMapPress = () => {
-    // Deselect if map background is clicked
-    if (selectedPost) setSelectedPost(null);
+    if (selectedPost) {
+      setSelectedPost(null);
+      setCardPosition(null);
+    }
+  };
+
+  const handleMarkerSelect = async (post: YourMixPostData) => {
+    if (!mapRef.current) return;
+
+    setSelectedPost(post);
+
+    try {
+      const point = await mapRef.current.getPointInView([
+        post.longitude!,
+        post.latitude!,
+      ]);
+      if (point) {
+        setCardPosition({ x: point[0], y: point[1] });
+      }
+    } catch (e) {
+      console.log("Error getting point", e);
+    }
   };
 
   return (
-    <View style={[styles.container, variant === "full" && styles.fullScreenContainer]}>
+    <View
+      style={[
+        styles.container,
+        variant === "full" && styles.fullScreenContainer,
+      ]}
+    >
       <MapboxGL.MapView
+        ref={mapRef}
         style={styles.map}
         styleURL={MapboxGL.StyleURL.Dark}
         logoEnabled={false}
+        scaleBarEnabled={false}
         attributionEnabled={false}
         scrollEnabled={isInteractive}
         zoomEnabled={isInteractive}
-        onPress={handleMapPress} // Add press handler to dismiss card
+        onPress={handleMapPress}
+        onCameraChanged={(state) => {
+          if (state.properties.zoom) {
+            setCurrentZoom(state.properties.zoom);
+          }
+          if (isInteractive && selectedPost) {
+            setSelectedPost(null);
+            setCardPosition(null);
+          }
+        }}
       >
         <MapboxGL.Camera
           ref={cameraRef}
-          defaultSettings={{ centerCoordinate: [23.3219, 42.6977], zoomLevel: 4 }}
+          defaultSettings={{
+            centerCoordinate: [23.3219, 42.6977],
+            zoomLevel: 4,
+          }}
           bounds={cameraSettings.bounds}
           centerCoordinate={cameraSettings.center}
           zoomLevel={cameraSettings.zoom}
@@ -249,25 +385,34 @@ export default function DrinkingMap({ variant = "preview" }: DrinkingMapProps) {
         />
 
         {validPosts.map((post) => (
-          <PostMarker 
-            key={post.id} 
-            post={post} 
+          <PostMarker
+            key={post.id}
+            post={post}
             isInteractive={isInteractive}
-            onSelect={setSelectedPost} // Pass the setter
+            onSelect={handleMarkerSelect}
+            zoomLevel={currentZoom}
           />
         ))}
       </MapboxGL.MapView>
 
-      {/* --- 4. Render the Card as an Absolute Overlay --- */}
-      {isInteractive && selectedPost && (
-        <PostCard 
-          post={selectedPost} 
-          onClose={() => setSelectedPost(null)} 
+      {/* Absolute Card Overlay */}
+      {isInteractive && selectedPost && cardPosition && (
+        <PostCard
+          post={selectedPost}
+          position={cardPosition}
+          onClose={() => {
+            setSelectedPost(null);
+            setCardPosition(null);
+          }}
         />
       )}
 
       {!isInteractive && (
-        <TouchableOpacity style={styles.overlayButton} onPress={handlePreviewPress} activeOpacity={0.8}>
+        <TouchableOpacity
+          style={styles.overlayButton}
+          onPress={handlePreviewPress}
+          activeOpacity={0.8}
+        >
           <View style={styles.expandBadge}>
             <Ionicons name="expand" size={16} color="white" />
             <Text style={styles.expandText}>Explore Map</Text>
@@ -301,7 +446,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   overlayButton: {
-    ...StyleSheet.absoluteFillObject,
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
     backgroundColor: "transparent",
     zIndex: 10,
     justifyContent: "flex-end",
@@ -324,132 +473,116 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginLeft: 6,
   },
+
+  // --- NEW SMALLER MARKER DESIGN ---
   markerContainer: {
-    width: 64,
-    height: 70,
+    width: 32,
+    height: 38, // 32 head + 6 tip
     alignItems: "center",
-    justifyContent: "center",
-    paddingBottom: 10,
+    justifyContent: "flex-end",
   },
-  pinBackground: {
-    position: "absolute",
-    width: 50,
-    height: 50,
-    backgroundColor: "#EA580C",
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
-    borderTopLeftRadius: 25,
-    borderTopRightRadius: 25,
-    borderBottomLeftRadius: 25,
-    borderBottomRightRadius: 2,
-    transform: [{ rotate: "45deg" }],
+  pinShadow: {
+    alignItems: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowRadius: 3,
+    elevation: 4,
   },
-  imageContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    zIndex: 2,
-    backgroundColor: "#000",
+  pinHead: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#222",
+    borderWidth: 2, // Keeps it visible despite small size
+    borderColor: "#FFFFFF",
+    overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
-    overflow: "hidden",
+    zIndex: 2,
+  },
+  pinPoint: {
+    width: 0,
+    height: 0,
+    backgroundColor: "transparent",
+    borderStyle: "solid",
+    borderLeftWidth: 4, // Narrower tip
+    borderRightWidth: 4,
+    borderTopWidth: 6, // Shorter tip
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
+    borderTopColor: "#FFFFFF",
+    marginTop: -1,
+    zIndex: 1,
   },
   markerImage: {
     width: "100%",
     height: "100%",
     resizeMode: "cover",
   },
-  fallbackAvatar: {
+  fallbackAvatarMarker: {
     width: "100%",
     height: "100%",
+    backgroundColor: "#EA580C",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#333",
   },
-  fallbackText: {
+  fallbackTextMarker: {
     color: "white",
-    fontWeight: "bold",
-    fontSize: 18,
+    fontWeight: "800",
+    fontSize: 12, // Smaller text
   },
-  drinkBadge: {
+
+  // --- CARD STYLES ---
+  absoluteCardWrapper: {
     position: "absolute",
-    top: 0,
-    right: 5,
-    zIndex: 10,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: "#000",
-    borderWidth: 1,
-    borderColor: "#FFF",
-    alignItems: "center",
-    justifyContent: "center",
-    elevation: 6,
-  },
-  
-  // --- New Styles for the Floating Card ---
-  floatingCardWrapper: {
-    position: 'absolute',
-    bottom: 30, // Positioned at the bottom of the map
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    zIndex: 50,
-    paddingHorizontal: 20,
+    zIndex: 1000,
+    width: 280,
+    transform: [{ translateX: -140 }, { translateY: "-100%" }],
   },
   calloutCard: {
-    backgroundColor: "#1A1A1A",
+    backgroundColor: "#1E1E1E",
     borderRadius: 16,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.15)",
-    width: "100%", // Full width minus padding
-    maxWidth: 340,
-    padding: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    elevation: 10,
-  },
-  calloutHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 10,
-  },
-  calloutUsername: {
-    color: "white",
-    fontSize: 15,
-    fontWeight: "800",
-    flex: 1,
-    marginRight: 8,
-  },
-  calloutTimeBadge: {
-    backgroundColor: "rgba(234, 88, 12, 0.15)",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  calloutTimeText: {
-    color: "#EA580C",
-    fontSize: 10,
-    fontWeight: "bold",
-  },
-  imageWrapper: {
     width: "100%",
-    height: 180,
-    borderRadius: 12,
-    marginBottom: 10,
-    backgroundColor: "#222",
-    position: "relative",
-    overflow: 'hidden',
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.8,
+    shadowRadius: 20,
+    elevation: 15,
   },
-  calloutPostImage: {
+  cardArrow: {
+    position: "absolute",
+    bottom: -10,
+    left: "50%",
+    marginLeft: -10,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 10,
+    borderRightWidth: 10,
+    borderTopWidth: 10,
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
+    borderTopColor: "#1E1E1E",
+    zIndex: 1001,
+  },
+  closeButton: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    zIndex: 10,
+    backgroundColor: "rgba(255, 253, 253, 0.4)",
+    borderRadius: 20,
+  },
+  imageSection: {
+    width: "100%",
+    height: 140,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    position: "relative",
+  },
+  postImage: {
     width: "100%",
     height: "100%",
   },
@@ -457,36 +590,66 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#222",
   },
-  imageErrorOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#222",
+  infoSection: {
+    padding: 12,
   },
-  imageErrorText: {
-    color: "rgba(255,255,255,0.3)",
-    fontSize: 11,
-    marginTop: 8,
-  },
-  calloutDivider: {
-    height: 1,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    marginBottom: 8,
-  },
-  calloutContent: {
-    gap: 6,
-  },
-  infoRow: {
+  userHeader: {
     flexDirection: "row",
     alignItems: "center",
+    marginBottom: 8,
   },
-  infoText: {
-    color: "rgba(255,255,255,0.7)",
-    fontSize: 12,
-    fontWeight: "600",
-    marginLeft: 8,
+  avatarContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginRight: 10,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  avatar: {
+    width: "100%",
+    height: "100%",
+  },
+  avatarFallback: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#333",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  userTextContainer: {
     flex: 1,
   },
-}); 
+  username: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  timestamp: {
+    color: "rgba(255,255,255,0.5)",
+    fontSize: 10,
+  },
+  detailsContainer: {
+    gap: 6,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.1)",
+    paddingTop: 8,
+  },
+  detailRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  detailText: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 11,
+    flex: 1,
+  },
+});
