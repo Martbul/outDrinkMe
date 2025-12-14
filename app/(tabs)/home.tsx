@@ -409,7 +409,10 @@ export default function HomeScreen() {
         </TouchableOpacity> */}
 
         {/* <AlcoholismChart /> */}
-        <DrinkingMap />
+
+        <View className="flex-row gap-3 mb-4">
+          <DrinkingMap />
+        </View>
 
         <ThisWeekGadget />
 
