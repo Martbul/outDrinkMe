@@ -3,6 +3,7 @@ import {
   AddDrinkingRequest,
   AlcoholCollectionByType,
   CalendarResponse,
+  CanvasItem,
   CreateSideQuestReq,
   DailyDrinkingPostResponse,
   DaysStat,
@@ -920,6 +921,31 @@ class ApiService {
       console.error("Failed to fetch Your Mix:", error);
       return [];
     }
+  }
+
+  async getMemoryWall(postId: string, token: string): Promise<CanvasItem[]> {
+    return this.makeRequest<CanvasItem[]>(
+      `/api/v1/user/memory-wall/${postId}`,
+      {
+        method: "GET",
+        token,
+      }
+    );
+  }
+
+  async saveMemoryWall(
+    postId: string,
+    items: CanvasItem[],
+    token: string
+  ): Promise<{ message: string }> {
+    return this.makeRequest<{ message: string }>("/api/v1/user/memory-wall", {
+      method: "POST",
+      token,
+      body: JSON.stringify({
+        post_id: postId,
+        wall_items: items,
+      }),
+    });
   }
 
   getWebSocketUrl(sessionId: string): string {

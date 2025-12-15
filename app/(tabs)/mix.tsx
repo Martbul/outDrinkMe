@@ -1,7 +1,7 @@
 import { useApp } from "@/providers/AppProvider";
 import type { YourMixPostData } from "@/types/api.types";
 import { Ionicons } from "@expo/vector-icons";
-import { router, useLocalSearchParams } from "expo-router"; // Added useLocalSearchParams
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import {
   ActivityIndicator,
@@ -51,6 +51,9 @@ const YourMixCard = ({ item, onCardPress }: YourMixCardProps) => {
   const [isAnimating, setIsAnimating] = useState(false);
   const [rotationCount, setRotationCount] = useState(0);
 
+  // Ref to track tap timing for double-tap detection
+  const lastTap = useRef<number>(0);
+
   const [cardHeight, setCardHeight] = useState(
     getInitialHeight(item.id || "0")
   );
@@ -86,6 +89,15 @@ const YourMixCard = ({ item, onCardPress }: YourMixCardProps) => {
       );
     }
   }, [item.imageUrl]);
+
+  // Renamed from handleLongPress to handleNavigation for clarity
+  const handleNavigation = (item: YourMixPostData) => {
+    posthog?.capture("memory_canvas_opened", { postId: item.id });
+    router.push({
+      pathname: "/(screens)/memoryCanvas",
+      params: { postId: item.id },
+    });
+  };
 
   const handleFlip = () => {
     if (isAnimating) return;
@@ -125,6 +137,28 @@ const YourMixCard = ({ item, onCardPress }: YourMixCardProps) => {
         setIsAnimating(false);
       });
     });
+  };
+
+  // Logic to differentiate between Single Tap (Navigate) and Double Tap (Flip)
+  const handlePress = () => {
+    const now = Date.now();
+    const DOUBLE_TAP_DELAY = 350; // ms
+
+    if (now - lastTap.current < DOUBLE_TAP_DELAY) {
+      // --- DOUBLE TAP DETECTED ---
+      handleFlip();
+      lastTap.current = 0; // Reset to prevent triple-tap confusion
+    } else {
+      // --- SINGLE TAP DETECTED ---
+      lastTap.current = now;
+      // Wait to see if a second tap comes in
+      setTimeout(() => {
+        if (lastTap.current === now) {
+          // No second tap occurred within the delay, so we navigate
+          handleNavigation(item);
+        }
+      }, DOUBLE_TAP_DELAY);
+    }
   };
 
   const rotateInterpolate = rotateAnim.interpolate({
@@ -235,9 +269,7 @@ const YourMixCard = ({ item, onCardPress }: YourMixCardProps) => {
 
   return (
     <TouchableOpacity
-      onPress={handleFlip}
-      onLongPress={() => onCardPress(item)}
-      delayLongPress={300}
+      onPress={handlePress}
       activeOpacity={0.9}
       style={{ marginBottom: GAP }}
     >
