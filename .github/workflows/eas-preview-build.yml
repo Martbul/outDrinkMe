@@ -117,7 +117,10 @@ jobs:
           echo "EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET=${{ secrets.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET }}" >> .env
           echo "EXPO_PUBLIC_CLOUDINARY_VIDEO_UPLOAD_PRESET=${{ secrets.EXPO_PUBLIC_CLOUDINARY_VIDEO_UPLOAD_PRESET }}" >> .env
           echo "EXPO_PUBLIC_MAPBOX_TOKEN_PUBLIC=${{ secrets.EXPO_PUBLIC_MAPBOX_TOKEN_PUBLIC }}" >> .env
-          # I removed the Secret Token from .env here.
+
+          
+      - name: DEBUG - Check .env content
+        run: cat .env  
 
       # --- NEW STEP ---
       - name: Inject Mapbox Secret into app.json
