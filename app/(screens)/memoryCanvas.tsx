@@ -163,9 +163,9 @@ export default function MemoryCanvas() {
     setItems(newItems);
     addToHistory(newItems);
   };
-  
+
   const handleClose = () => {
-      router.replace("/(tabs)/mix");
+    router.replace("/(tabs)/mix");
   };
 
   // --- CALCULATE STICKERS ---
@@ -746,7 +746,7 @@ export default function MemoryCanvas() {
             <View className="gap-4">
               <TouchableOpacity
                 onPress={saveDrawing}
-                className="bg-orange-600 px-6 py-3 rounded-full shadow-lg"
+                className="bg-orange-600 px-6 py-3 rounded-full shadow-lg items-center"
               >
                 <Text className="text-white font-black">DONE</Text>
               </TouchableOpacity>
@@ -775,22 +775,21 @@ export default function MemoryCanvas() {
         </TouchableOpacity>
 
         <View className="flex-row gap-2">
-          
-            <TouchableOpacity
-              onPress={() => {
-                translateX.value = withSpring(0);
-                translateY.value = withSpring(0);
-                scale.value = withSpring(0.9);
-                triggerHaptic();
-              }}
-              className="w-10 h-10 bg-white rounded-full items-center justify-center shadow-lg border border-black/10"
-            >
-              <MaterialCommunityIcons
-                name="crosshairs-gps"
-                size={20}
-                color="#333"
-              />
-            </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              translateX.value = withSpring(0);
+              translateY.value = withSpring(0);
+              scale.value = withSpring(0.9);
+              triggerHaptic();
+            }}
+            className="w-10 h-10 bg-white rounded-full items-center justify-center shadow-lg border border-black/10"
+          >
+            <MaterialCommunityIcons
+              name="crosshairs-gps"
+              size={20}
+              color="#333"
+            />
+          </TouchableOpacity>
           {canEdit && (
             <TouchableOpacity
               onPress={() => {
@@ -968,13 +967,13 @@ export default function MemoryCanvas() {
                   : "Lock Item"}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity
+            {/* <TouchableOpacity
               onPress={handleBringSelectedToFront}
               className="flex-row items-center gap-4 p-3 bg-gray-50 rounded-xl"
             >
               <Ionicons name="layers" size={20} color="black" />
               <Text className="font-bold text-base">Bring to Front</Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
             <TouchableOpacity
               onPress={handleDeleteSelectedItem}
               className="flex-row items-center gap-4 p-3 bg-red-50 rounded-xl"
@@ -1301,8 +1300,7 @@ const DraggableItem = ({
               className="bg-white shadow-xl border border-black/5"
               style={{
                 flex: 1,
-                padding: item.width * 0.03,
-                paddingBottom: item.width * 0.15,
+                padding: item.width * 0.02,
               }}
             >
               <Image
@@ -1310,15 +1308,6 @@ const DraggableItem = ({
                 className="w-full h-full bg-zinc-100"
                 resizeMode="cover"
               />
-              <Text
-                className="absolute left-3 text-gray-400 font-bold uppercase tracking-widest"
-                style={{
-                  bottom: item.width * 0.04,
-                  fontSize: item.width * 0.035,
-                }}
-              >
-                {item.author_name}
-              </Text>
             </View>
           )}
           {item.item_type === "sticker" && (
