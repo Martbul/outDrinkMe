@@ -130,6 +130,7 @@ export interface FriendDiscoveryDisplayProfileResponse {
   is_friend: boolean;
   inventory: { [itemType: string]: InventoryItem[] };
 }
+
 export interface DailyDrinkingPostResponse {
   id: string;
   user_id: string;
@@ -589,4 +590,27 @@ export interface MinVersionResponse {
   min_android_version_code: number;
   min_ios_version_code: number;
   update_message?: string;
+}
+
+
+export interface CanvasItem {
+  id: string;
+  daily_drinking_id: string;
+  added_by_user_id: string;
+  item_type: "image" | "sticker" | "text" | "drawing";
+  content: string;
+  pos_x: number;
+  pos_y: number;
+  rotation: number;
+  scale: number;
+  width: number;
+  height: number;
+  z_index: number;
+  created_at: string;
+  author_avatar_url?: string;
+  author_name?: string;
+  extra_data?: {
+    color?: string;
+    [key: string]: any;
+  };
 }

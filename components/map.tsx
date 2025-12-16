@@ -21,6 +21,12 @@ interface DrinkingMapProps {
   variant?: "preview" | "full";
 }
 
+// Extend type to hold the calculated "spiderfied" coordinates
+type DispersedPost = YourMixPostData & {
+  visualLat: number;
+  visualLng: number;
+};
+
 const PostCard = ({
   post,
   position,
@@ -33,12 +39,6 @@ const PostCard = ({
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
 
-  const handleImageLoad = () => setImageLoading(false);
-  const handleImageError = () => {
-    setImageLoading(false);
-    setImageError(true);
-  };
-
   const buddyCount = post.mentionedBuddies?.length || 0;
   const buddiesText =
     buddyCount > 0
@@ -48,7 +48,6 @@ const PostCard = ({
           .join(", ") + (buddyCount > 2 ? ` +${buddyCount - 2}` : "")
       : null;
 
-  // Reduced offset for the smaller pin (Head 32 + Tip 6 + padding)
   const PIN_HEIGHT_OFFSET = 42;
 
   return (
@@ -66,15 +65,17 @@ const PostCard = ({
           <Ionicons name="close-circle" size={28} color="#EA580C" />
         </TouchableOpacity>
 
-        {/* Post Image */}
         {post.imageUrl && (
           <View style={styles.imageSection}>
             <Image
               source={{ uri: post.imageUrl }}
               style={styles.postImage}
               resizeMode="cover"
-              onLoad={handleImageLoad}
-              onError={handleImageError}
+              onLoad={() => setImageLoading(false)}
+              onError={() => {
+                setImageLoading(false);
+                setImageError(true);
+              }}
             />
             {imageLoading && !imageError && (
               <View style={styles.imageLoadingOverlay}>
@@ -145,23 +146,24 @@ const PostCard = ({
           )}
         </View>
       </View>
-      {/* Little arrow pointing down */}
       <View style={styles.cardArrow} />
     </View>
   );
 };
 
-// --- 2. Marker Component (Compact Version) ---
+// --- 2. Marker Component ---
 const PostMarker = React.memo(
   ({
     post,
+    isSelected,
     isInteractive,
     onSelect,
     zoomLevel,
   }: {
-    post: YourMixPostData;
+    post: DispersedPost;
+    isSelected: boolean;
     isInteractive: boolean;
-    onSelect: (post: YourMixPostData) => void;
+    onSelect: (post: DispersedPost) => void;
     zoomLevel: number;
   }) => {
     const annotationRef = useRef<MapboxGL.PointAnnotation>(null);
@@ -174,22 +176,27 @@ const PostMarker = React.memo(
       }, 100);
     };
 
-    // Adjusted scaling logic for smaller base size:
-    // Don't shrink too much (min 0.6) so they remain visible
-    const scale = Math.min(Math.max(zoomLevel / 18, 0.6), 1.2);
+    const scale = Math.min(Math.max(zoomLevel / 18, 0.7), 1.2);
     const pinImage = post.userImageUrl || post.imageUrl;
 
     return (
       <MapboxGL.PointAnnotation
         ref={annotationRef}
         id={post.id}
-        coordinate={[post.longitude!, post.latitude!]}
+        // Use the calculated VISUAL coordinates
+        coordinate={[post.visualLng, post.visualLat]}
         anchor={{ x: 0.5, y: 1 }}
         onSelected={() => isInteractive && onSelect(post)}
+        // Bring selected pin to front
+        style={{ zIndex: isSelected ? 100 : 1 }}
       >
         <View style={[styles.markerContainer, { transform: [{ scale }] }]}>
-          <View style={styles.pinShadow}>
-            <View style={styles.pinHead}>
+          <View
+            style={[styles.pinShadow, isSelected && styles.selectedPinShadow]}
+          >
+            <View
+              style={[styles.pinHead, isSelected && styles.selectedPinHead]}
+            >
               {pinImage ? (
                 <Image
                   source={{ uri: pinImage }}
@@ -205,7 +212,9 @@ const PostMarker = React.memo(
                 </View>
               )}
             </View>
-            <View style={styles.pinPoint} />
+            <View
+              style={[styles.pinPoint, isSelected && styles.selectedPinPoint]}
+            />
           </View>
         </View>
       </MapboxGL.PointAnnotation>
@@ -222,9 +231,7 @@ export default function DrinkingMap({ variant = "preview" }: DrinkingMapProps) {
   const mapRef = useRef<MapboxGL.MapView>(null);
   const cameraRef = useRef<MapboxGL.Camera>(null);
 
-  const [selectedPost, setSelectedPost] = useState<YourMixPostData | null>(
-    null
-  );
+  const [selectedPost, setSelectedPost] = useState<DispersedPost | null>(null);
   const [cardPosition, setCardPosition] = useState<{
     x: number;
     y: number;
@@ -263,6 +270,59 @@ export default function DrinkingMap({ variant = "preview" }: DrinkingMapProps) {
     );
   }, [mapFriendPosts]);
 
+  // --- 3. DISPERSION LOGIC ---
+  // Calculates distinct visual coordinates for every single post
+  const dispersedPosts = useMemo<DispersedPost[]>(() => {
+    if (validPosts.length === 0) return [];
+
+    const grouped: { [key: string]: YourMixPostData[] } = {};
+    // Group roughly by ~10 meters
+    const PRECISION = 4;
+
+    validPosts.forEach((post) => {
+      const latKey = post.latitude!.toFixed(PRECISION);
+      const lngKey = post.longitude!.toFixed(PRECISION);
+      const key = `${latKey},${lngKey}`;
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(post);
+    });
+
+    const result: DispersedPost[] = [];
+
+    Object.values(grouped).forEach((group) => {
+      // If alone, stay put
+      if (group.length === 1) {
+        result.push({
+          ...group[0],
+          visualLat: group[0].latitude!,
+          visualLng: group[0].longitude!,
+        });
+        return;
+      }
+
+      // If multiple, spread them in a circle
+      const count = group.length;
+      // 0.00035 deg is roughly ~35 meters
+      // This is large enough to be distinct at Zoom 14+
+      const radius = 0.00035;
+      const angleStep = (2 * Math.PI) / count;
+
+      group.forEach((post, index) => {
+        const angle = index * angleStep;
+        const offsetLat = Math.sin(angle) * radius;
+        const offsetLng = Math.cos(angle) * radius;
+
+        result.push({
+          ...post,
+          visualLat: post.latitude! + offsetLat,
+          visualLng: post.longitude! + offsetLng,
+        });
+      });
+    });
+
+    return result;
+  }, [validPosts]);
+
   const cameraSettings = useMemo(() => {
     if (validPosts.length > 0) {
       let minLat = 90,
@@ -275,22 +335,12 @@ export default function DrinkingMap({ variant = "preview" }: DrinkingMapProps) {
         if (p.longitude! < minLng) minLng = p.longitude!;
         if (p.longitude! > maxLng) maxLng = p.longitude!;
       });
-      const latDiff = maxLat - minLat;
-      const lngDiff = maxLng - minLng;
-      if (latDiff < 0.005) {
-        minLat -= 0.01;
-        maxLat += 0.01;
-      }
-      if (lngDiff < 0.005) {
-        minLng -= 0.01;
-        maxLng += 0.01;
-      }
-
+      const PADDING = 0.015;
       return {
         type: "bounds",
         bounds: {
-          ne: [maxLng, maxLat],
-          sw: [minLng, minLat],
+          ne: [maxLng + PADDING, maxLat + PADDING],
+          sw: [minLng - PADDING, minLat - PADDING],
           paddingBottom: 40,
           paddingLeft: 40,
           paddingRight: 40,
@@ -326,15 +376,16 @@ export default function DrinkingMap({ variant = "preview" }: DrinkingMapProps) {
     }
   };
 
-  const handleMarkerSelect = async (post: YourMixPostData) => {
+  const handleMarkerSelect = async (post: DispersedPost) => {
     if (!mapRef.current) return;
 
     setSelectedPost(post);
 
+    // Project the VISUAL coordinate so the card appears exactly over the pin
     try {
       const point = await mapRef.current.getPointInView([
-        post.longitude!,
-        post.latitude!,
+        post.visualLng,
+        post.visualLat,
       ]);
       if (point) {
         setCardPosition({ x: point[0], y: point[1] });
@@ -384,10 +435,11 @@ export default function DrinkingMap({ variant = "preview" }: DrinkingMapProps) {
           animationDuration={2000}
         />
 
-        {validPosts.map((post) => (
+        {dispersedPosts.map((post) => (
           <PostMarker
             key={post.id}
             post={post}
+            isSelected={selectedPost?.id === post.id}
             isInteractive={isInteractive}
             onSelect={handleMarkerSelect}
             zoomLevel={currentZoom}
@@ -441,9 +493,7 @@ const styles = StyleSheet.create({
     borderRadius: 0,
     borderWidth: 0,
   },
-  map: {
-    flex: 1,
-  },
+  map: { flex: 1 },
   overlayButton: {
     position: "absolute",
     top: 0,
@@ -473,10 +523,10 @@ const styles = StyleSheet.create({
     marginLeft: 6,
   },
 
-  // --- NEW SMALLER MARKER DESIGN ---
+  // --- MARKER STYLES ---
   markerContainer: {
     width: 32,
-    height: 38, // 32 head + 6 tip
+    height: 38,
     alignItems: "center",
     justifyContent: "flex-end",
   },
@@ -488,31 +538,45 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 4,
   },
+  selectedPinShadow: {
+    // Make selected pin pop out more
+    shadowOpacity: 0.6,
+    shadowRadius: 6,
+    elevation: 10,
+    transform: [{ scale: 1.1 }],
+  },
   pinHead: {
     width: 32,
     height: 32,
     borderRadius: 16,
     backgroundColor: "#222",
-    borderWidth: 2, // Keeps it visible despite small size
+    borderWidth: 2,
     borderColor: "#FFFFFF",
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 2,
   },
+  selectedPinHead: {
+    borderColor: "#EA580C", // Orange border when selected
+    borderWidth: 3,
+  },
   pinPoint: {
     width: 0,
     height: 0,
     backgroundColor: "transparent",
     borderStyle: "solid",
-    borderLeftWidth: 4, // Narrower tip
+    borderLeftWidth: 4,
     borderRightWidth: 4,
-    borderTopWidth: 6, // Shorter tip
+    borderTopWidth: 6,
     borderLeftColor: "transparent",
     borderRightColor: "transparent",
     borderTopColor: "#FFFFFF",
     marginTop: -1,
     zIndex: 1,
+  },
+  selectedPinPoint: {
+    borderTopColor: "#EA580C",
   },
   markerImage: {
     width: "100%",
@@ -529,7 +593,7 @@ const styles = StyleSheet.create({
   fallbackTextMarker: {
     color: "white",
     fontWeight: "800",
-    fontSize: 12, // Smaller text
+    fontSize: 12,
   },
 
   // --- CARD STYLES ---
@@ -607,10 +671,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.2)",
   },
-  avatar: {
-    width: "100%",
-    height: "100%",
-  },
+  avatar: { width: "100%", height: "100%" },
   avatarFallback: {
     width: "100%",
     height: "100%",
@@ -623,9 +684,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "bold",
   },
-  userTextContainer: {
-    flex: 1,
-  },
+  userTextContainer: { flex: 1 },
   username: {
     color: "white",
     fontSize: 14,

@@ -3,6 +3,7 @@ import {
   AddDrinkingRequest,
   AlcoholCollectionByType,
   CalendarResponse,
+  CanvasItem,
   CreateSideQuestReq,
   DailyDrinkingPostResponse,
   DaysStat,
@@ -340,39 +341,66 @@ class ApiService {
     return response || [];
   }
 
-  async getYourMixData(token: string): Promise<YourMixPostData[]> {
+  private transformMixPosts(
+    posts: DailyDrinkingPostResponse[]
+  ): YourMixPostData[] {
+    return posts.map((post) => ({
+      id: post.id,
+      userId: post.user_id,
+      userImageUrl: post.user_image_url,
+      username: post.username,
+      date: post.date,
+      drankToday: post.drank_today,
+      loggedAt: post.logged_at,
+      imageUrl: post.image_url,
+      locationText: post.location_text,
+      mentionedBuddies: post.mentioned_buddies || [],
+      sourceType: post.source_type,
+    }));
+  }
+
+  // 1. Updated Your Mix (Pagination added)
+  async getYourMixData(
+    token: string,
+    page: number = 1,
+    limit: number = 20
+  ): Promise<YourMixPostData[]> {
     try {
       const response = await this.makeRequest<DailyDrinkingPostResponse[]>(
-        "/api/v1/user/your-mix",
+        `/api/v1/user/your-mix?page=${page}&limit=${limit}`,
         {
           method: "GET",
           token,
         }
       );
 
-      console.log(response);
-
-      const transformed = response.map((post) => ({
-        id: post.id,
-        userId: post.user_id,
-        userImageUrl: post.user_image_url,
-        username: post.username,
-        date: post.date,
-        drankToday: post.drank_today,
-        loggedAt: post.logged_at,
-        imageUrl: post.image_url,
-        locationText: post.location_text,
-        mentionedBuddies: post.mentioned_buddies || [],
-        sourceType: post.source_type,
-      }));
-
-      return transformed;
+      return this.transformMixPosts(response);
     } catch (error) {
       console.error("Failed to fetch Your Mix:", error);
       return [];
     }
   }
 
+  async getGlobalMixData(
+    token: string,
+    page: number = 1,
+    limit: number = 20
+  ): Promise<YourMixPostData[]> {
+    try {
+      const response = await this.makeRequest<DailyDrinkingPostResponse[]>(
+        `/api/v1/user/global-mix?page=${page}&limit=${limit}`,
+        {
+          method: "GET",
+          token,
+        }
+      );
+
+      return this.transformMixPosts(response);
+    } catch (error) {
+      console.error("Failed to fetch Global Mix:", error);
+      return [];
+    }
+  }
   async getMixTimeline(token: string): Promise<YourMixPostData[]> {
     try {
       const response = await this.makeRequest<DailyDrinkingPostResponse[]>(
@@ -920,6 +948,31 @@ class ApiService {
       console.error("Failed to fetch Your Mix:", error);
       return [];
     }
+  }
+
+  async getMemoryWall(postId: string, token: string): Promise<CanvasItem[]> {
+    return this.makeRequest<CanvasItem[]>(
+      `/api/v1/user/memory-wall/${postId}`,
+      {
+        method: "GET",
+        token,
+      }
+    );
+  }
+
+  async saveMemoryWall(
+    postId: string,
+    items: CanvasItem[],
+    token: string
+  ): Promise<{ message: string }> {
+    return this.makeRequest<{ message: string }>("/api/v1/user/memory-wall", {
+      method: "POST",
+      token,
+      body: JSON.stringify({
+        post_id: postId,
+        wall_items: items,
+      }),
+    });
   }
 
   getWebSocketUrl(sessionId: string): string {
