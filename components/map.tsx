@@ -6,7 +6,6 @@ import {
   Image,
   TouchableOpacity,
   ActivityIndicator,
-  ViewStyle,
 } from "react-native";
 import MapboxGL from "@rnmapbox/maps";
 import { useApp } from "@/providers/AppProvider";
@@ -15,7 +14,13 @@ import { useRouter } from "expo-router";
 import * as Location from "expo-location";
 import { YourMixPostData } from "@/types/api.types";
 
-MapboxGL.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_TOKEN_PUBLIC || "");
+const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN_PUBLIC;
+
+if (MAPBOX_TOKEN) {
+  MapboxGL.setAccessToken(MAPBOX_TOKEN);
+} else {
+  console.warn("OutDrinkMe: Mapbox Access Token is missing!");
+}
 
 interface DrinkingMapProps {
   variant?: "preview" | "full";
@@ -225,6 +230,29 @@ const PostMarker = React.memo(
 PostMarker.displayName = "PostMarker";
 
 export default function DrinkingMap({ variant = "preview" }: DrinkingMapProps) {
+  if (!MAPBOX_TOKEN) {
+    return (
+      <View
+        style={[
+          styles.container,
+          {
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: "#121212",
+          },
+        ]}
+      >
+        <Ionicons name="warning-outline" size={32} color="#EA580C" />
+        <Text style={{ color: "white", marginTop: 8, fontWeight: "bold" }}>
+          Map Unavailable
+        </Text>
+        <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 10 }}>
+          Configuration Error (Missing Token)
+        </Text>
+      </View>
+    );
+  }
+
   const { mapFriendPosts } = useApp();
   const router = useRouter();
 
@@ -271,12 +299,10 @@ export default function DrinkingMap({ variant = "preview" }: DrinkingMapProps) {
   }, [mapFriendPosts]);
 
   // --- 3. DISPERSION LOGIC ---
-  // Calculates distinct visual coordinates for every single post
   const dispersedPosts = useMemo<DispersedPost[]>(() => {
     if (validPosts.length === 0) return [];
 
     const grouped: { [key: string]: YourMixPostData[] } = {};
-    // Group roughly by ~10 meters
     const PRECISION = 4;
 
     validPosts.forEach((post) => {
@@ -290,7 +316,6 @@ export default function DrinkingMap({ variant = "preview" }: DrinkingMapProps) {
     const result: DispersedPost[] = [];
 
     Object.values(grouped).forEach((group) => {
-      // If alone, stay put
       if (group.length === 1) {
         result.push({
           ...group[0],
@@ -300,10 +325,7 @@ export default function DrinkingMap({ variant = "preview" }: DrinkingMapProps) {
         return;
       }
 
-      // If multiple, spread them in a circle
       const count = group.length;
-      // 0.00035 deg is roughly ~35 meters
-      // This is large enough to be distinct at Zoom 14+
       const radius = 0.00035;
       const angleStep = (2 * Math.PI) / count;
 
@@ -381,7 +403,6 @@ export default function DrinkingMap({ variant = "preview" }: DrinkingMapProps) {
 
     setSelectedPost(post);
 
-    // Project the VISUAL coordinate so the card appears exactly over the pin
     try {
       const point = await mapRef.current.getPointInView([
         post.visualLng,
