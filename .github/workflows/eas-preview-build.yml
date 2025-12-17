@@ -1,70 +1,3 @@
-# name: Preview Build (APK)
-
-# on:
-#   workflow_dispatch:
-
-# jobs:
-#   build:
-#     runs-on: ubuntu-latest
-#     environment: Production 
-#     steps:
-#       - name: Setup Repo
-#         uses: actions/checkout@v4
-
-#       - name: Setup Node
-#         uses: actions/setup-node@v4
-#         with:
-#           node-version: '20'
-#           cache: 'npm'
-
-#       - name: Setup Java
-#         uses: actions/setup-java@v4
-#         with:
-#           distribution: 'temurin'
-#           java-version: '17'
-
-#       - name: Restore Gradle Cache
-#         uses: actions/cache@v3
-#         with:
-#           path: |
-#             ~/.gradle/caches
-#             ~/.gradle/wrapper
-#           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-#           restore-keys: |
-#             ${{ runner.os }}-gradle-
-
-#       - name: Install Dependencies
-#         run: npm ci
-
-#       - name: Setup EAS
-#         run: npm install -g eas-cli
-
-#       # Map the INDIVIDUAL secrets from the PRODUCTION Environment
-#       - name: Create .env
-#         run: |
-#           touch .env
-#           echo "EXPO_PUBLIC_ENV=production" >> .env
-#           echo "EXPO_PUBLIC_OUTDRINKME_API_URL=${{ secrets.EXPO_PUBLIC_OUTDRINKME_API_URL }}" >> .env
-#           echo "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY }}" >> .env
-#           echo "EXPO_PUBLIC_POSTHOG_API_KEY=${{ secrets.EXPO_PUBLIC_POSTHOG_API_KEY }}" >> .env
-#           echo "EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME=${{ secrets.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME }}" >> .env
-#           echo "EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET=${{ secrets.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET }}" >> .env
-#           # If VIDEO preset doesn't exist in Prod secrets, this will just be empty, which is fine
-#           echo "EXPO_PUBLIC_CLOUDINARY_VIDEO_UPLOAD_PRESET=${{ secrets.EXPO_PUBLIC_CLOUDINARY_VIDEO_UPLOAD_PRESET }}" >> .env
-
-#       - name: Build Android Preview
-#         # Ensure eas.json has profile: preview { "android": { "buildType": "apk" } }
-#         run: eas build --platform android --profile preview --local --clear-cache --non-interactive --output=./app-preview.apk
-#         env:
-#           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-#           GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4g"
-
-#       - name: Upload Artifact
-#         uses: actions/upload-artifact@v4
-#         if: success()
-#         with:
-#           name: outdrinkme-preview
-#           path: ./app-preview.apk
 name: Preview Build
 
 on:
@@ -116,8 +49,8 @@ jobs:
           echo "EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME=${{ secrets.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME }}" >> .env
           echo "EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET=${{ secrets.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET }}" >> .env
           echo "EXPO_PUBLIC_CLOUDINARY_VIDEO_UPLOAD_PRESET=${{ secrets.EXPO_PUBLIC_CLOUDINARY_VIDEO_UPLOAD_PRESET }}" >> .env
+          # We still echo it here for good measure, but the 'env' block below is the real fix
           echo "EXPO_PUBLIC_MAPBOX_TOKEN_PUBLIC=${{ secrets.EXPO_PUBLIC_MAPBOX_TOKEN_PUBLIC }}" >> .env
-          # I removed the Secret Token from .env here.
 
       # --- NEW STEP ---
       - name: Inject Mapbox Secret into app.json
@@ -131,6 +64,8 @@ jobs:
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4g"
+          # 👇 THIS IS THE FIX: Explicitly pass the public token to the build environment
+          EXPO_PUBLIC_MAPBOX_TOKEN_PUBLIC: ${{ secrets.EXPO_PUBLIC_MAPBOX_TOKEN_PUBLIC }}
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4

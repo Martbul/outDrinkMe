@@ -11,7 +11,9 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.martbul.outDrinkMe",
-      "associatedDomains": ["applinks:clerk.martbul.com"],
+      "associatedDomains": [
+        "applinks:clerk.martbul.com"
+      ],
       "infoPlist": {
         "NSCameraUsageDescription": "OutDrinkMe needs camera access to scan beverage barcodes for your collection.",
         "ITSAppUsesNonExemptEncryption": false,
@@ -42,7 +44,10 @@
               "scheme": "outdrinkme"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         },
         {
           "action": "VIEW",
@@ -54,7 +59,10 @@
               "pathPrefix": "/v1/oauth_callback"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -117,6 +125,14 @@
           "downloadToken": "MAPBOX_SECRET_TOKEN_PLACEHOLDER"
         }
       ],
+       [
+        "expo-build-properties",
+        {
+          "android": {
+            "extraProguardRules": "-keep class com.mapbox.** { *; }\n-keep interface com.mapbox.** { *; }\n-keep class com.mapbox.maps.** { *; }\n-keep interface com.mapbox.maps.** { *; }"
+          }
+        }
+      ],
       [
         "react-native-google-mobile-ads",
         {
@@ -137,7 +153,8 @@
           "supportsPictureInPicture": true
         }
       ],
-      "expo-localization"
+      "expo-localization",
+      "expo-build-properties"
     ],
     "experiments": {
       "typedRoutes": true,
