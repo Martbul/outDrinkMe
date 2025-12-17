@@ -39,7 +39,6 @@ const DRINK_TYPES = [
   "Wine",
   "Brandy",
   "Cider",
-  "Seltzer",
   "Cocktail",
   "Other",
 ];
