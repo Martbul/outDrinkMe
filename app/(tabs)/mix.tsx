@@ -3,7 +3,6 @@ import MixPostModal from "@/components/mixPostModal";
 import { useApp } from "@/providers/AppProvider";
 import type { YourMixPostData } from "@/types/api.types";
 import { Ionicons } from "@expo/vector-icons";
-// 1. IMPORT FlashList INSTEAD
 import { FlashList } from "@shopify/flash-list";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
@@ -11,7 +10,6 @@ import { usePostHog } from "posthog-react-native";
 import React, {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
@@ -27,6 +25,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -445,49 +444,6 @@ const MixScreen = () => {
     activeTab === "personal" ? refreshYourMixData() : refreshGlobalMixData?.();
   }, [activeTab, refreshYourMixData, refreshGlobalMixData]);
 
-  // --- Components for FlashList ---
-
-  const ListHeader = useCallback(
-    () => (
-      <View>
-        <View className="absolute top-0 w-full h-32 bg-gradient-to-b from-orange-900/20 to-transparent pointer-events-none" />
-        <Header />
-        <View className="px-4 border-b border-white/[0.05] items-center mb-4">
-          <View className="flex-row items-center gap-6">
-            <TouchableOpacity
-              onPress={() => setActiveTab("personal")}
-              className="items-center justify-center h-10 border-b-2"
-              style={{
-                borderColor:
-                  activeTab === "personal" ? "#ea580c" : "transparent",
-              }}
-            >
-              <Text
-                className={`text-base font-bold ${activeTab === "personal" ? "text-white" : "text-white/40"}`}
-              >
-                MIX
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setActiveTab("global")}
-              className="items-center justify-center h-10 border-b-2"
-              style={{
-                borderColor: activeTab === "global" ? "#ea580c" : "transparent",
-              }}
-            >
-              <Text
-                className={`text-base font-bold ${activeTab === "global" ? "text-white" : "text-white/40"}`}
-              >
-                FEED
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    ),
-    [activeTab]
-  );
-
   const ListEmptyComponent = useCallback(() => {
     if (isLoading && activeData.length === 0) {
       return (
@@ -531,6 +487,47 @@ const MixScreen = () => {
 
   return (
     <View className="flex-1 bg-black">
+      {/* 
+        FIX: Moved Header and Tabs OUTSIDE of FlashList.
+        This creates a stable "Sticky" header that doesn't jump when the list loads.
+        The Gradient is also kept here to underlay the header.
+      */}
+      <View className="z-10 bg-black">
+        <View className="absolute top-0 w-full h-32 bg-gradient-to-b from-orange-900/20 to-transparent pointer-events-none" />
+        <Header />
+        <View className="px-4 border-b border-white/[0.05] items-center mb-4">
+          <View className="flex-row items-center gap-6">
+            <TouchableOpacity
+              onPress={() => setActiveTab("personal")}
+              className="items-center justify-center h-10 border-b-2"
+              style={{
+                borderColor:
+                  activeTab === "personal" ? "#ea580c" : "transparent",
+              }}
+            >
+              <Text
+                className={`text-base font-bold ${activeTab === "personal" ? "text-white" : "text-white/40"}`}
+              >
+                MIX
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setActiveTab("global")}
+              className="items-center justify-center h-10 border-b-2"
+              style={{
+                borderColor: activeTab === "global" ? "#ea580c" : "transparent",
+              }}
+            >
+              <Text
+                className={`text-base font-bold ${activeTab === "global" ? "text-white" : "text-white/40"}`}
+              >
+                FEED
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+
       <FlashList
         masonry
         data={activeData}
@@ -540,11 +537,11 @@ const MixScreen = () => {
         keyExtractor={(item) => item.id}
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
-        ListHeaderComponent={ListHeader}
+        // ListHeaderComponent removed as it is now fixed at top
         ListEmptyComponent={ListEmptyComponent}
         contentContainerStyle={{
-          paddingHorizontal: SCREEN_PADDING - GAP / 2,
-          paddingBottom: insets.bottom + 100,
+          // Use Math.max to prevent 0-value jumps on initial render
+          paddingBottom: Math.max(insets.bottom, 20) + 100,
         }}
         refreshControl={
           <RefreshControl
@@ -552,7 +549,8 @@ const MixScreen = () => {
             onRefresh={handleRefresh}
             tintColor="#ea580c"
             colors={["#ea580c"]}
-            progressViewOffset={50}
+            // Adjust offset to appear below the fixed header
+            progressViewOffset={Platform.OS === 'android' ? 120 : 20}
           />
         }
         showsVerticalScrollIndicator={false}
