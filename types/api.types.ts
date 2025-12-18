@@ -146,6 +146,7 @@ export interface DailyDrinkingPostResponse {
   alcohol: string[] | null;
   mentioned_buddies: UserData[] | null;
   source_type: string;
+  reactions?:  CanvasItem[];
 }
 
 export interface YourMixPostData {
@@ -163,6 +164,7 @@ export interface YourMixPostData {
   alcohol: string[];
   mentionedBuddies: UserData[];
   sourceType: string;
+  reactions?: CanvasItem[]; 
 }
 
 export interface DrunkThought {
@@ -597,7 +599,7 @@ export interface CanvasItem {
   id: string;
   daily_drinking_id: string;
   added_by_user_id: string;
-  item_type: "image" | "sticker" | "text" | "drawing";
+  item_type: "image" | "sticker" | "text" | "drawing" | "reaction";
   content: string;
   pos_x: number;
   pos_y: number;
