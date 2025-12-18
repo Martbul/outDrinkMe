@@ -356,10 +356,10 @@ class ApiService {
       locationText: post.location_text,
       mentionedBuddies: post.mentioned_buddies || [],
       sourceType: post.source_type,
+      reactions: post.reactions || [],
     }));
   }
 
-  // 1. Updated Your Mix (Pagination added)
   async getYourMixData(
     token: string,
     page: number = 1,
@@ -963,6 +963,7 @@ class ApiService {
   async saveMemoryWall(
     postId: string,
     items: CanvasItem[],
+    reactions: CanvasItem[], 
     token: string
   ): Promise<{ message: string }> {
     return this.makeRequest<{ message: string }>("/api/v1/user/memory-wall", {
@@ -971,6 +972,7 @@ class ApiService {
       body: JSON.stringify({
         post_id: postId,
         wall_items: items,
+        reactions: reactions,
       }),
     });
   }

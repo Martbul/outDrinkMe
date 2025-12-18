@@ -42,6 +42,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/providers/AppProvider";
 import { useAuth } from "@clerk/clerk-expo";
 import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
 import * as Haptics from "expo-haptics";
 import Svg, {
   Path as SvgPath,
@@ -95,29 +96,32 @@ export default function MemoryCanvas() {
     return { canEdit: isOwner || isTagged, foundPost: post };
   }, [yourMixData, postId, userData]);
 
-  // --- STATE ---
+  const [optimisticUsage, setOptimisticUsage] = useState<
+    Record<string, number>
+  >({});
+
   const [items, setItems] = useState<CanvasItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [isUiHidden, setIsUiHidden] = useState(false);
 
-  // History
+  const [savedModalVisible, setSavedModalVisible] = useState(false);
+
   const [history, setHistory] = useState<CanvasItem[][]>([]);
   const [historyStep, setHistoryStep] = useState(-1);
+  const [reactions, setReactions] = useState<CanvasItem[]>([]);
 
-  // Settings
   const [showGrid, setShowGrid] = useState(false);
   const [snapToGrid, setSnapToGrid] = useState(false);
   const [settingsModalVisible, setSettingsModalVisible] = useState(false);
 
-  // Modals
   const [textModalVisible, setTextModalVisible] = useState(false);
   const [inputText, setInputText] = useState("");
   const [selectedTextColor, setSelectedTextColor] = useState("#000000");
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [stickerModalVisible, setStickerModalVisible] = useState(false);
 
-  // Item Options
   const [itemOptionsVisible, setItemOptionsVisible] = useState(false);
   const [selectedItemForOptions, setSelectedItemForOptions] = useState<
     string | null
@@ -168,7 +172,34 @@ export default function MemoryCanvas() {
     router.replace("/(tabs)/mix");
   };
 
-  // --- CALCULATE STICKERS ---
+  const handleGoToStore = () => {
+    router.push("/(screens)/store");
+  };
+
+  // const availableStickers = useMemo(() => {
+  //   if (!userInventory || !storeItems) return [];
+  //   const stickers: any[] = [];
+  //   ["smoking", "energy", "flag"].forEach((cat) => {
+  //     const inventoryItems = userInventory[cat] || [];
+  //     const storeCategory = storeItems[cat] || [];
+  //     inventoryItems.forEach((invItem: any) => {
+  //       if (invItem.quantity > 0) {
+  //         const storeDef = storeCategory.find(
+  //           (s: any) => s.id === invItem.item_id
+  //         );
+  //         if (storeDef?.image_url) {
+  //           stickers.push({
+  //             ...storeDef,
+  //             quantity: invItem.quantity,
+  //             id: storeDef.id,
+  //           });
+  //         }
+  //       }
+  //     });
+  //   });
+  //   return stickers;
+  // }, [userInventory, storeItems]);
+
   const availableStickers = useMemo(() => {
     if (!userInventory || !storeItems) return [];
     const stickers: any[] = [];
@@ -176,40 +207,82 @@ export default function MemoryCanvas() {
       const inventoryItems = userInventory[cat] || [];
       const storeCategory = storeItems[cat] || [];
       inventoryItems.forEach((invItem: any) => {
-        if (invItem.quantity > 0) {
+        // Calculate the real quantity by subtracting local usage
+        const usedAmount = optimisticUsage[invItem.item_id] || 0;
+        const currentQuantity = invItem.quantity - usedAmount;
+
+        // Check if there are any left optimistically
+        if (currentQuantity > 0) {
           const storeDef = storeCategory.find(
             (s: any) => s.id === invItem.item_id
           );
           if (storeDef?.image_url) {
             stickers.push({
               ...storeDef,
-              quantity: invItem.quantity,
-              id: storeDef.id, // Ensure ID is passed
+              quantity: currentQuantity, // Use the calculated quantity
+              id: storeDef.id,
             });
           }
         }
       });
     });
     return stickers;
-  }, [userInventory, storeItems]);
+  }, [userInventory, storeItems, optimisticUsage]); // Add optimisticUsage to dependency array
 
-  // const handleUndo = () => {
-  //   if (historyStep > 0) {
-  //     triggerHaptic();
-  //     const prevStep = historyStep - 1;
-  //     setHistoryStep(prevStep);
-  //     setItems(history[prevStep]);
-  //   }
-  // };
+  // --- CLOUDINARY UPLOAD HELPER ---
+  const uploadToCloudinary = async (
+    localUri: string
+  ): Promise<string | null> => {
+    try {
+      const manipulatedResult = await ImageManipulator.manipulateAsync(
+        localUri,
+        [{ resize: { width: 1080 } }],
+        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+      );
 
-  // const handleRedo = () => {
-  //   if (historyStep < history.length - 1) {
-  //     triggerHaptic();
-  //     const nextStep = historyStep + 1;
-  //     setHistoryStep(nextStep);
-  //     setItems(history[nextStep]);
-  //   }
-  // };
+      const uriToUpload = manipulatedResult.uri;
+      const CLOUDINARY_CLOUD_NAME =
+        process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
+      const CLOUDINARY_UPLOAD_PRESET =
+        process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+
+      if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+        throw new Error("Cloudinary credentials are not configured.");
+      }
+
+      const formData = new FormData();
+      formData.append("file", {
+        uri: uriToUpload,
+        type: "image/jpeg",
+        name: `canvas_${Date.now()}.jpg`,
+      } as any);
+
+      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+      formData.append("folder", "canvas-images");
+
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: "POST",
+          body: formData,
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.secure_url) {
+        return data.secure_url;
+      }
+      return null;
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      Alert.alert("Upload Error", "Failed to upload image. Please try again.");
+      return null;
+    }
+  };
 
   // --- INITIALIZATION ---
   useEffect(() => {
@@ -268,9 +341,27 @@ export default function MemoryCanvas() {
   // --- ACTIONS ---
   const handleUpdateItem = useCallback(
     (id: string, updates: Partial<CanvasItem>) => {
-      setItems((prev) =>
-        prev.map((item) => (item.id === id ? { ...item, ...updates } : item))
-      );
+      // Try updating standard items
+      setItems((prev) => {
+        const exists = prev.some((i) => i.id === id);
+        if (exists) {
+          return prev.map((item) =>
+            item.id === id ? { ...item, ...updates } : item
+          );
+        }
+        return prev;
+      });
+
+      // Try updating reactions
+      setReactions((prev) => {
+        const exists = prev.some((r) => r.id === id);
+        if (exists) {
+          return prev.map((item) =>
+            item.id === id ? { ...item, ...updates } : item
+          );
+        }
+        return prev;
+      });
     },
     []
   );
@@ -282,16 +373,63 @@ export default function MemoryCanvas() {
     });
   }, [addToHistory]);
 
+
+  const handleAddReaction = (id: string, imageUrl: string) => {
+    setOptimisticUsage((prev) => ({
+      ...prev,
+      [id]: (prev[id] || 0) + 1,
+    }));
+
+    const { x, y } = getCenterPosition();
+    const allItems = [...items, ...reactions];
+    const maxZ =
+      allItems.length > 0
+        ? Math.max(...allItems.map((i) => i.z_index || 0))
+        : 0;
+
+    const newReaction: CanvasItem = {
+      id: Math.random().toString(),
+      daily_drinking_id: postId as string,
+      added_by_user_id: userData?.id || "",
+      item_type: "reaction",
+      content: imageUrl,
+      pos_x: x - 50,
+      pos_y: y - 50,
+      width: 120,
+      height: 120,
+      rotation: (Math.random() - 0.5) * 20,
+      scale: 1,
+      z_index: maxZ + 1,
+      created_at: new Date().toISOString(),
+      extra_data: { inventory_item_id: id, is_reaction: true },
+    };
+
+    setReactions((prev) => [...prev, newReaction]);
+    triggerHaptic(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+
   const handleSaveCanvas = async () => {
-    if (!canEdit || items.length === 0) return;
+    if (items.length === 0 && reactions.length === 0) return;
+
     setIsSaving(true);
     triggerHaptic(Haptics.ImpactFeedbackStyle.Medium);
     try {
       const token = await getToken();
       const currentPostId = Array.isArray(postId) ? postId[0] : postId;
-      await apiService.saveMemoryWall(currentPostId!, items, token!);
+
+      console.log("items");
+      console.log(items);
+      console.log("reactions");
+      console.log(reactions);
+      await apiService.saveMemoryWall(currentPostId!, items, reactions, token!);
+
       await refreshUserInventory();
-      Alert.alert("Success", "Saved!");
+
+      setOptimisticUsage({});
+
+      setSavedModalVisible(true);
+      setTimeout(() => setSavedModalVisible(false), 1500);
     } catch (error: any) {
       Alert.alert("Error", error.message);
     } finally {
@@ -306,7 +444,6 @@ export default function MemoryCanvas() {
     return { x: x + randomOffset(), y: y + randomOffset() };
   };
 
-  // --- ITEM MANIPULATION ---
   const handleStartEdit = useCallback(
     (id: string, content: string, color?: string) => {
       triggerHaptic();
@@ -364,45 +501,49 @@ export default function MemoryCanvas() {
     });
   }, []);
 
-  const handleBringSelectedToFront = () => {
-    if (!selectedItemForOptions) return;
-    handleBringToFront(selectedItemForOptions);
-    setItems((currentItems) => {
-      addToHistory(currentItems);
-      return currentItems;
-    });
-    setItemOptionsVisible(false);
-  };
-
-  // --- ADDING ITEMS ---
   const handleAddPhoto = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.8,
-    });
-    if (!result.canceled && result.assets[0]) {
-      const { x, y } = getCenterPosition();
-      const maxZ =
-        items.length > 0 ? Math.max(...items.map((i) => i.z_index || 0)) : 0;
+    if (isUploading) return;
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+      });
 
-      const newItem: CanvasItem = {
-        id: Math.random().toString(),
-        daily_drinking_id: postId as string,
-        added_by_user_id: userData?.id || "",
-        item_type: "image",
-        content: result.assets[0].uri,
-        pos_x: x - 100,
-        pos_y: y - 100,
-        width: 200,
-        height: 200,
-        rotation: (Math.random() - 0.5) * 20,
-        scale: 1,
-        z_index: maxZ + 1,
-        created_at: new Date().toISOString(),
-        author_name: userData?.firstName || "Me",
-      };
-      updateItems([...items, newItem]);
+      if (!result.canceled && result.assets[0]) {
+        setIsUploading(true);
+        const uploadedUrl = await uploadToCloudinary(result.assets[0].uri);
+        if (!uploadedUrl) {
+          setIsUploading(false);
+          return;
+        }
+
+        const { x, y } = getCenterPosition();
+        const maxZ =
+          items.length > 0 ? Math.max(...items.map((i) => i.z_index || 0)) : 0;
+
+        const newItem: CanvasItem = {
+          id: Math.random().toString(),
+          daily_drinking_id: postId as string,
+          added_by_user_id: userData?.id || "",
+          item_type: "image",
+          content: uploadedUrl,
+          pos_x: x - 100,
+          pos_y: y - 100,
+          width: 200,
+          height: 200,
+          rotation: (Math.random() - 0.5) * 20,
+          scale: 1,
+          z_index: maxZ + 1,
+          created_at: new Date().toISOString(),
+          author_name: userData?.firstName || "Me",
+        };
+        updateItems([...items, newItem]);
+      }
+    } catch (e) {
+      console.log("Error adding photo", e);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -451,10 +592,17 @@ export default function MemoryCanvas() {
     setTextModalVisible(false);
   };
 
-  const handleAddSticker = (imageUrl: string) => {
+
+  const handleAddSticker = (id: string, imageUrl: string) => {
+    setOptimisticUsage((prev) => ({
+      ...prev,
+      [id]: (prev[id] || 0) + 1,
+    }));
+
     const { x, y } = getCenterPosition();
     const maxZ =
       items.length > 0 ? Math.max(...items.map((i) => i.z_index || 0)) : 0;
+
     const newItem: CanvasItem = {
       id: Math.random().toString(),
       daily_drinking_id: postId as string,
@@ -469,12 +617,11 @@ export default function MemoryCanvas() {
       scale: 1,
       z_index: maxZ + 1,
       created_at: new Date().toISOString(),
+      extra_data: { inventory_item_id: id },
     };
     updateItems([...items, newItem]);
     setStickerModalVisible(false);
   };
-
-  // --- DRAWING LOGIC (STABLE CALLBACKS) ---
 
   const updateDrawState = useCallback((x: number, y: number, path: string) => {
     drawBounds.current.minX = Math.min(drawBounds.current.minX, x);
@@ -512,7 +659,6 @@ export default function MemoryCanvas() {
       (minY + (maxY - minY) / 2 - SCREEN_HEIGHT / 2 - translateY.value) /
       scale.value;
     const viewBox = `${minX - padding} ${minY - padding} ${width} ${height}`;
-
     const maxZ =
       items.length > 0 ? Math.max(...items.map((i) => i.z_index || 0)) : 0;
 
@@ -550,7 +696,6 @@ export default function MemoryCanvas() {
     };
   };
 
-  // --- DRAWING GESTURE ---
   const drawingPan = Gesture.Pan()
     .minDistance(1)
     .onStart((g) => {
@@ -599,7 +744,6 @@ export default function MemoryCanvas() {
 
   const composedCameraGesture = Gesture.Simultaneous(panGesture, pinchGesture);
 
-  // --- STYLES ---
   const animatedCanvasStyle = useAnimatedStyle(() => ({
     transform: [
       { translateX: translateX.value },
@@ -616,9 +760,6 @@ export default function MemoryCanvas() {
       isDraggingItem.value || isDrawingMode || isUiHidden ? 0 : 1
     ),
   }));
-
-  // Removed early return for loading state to show UI immediately
-  // if (isLoading) ...
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -659,23 +800,37 @@ export default function MemoryCanvas() {
               ]}
             >
               <View style={{ width: 0, height: 0, overflow: "visible" }}>
-                {/* Only render items if we are not loading or if we have items */}
-                {items.map((item) => (
+                {[...items, ...reactions].map((item) => (
                   <DraggableItem
                     key={item.id}
                     item={item}
                     screenHeight={SCREEN_HEIGHT}
+                    currentUserId={userData?.id}
+                    canEdit={canEdit}
                     onUpdate={handleUpdateItem}
                     onGestureEnd={onGestureEndAction}
                     onBringToFront={() => runOnJS(handleBringToFront)(item.id)}
                     onDelete={(id) => {
-                      const n = items.filter((i) => i.id !== id);
-                      updateItems(n);
+                      setItems((prev) => {
+                        if (prev.find((i) => i.id === id)) {
+                          const n = prev.filter((i) => i.id !== id);
+                          updateItems(n); 
+                          return n;
+                        }
+                        return prev;
+                      });
+
+                      setReactions((prev) => {
+                        if (prev.find((r) => r.id === id)) {
+                          return prev.filter((r) => r.id !== id);
+                        }
+                        return prev;
+                      });
                     }}
                     onEdit={handleStartEdit}
                     onLongPress={handleOpenItemOptions}
                     isDraggingShared={isDraggingItem}
-                    isDrawingMode={isDrawingMode || !canEdit || isUiHidden}
+                    isDrawingMode={isDrawingMode || isUiHidden}
                     snapToGrid={snapToGrid}
                   />
                 ))}
@@ -686,15 +841,15 @@ export default function MemoryCanvas() {
       </View>
 
       {/* Loading Overlay */}
-      {isLoading && (
+      {(isLoading || isUploading) && (
         <View
           style={[
             StyleSheet.absoluteFill,
             {
               justifyContent: "center",
               alignItems: "center",
-              zIndex: 100, // Make sure it sits above the canvas but below modals if needed
-              backgroundColor: "rgba(245, 245, 245, 0.5)", // Optional: semi-transparent bg
+              zIndex: 100,
+              backgroundColor: "rgba(245, 245, 245, 0.5)",
             },
           ]}
         >
@@ -806,35 +961,75 @@ export default function MemoryCanvas() {
             </TouchableOpacity>
           )}
           {canEdit && !isUiHidden && (
-            <>
-              <TouchableOpacity
-                onPress={() => setSettingsModalVisible(true)}
-                className="w-10 h-10 bg-white/90 rounded-full items-center justify-center shadow-sm border border-black/5"
-              >
-                <Ionicons name="settings-outline" size={20} color="black" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleSaveCanvas}
-                disabled={isSaving}
-                className="w-10 h-10 bg-white/90 rounded-full items-center justify-center shadow-sm border border-black/5"
-              >
-                {isSaving ? (
-                  <ActivityIndicator size="small" color="black" />
-                ) : (
-                  <Ionicons
-                    name="cloud-upload-outline"
-                    size={24}
-                    color="black"
-                  />
-                )}
-              </TouchableOpacity>
-            </>
+            <TouchableOpacity
+              onPress={() => setSettingsModalVisible(true)}
+              className="w-10 h-10 bg-white/90 rounded-full items-center justify-center shadow-sm border border-black/5"
+            >
+              <Ionicons name="settings-outline" size={20} color="black" />
+            </TouchableOpacity>
+          )}
+
+          {!isUiHidden && (
+            <TouchableOpacity
+              onPress={handleSaveCanvas}
+              disabled={isSaving}
+              className="w-10 h-10 bg-white/90 rounded-full items-center justify-center shadow-sm border border-black/5"
+            >
+              {isSaving ? (
+                <ActivityIndicator size="small" color="black" />
+              ) : (
+                <Ionicons name="cloud-upload-outline" size={24} color="black" />
+              )}
+            </TouchableOpacity>
           )}
         </View>
       </View>
 
-      {/* TRASH BIN */}
-      {canEdit && !isUiHidden && (
+      {/* {!canEdit && (
+        <Animated.View
+          className="absolute left-0 right-0 bg-black/80 rounded-t-3xl shadow-2xl z-50"
+          style={[
+            { bottom: 0, paddingBottom: insets.bottom + 10, height: 160 },
+            bottomControlsStyle,
+          ]}
+        >
+          <Text className="text-white/50 text-[11px] font-bold tracking-widest text-center uppercase my-3">
+            Inventory
+          </Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 20 }}
+          >
+            {availableStickers.map((sticker, idx) => (
+              <View key={idx} className="relative m-2 overflow-visible">
+                <TouchableOpacity
+                  onPress={() =>
+                    handleAddReaction(sticker.id, sticker.image_url)
+                  } 
+                  className="w-20 h-20 bg-white/10 rounded-xl items-center justify-center border border-white/10 overflow-visible"
+                >
+                  <Image
+                    source={{ uri: sticker.image_url }}
+                    className="w-[80%] h-[80%]"
+                    resizeMode="contain"
+                  />
+                </TouchableOpacity>
+                <View
+                  className="absolute -top-2 -right-2 bg-orange-600 rounded-full w-6 h-6 items-center justify-center border-2 border-black shadow-lg"
+                  style={{ zIndex: 50, elevation: 8 }}
+                >
+                  <Text className="text-white text-[10px] font-bold">
+                    {sticker.quantity}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </ScrollView>
+        </Animated.View>
+      )} */}
+
+      {!isUiHidden && (
         <Animated.View
           className="absolute bottom-10 left-0 right-0 items-center justify-center z-50 pointer-events-none"
           style={trashStyle}
@@ -848,46 +1043,103 @@ export default function MemoryCanvas() {
         </Animated.View>
       )}
 
-      {/* NEW BOTTOM TOOLBAR (Replacing Side Menu) */}
-      {canEdit && !isUiHidden && !isDrawingMode && (
-        <Animated.View
-          className="absolute left-6 right-6 bg-black rounded-full h-16 flex-row items-center justify-evenly shadow-2xl border border-white/10 z-50 px-2"
-          style={[{ bottom: insets.bottom + 20 }, bottomControlsStyle]}
-        >
-          {/* History Tools */}
-          {/* <View className="flex-row gap-2 pr-3 border-r border-white/20 items-center h-8">
-            <ToolIcon
-              name="arrow-undo"
-              onPress={handleUndo}
-              color={historyStep > 0 ? "white" : "#333"}
-            />
-            <ToolIcon
-              name="arrow-redo"
-              onPress={handleRedo}
-              color={historyStep < history.length - 1 ? "white" : "#333"}
-            />
-          </View> */}
+      {!isUiHidden && !isDrawingMode && (
+        <>
+          {canEdit ? (
+            <Animated.View
+              className="absolute left-6 right-6 bg-black rounded-full h-16 flex-row items-center justify-evenly shadow-2xl border border-white/10 z-50 px-2"
+              style={[{ bottom: insets.bottom + 20 }, bottomControlsStyle]}
+            >
+              <View className="flex-row gap-4 items-center">
+                <ToolIcon
+                  name="image"
+                  onPress={handleAddPhoto}
+                  color="white"
+                  loading={isUploading}
+                />
+                <ToolIcon
+                  name="text"
+                  onPress={() => {
+                    setEditingItemId(null);
+                    setInputText("");
+                    setTextModalVisible(true);
+                  }}
+                  color="white"
+                />
+                <ToolIcon name="pencil" onPress={startDrawing} color="white" />
+                <ToolIcon
+                  name="cube-outline"
+                  onPress={() => setStickerModalVisible(true)}
+                  color="white"
+                />
+              </View>
+            </Animated.View>
+          ) : (
+            <Animated.View
+              className="absolute left-0 right-0 bg-black/80 rounded-t-3xl shadow-2xl border-t border-white/10 z-50"
+              style={[
+                { bottom: 0, paddingBottom: insets.bottom + 10, height: 160 },
+                bottomControlsStyle,
+              ]}
+            >
+              <Text className="text-white/50 text-[11px] font-bold tracking-widest text-center uppercase my-3">
+                Inventory
+              </Text>
 
-          {/* Creation Tools */}
-          <View className="flex-row gap-4 items-center">
-            <ToolIcon name="image" onPress={handleAddPhoto} color="white" />
-            <ToolIcon
-              name="text"
-              onPress={() => {
-                setEditingItemId(null);
-                setInputText("");
-                setTextModalVisible(true);
-              }}
-              color="white"
-            />
-            <ToolIcon name="pencil" onPress={startDrawing} color="white" />
-            <ToolIcon
-              name="cube-outline" // UPDATED ICON
-              onPress={() => setStickerModalVisible(true)}
-              color="white"
-            />
-          </View>
-        </Animated.View>
+              {availableStickers.length > 0 ? (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{
+                    paddingHorizontal: 20,
+                    gap: 12,
+                    alignItems: "center",
+                  }}
+                >
+                  {availableStickers.map((sticker, idx) => (
+                    <View key={idx} className="relative m-2 overflow-visible">
+                      <TouchableOpacity
+                        onPress={() =>
+                          handleAddReaction(sticker.id, sticker.image_url)
+                        }
+                        className="w-20 h-20 bg-white/10 rounded-xl items-center justify-center border border-white/10"
+                      >
+                        <Image
+                          source={{ uri: sticker.image_url }}
+                          className="w-[80%] h-[80%]"
+                          resizeMode="contain"
+                        />
+                      </TouchableOpacity>
+
+                      <View
+                        className="absolute top-1 right-1 bg-orange-600 rounded-full w-6 h-6 items-center justify-center border border-black"
+                        style={{ zIndex: 10, elevation: 6 }}
+                      >
+                        <Text className="text-white text-[10px] font-bold">
+                          {sticker.quantity}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                </ScrollView>
+              ) : (
+                <View className="flex-1 items-center justify-center gap-3">
+                  <Text className="text-white/70 font-bold">
+                    No stickers in inventory
+                  </Text>
+                  <TouchableOpacity
+                    onPress={handleGoToStore}
+                    className="bg-orange-600 px-6 py-2 rounded-full"
+                  >
+                    <Text className="text-white font-bold text-sm">
+                      Get Items from Store
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </Animated.View>
+          )}
+        </>
       )}
 
       {/* SETTINGS MODAL */}
@@ -946,34 +1198,29 @@ export default function MemoryCanvas() {
             <Text className="text-center font-bold text-gray-400 text-xs tracking-widest uppercase mb-2">
               Item Options
             </Text>
-            <TouchableOpacity
-              onPress={toggleLockItem}
-              className="flex-row items-center gap-4 p-3 bg-gray-50 rounded-xl"
-            >
-              <Ionicons
-                name={
-                  items.find((i) => i.id === selectedItemForOptions)?.extra_data
-                    ?.locked
-                    ? "lock-open"
-                    : "lock-closed"
-                }
-                size={20}
-                color="black"
-              />
-              <Text className="font-bold text-base">
-                {items.find((i) => i.id === selectedItemForOptions)?.extra_data
-                  ?.locked
-                  ? "Unlock Item"
-                  : "Lock Item"}
-              </Text>
-            </TouchableOpacity>
-            {/* <TouchableOpacity
-              onPress={handleBringSelectedToFront}
-              className="flex-row items-center gap-4 p-3 bg-gray-50 rounded-xl"
-            >
-              <Ionicons name="layers" size={20} color="black" />
-              <Text className="font-bold text-base">Bring to Front</Text>
-            </TouchableOpacity> */}
+            {canEdit && (
+              <TouchableOpacity
+                onPress={toggleLockItem}
+                className="flex-row items-center gap-4 p-3 bg-gray-50 rounded-xl"
+              >
+                <Ionicons
+                  name={
+                    items.find((i) => i.id === selectedItemForOptions)
+                      ?.extra_data?.locked
+                      ? "lock-open"
+                      : "lock-closed"
+                  }
+                  size={20}
+                  color="black"
+                />
+                <Text className="font-bold text-base">
+                  {items.find((i) => i.id === selectedItemForOptions)
+                    ?.extra_data?.locked
+                    ? "Unlock Item"
+                    : "Lock Item"}
+                </Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
               onPress={handleDeleteSelectedItem}
               className="flex-row items-center gap-4 p-3 bg-red-50 rounded-xl"
@@ -1033,7 +1280,6 @@ export default function MemoryCanvas() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* STICKER MODAL */}
       <Modal visible={stickerModalVisible} transparent animationType="slide">
         <View className="flex-1 justify-end">
           <TouchableOpacity
@@ -1041,10 +1287,9 @@ export default function MemoryCanvas() {
             onPress={() => setStickerModalVisible(false)}
           />
           <View className="bg-[#1a1a1a] rounded-t-3xl p-6 h-[60%] border-t border-white/10">
-            <Text className="text-white/50 text-xs font-bold tracking-widest mb-6 text-center uppercase">
+            <Text className="text-white/50 text-sm font-bold tracking-widest mb-6 text-center uppercase">
               Inventory
             </Text>
-            {/* UPDATED SCROLLVIEW STYLE */}
             <ScrollView
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{ paddingBottom: 40, paddingTop: 12 }}
@@ -1056,7 +1301,7 @@ export default function MemoryCanvas() {
                     onPress={() =>
                       handleAddSticker(sticker.id, sticker.image_url)
                     }
-                    style={{ overflow: "visible" }} // Explicit styling
+                    style={{ overflow: "visible" }}
                     className="w-[30%] aspect-square bg-white/5 rounded-2xl items-center justify-center border border-white/10 mb-4 relative shadow-sm"
                   >
                     <Image
@@ -1065,7 +1310,7 @@ export default function MemoryCanvas() {
                       resizeMode="contain"
                     />
                     <View
-                      style={{ zIndex: 10 }} // Fix for badge visibility
+                      style={{ zIndex: 10 }}
                       className="absolute -top-2 -right-2 bg-orange-600 rounded-full min-w-[22px] h-[22px] items-center justify-center border border-[#1a1a1a] shadow"
                     >
                       <Text className="text-white text-[10px] font-bold">
@@ -1081,6 +1326,47 @@ export default function MemoryCanvas() {
           </View>
         </View>
       </Modal>
+
+      <Modal
+        visible={savedModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSavedModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          className="flex-1"
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={() => setSavedModalVisible(false)}
+            className="flex-1 bg-black/80 justify-end"
+          >
+            <TouchableOpacity
+              activeOpacity={1}
+              onPress={() => {}}
+              className="bg-black/95 rounded-t-3xl border-t-2 border-orange-600/30"
+              style={{
+                paddingBottom: insets.bottom + 20,
+              }}
+            >
+              <View className="px-4 py-12 items-center">
+                <View className="w-20 h-20 rounded-full bg-orange-600/20 items-center justify-center mb-5">
+                  <Ionicons name="checkmark-circle" size={48} color="#EA580C" />
+                </View>
+                <Text className="text-white text-3xl font-black mb-3 text-center">
+                  Saved
+                </Text>
+                <Text className="text-white/60 text-center text-base mb-8 px-4">
+                  {canEdit
+                    ? "Your memory has been successfully updated"
+                    : "Your reaction has been sent"}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </KeyboardAvoidingView>
+      </Modal>
     </GestureHandlerRootView>
   );
 }
@@ -1089,22 +1375,31 @@ const ToolIcon = ({
   name,
   onPress,
   color = "black",
+  loading = false,
 }: {
   name: any;
   onPress: () => void;
   color?: string;
+  loading?: boolean;
 }) => (
   <TouchableOpacity
     onPress={onPress}
+    disabled={loading}
     className="items-center justify-center w-10 h-10 active:scale-90 transition-transform"
   >
-    <Ionicons name={name} size={24} color={color} />
+    {loading ? (
+      <ActivityIndicator size="small" color={color} />
+    ) : (
+      <Ionicons name={name} size={24} color={color} />
+    )}
   </TouchableOpacity>
 );
 
 interface DraggableItemProps {
   item: CanvasItem;
   screenHeight: number;
+  currentUserId?: string;
+  canEdit: boolean;
   onUpdate: (id: string, updates: Partial<CanvasItem>) => void;
   onGestureEnd: () => void;
   onBringToFront: (id: string) => void;
@@ -1119,6 +1414,8 @@ interface DraggableItemProps {
 const DraggableItem = ({
   item,
   screenHeight,
+  currentUserId,
+  canEdit,
   onUpdate,
   onGestureEnd,
   onBringToFront,
@@ -1139,9 +1436,12 @@ const DraggableItem = ({
 
   const isLocked = !!item.extra_data?.locked;
 
+  const isMine = currentUserId && item.added_by_user_id === currentUserId;
+  const canInteract = !isDrawingMode && !isLocked && (canEdit || isMine);
+
   const tap = Gesture.Tap()
     .numberOfTaps(2)
-    .enabled(!isDrawingMode && !isLocked)
+    .enabled(canInteract)
     .onStart(() => {
       if (item.item_type === "text")
         runOnJS(onEdit)(item.id, item.content, item.extra_data?.color);
@@ -1149,13 +1449,13 @@ const DraggableItem = ({
 
   const longPress = Gesture.LongPress()
     .minDuration(500)
-    .enabled(!isDrawingMode)
+    .enabled(!isDrawingMode && (canEdit || isMine))
     .onStart(() => {
       runOnJS(onLongPress)(item.id);
     });
 
   const pan = Gesture.Pan()
-    .enabled(!isDrawingMode && !isLocked)
+    .enabled(canInteract)
     .onStart(() => {
       isActive.value = true;
       isDraggingShared.value = true;
@@ -1205,7 +1505,7 @@ const DraggableItem = ({
     });
 
   const pinch = Gesture.Pinch()
-    .enabled(!isDrawingMode && !isLocked)
+    .enabled(canInteract)
     .onStart(() => {
       context.value.scale = scale.value;
     })
@@ -1219,7 +1519,7 @@ const DraggableItem = ({
     });
 
   const rotate = Gesture.Rotation()
-    .enabled(!isDrawingMode && !isLocked)
+    .enabled(canInteract)
     .onStart(() => {
       context.value.rotation = rotation.value;
     })
@@ -1275,7 +1575,7 @@ const DraggableItem = ({
         ]}
       >
         <Animated.View style={[{ flex: 1 }, borderStyle]}>
-          {isLocked && (
+          {canEdit && isLocked && (
             <View
               style={{
                 position: "absolute",
@@ -1310,7 +1610,7 @@ const DraggableItem = ({
               />
             </View>
           )}
-          {item.item_type === "sticker" && (
+          {(item.item_type === "sticker" || item.item_type === "reaction") && (
             <Image
               source={{ uri: item.content }}
               style={{ width: "100%", height: "100%" }}

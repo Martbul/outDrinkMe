@@ -1,5 +1,6 @@
 import Header from "@/components/header";
 import MixPostModal from "@/components/mixPostModal";
+import { ReactionsOverlay } from "@/components/reactionOberlay";
 import { useApp } from "@/providers/AppProvider";
 import type { YourMixPostData } from "@/types/api.types";
 import { Ionicons } from "@expo/vector-icons";
@@ -156,6 +157,9 @@ const YourMixCard = React.memo(({ item, onCardPress }: YourMixCardProps) => {
         resizeMode="cover"
         className="bg-zinc-800"
       />
+      
+      <ReactionsOverlay items={item.reactions} />
+
       <LinearGradient
         colors={["transparent", "rgba(0,0,0,0.2)", "rgba(0,0,0,0.85)"]}
         style={{
@@ -487,11 +491,6 @@ const MixScreen = () => {
 
   return (
     <View className="flex-1 bg-black">
-      {/* 
-        FIX: Moved Header and Tabs OUTSIDE of FlashList.
-        This creates a stable "Sticky" header that doesn't jump when the list loads.
-        The Gradient is also kept here to underlay the header.
-      */}
       <View className="z-10 bg-black">
         <View className="absolute top-0 w-full h-32 bg-gradient-to-b from-orange-900/20 to-transparent pointer-events-none" />
         <Header />
@@ -537,10 +536,8 @@ const MixScreen = () => {
         keyExtractor={(item) => item.id}
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
-        // ListHeaderComponent removed as it is now fixed at top
         ListEmptyComponent={ListEmptyComponent}
         contentContainerStyle={{
-          // Use Math.max to prevent 0-value jumps on initial render
           paddingBottom: Math.max(insets.bottom, 20) + 100,
         }}
         refreshControl={
