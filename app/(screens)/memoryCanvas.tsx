@@ -978,7 +978,7 @@ export default function MemoryCanvas() {
               {isSaving ? (
                 <ActivityIndicator size="small" color="black" />
               ) : (
-                <Ionicons name="cloud-upload-outline" size={24} color="black" />
+                  <Feather name="check" size={24} color="black" />
               )}
             </TouchableOpacity>
           )}

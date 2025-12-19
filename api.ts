@@ -341,6 +341,8 @@ class ApiService {
     return response || [];
   }
 
+
+
   private transformMixPosts(
     posts: DailyDrinkingPostResponse[]
   ): YourMixPostData[] {
@@ -354,11 +356,15 @@ class ApiService {
       loggedAt: post.logged_at,
       imageUrl: post.image_url,
       locationText: post.location_text,
+      alcohol: post.alcohol,
       mentionedBuddies: post.mentioned_buddies || [],
       sourceType: post.source_type,
       reactions: post.reactions || [],
     }));
   }
+
+
+
 
   async getYourMixData(
     token: string,
@@ -448,11 +454,9 @@ class ApiService {
       }),
     });
 
-    // If response has an error property, throw it
     if (response?.error) {
       throw new Error(response.error);
     }
-
     return response;
   }
 

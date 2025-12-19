@@ -32,8 +32,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const SCREEN_PADDING = 16;
-const GAP = 12;
-const COLUMN_WIDTH = (SCREEN_WIDTH - SCREEN_PADDING * 2 - GAP) / 2;
+const GAP = 2;
+const COLUMN_WIDTH = (SCREEN_WIDTH - SCREEN_PADDING * 2 - GAP) / 1.9;
 
 const MAX_CARD_HEIGHT = COLUMN_WIDTH * 1.6;
 const MIN_CARD_HEIGHT = COLUMN_WIDTH * 0.8;
@@ -338,7 +338,7 @@ const YourMixCard = React.memo(({ item, onCardPress }: YourMixCardProps) => {
             isSmallCard ? "text-[10px]" : "text-xs"
           }`}
         >
-          OPEN CANVAS
+          OPEN
         </Text>
         <Ionicons
           name="arrow-forward"
@@ -365,7 +365,6 @@ const YourMixCard = React.memo(({ item, onCardPress }: YourMixCardProps) => {
   );
 });
 
-// --- Main Screen ---
 
 const MixScreen = () => {
   const {
@@ -456,10 +455,13 @@ const MixScreen = () => {
         </View>
       );
     }
+    
     const emptyMsg =
       activeTab === "personal"
         ? "Start capturing memories to see them here."
         : "No posts found";
+    
+    
     return (
       <View className="items-center justify-center pt-20 px-10 opacity-50">
         <Ionicons
@@ -481,7 +483,7 @@ const MixScreen = () => {
   const renderItem = useCallback(
     ({ item }: { item: YourMixPostData }) => {
       return (
-        <View style={{ paddingHorizontal: GAP / 2 }}>
+        <View style={{ paddingHorizontal: GAP / 8 }}>
           <YourMixCard item={item} onCardPress={handleCardPressForModal} />
         </View>
       );
@@ -546,7 +548,6 @@ const MixScreen = () => {
             onRefresh={handleRefresh}
             tintColor="#ea580c"
             colors={["#ea580c"]}
-            // Adjust offset to appear below the fixed header
             progressViewOffset={Platform.OS === 'android' ? 120 : 20}
           />
         }

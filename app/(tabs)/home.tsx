@@ -1,5 +1,4 @@
 import { apiService } from "@/api";
-import AlcoholismChart from "@/components/charts/lineChart";
 import DrunkThought from "@/components/drunkThought";
 import { Header } from "@/components/header";
 import InfoTooltip from "@/components/infoTooltip";
@@ -12,8 +11,6 @@ import { useAuth } from "@clerk/clerk-expo";
 import {
   AntDesign,
   Feather,
-  FontAwesome,
-  FontAwesome6,
   Ionicons,
   MaterialCommunityIcons,
   MaterialIcons,
@@ -294,8 +291,8 @@ export default function HomeScreen() {
               {isCoefTooltipVisible && (
                 <InfoTooltip
                   visible={isCoefTooltipVisible}
-                  title="Coefficient"
-                  description="Your drinking coefficient calculated from your drunk performance."
+                  title="Points"
+                  description="Your drinking point calculated on your streak, mix posts and overall drunk days"
                   onClose={() => setIsCoefTooltipVisible(false)}
                 ></InfoTooltip>
               )}
