@@ -12,7 +12,6 @@ import Animated, {
 } from "react-native-reanimated";
 import { CanvasItem } from "@/types/api.types";
 
-// --- 1. Single Floating Reaction Component ---
 const FloatingReaction = React.memo(({ uri }: { uri: string }) => {
   // 1. Randomize configuration for this specific bubble
   // Position: 10% to 80% from the left to keep it inside the card
@@ -92,7 +91,7 @@ export const ReactionsOverlay = React.memo(
 
       // 2. Filter for reactions
       const allReactions = items.filter(
-        (i) => i.item_type === "reaction" || i.extra_data?.is_reaction
+        (i) => i.item_type === "reaction" || i.item_type === "sticker"
       );
 
       // 3. Get unique stickers (deduplicate by URL)

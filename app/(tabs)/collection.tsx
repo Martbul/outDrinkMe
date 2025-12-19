@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   TextInput,
   RefreshControl,
+  Linking,
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -514,17 +515,52 @@ export default function Collection() {
     }
   };
 
+  // const handleScanForManual = async () => {
+  //   const permissionResult = await requestPermission();
+  //   if (!permissionResult?.granted) {
+  //     showModal(
+  //       "Permission Needed",
+  //       "Camera permission is required to scan barcodes",
+  //       [
+  //         {
+  //           text: "OK",
+  //           onPress: closeModal,
+  //           style: "primary",
+  //         },
+  //       ]
+  //     );
+  //     return;
+  //   }
+
+  //   setScanning(true);
+  //   setScanned(false);
+  // };
   const handleScanForManual = async () => {
+    if (permission?.granted) {
+      setScanning(true);
+      setScanned(false);
+      return;
+    }
+
     const permissionResult = await requestPermission();
+
     if (!permissionResult?.granted) {
       showModal(
         "Permission Needed",
-        "Camera permission is required to scan barcodes",
+        "Camera permission is required to scan barcodes. Please enable it in your device settings.",
         [
           {
-            text: "OK",
-            onPress: closeModal,
+            text: "Open Settings",
+            onPress: () => {
+              Linking.openSettings();
+              closeModal();
+            },
             style: "primary",
+          },
+          {
+            text: "Cancel",
+            onPress: closeModal,
+            style: "secondary",
           },
         ]
       );
@@ -550,20 +586,60 @@ export default function Collection() {
     ]);
   };
 
+  // const handleScanPress = async () => {
+  //   const permissionResult = await requestPermission();
+  //   posthog?.capture("scan_button_clicked");
+
+  //   if (!permissionResult?.granted) {
+  //     showModal(
+  //       "Permission Needed",
+  //       "Camera permission is required to scan barcodes",
+  //       [
+  //         {
+  //           text: "Grant Permission",
+  //           onPress: () => {
+  //             requestPermission();
+  //             closeModal();
+  //           },
+  //           style: "primary",
+  //         },
+  //         {
+  //           text: "Cancel",
+  //           onPress: closeModal,
+  //           style: "secondary",
+  //         },
+  //       ]
+  //     );
+  //     return;
+  //   }
+  //   setScanning(true);
+  //   setScanned(false);
+  // };
   const handleScanPress = async () => {
+    // 1. Check if we already have permission
+    if (permission?.granted) {
+      setScanning(true);
+      setScanned(false);
+      posthog?.capture("scan_button_clicked");
+      return;
+    }
+
+    // 2. Request permission (this works if status is 'undetermined')
+    // If status is 'denied', this resolves immediately to false without UI
     const permissionResult = await requestPermission();
     posthog?.capture("scan_button_clicked");
 
+    // 3. If still not granted, show the modal with a link to Settings
     if (!permissionResult?.granted) {
       showModal(
         "Permission Needed",
-        "Camera permission is required to scan barcodes",
+        "Camera permission is required to scan barcodes. Please enable it in your device settings.",
         [
           {
-            text: "Grant Permission",
+            text: "Open Settings", // Changed text to be more accurate
             onPress: () => {
+              Linking.openSettings(); // <--- THE FIX: Opens OS Settings
               closeModal();
-              requestPermission();
             },
             style: "primary",
           },
@@ -576,6 +652,7 @@ export default function Collection() {
       );
       return;
     }
+
     setScanning(true);
     setScanned(false);
   };
@@ -627,20 +704,6 @@ export default function Collection() {
     return (
       <View className="flex-1 bg-black justify-center items-center">
         <ActivityIndicator size="large" color="#EA580C" />
-      </View>
-    );
-  }
-
-  if (!permission.granted) {
-    return (
-      <View className="flex-1 bg-black justify-center items-center">
-        <Text className="text-white text-base mb-4">No access to camera</Text>
-        <TouchableOpacity
-          onPress={requestPermission}
-          className="bg-orange-600 px-6 py-3 rounded-xl"
-        >
-          <Text className="text-black font-black">Grant Permission</Text>
-        </TouchableOpacity>
       </View>
     );
   }
