@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, Image, Alert } from "react-native";
+import { View, Text, TouchableOpacity, Image } from "react-native";
 import { useApp } from "@/providers/AppProvider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -13,8 +13,8 @@ import {
   Octicons,
 } from "@expo/vector-icons";
 
-export const Header = () => {
-  const { userData, userStats, unreadNotificationCount, updateUserProfile } = useApp();
+const Header = () => {
+  const { userData, userStats, unreadNotificationCount } = useApp();
   const [isLevelTooltipVisible, setIsLevelTooltipVisible] =
     useState<boolean>(false);
 

@@ -13,7 +13,7 @@ import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FontAwesome5, MaterialCommunityIcons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import { Header } from "@/components/header";
+import Header from "@/components/header";
 import { apiService } from "@/api";
 import { useAuth } from "@clerk/clerk-expo";
 import InfoTooltip from "@/components/infoTooltip";
@@ -27,11 +27,11 @@ interface ModalState {
   visible: boolean;
   title: string;
   description: string;
-  buttons?: Array<{
+  buttons?: {
     text: string;
     onPress: () => void;
     style?: "primary" | "secondary" | "danger";
-  }>;
+  }[];
 }
 
 export default function Collection() {
@@ -79,8 +79,6 @@ export default function Collection() {
 
   useEffect(() => {
     refreshUserAlcoholCollection();
-    // 4. Track Collection View (High level stats)
-    // Since alcoholCollection might not be loaded yet, we depend on it
     if (alcoholCollection) {
       const totalItems = Object.values(alcoholCollection).flat().length;
       posthog?.capture("collection_viewed", {
@@ -88,7 +86,7 @@ export default function Collection() {
         completion_percentage: (totalItems / totalSlots) * 100,
       });
     }
-  }, []);
+  }, [alcoholCollection, posthog, refreshUserAlcoholCollection]);
 
   const getFilteredCollection = (): AlcoholDbItem[] => {
     if (!alcoholCollection) return [];

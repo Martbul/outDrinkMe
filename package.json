@@ -57,6 +57,7 @@
     "react-dom": "19.1.0",
     "react-native": "0.81.4",
     "react-native-confetti-cannon": "^1.5.2",
+    "react-native-deck-swiper": "^2.0.19",
     "react-native-device-info": "^15.0.1",
     "react-native-gesture-handler": "~2.28.0",
     "react-native-gifted-charts": "^1.4.70",

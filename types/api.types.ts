@@ -105,6 +105,8 @@ export interface FriendRequest {
 export interface AddDrinkingRequest {
   drank_today: boolean;
   image_url?: string | null;
+  image_width?: number;
+  image_height?: number;
   location_text?: string;
   location_coords?: {
     latitude: number;
@@ -140,6 +142,8 @@ export interface DailyDrinkingPostResponse {
   drank_today: boolean;
   logged_at: string;
   image_url: string | null;
+   image_width: number;  
+  image_height: number;
   latitude?: number;
   longitude?: number;
   location_text: string | null;
@@ -158,6 +162,8 @@ export interface YourMixPostData {
   drankToday: boolean;
   loggedAt: string;
   imageUrl?: string;
+  imageWidth?: number;   
+  imageHeight?: number; 
   locationText?: string;
   latitude?: number;
   longitude?: number;

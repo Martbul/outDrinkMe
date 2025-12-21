@@ -100,7 +100,9 @@ interface AppContextType {
       longitude: number;
     } | null,
     alcohols?: string[] | [],
-    mentionedBuddies?: UserData[] | []
+    mentionedBuddies?: UserData[] | [],
+    imageWidth?: number, 
+    imageHeight?: number
   ) => Promise<void>;
   addFriend: (friendId: string) => Promise<void>;
   searchUsers: (searchQuery: string) => Promise<UserData[]>;
@@ -856,7 +858,7 @@ export function AppProvider({ children }: AppProviderProps) {
         apiService.getFriends(token),
         apiService.getDiscovery(token),
         apiService.getYourMixData(token, 1), // Page 1
-        apiService.getGlobalMixData(token, 1), // Page 1 (New)         
+        apiService.getGlobalMixData(token, 1), // Page 1 (New)
         apiService.getMixTimeline(token),
         apiService.getWeeklyStats(token),
         apiService.getDrunkThought(token),
@@ -957,7 +959,7 @@ export function AppProvider({ children }: AppProviderProps) {
         );
         setMixTimelineData([]);
       }
-      
+
       if (globalMixDataResult.status === "fulfilled") {
         setGlobalMixData(globalMixDataResult.value);
       } else {
@@ -1077,7 +1079,9 @@ export function AppProvider({ children }: AppProviderProps) {
       locationText?: string,
       locationCoords?: { latitude: number; longitude: number } | null,
       alcohols?: string[] | [],
-      mentionedBuddies?: UserData[] | []
+      mentionedBuddies?: UserData[] | [],
+      imageWidth?: number,
+      imageHeight?: number
     ) => {
       if (!isSignedIn) throw new Error("Must be signed in");
       const result = await withLoadingAndError(
@@ -1088,6 +1092,8 @@ export function AppProvider({ children }: AppProviderProps) {
             {
               drank_today: drinkToday,
               image_url: imageUri,
+              image_width: imageWidth,
+              image_height: imageHeight,
               location_text: locationText,
               location_coords: locationCoords,
               alcohols: alcohols,

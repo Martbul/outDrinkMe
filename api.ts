@@ -343,25 +343,27 @@ class ApiService {
 
 
 
-  private transformMixPosts(
-    posts: DailyDrinkingPostResponse[]
-  ): YourMixPostData[] {
-    return posts.map((post) => ({
-      id: post.id,
-      userId: post.user_id,
-      userImageUrl: post.user_image_url,
-      username: post.username,
-      date: post.date,
-      drankToday: post.drank_today,
-      loggedAt: post.logged_at,
-      imageUrl: post.image_url,
-      locationText: post.location_text,
-      alcohol: post.alcohol,
-      mentionedBuddies: post.mentioned_buddies || [],
-      sourceType: post.source_type,
-      reactions: post.reactions || [],
-    }));
-  }
+private transformMixPosts(
+  posts: DailyDrinkingPostResponse[]
+): YourMixPostData[] {
+  return posts.map((post) => ({
+    id: post.id,
+    userId: post.user_id,
+    userImageUrl: post.user_image_url,
+    username: post.username,
+    date: post.date,
+    drankToday: post.drank_today,
+    loggedAt: post.logged_at,
+    imageUrl: post.image_url,
+    imageWidth: post.image_width,   
+    imageHeight: post.image_height, 
+    locationText: post.location_text,
+    alcohol: post.alcohol,
+    mentionedBuddies: post.mentioned_buddies || [],
+    sourceType: post.source_type,
+    reactions: post.reactions || [],
+  }));
+}
 
 
 

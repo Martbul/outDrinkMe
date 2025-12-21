@@ -1,6 +1,10 @@
 import { apiService } from "@/api";
+// import DrinkingFrequencyChart from "@/components/charts/drinkingFreuencyChart";
+// import FocusIntensityChart from "@/components/charts/focusChart";
+// import AlcoholismChart from "@/components/charts/lineChart";
+// import SobrietyTrendChart from "@/components/charts/trendChart";
 import DrunkThought from "@/components/drunkThought";
-import { Header } from "@/components/header";
+import Header from "@/components/header";
 import InfoTooltip from "@/components/infoTooltip";
 import DrinkingMap from "@/components/map";
 import QrSessionManager from "@/components/qrCodeManager";
@@ -89,49 +93,6 @@ const MOCK_DISK_PHOTOS: PhotoMessage[] = [
   },
 ];
 export default function HomeScreen() {
-  const { getToken } = useAuth();
-  const [isCoefTooltipVisible, setIsCoefTooltipVisible] =
-    useState<boolean>(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
-  const [feedbackText, setFeedbackText] = useState("");
-  const [feedbackCategory, setFeedbackCategory] = useState<string | null>(null);
-  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
-  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
-  const [qrModalVisible, setQrModalVisible] = useState(false);
-  const [selectedSession, setSelectedSession] = useState<GroupSession | null>(
-    null
-  );
-
-  const slideAnim = useRef(
-    new Animated.Value(Dimensions.get("window").height)
-  ).current;
-
-  const openModal = () => {
-    setQrModalVisible(true);
-    Animated.spring(slideAnim, {
-      toValue: 0,
-      useNativeDriver: true,
-      damping: 20,
-    }).start();
-  };
-
-  const closeModal = () => {
-    Animated.timing(slideAnim, {
-      toValue: Dimensions.get("window").height,
-      duration: 300,
-      useNativeDriver: true,
-    }).start(() => setQrModalVisible(false));
-  };
-  if (selectedSession) {
-    return (
-      <SessionDiskView
-        session={selectedSession}
-        onBack={() => setSelectedSession(null)}
-      />
-    );
-  }
-
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -145,14 +106,7 @@ export default function HomeScreen() {
     refreshAll,
   } = useApp();
 
-  const coefInfo = getCoefInfo(userData?.alcoholism_coefficient);
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await refreshAll();
-    setRefreshing(false);
-  };
-
+  
   const displayedThoughts = useMemo(() => {
     if (!friendsDrunkThoughts || friendsDrunkThoughts.length === 0) {
       return [];
@@ -178,6 +132,58 @@ export default function HomeScreen() {
 
     return result;
   }, [friendsDrunkThoughts]);
+
+  const { getToken } = useAuth();
+  const [isCoefTooltipVisible, setIsCoefTooltipVisible] =
+    useState<boolean>(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [feedbackCategory, setFeedbackCategory] = useState<string | null>(null);
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [qrModalVisible, setQrModalVisible] = useState(false);
+  const [selectedSession, setSelectedSession] = useState<GroupSession | null>(
+    null
+  );
+
+  const slideAnim = useRef(
+    new Animated.Value(Dimensions.get("window").height)
+  ).current;
+
+  // const openModal = () => {
+  //   setQrModalVisible(true);
+  //   Animated.spring(slideAnim, {
+  //     toValue: 0,
+  //     useNativeDriver: true,
+  //     damping: 20,
+  //   }).start();
+  // };
+
+  const closeModal = () => {
+    Animated.timing(slideAnim, {
+      toValue: Dimensions.get("window").height,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => setQrModalVisible(false));
+  };
+  if (selectedSession) {
+    return (
+      <SessionDiskView
+        session={selectedSession}
+        onBack={() => setSelectedSession(null)}
+      />
+    );
+  }
+
+  const coefInfo = getCoefInfo(userData?.alcoholism_coefficient);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refreshAll();
+    setRefreshing(false);
+  };
+
 
   const feedbackCategories = [
     { id: "bug", label: "Bug Report", icon: "bug-outline" },
@@ -299,7 +305,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
             {/* <View className="rounded-full bg-orange-600/15 border-orange-600 ">
               <TouchableOpacity
-                onPress={() => router.push("/(screens)/sideQuestBoard")}
+                onPress={() => router.push("/(screens)/swipe")}
                 className="w-16 h-16 rounded-full  items-center justify-center"
               >
                 <MaterialCommunityIcons
@@ -405,7 +411,10 @@ export default function HomeScreen() {
           </Text>
         </TouchableOpacity> */}
 
+        {/* <DrinkingFrequencyChart/> */}
         {/* <AlcoholismChart /> */}
+        {/* <FocusIntensityChart /> */}
+        {/* <SobrietyTrendChart /> */}
 
         <View className="flex-row gap-3 mb-4">
           <DrinkingMap />
@@ -589,7 +598,7 @@ export default function HomeScreen() {
                 <>
                   <Ionicons name="add-circle" size={32} color="#000000" />
                   <Text className="text-black text-lg font-black tracking-wider mt-2">
-                    LOG TODAY'S DRINKING
+                    LOG TODAY&apos;S DRINKING
                   </Text>
                   <Text className="text-black/60 text-xs font-semibold mt-1">
                     Keep your streak alive
@@ -679,7 +688,7 @@ export default function HomeScreen() {
                   {/* Category Selection */}
                   <View className="px-6 pt-5 pb-3">
                     <Text className="text-white/60 text-sm font-semibold mb-3">
-                      What's this about?
+                      What&apos;s this about?
                     </Text>
                     <View className="flex-row flex-wrap gap-2">
                       {feedbackCategories.map((category) => (
