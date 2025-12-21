@@ -1,4 +1,5 @@
 import { apiService } from "@/api";
+import AlcoholismChart from "@/components/charts/lineChart";
 // import DrinkingFrequencyChart from "@/components/charts/drinkingFreuencyChart";
 // import FocusIntensityChart from "@/components/charts/focusChart";
 // import AlcoholismChart from "@/components/charts/lineChart";
@@ -412,7 +413,7 @@ export default function HomeScreen() {
         </TouchableOpacity> */}
 
         {/* <DrinkingFrequencyChart/> */}
-        {/* <AlcoholismChart /> */}
+        <AlcoholismChart />
         {/* <FocusIntensityChart /> */}
         {/* <SobrietyTrendChart /> */}
 

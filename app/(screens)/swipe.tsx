@@ -8,9 +8,8 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MaterialCommunityIcons, FontAwesome5 } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Swiper from "react-native-deck-swiper";
-import Header from "@/components/header";
 import { useApp } from "@/providers/AppProvider";
 import { getRarityColor } from "@/utils/rarity";
 import { AlcoholDbItem } from "@/types/api.types";
