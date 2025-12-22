@@ -10,9 +10,8 @@ import {
   DrunkThought,
   FriendDiscoveryDisplayProfileResponse,
   Friendship,
-  GameSettings,
-  Leaderboard,
-  LeaderboardEntry,
+  FuncDataResponse,
+  FuncSessionResponse,
   LeaderboardsResponse,
   MinVersionResponse,
   NotificationListResponse,
@@ -21,7 +20,6 @@ import {
   SideQuest,
   SideQuestBoard,
   SideQuestCompletion,
-  StoreItem,
   SubmitQuestProofReq,
   UnreadCountResponse,
   UpdateUserProfileReq,
@@ -341,8 +339,6 @@ class ApiService {
     return response || [];
   }
 
-
-
   private transformMixPosts(
     posts: DailyDrinkingPostResponse[]
   ): YourMixPostData[] {
@@ -355,6 +351,8 @@ class ApiService {
       drankToday: post.drank_today,
       loggedAt: post.logged_at,
       imageUrl: post.image_url,
+      imageWidth: post.image_width,
+      imageHeight: post.image_height,
       locationText: post.location_text,
       alcohol: post.alcohol,
       mentionedBuddies: post.mentioned_buddies || [],
@@ -362,9 +360,6 @@ class ApiService {
       reactions: post.reactions || [],
     }));
   }
-
-
-
 
   async getYourMixData(
     token: string,
@@ -967,7 +962,7 @@ class ApiService {
   async saveMemoryWall(
     postId: string,
     items: CanvasItem[],
-    reactions: CanvasItem[], 
+    reactions: CanvasItem[],
     token: string
   ): Promise<{ message: string }> {
     return this.makeRequest<{ message: string }>("/api/v1/user/memory-wall", {
@@ -977,6 +972,69 @@ class ApiService {
         post_id: postId,
         wall_items: items,
         reactions: reactions,
+      }),
+    });
+  }
+
+  async createFunction(token: string): Promise<FuncSessionResponse> {
+    return this.makeRequest<FuncSessionResponse>("/api/v1/func/create", {
+      method: "GET",
+      token,
+    });
+  }
+
+  async joinFunction(token: string, qrToken: string) {
+    return this.makeRequest<{ funcId: string }>("/api/v1/func/join", {
+      method: "POST",
+      token,
+      body: JSON.stringify({
+        qr_token: qrToken,
+      }),
+    });
+  }
+
+  async getFuncData(token: string, funcId: string): Promise<FuncDataResponse> {
+    return this.makeRequest<FuncDataResponse>(`/api/v1/func/data/${funcId}`, {
+      method: "GET",
+      token,
+    });
+  }
+
+  // async uploadImage(token: string, funcId: string, imageUrl: string) {
+  //   return this.makeRequest("/api/v1/func/upload", {
+  //     method: "POST",
+  //     token,
+  //     body: JSON.stringify({
+  //       funcId: funcId,
+  //       imageUrl: imageUrl,
+  //     }),
+  //   });
+  // }
+
+  async uploadImages(token: string, funcId: string, imageUrls: string[]) {
+    return this.makeRequest("/api/v1/func/upload", {
+      method: "POST",
+      token,
+      body: JSON.stringify({
+        funcId: funcId,
+        imageUrls: imageUrls, // Sending an array now
+      }),
+    });
+  }
+
+  async getActiveSession(token: string): Promise<FuncDataResponse> {
+    return this.makeRequest<FuncDataResponse>("/api/v1/func/active", {
+      method: "GET",
+      token,
+    });
+  }
+
+  async leaveFunction(token: string, funcId: string): Promise<void> {
+    return this.makeRequest("/api/v1/func/leave", {
+      method: "POST",
+      token,
+      body: JSON.stringify({
+        funcId: funcId,
       }),
     });
   }

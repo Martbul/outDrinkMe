@@ -6,7 +6,13 @@ import PurchaseConfirmationModal, {
 } from "@/components/purchaseModal";
 import { useAds } from "@/providers/AdProvider";
 import { useApp } from "@/providers/AppProvider";
-import { ColorTheme, EnergyDrink, Flag, GemPack, Smoking } from "@/types/api.types";
+import {
+  ColorTheme,
+  EnergyDrink,
+  Flag,
+  GemPack,
+  Smoking,
+} from "@/types/api.types";
 import { handleEarnGems } from "@/utils/adsReward";
 import { useAuth } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
@@ -123,11 +129,12 @@ export default function StoreScreen() {
   const handleConfirmPurchase = async () => {
     setPendingTransaction(true);
 
-    // 6. Track transaction start
     posthog?.capture("purchase_initiated", {
       type: purchaseType,
       item_id:
-        purchaseType === "store" ? selectedStoreItem?.id : selectedGemItem?.id,
+        (purchaseType === "store"
+          ? selectedStoreItem?.id
+          : selectedGemItem?.id) ?? null,
     });
 
     try {
@@ -173,14 +180,13 @@ export default function StoreScreen() {
     } catch (error: any) {
       console.error("Purchase failed:", error);
 
-      // 8. Track Failed Purchase (Critical for debugging lost revenue)
       posthog?.capture("purchase_failed", {
         type: purchaseType,
         error_message: error.message,
         item_id:
-          purchaseType === "store"
+          (purchaseType === "store"
             ? selectedStoreItem?.id
-            : selectedGemItem?.id,
+            : selectedGemItem?.id) ?? null,
       });
 
       alert("Purchase failed. Please try again.");
@@ -215,16 +221,15 @@ export default function StoreScreen() {
     })
   );
 
-    const energyDrinks: EnergyDrink[] = (storeItems?.energy || []).map(
-      (drink: any, index: number) => ({
-        id: index + 1,
-        title: drink.name,
-        price: drink.base_price,
-        image: { uri: drink.image_url },
-        storeItem: drink,
-      })
-    );
-
+  const energyDrinks: EnergyDrink[] = (storeItems?.energy || []).map(
+    (drink: any, index: number) => ({
+      id: index + 1,
+      title: drink.name,
+      price: drink.base_price,
+      image: { uri: drink.image_url },
+      storeItem: drink,
+    })
+  );
 
   const gemPacks: GemPack[] = [
     {
@@ -336,8 +341,6 @@ export default function StoreScreen() {
       </View>
     </TouchableOpacity>
   );
-  ;
-
   const FlagCard = ({ item }: { item: any }) => (
     <TouchableOpacity
       className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08] mr-3"

@@ -68,11 +68,9 @@ export default function AddDrinks() {
     "logging"
   );
 
-  // Details View State
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [mentionedBuddies, setMentionedBuddies] = useState<UserData[]>([]);
 
-  // --- STATE FOR DRINK & LOCATION ---
   const [locationText, setLocationText] = useState("");
   const [locationCoords, setLocationCoords] = useState<{
     latitude: number;
@@ -80,16 +78,13 @@ export default function AddDrinks() {
   } | null>(null);
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
 
-  // Drink Selection State
-  const [alcohols, setAlcohols] = useState<string[] | []>([]);
+  const [alcohols, setAlcohols] = useState<string[]>([]);
   const [isDrinkMenuExpanded, setIsDrinkMenuExpanded] = useState(false);
 
-  // Modals
   const [imagePickerVisible, setImagePickerVisible] = useState(false);
   const [isAfterDrinkLoggedModalVisible, setAfterDrinkLoggedModal] =
     useState(false);
 
-  // Thoughts State
   const [thoughtInput, setThoughtInput] = useState("");
   const [isSubmittingDrunkThought, setIsSubmittingDrunkThought] =
     useState(false);
@@ -178,6 +173,7 @@ export default function AddDrinks() {
         posthog?.capture("location_added_to_drink");
       }
     } catch (error) {
+      console.error("Location fetching error:", error);
       Alert.alert("Error", "Could not fetch location. Please try again.");
     } finally {
       setIsFetchingLocation(false);
@@ -186,7 +182,7 @@ export default function AddDrinks() {
 
   const uploadToCloudinary = async (
     localUri: string
-  ): Promise<string | null> => {
+  ): Promise<{ url: string; width: number; height: number } | null> => {
     try {
       posthog?.capture("image_upload_started");
       const manipulatedResult = await ImageManipulator.manipulateAsync(
@@ -194,8 +190,8 @@ export default function AddDrinks() {
         [{ resize: { width: 1080 } }],
         { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
       );
+      const { uri: uriToUpload, width, height } = manipulatedResult;
 
-      const uriToUpload = manipulatedResult.uri;
       const CLOUDINARY_CLOUD_NAME =
         process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
       const CLOUDINARY_UPLOAD_PRESET =
@@ -230,7 +226,7 @@ export default function AddDrinks() {
 
       if (data.secure_url) {
         posthog?.capture("image_upload_success");
-        return data.secure_url;
+        return { url: data.secure_url, width, height };
       }
       return null;
     } catch (error: any) {
@@ -274,6 +270,7 @@ export default function AddDrinks() {
         setImageUri(result.assets[0].uri);
       }
     } catch (error) {
+      console.error("Image picking error:", error);
       Alert.alert("Error", "Failed to pick image");
     }
   };
@@ -328,28 +325,32 @@ export default function AddDrinks() {
     setIsSubmitting(true);
 
     try {
-      let finalImageUri = imageUri;
+      let finalImageUrl = imageUri;
+      let imageWidth = 0;
+      let imageHeight = 0;
 
-      if (
-        !skipDetails &&
-        imageUri &&
-        !imageUri.includes("cloudinary") &&
-        !imageUri.includes("http")
-      ) {
-        finalImageUri = await uploadToCloudinary(imageUri);
+      if (!skipDetails && imageUri) {
+        const uploadResult = await uploadToCloudinary(imageUri);
+        if (uploadResult) {
+          finalImageUrl = uploadResult.url;
+          imageWidth = uploadResult.width;
+          imageHeight = uploadResult.height;
+        }
       }
 
       await addDrinking(
         true,
-        skipDetails ? null : finalImageUri,
-        skipDetails ? "" : locationText,
-        skipDetails ? null : locationCoords,
-        skipDetails ? [] : alcohols,
-        skipDetails ? [] : mentionedBuddies
+        finalImageUrl,
+        locationText,
+        locationCoords,
+        alcohols,
+        mentionedBuddies,
+        imageWidth,
+        imageHeight
       );
 
       posthog.capture("drink_logged", {
-        has_image: !!finalImageUri,
+        has_image: !!finalImageUrl,
         buddy_count: mentionedBuddies.length,
         is_skipped: skipDetails,
         has_location: !!locationText,
@@ -364,7 +365,8 @@ export default function AddDrinks() {
       setAlcohols([]);
       setViewState("logging");
       await refreshAll();
-    } catch (error: any) {
+    } catch (error) {
+      console.error("Drink logging error:", error);
       Alert.alert("Error", "Failed to log drink.");
     } finally {
       setIsSubmitting(false);
@@ -403,7 +405,8 @@ export default function AddDrinks() {
           char_length: thoughtInput.length,
           is_update: !!drunkThought,
         });
-      } catch (error: any) {
+      } catch (error) {
+        console.error("Thought saving error:", error);
         Alert.alert("Error", "Failed to save your thought. Try again!");
       } finally {
         setIsSubmittingDrunkThought(false);
@@ -502,7 +505,7 @@ export default function AddDrinks() {
                   Your Drunk Wisdom
                 </Text>
                 <Text className="text-white text-xl font-bold text-center leading-7 italic">
-                  "{drunkThought}"
+                  &quot;{drunkThought}&quot;
                 </Text>
               </View>
             ) : (
@@ -909,8 +912,8 @@ export default function AddDrinks() {
         friends={friends}
         visible={isAfterDrinkLoggedModalVisible}
         isLoading={isLoading}
-        handleUpload={async (today, uri, loc, buddies) => {
-          await addDrinking(today, uri, loc, buddies);
+        handleUpload={async (today, uri, loc, buddies, width, height) => {
+          await addDrinking(today, uri, loc, null, [], buddies, width, height);
         }}
         onClose={() => setAfterDrinkLoggedModal(false)}
       />
@@ -918,7 +921,6 @@ export default function AddDrinks() {
   );
 }
 
-// ... AdditionalInfoModal code (same as previous) ...
 interface InfoTooltipProps {
   friends: UserData[];
   visible: boolean;
@@ -927,7 +929,9 @@ interface InfoTooltipProps {
     drinkToday: boolean,
     imageUri?: string | null,
     locationText?: string,
-    mentionedBuddies?: UserData[] | []
+    mentionedBuddies?: UserData[] | [],
+    imageWidth?: number,
+    imageHeight?: number
   ) => Promise<void>;
   onClose: () => void;
 }
@@ -963,7 +967,7 @@ function AdditionalInfoModal({
         useNativeDriver: true,
       }).start();
     }
-  }, [visible]);
+  }, [visible, scaleAnim]);
 
   const toggleFriendSelection = (friend: UserData) => {
     setMentionedBuddies((prev) => {

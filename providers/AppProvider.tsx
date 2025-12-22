@@ -100,7 +100,9 @@ interface AppContextType {
       longitude: number;
     } | null,
     alcohols?: string[] | [],
-    mentionedBuddies?: UserData[] | []
+    mentionedBuddies?: UserData[] | [],
+    imageWidth?: number, 
+    imageHeight?: number
   ) => Promise<void>;
   addFriend: (friendId: string) => Promise<void>;
   searchUsers: (searchQuery: string) => Promise<UserData[]>;
@@ -688,145 +690,7 @@ export function AppProvider({ children }: AppProviderProps) {
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
 
-  // ============================================
-  // Refresh All - Updated for Pagination
-  // ============================================
-  // const refreshAll = useCallback(async () => {
-  //   if (!isSignedIn) return;
-
-  //   try {
-  //     setIsLoading(true);
-  //     setError(null);
-
-  //     const token = await getToken();
-  //     if (!token) throw new Error("No auth token");
-
-  //     const updateRequired = await checkForMandatoryUpdate();
-  //     if (updateRequired) {
-  //       setIsInitialLoading(false);
-  //       setIsLoading(false);
-  //       return;
-  //     }
-
-  //     // Fetch Page 1 for the lists
-  //     const results = await Promise.allSettled([
-  //       apiService.fetchUser(token),
-  //       apiService.getUserStats(token),
-  //       apiService.getLeaderboards(token),
-  //       apiService.getAchievements(token),
-  //       apiService.getCurrentMonthCalendar(token),
-  //       apiService.getFriends(token),
-  //       apiService.getDiscovery(token),
-  //       apiService.getYourMixData(token, 1), // Page 1
-  //       apiService.getGlobalMixData(token, 1), // Page 1 (New)
-  //       apiService.getMixTimeline(token),
-  //       apiService.getWeeklyStats(token),
-  //       apiService.getDrunkThought(token),
-  //       apiService.getFriendsDrunkThoughts(token),
-  //       apiService.getUserAlcoholCollection(token),
-  //       apiService.getUserInventory(token),
-  //       apiService.getStore(token),
-  //       apiService.getAllNotifications(token, 1, 50),
-  //       apiService.getUnreadNotificationsCount(token),
-  //       apiService.getBoardQuests(token),
-  //       apiService.getMapFriendsPosts(token),
-  //     ]);
-
-  //     const [
-  //       userResult,
-  //       statsResult,
-  //       boardResult,
-  //       achievResult,
-  //       calResult,
-  //       friendsResult,
-  //       discoveryResult,
-  //       yourMixDataResult,
-  //       globalMixDataResult,
-  //       mixTimelineDataResult,
-  //       weeklyResult,
-  //       drunkThoughtResult,
-  //       friendsDrunkThoughtsResult,
-  //       userAlcoholCollectionResult,
-  //       inventoryResult,
-  //       storeResult,
-  //       notifListResult,
-  //       notifCountResult,
-  //       SideQuestBoardResult,
-  //       mapFriendsPostsResult,
-  //     ] = results;
-
-  //     if (userResult.status === "fulfilled") setUserData(userResult.value);
-  //     if (statsResult.status === "fulfilled") setUserStats(statsResult.value);
-  //     if (boardResult.status === "fulfilled") {
-  //       setLeaderboard(boardResult.value);
-  //     } else {
-  //       setLeaderboard({
-  //         global: { entries: [], total_users: 0 },
-  //         friends: { entries: [], total_users: 0 },
-  //       });
-  //     }
-  //     if (achievResult.status === "fulfilled")
-  //       setAchievements(achievResult.value);
-  //     if (calResult.status === "fulfilled") setCalendar(calResult.value);
-  //     if (friendsResult.status === "fulfilled") setFriends(friendsResult.value);
-  //     if (discoveryResult.status === "fulfilled")
-  //       setDiscovery(discoveryResult.value);
-
-  //     // Handle Pagination Initial State
-  //     if (yourMixDataResult.status === "fulfilled") {
-  //       setYourMixData(yourMixDataResult.value);
-  //       setYourMixPage(1);
-  //       setYourMixHasMore(yourMixDataResult.value.length > 0);
-  //     }
-  //     if (globalMixDataResult.status === "fulfilled") {
-  //       setGlobalMixData(globalMixDataResult.value);
-  //       setGlobalMixPage(1);
-  //       setGlobalMixHasMore(globalMixDataResult.value.length > 0);
-  //     } else {
-  //       // Fallback if not implemented yet
-  //       setGlobalMixData([]);
-  //     }
-
-  //     if (mixTimelineDataResult.status === "fulfilled")
-  //       setMixTimelineData(mixTimelineDataResult.value);
-  //     if (weeklyResult.status === "fulfilled")
-  //       setWeeklyStats(weeklyResult.value);
-  //     if (drunkThoughtResult.status === "fulfilled")
-  //       setDrunkThought(drunkThoughtResult.value);
-  //     if (friendsDrunkThoughtsResult.status === "fulfilled")
-  //       setFriendsDrunkThoughts(friendsDrunkThoughtsResult.value);
-  //     if (userAlcoholCollectionResult.status === "fulfilled")
-  //       setAlcoholCollection(userAlcoholCollectionResult.value);
-  //     if (inventoryResult.status === "fulfilled")
-  //       setUserInventory(inventoryResult.value);
-  //     if (storeResult.status === "fulfilled") setStoreItems(storeResult.value);
-  //     if (notifListResult.status === "fulfilled")
-  //       setNotifications(notifListResult.value.notifications || []);
-  //     if (notifCountResult.status === "fulfilled")
-  //       setUnreadNotificationCount(notifCountResult.value.unread_count);
-  //     if (SideQuestBoardResult.status === "fulfilled")
-  //       setSideQuestBoards(SideQuestBoardResult.value);
-  //     if (mapFriendsPostsResult.status === "fulfilled")
-  //       setMapFriendPosts(mapFriendsPostsResult.value);
-
-  //     const failedCalls = results.filter((r) => r.status === "rejected");
-  //     if (failedCalls.length > 0) {
-  //       posthog?.capture("bulk_refresh_partial_failure", {
-  //         fail_count: failedCalls.length,
-  //       });
-  //       setError(
-  //         `${failedCalls.length} API call(s) failed. Some data may be incomplete.`
-  //       );
-  //     }
-  //   } catch (err) {
-  //     const errorMessage = err instanceof Error ? err.message : "Unknown error";
-  //     posthog?.capture("bulk_refresh_fatal_error", { error: errorMessage });
-  //     setError(errorMessage);
-  //   } finally {
-  //     setIsInitialLoading(false);
-  //     setIsLoading(false);
-  //   }
-  // }, [isSignedIn, getToken, checkForMandatoryUpdate, posthog]);
+ 
   const refreshAll = useCallback(async () => {
     if (!isSignedIn) return;
 
@@ -856,7 +720,7 @@ export function AppProvider({ children }: AppProviderProps) {
         apiService.getFriends(token),
         apiService.getDiscovery(token),
         apiService.getYourMixData(token, 1), // Page 1
-        apiService.getGlobalMixData(token, 1), // Page 1 (New)         
+        apiService.getGlobalMixData(token, 1), // Page 1 (New)
         apiService.getMixTimeline(token),
         apiService.getWeeklyStats(token),
         apiService.getDrunkThought(token),
@@ -870,7 +734,6 @@ export function AppProvider({ children }: AppProviderProps) {
         apiService.getMapFriendsPosts(token),
       ]);
 
-      // Extract successful results and handle failures
       const [
         userResult,
         statsResult,
@@ -957,7 +820,7 @@ export function AppProvider({ children }: AppProviderProps) {
         );
         setMixTimelineData([]);
       }
-      
+
       if (globalMixDataResult.status === "fulfilled") {
         setGlobalMixData(globalMixDataResult.value);
       } else {
@@ -1077,7 +940,9 @@ export function AppProvider({ children }: AppProviderProps) {
       locationText?: string,
       locationCoords?: { latitude: number; longitude: number } | null,
       alcohols?: string[] | [],
-      mentionedBuddies?: UserData[] | []
+      mentionedBuddies?: UserData[] | [],
+      imageWidth?: number,
+      imageHeight?: number
     ) => {
       if (!isSignedIn) throw new Error("Must be signed in");
       const result = await withLoadingAndError(
@@ -1088,6 +953,8 @@ export function AppProvider({ children }: AppProviderProps) {
             {
               drank_today: drinkToday,
               image_url: imageUri,
+              image_width: imageWidth,
+              image_height: imageHeight,
               location_text: locationText,
               location_coords: locationCoords,
               alcohols: alcohols,

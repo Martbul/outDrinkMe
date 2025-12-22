@@ -16,6 +16,7 @@ import { DrunkGameProvider } from "@/providers/DrunkGameProvider";
 import DeepLinkHandler from "@/components/deepLinkHandler";
 import MandatoryUpdateModal from "@/components/mandatoryUpdateModal";
 import "../global.css";
+import { FunctionProvider } from "@/providers/FunctionProvider";
 
 let posthog: PostHog;
 
@@ -117,14 +118,16 @@ export default function RootLayout() {
             <PostHogProvider client={posthog}>
               <PostHogScreenTracker />
               <AppProvider>
-                <DrunkGameProvider>
-                  <AdsProvider>
-                    <TailwindProvider>
-                      <AuthenticatedAppContent />
-                      <MandatoryUpdateModal />
-                    </TailwindProvider>
-                  </AdsProvider>
-                </DrunkGameProvider>
+                <FunctionProvider>
+                  <DrunkGameProvider>
+                    <AdsProvider>
+                      <TailwindProvider>
+                        <AuthenticatedAppContent />
+                        <MandatoryUpdateModal />
+                      </TailwindProvider>
+                    </AdsProvider>
+                  </DrunkGameProvider>
+                </FunctionProvider>
               </AppProvider>
             </PostHogProvider>
           </ClerkLoaded>

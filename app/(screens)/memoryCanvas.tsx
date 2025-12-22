@@ -373,7 +373,6 @@ export default function MemoryCanvas() {
     });
   }, [addToHistory]);
 
-
   const handleAddReaction = (id: string, imageUrl: string) => {
     setOptimisticUsage((prev) => ({
       ...prev,
@@ -407,7 +406,6 @@ export default function MemoryCanvas() {
     setReactions((prev) => [...prev, newReaction]);
     triggerHaptic(Haptics.ImpactFeedbackStyle.Light);
   };
-
 
   const handleSaveCanvas = async () => {
     if (items.length === 0 && reactions.length === 0) return;
@@ -591,7 +589,6 @@ export default function MemoryCanvas() {
     updateItems(newItems);
     setTextModalVisible(false);
   };
-
 
   const handleAddSticker = (id: string, imageUrl: string) => {
     setOptimisticUsage((prev) => ({
@@ -814,7 +811,7 @@ export default function MemoryCanvas() {
                       setItems((prev) => {
                         if (prev.find((i) => i.id === id)) {
                           const n = prev.filter((i) => i.id !== id);
-                          updateItems(n); 
+                          updateItems(n);
                           return n;
                         }
                         return prev;
@@ -978,7 +975,7 @@ export default function MemoryCanvas() {
               {isSaving ? (
                 <ActivityIndicator size="small" color="black" />
               ) : (
-                  <Feather name="check" size={24} color="black" />
+                <Feather name="check" size={24} color="black" />
               )}
             </TouchableOpacity>
           )}
@@ -1436,8 +1433,10 @@ const DraggableItem = ({
 
   const isLocked = !!item.extra_data?.locked;
 
-  const isMine = currentUserId && item.added_by_user_id === currentUserId;
-  const canInteract = !isDrawingMode && !isLocked && (canEdit || isMine);
+  const isMine = !!currentUserId && item.added_by_user_id === currentUserId;
+  const canInteract = Boolean(
+    !isDrawingMode && !isLocked && (canEdit || isMine)
+  );
 
   const tap = Gesture.Tap()
     .numberOfTaps(2)

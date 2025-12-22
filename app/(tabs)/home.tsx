@@ -1,11 +1,18 @@
 import { apiService } from "@/api";
+import AlcoholismChart from "@/components/charts/lineChart";
+import StreakComparisonChart from "@/components/charts/streak_comparison_chart";
+// import DrinkingFrequencyChart from "@/components/charts/drinkingFreuencyChart";
+// import FocusIntensityChart from "@/components/charts/focusChart";
+// import AlcoholismChart from "@/components/charts/lineChart";
+// import SobrietyTrendChart from "@/components/charts/trendChart";
 import DrunkThought from "@/components/drunkThought";
-import { Header } from "@/components/header";
+import Header from "@/components/header";
 import InfoTooltip from "@/components/infoTooltip";
 import DrinkingMap from "@/components/map";
 import QrSessionManager from "@/components/qrCodeManager";
 import ThisWeekGadget from "@/components/thisWeekGadget";
 import { useApp } from "@/providers/AppProvider";
+import { useFunc } from "@/providers/FunctionProvider";
 import { getCoefInfo } from "@/utils/levels";
 import { useAuth } from "@clerk/clerk-expo";
 import {
@@ -89,51 +96,9 @@ const MOCK_DISK_PHOTOS: PhotoMessage[] = [
   },
 ];
 export default function HomeScreen() {
-  const { getToken } = useAuth();
-  const [isCoefTooltipVisible, setIsCoefTooltipVisible] =
-    useState<boolean>(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
-  const [feedbackText, setFeedbackText] = useState("");
-  const [feedbackCategory, setFeedbackCategory] = useState<string | null>(null);
-  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
-  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
-  const [qrModalVisible, setQrModalVisible] = useState(false);
-  const [selectedSession, setSelectedSession] = useState<GroupSession | null>(
-    null
-  );
-
-  const slideAnim = useRef(
-    new Animated.Value(Dimensions.get("window").height)
-  ).current;
-
-  const openModal = () => {
-    setQrModalVisible(true);
-    Animated.spring(slideAnim, {
-      toValue: 0,
-      useNativeDriver: true,
-      damping: 20,
-    }).start();
-  };
-
-  const closeModal = () => {
-    Animated.timing(slideAnim, {
-      toValue: Dimensions.get("window").height,
-      duration: 300,
-      useNativeDriver: true,
-    }).start(() => setQrModalVisible(false));
-  };
-  if (selectedSession) {
-    return (
-      <SessionDiskView
-        session={selectedSession}
-        onBack={() => setSelectedSession(null)}
-      />
-    );
-  }
-
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { isPartOfActiveFunc, funcMetaData } = useFunc();
 
   const {
     userStats,
@@ -144,14 +109,6 @@ export default function HomeScreen() {
     leaderboard,
     refreshAll,
   } = useApp();
-
-  const coefInfo = getCoefInfo(userData?.alcoholism_coefficient);
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await refreshAll();
-    setRefreshing(false);
-  };
 
   const displayedThoughts = useMemo(() => {
     if (!friendsDrunkThoughts || friendsDrunkThoughts.length === 0) {
@@ -178,6 +135,76 @@ export default function HomeScreen() {
 
     return result;
   }, [friendsDrunkThoughts]);
+
+  const { getToken } = useAuth();
+  const [isCoefTooltipVisible, setIsCoefTooltipVisible] =
+    useState<boolean>(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [feedbackCategory, setFeedbackCategory] = useState<string | null>(null);
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [qrModalVisible, setQrModalVisible] = useState(false);
+  const [selectedSession, setSelectedSession] = useState<GroupSession | null>(
+    null
+  );
+
+  const slideAnim = useRef(
+    new Animated.Value(Dimensions.get("window").height)
+  ).current;
+
+const handleFunctionPress = () => {
+  console.log("Is Part of Func:", isPartOfActiveFunc);
+  console.log("Metadata:", funcMetaData);
+
+  if (isPartOfActiveFunc && funcMetaData?.sessionID) {
+    router.push({
+      pathname: "/(screens)/func_screen",
+      params: {
+        funcId: funcMetaData.sessionID,
+        inviteCode: funcMetaData.qrToken || funcMetaData.inviteCode,
+        qrBase64: funcMetaData.qrCodeBase64,
+      },
+    });
+  } else {
+    openModal();
+  }
+};
+  
+
+  const openModal = () => {
+    setQrModalVisible(true);
+    Animated.spring(slideAnim, {
+      toValue: 0,
+      useNativeDriver: true,
+      damping: 20,
+    }).start();
+  };
+
+  const closeModal = () => {
+    Animated.timing(slideAnim, {
+      toValue: Dimensions.get("window").height,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => setQrModalVisible(false));
+  };
+  if (selectedSession) {
+    return (
+      <SessionDiskView
+        session={selectedSession}
+        onBack={() => setSelectedSession(null)}
+      />
+    );
+  }
+
+  const coefInfo = getCoefInfo(userData?.alcoholism_coefficient);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refreshAll();
+    setRefreshing(false);
+  };
 
   const feedbackCategories = [
     { id: "bug", label: "Bug Report", icon: "bug-outline" },
@@ -256,14 +283,6 @@ export default function HomeScreen() {
       >
         <View className="items-center mb-6">
           <View className="flex flex-row items-center gap-8">
-            {/* <View className="rounded-full bg-orange-600/15 border-orange-600 ">
-              <TouchableOpacity
-                onPress={openModal}
-                className=" w-16 h-16 rounded-full  items-center justify-center"
-              >
-                <Ionicons name="images-outline" size={24} color="#EA580C" />
-              </TouchableOpacity>
-            </View> */}
             <View className="rounded-full bg-orange-600/15 border-orange-600 ">
               <TouchableOpacity
                 onPress={() => router.push("/(screens)/drinkingGames")}
@@ -297,29 +316,13 @@ export default function HomeScreen() {
                 ></InfoTooltip>
               )}
             </TouchableOpacity>
-            {/* <View className="rounded-full bg-orange-600/15 border-orange-600 ">
+            <View className="rounded-full bg-orange-600/15 border-orange-600 opacity-0 disable ">
               <TouchableOpacity
-                onPress={() => router.push("/(screens)/sideQuestBoard")}
-                className="w-16 h-16 rounded-full  items-center justify-center"
+                onPress={handleFunctionPress}
+                className=" w-16 h-16 rounded-full  items-center justify-center"
               >
-                <MaterialCommunityIcons
-                  name="sword"
-                  size={34}
-                  color="#EA580C"
-                />
-              </TouchableOpacity>
-            </View> */}
-            {/* <View className="rounded-full bg-orange-600/15 border-orange-600"> */}
-            <View className="rounded-full bg-orange-600/15 border-orange-600 opacity-0 disabled ">
-              <TouchableOpacity
-                onPress={() => router.push("/(screens)/squads")}
-                className="w-16 h-16 rounded-full  items-center justify-center"
-              >
-                <MaterialCommunityIcons
-                  name="account-group-outline"
-                  size={32}
-                  color="#EA580C"
-                />
+                <Ionicons name="images-outline" size={24} color="#EA580C" />
+                
               </TouchableOpacity>
             </View>
           </View>
@@ -388,14 +391,7 @@ export default function HomeScreen() {
             </View>
           </TouchableOpacity> */}
         </View>
-        {/* <TouchableOpacity
-          onPress={() => router.push("/(screens)/drinkingGames")}
-          className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]"
-        >
-          <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">
-            DRINKING GAMES
-          </Text>
-        </TouchableOpacity>
+        {/*
         <TouchableOpacity
           onPress={() => router.push("/(screens)/profileBuilder")}
           className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]"
@@ -405,13 +401,19 @@ export default function HomeScreen() {
           </Text>
         </TouchableOpacity> */}
 
-        {/* <AlcoholismChart /> */}
+        {/* <DrinkingFrequencyChart/> */}
+        {/* <FocusIntensityChart /> */}
+        {/* <SobrietyTrendChart /> */}
 
         <View className="flex-row gap-3 mb-4">
           <DrinkingMap />
         </View>
 
         <ThisWeekGadget />
+
+        <AlcoholismChart />
+
+        {/* <StreakComparisonChart /> */}
 
         <View className="flex-row gap-3 mb-4">
           <TouchableOpacity
@@ -589,7 +591,7 @@ export default function HomeScreen() {
                 <>
                   <Ionicons name="add-circle" size={32} color="#000000" />
                   <Text className="text-black text-lg font-black tracking-wider mt-2">
-                    LOG TODAY'S DRINKING
+                    LOG TODAY&apos;S DRINKING
                   </Text>
                   <Text className="text-black/60 text-xs font-semibold mt-1">
                     Keep your streak alive
@@ -679,7 +681,7 @@ export default function HomeScreen() {
                   {/* Category Selection */}
                   <View className="px-6 pt-5 pb-3">
                     <Text className="text-white/60 text-sm font-semibold mb-3">
-                      What's this about?
+                      What&apos;s this about?
                     </Text>
                     <View className="flex-row flex-wrap gap-2">
                       {feedbackCategories.map((category) => (
