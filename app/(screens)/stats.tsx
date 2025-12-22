@@ -211,7 +211,7 @@ export default function StatsPage() {
           <View className="flex-row flex-wrap">
             {/* Days Drank This Period */}
             <View className="w-1/2 p-2">
-              <View className="bg-orange-600/10 rounded-2xl p-4 border border-orange-600/30">
+              <View className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]">
                 <FontAwesome5 name="glass-cheers" size={28} color="#EA580C" />
                 <Text className="text-white text-3xl font-black mt-3">
                   {daysStat?.days_drank || 0}
@@ -224,7 +224,7 @@ export default function StatsPage() {
 
             {/* Current Streak */}
             <View className="w-1/2 p-2">
-              <View className="bg-orange-600/10 rounded-2xl p-4 border border-orange-600/30">
+              <View className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]">
                 <FontAwesome5 name="fire" size={28} color="#EA580C" />
                 <Text className="text-white text-3xl font-black mt-3">
                   {userStats?.current_streak || 0}
@@ -237,7 +237,7 @@ export default function StatsPage() {
 
             {/* Longest Streak */}
             <View className="w-1/2 p-2">
-              <View className="bg-orange-600/10 rounded-2xl p-4 border border-orange-600/30">
+              <View className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]">
                 <MaterialCommunityIcons
                   name="fire-circle"
                   size={28}
@@ -254,7 +254,7 @@ export default function StatsPage() {
 
             {/* Weeks Won */}
             <View className="w-1/2 p-2">
-              <View className="bg-orange-600/10 rounded-2xl p-4 border border-orange-600/30">
+              <View className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]">
                 <FontAwesome5 name="trophy" size={28} color="#EA580C" />
                 <Text className="text-white text-3xl font-black mt-3">
                   {userStats?.total_weeks_won || 0}
@@ -302,7 +302,7 @@ export default function StatsPage() {
           <View className="flex-row flex-wrap">
             {/* Unique Items */}
             <View className="w-1/2 p-2">
-              <View className="bg-orange-600/10 rounded-2xl p-4 border border-orange-600/30">
+              <View className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]">
                 <FontAwesome5 name="wine-bottle" size={28} color="#EA580C" />
                 <Text className="text-white text-3xl font-black mt-3">
                   {collectionStats.uniqueItems}
@@ -315,7 +315,7 @@ export default function StatsPage() {
 
             {/* Average ABV */}
             <View className="w-1/2 p-2">
-              <View className="bg-orange-600/10 rounded-2xl p-4 border border-orange-600/30">
+              <View className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]">
                 <MaterialCommunityIcons
                   name="percent"
                   size={28}
@@ -332,7 +332,7 @@ export default function StatsPage() {
 
             {/* Friends */}
             <View className="w-1/2 p-2">
-              <View className="bg-orange-600/10 rounded-2xl p-4 border border-orange-600/30">
+              <View className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]">
                 <FontAwesome5 name="user-friends" size={28} color="#EA580C" />
                 <Text className="text-white text-3xl font-black mt-3">
                   {userStats?.friends_count || 0}
@@ -345,7 +345,7 @@ export default function StatsPage() {
 
             {/* Global Rank */}
             <View className="w-1/2 p-2">
-              <View className="bg-orange-600/10 rounded-2xl p-4 border border-orange-600/30">
+              <View className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]">
                 <FontAwesome5 name="crown" size={28} color="#EA580C" />
                 <Text className="text-white text-3xl font-black mt-3">
                   #{userStats?.rank || 0}

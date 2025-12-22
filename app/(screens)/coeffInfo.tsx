@@ -71,7 +71,7 @@ export default function CoeffInfoScreen() {
 
   return (
     <View className="flex-1 bg-black">
-      <NestedScreenHeader heading="Tiers" secondaryHeading="COEFFICIENT" />
+      <NestedScreenHeader heading="Tiers" secondaryHeading="POINTS" />
       <ScrollView
         ref={scrollViewRef}
         className="flex-1"
@@ -90,7 +90,7 @@ export default function CoeffInfoScreen() {
               </View>
               <View className="flex-1">
                 <Text className="text-orange-600 text-[11px] font-bold tracking-widest">
-                  COEFFICIENT
+                  POINTS
                 </Text>
                 <Text className="text-white text-2xl font-black">System</Text>
               </View>
@@ -102,7 +102,6 @@ export default function CoeffInfoScreen() {
           </View>
         </View>
 
-        {/* Coefficient Tiers List */}
         <View className="px-4 mb-6">
           <View className="mb-4 flex-row justify-between items-end">
             <View>

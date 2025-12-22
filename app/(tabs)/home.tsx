@@ -1,5 +1,6 @@
 import { apiService } from "@/api";
 import AlcoholismChart from "@/components/charts/lineChart";
+import StreakComparisonChart from "@/components/charts/streak_comparison_chart";
 // import DrinkingFrequencyChart from "@/components/charts/drinkingFreuencyChart";
 // import FocusIntensityChart from "@/components/charts/focusChart";
 // import AlcoholismChart from "@/components/charts/lineChart";
@@ -11,6 +12,7 @@ import DrinkingMap from "@/components/map";
 import QrSessionManager from "@/components/qrCodeManager";
 import ThisWeekGadget from "@/components/thisWeekGadget";
 import { useApp } from "@/providers/AppProvider";
+import { useFunc } from "@/providers/FunctionProvider";
 import { getCoefInfo } from "@/utils/levels";
 import { useAuth } from "@clerk/clerk-expo";
 import {
@@ -96,6 +98,7 @@ const MOCK_DISK_PHOTOS: PhotoMessage[] = [
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { isPartOfActiveFunc, funcMetaData } = useFunc();
 
   const {
     userStats,
@@ -107,7 +110,6 @@ export default function HomeScreen() {
     refreshAll,
   } = useApp();
 
-  
   const displayedThoughts = useMemo(() => {
     if (!friendsDrunkThoughts || friendsDrunkThoughts.length === 0) {
       return [];
@@ -152,14 +154,33 @@ export default function HomeScreen() {
     new Animated.Value(Dimensions.get("window").height)
   ).current;
 
-  // const openModal = () => {
-  //   setQrModalVisible(true);
-  //   Animated.spring(slideAnim, {
-  //     toValue: 0,
-  //     useNativeDriver: true,
-  //     damping: 20,
-  //   }).start();
-  // };
+const handleFunctionPress = () => {
+  console.log("Is Part of Func:", isPartOfActiveFunc);
+  console.log("Metadata:", funcMetaData);
+
+  if (isPartOfActiveFunc && funcMetaData?.sessionID) {
+    router.push({
+      pathname: "/(screens)/func_screen",
+      params: {
+        funcId: funcMetaData.sessionID,
+        inviteCode: funcMetaData.qrToken || funcMetaData.inviteCode,
+        qrBase64: funcMetaData.qrCodeBase64,
+      },
+    });
+  } else {
+    openModal();
+  }
+};
+  
+
+  const openModal = () => {
+    setQrModalVisible(true);
+    Animated.spring(slideAnim, {
+      toValue: 0,
+      useNativeDriver: true,
+      damping: 20,
+    }).start();
+  };
 
   const closeModal = () => {
     Animated.timing(slideAnim, {
@@ -184,7 +205,6 @@ export default function HomeScreen() {
     await refreshAll();
     setRefreshing(false);
   };
-
 
   const feedbackCategories = [
     { id: "bug", label: "Bug Report", icon: "bug-outline" },
@@ -263,14 +283,6 @@ export default function HomeScreen() {
       >
         <View className="items-center mb-6">
           <View className="flex flex-row items-center gap-8">
-            {/* <View className="rounded-full bg-orange-600/15 border-orange-600 ">
-              <TouchableOpacity
-                onPress={openModal}
-                className=" w-16 h-16 rounded-full  items-center justify-center"
-              >
-                <Ionicons name="images-outline" size={24} color="#EA580C" />
-              </TouchableOpacity>
-            </View> */}
             <View className="rounded-full bg-orange-600/15 border-orange-600 ">
               <TouchableOpacity
                 onPress={() => router.push("/(screens)/drinkingGames")}
@@ -304,29 +316,13 @@ export default function HomeScreen() {
                 ></InfoTooltip>
               )}
             </TouchableOpacity>
-            {/* <View className="rounded-full bg-orange-600/15 border-orange-600 ">
+            <View className="rounded-full bg-orange-600/15 border-orange-600 opacity-0 disable ">
               <TouchableOpacity
-                onPress={() => router.push("/(screens)/swipe")}
-                className="w-16 h-16 rounded-full  items-center justify-center"
+                onPress={handleFunctionPress}
+                className=" w-16 h-16 rounded-full  items-center justify-center"
               >
-                <MaterialCommunityIcons
-                  name="sword"
-                  size={34}
-                  color="#EA580C"
-                />
-              </TouchableOpacity>
-            </View> */}
-            {/* <View className="rounded-full bg-orange-600/15 border-orange-600"> */}
-            <View className="rounded-full bg-orange-600/15 border-orange-600 opacity-0 disabled ">
-              <TouchableOpacity
-                onPress={() => router.push("/(screens)/squads")}
-                className="w-16 h-16 rounded-full  items-center justify-center"
-              >
-                <MaterialCommunityIcons
-                  name="account-group-outline"
-                  size={32}
-                  color="#EA580C"
-                />
+                <Ionicons name="images-outline" size={24} color="#EA580C" />
+                
               </TouchableOpacity>
             </View>
           </View>
@@ -395,14 +391,7 @@ export default function HomeScreen() {
             </View>
           </TouchableOpacity> */}
         </View>
-        {/* <TouchableOpacity
-          onPress={() => router.push("/(screens)/drinkingGames")}
-          className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]"
-        >
-          <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">
-            DRINKING GAMES
-          </Text>
-        </TouchableOpacity>
+        {/*
         <TouchableOpacity
           onPress={() => router.push("/(screens)/profileBuilder")}
           className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]"
@@ -413,7 +402,6 @@ export default function HomeScreen() {
         </TouchableOpacity> */}
 
         {/* <DrinkingFrequencyChart/> */}
-        <AlcoholismChart />
         {/* <FocusIntensityChart /> */}
         {/* <SobrietyTrendChart /> */}
 
@@ -422,6 +410,10 @@ export default function HomeScreen() {
         </View>
 
         <ThisWeekGadget />
+
+        <AlcoholismChart />
+
+        {/* <StreakComparisonChart /> */}
 
         <View className="flex-row gap-3 mb-4">
           <TouchableOpacity

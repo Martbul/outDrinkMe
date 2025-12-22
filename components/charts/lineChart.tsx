@@ -128,13 +128,18 @@ export default function AlcoholismChart() {
     };
   }, [rawSeries, selectedFilter, visibleUserIds]);
 
+
   return (
-    <View className="bg-zinc-900 rounded-3xl p-5 border border-white/10 mb-6 shadow-2xl">
+    <View className="bg-white/[0.03] rounded-3xl p-5 border border-white/10 mb-6 shadow-2xl">
       {/* Header */}
       <View className="flex-row justify-between items-start mb-4">
         <View>
-          <Text className="text-orange-500 text-[10px] font-black tracking-[2px] uppercase mb-1">HISTORY</Text>
-          <Text className="text-white text-2xl font-bold tracking-tight">Alcohol Points</Text>
+          <Text className="text-orange-500 text-[10px] font-black tracking-[2px] uppercase mb-1">
+            HISTORY
+          </Text>
+          <Text className="text-white text-2xl font-bold tracking-tight">
+            Alcohol Points
+          </Text>
         </View>
         <View className="bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
           <Text className="text-white/80 text-[10px] font-bold">
@@ -160,7 +165,7 @@ export default function AlcoholismChart() {
             width={SCREEN_WIDTH - 110}
             spacing={processedData.calculatedSpacing}
             initialSpacing={10}
-            xAxisThickness={2} 
+            xAxisThickness={2}
             xAxisColor="rgba(255,255,255,0.15)"
             yAxisThickness={0}
             yAxisLabelWidth={30}
@@ -197,54 +202,109 @@ export default function AlcoholismChart() {
                 let topOffset = isHighValue ? 100 : -10; // Positive moves it down, negative moves it up
 
                 return (
-                  <View style={[styles.pointerContainer, { marginLeft, marginTop: topOffset }]}>
+                  <View
+                    style={[
+                      styles.pointerContainer,
+                      { marginLeft, marginTop: topOffset },
+                    ]}
+                  >
                     {/* Render Caret at top or bottom depending on position */}
-                    {!isHighValue && <View style={styles.tooltipBox}>
-                      <Text style={styles.tooltipDate}>{items[0]?.fullDate}</Text>
-                      {processedData.activeUsers.map((user, idx) => (
-                        <View key={user.userId} style={styles.tooltipRow}>
-                          <View style={styles.tooltipUser}>
-                            <View style={[styles.dot, { backgroundColor: user.color }]} />
-                            <Text style={styles.tooltipName} numberOfLines={1}>{user.username}</Text>
+                    {!isHighValue && (
+                      <View style={styles.tooltipBox}>
+                        <Text style={styles.tooltipDate}>
+                          {items[0]?.fullDate}
+                        </Text>
+                        {processedData.activeUsers.map((user, idx) => (
+                          <View key={user.userId} style={styles.tooltipRow}>
+                            <View style={styles.tooltipUser}>
+                              <View
+                                style={[
+                                  styles.dot,
+                                  { backgroundColor: user.color },
+                                ]}
+                              />
+                              <Text
+                                style={styles.tooltipName}
+                                numberOfLines={1}
+                              >
+                                {user.username}
+                              </Text>
+                            </View>
+                            <Text style={styles.tooltipValue}>
+                              {items[idx]?.realValue ?? 0}
+                            </Text>
                           </View>
-                          <Text style={styles.tooltipValue}>{items[idx]?.realValue ?? 0}</Text>
-                        </View>
-                      ))}
-                    </View>}
-                    
-                    {!isHighValue && <View style={[styles.tooltipCaret, { left: caretLeft }]} />}
+                        ))}
+                      </View>
+                    )}
+
+                    {!isHighValue && (
+                      <View
+                        style={[styles.tooltipCaret, { left: caretLeft }]}
+                      />
+                    )}
 
                     {/* Flipped Tooltip for High Values */}
-                    {isHighValue && <View style={[styles.tooltipCaretFlipped, { left: caretLeft }]} />}
-                    {isHighValue && <View style={styles.tooltipBox}>
-                      <Text style={styles.tooltipDate}>{items[0]?.fullDate}</Text>
-                      {processedData.activeUsers.map((user, idx) => (
-                        <View key={user.userId} style={styles.tooltipRow}>
-                          <View style={styles.tooltipUser}>
-                            <View style={[styles.dot, { backgroundColor: user.color }]} />
-                            <Text style={styles.tooltipName} numberOfLines={1}>{user.username}</Text>
+                    {isHighValue && (
+                      <View
+                        style={[
+                          styles.tooltipCaretFlipped,
+                          { left: caretLeft },
+                        ]}
+                      />
+                    )}
+                    {isHighValue && (
+                      <View style={styles.tooltipBox}>
+                        <Text style={styles.tooltipDate}>
+                          {items[0]?.fullDate}
+                        </Text>
+                        {processedData.activeUsers.map((user, idx) => (
+                          <View key={user.userId} style={styles.tooltipRow}>
+                            <View style={styles.tooltipUser}>
+                              <View
+                                style={[
+                                  styles.dot,
+                                  { backgroundColor: user.color },
+                                ]}
+                              />
+                              <Text
+                                style={styles.tooltipName}
+                                numberOfLines={1}
+                              >
+                                {user.username}
+                              </Text>
+                            </View>
+                            <Text style={styles.tooltipValue}>
+                              {items[idx]?.realValue ?? 0}
+                            </Text>
                           </View>
-                          <Text style={styles.tooltipValue}>{items[idx]?.realValue ?? 0}</Text>
-                        </View>
-                      ))}
-                    </View>}
+                        ))}
+                      </View>
+                    )}
                   </View>
                 );
               },
             }}
           />
-        ) : <Text className="text-white/20 font-bold uppercase tracking-widest text-[10px]">Select users</Text>}
+        ) : (
+          <Text className="text-white/20 font-bold uppercase tracking-widest text-[10px]">
+            Select users
+          </Text>
+        )}
       </View>
 
       {/* Legend */}
       <View className="flex-row flex-wrap gap-2 mt-4 mb-6">
-        {rawSeries.map(u => {
+        {rawSeries.map((u) => {
           const isVisible = visibleUserIds.includes(u.userId);
           return (
-            <TouchableOpacity 
-              key={u.userId} 
+            <TouchableOpacity
+              key={u.userId}
               onPress={() => toggleUser(u.userId)}
-              style={[styles.legendItem, isVisible ? { borderColor: u.color + '60' } : { opacity: 0.3 }]}
+              style={[
+                styles.legendItem,
+                isVisible ? { borderColor: u.color + "60" } : { opacity: 0.3 },
+              ]}
             >
               <View style={[styles.legendDot, { backgroundColor: u.color }]} />
               <Text style={styles.legendText}>{u.username}</Text>
@@ -255,13 +315,15 @@ export default function AlcoholismChart() {
 
       {/* Filters */}
       <View className="flex-row bg-black/40 p-1 rounded-2xl border border-white/5">
-        {FILTERS.map(f => (
+        {FILTERS.map((f) => (
           <TouchableOpacity
             key={f.value}
             onPress={() => setSelectedFilter(f.value)}
             className={`flex-1 py-2.5 rounded-xl ${selectedFilter === f.value ? "bg-zinc-800" : ""}`}
           >
-            <Text className={`text-center text-[10px] font-black ${selectedFilter === f.value ? "text-orange-500" : "text-white/20"}`}>
+            <Text
+              className={`text-center text-[10px] font-black ${selectedFilter === f.value ? "text-orange-500" : "text-white/20"}`}
+            >
               {f.label}
             </Text>
           </TouchableOpacity>

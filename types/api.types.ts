@@ -142,7 +142,7 @@ export interface DailyDrinkingPostResponse {
   drank_today: boolean;
   logged_at: string;
   image_url: string | null;
-   image_width: number;  
+  image_width: number;
   image_height: number;
   latitude?: number;
   longitude?: number;
@@ -150,7 +150,7 @@ export interface DailyDrinkingPostResponse {
   alcohol: string[] | null;
   mentioned_buddies: UserData[] | null;
   source_type: string;
-  reactions?:  CanvasItem[];
+  reactions?: CanvasItem[];
 }
 
 export interface YourMixPostData {
@@ -162,15 +162,15 @@ export interface YourMixPostData {
   drankToday: boolean;
   loggedAt: string;
   imageUrl?: string;
-  imageWidth?: number;   
-  imageHeight?: number; 
+  imageWidth?: number;
+  imageHeight?: number;
   locationText?: string;
   latitude?: number;
   longitude?: number;
   alcohol: string[];
   mentionedBuddies: UserData[];
   sourceType: string;
-  reactions?: CanvasItem[]; 
+  reactions?: CanvasItem[];
 }
 
 export interface DrunkThought {
@@ -600,7 +600,6 @@ export interface MinVersionResponse {
   update_message?: string;
 }
 
-
 export interface CanvasItem {
   id: string;
   daily_drinking_id: string;
@@ -621,4 +620,40 @@ export interface CanvasItem {
     color?: string;
     [key: string]: any;
   };
+}
+
+export interface FuncSessionResponse {
+  sessionID: string;
+  qrToken: string;
+  qrCodeBase64: string;
+  expiresAt: string;
+}
+
+export interface FuncMember {
+  username: string;
+  imageUrl: string;
+}
+
+export interface FuncMetadata {
+  inviteCode: string;
+  qrToken: string;
+  qrCodeBase64: string;
+  expiresAt: string;
+  sessionID: string;
+  hostUsername: string;
+  hostImageUrl: string;
+}
+
+export interface FuncDataResponse {
+  isPartOfActiveFunc: boolean;
+  funcMembers: FuncMember[];
+  funcImageIds: string[];
+  funcMetadata: FuncMetadata;
+}
+
+export interface UploadJob {
+  id: string;
+  uri: string;
+  progress: number;
+  status: "pending" | "uploading" | "completed" | "failed";
 }

@@ -699,7 +699,6 @@ const UserInfoScreen = () => {
 
     return (
       <View className="px-4 pb-6">
-        {/* Rank & Coefficient Card */}
         <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08] mb-4">
           <View className="flex-row items-center justify-between mb-6">
             <View>
@@ -723,7 +722,7 @@ const UserInfoScreen = () => {
                 {stats.alcoholism_coefficient?.toFixed(2) || "0.00"}
               </Text>
               <Text className="text-white/40 text-[10px] font-bold tracking-wider mt-1">
-                COEFFICIENT
+                POINTS
               </Text>
             </View>
             <View className="items-end">
