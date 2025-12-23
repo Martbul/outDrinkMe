@@ -15,9 +15,9 @@ import type {
   FuncMember,
   FuncMetadata,
   UploadJob,
-  FuncDataResponse, // Added this import
+  FuncDataResponse,
 } from "../types/api.types";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import * as ImageManipulator from "expo-image-manipulator";
 
 interface FunctionContextType {
@@ -46,7 +46,6 @@ export function FunctionProvider({ children }: { children: ReactNode }) {
   const { getToken, isSignedIn } = useAuth();
   const posthog = usePostHog();
 
-  // --- State ---
   const [uploadQueue, setUploadQueue] = useState<UploadJob[]>([]);
   const [isPartOfActiveFunc, setIsPartOfActiveFunc] = useState<boolean>(false);
   const [funcMembers, setFuncMembers] = useState<FuncMember[]>([]);
@@ -59,6 +58,12 @@ export function FunctionProvider({ children }: { children: ReactNode }) {
 
   const hasInitialized = useRef(false);
   const isProcessing = useRef(false);
+  const hasNotified = useRef(false);
+  const metaDataRef = useRef<FuncMetadata | null>(null);
+
+  useEffect(() => {
+    metaDataRef.current = funcMetaData;
+  }, [funcMetaData]);
 
   const updateJobStatus = (
     id: string,
@@ -113,52 +118,21 @@ export function FunctionProvider({ children }: { children: ReactNode }) {
     [isSignedIn, getToken, withLoadingAndError]
   );
 
-  const checkIfFinished = useCallback(() => {
-    const activeJobs = uploadQueue.filter(
-      (j) => j.status === "pending" || j.status === "uploading"
-    );
-    // If no more jobs are pending/uploading but we had jobs in the queue
-    if (activeJobs.length === 0 && uploadQueue.length > 0) {
-      const completedCount = uploadQueue.filter(
-        (j) => j.status === "completed"
-      ).length;
-
-      Notifications.scheduleNotificationAsync({
-        content: {
-          title: "Function Updated! 📸",
-          body: `Successfully uploaded ${completedCount} photos to the dump.`,
-        },
-        trigger: null,
-      });
-
-      refreshFuncData();
-      // Clear queue after 10 seconds to hide the progress bar in UI
-      setTimeout(() => setUploadQueue([]), 10000);
-    }
-  }, [uploadQueue, refreshFuncData]);
-
-  useEffect(() => {
-    const processNext = async () => {
-      const nextJob = uploadQueue.find((j) => j.status === "pending");
-      if (nextJob && !isProcessing.current) {
-        isProcessing.current = true;
-        await processUpload(nextJob);
-        isProcessing.current = false;
-      }
-    };
-    processNext();
-    // We check if finished every time the queue state changes
-    if (uploadQueue.length > 0) {
-      checkIfFinished();
-    }
-  }, [uploadQueue, checkIfFinished]);
-
+  // --- UPLOAD LOGIC ---
   const processUpload = async (job: UploadJob) => {
     const token = await getToken();
-    const CLOUD_NAME = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    const CLOUDINARY_CLOUD_NAME = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
     const PRESET = process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
-    if (!token || !funcMetaData?.sessionID || !CLOUD_NAME || !PRESET) {
+    const currentSessionId = metaDataRef.current?.sessionID;
+
+    // Validation
+    if (!token || !currentSessionId || !CLOUDINARY_CLOUD_NAME || !PRESET) {
+      console.error("Missing Config:", {
+        token: !!token,
+        sessionId: currentSessionId,
+        cloud: !!CLOUDINARY_CLOUD_NAME,
+      });
       updateJobStatus(job.id, "failed", 0);
       return;
     }
@@ -166,23 +140,23 @@ export function FunctionProvider({ children }: { children: ReactNode }) {
     try {
       updateJobStatus(job.id, "uploading", 0);
 
-      // 1. High-Quality Manipulation
       const manipulated = await ImageManipulator.manipulateAsync(
         job.uri,
-        [{ resize: { width: 2000 } }],
+        [], 
         {
-          compress: 0.9,
-          format: ImageManipulator.SaveFormat.JPEG,
+          compress: 1, 
+          format: ImageManipulator.SaveFormat.JPEG, 
         }
       );
 
-      // 2. Background Upload to Cloudinary
+      // 2. Cloudinary Upload
       const uploadTask = FileSystem.createUploadTask(
-        `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
         manipulated.uri,
         {
           httpMethod: "POST",
-    uploadType: 0, 
+          uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+          fieldName: "file",
           parameters: {
             upload_preset: PRESET,
             folder: "func-images",
@@ -199,24 +173,73 @@ export function FunctionProvider({ children }: { children: ReactNode }) {
       const response = await uploadTask.uploadAsync();
 
       if (!response || response.status !== 200) {
-        throw new Error(`Cloudinary Error: ${response?.status}`);
+        throw new Error(
+          `Cloudinary Error: ${response?.status} - ${response?.body}`
+        );
       }
 
       const cloudinaryData = JSON.parse(response.body);
 
-      await apiService.uploadImages(token, funcMetaData.sessionID, [
+      // 3. Save to DB
+      await apiService.uploadImages(token, currentSessionId, [
         cloudinaryData.secure_url,
       ]);
 
       updateJobStatus(job.id, "completed", 1);
       posthog?.capture("func_image_uploaded", {
-        sessionId: funcMetaData.sessionID,
+        sessionId: currentSessionId,
       });
     } catch (err) {
-      console.error("Critical Upload Error:", err);
+      console.error("Upload Job Failed:", err);
       updateJobStatus(job.id, "failed", 0);
     }
   };
+
+  // --- QUEUE PROCESSOR EFFECT ---
+  useEffect(() => {
+    const processQueue = async () => {
+      const pendingJob = uploadQueue.find((j) => j.status === "pending");
+      const activeJobs = uploadQueue.filter(
+        (j) => j.status === "pending" || j.status === "uploading"
+      );
+
+      if (activeJobs.length > 0) {
+        hasNotified.current = false;
+
+        if (pendingJob && !isProcessing.current) {
+          isProcessing.current = true;
+          await processUpload(pendingJob);
+          isProcessing.current = false;
+        }
+      } else if (uploadQueue.length > 0 && activeJobs.length === 0) {
+        if (!hasNotified.current) {
+          hasNotified.current = true;
+
+          const completedCount = uploadQueue.filter(
+            (j) => j.status === "completed"
+          ).length;
+
+          if (completedCount > 0) {
+            Notifications.scheduleNotificationAsync({
+              content: {
+                title: "Function Updated",
+                body: `Successfully uploaded ${completedCount} photos.`,
+              },
+              trigger: null,
+            });
+            refreshFuncData();
+          }
+
+          setTimeout(() => {
+            setUploadQueue([]);
+            hasNotified.current = false;
+          }, 5000);
+        }
+      }
+    };
+
+    processQueue();
+  }, [uploadQueue, refreshFuncData]);
 
   const refreshAll = useCallback(async () => {
     if (!isSignedIn) {
@@ -241,6 +264,11 @@ export function FunctionProvider({ children }: { children: ReactNode }) {
 
   const addImages = useCallback(
     async (imageUrls: string[]) => {
+      if (!metaDataRef.current?.sessionID) {
+        console.warn("Cannot upload: No active session ID found.");
+        return;
+      }
+
       const newJobs: UploadJob[] = imageUrls.map((uri) => ({
         id: Math.random().toString(36).substring(7),
         uri,
@@ -248,6 +276,7 @@ export function FunctionProvider({ children }: { children: ReactNode }) {
         status: "pending",
       }));
 
+      hasNotified.current = false;
       setUploadQueue((prev) => [...prev, ...newJobs]);
       posthog?.capture("func_images_queued", { count: imageUrls.length });
     },

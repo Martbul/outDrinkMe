@@ -316,7 +316,7 @@ const handleFunctionPress = () => {
                 ></InfoTooltip>
               )}
             </TouchableOpacity>
-            <View className="rounded-full bg-orange-600/15 border-orange-600 opacity-0 disable ">
+            <View className="rounded-full bg-orange-600/15 border-orange-600">
               <TouchableOpacity
                 onPress={handleFunctionPress}
                 className=" w-16 h-16 rounded-full  items-center justify-center"

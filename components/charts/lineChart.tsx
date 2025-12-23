@@ -9,7 +9,6 @@ import {
 } from "react-native";
 import { LineChart } from "react-native-gifted-charts";
 import { useAuth } from "@clerk/clerk-expo";
-import { usePostHog } from "posthog-react-native";
 import { apiService } from "@/api";
 
 type TimeFilter = "1M" | "3M" | "6M" | "1Y" | "ALL";
@@ -186,20 +185,19 @@ export default function AlcoholismChart() {
               pointerLabelWidth: 160,
               pointerLabelHeight: 130,
               pointerLabelComponent: (items: any[]) => {
-                const itemIndex = items[0]?.index;
-                const visualValue = items[0]?.value; // visualValue goes 0 to 100
+                const selectedIndex = items[0]?.index; // Get the shared X-axis index
+                const visualValue = items[0]?.value;
                 const total = processedData.totalPoints;
 
                 // Horizontal alignment logic
-                const isNearStart = itemIndex < total * 0.25;
-                const isNearEnd = itemIndex > total * 0.75;
+                const isNearStart = selectedIndex < total * 0.25;
+                const isNearEnd = selectedIndex > total * 0.75;
                 let marginLeft = isNearStart ? -15 : isNearEnd ? -145 : -80;
                 let caretLeft = isNearStart ? 20 : isNearEnd ? 130 : 72;
 
-                // VERTICAL ALIGNMENT FIX:
-                // If the point is high (visualValue > 60), we flip the tooltip to show BELOW the finger
+                // Vertical alignment logic
                 const isHighValue = visualValue > 60;
-                let topOffset = isHighValue ? 100 : -10; // Positive moves it down, negative moves it up
+                let topOffset = isHighValue ? 100 : -10;
 
                 return (
                   <View
@@ -208,33 +206,50 @@ export default function AlcoholismChart() {
                       { marginLeft, marginTop: topOffset },
                     ]}
                   >
-                    {/* Render Caret at top or bottom depending on position */}
+                    {/* 1. Standard Tooltip (Points Up) */}
                     {!isHighValue && (
                       <View style={styles.tooltipBox}>
                         <Text style={styles.tooltipDate}>
                           {items[0]?.fullDate}
                         </Text>
-                        {processedData.activeUsers.map((user, idx) => (
-                          <View key={user.userId} style={styles.tooltipRow}>
-                            <View style={styles.tooltipUser}>
-                              <View
-                                style={[
-                                  styles.dot,
-                                  { backgroundColor: user.color },
-                                ]}
-                              />
-                              <Text
-                                style={styles.tooltipName}
-                                numberOfLines={1}
-                              >
-                                {user.username}
+                        {processedData.activeUsers.map((user, idx) => {
+                          // FIX: Look up data directly from source using selectedIndex
+                          let realValue = 0;
+                          if (idx === 0) {
+                            // Primary User
+                            realValue =
+                              processedData.primaryData[selectedIndex]
+                                ?.realValue ?? 0;
+                          } else {
+                            // Secondary Users (offset by 1 in the secondaryDataSets array)
+                            realValue =
+                              processedData.secondaryDataSets[idx - 1]?.data[
+                                selectedIndex
+                              ]?.realValue ?? 0;
+                          }
+
+                          return (
+                            <View key={user.userId} style={styles.tooltipRow}>
+                              <View style={styles.tooltipUser}>
+                                <View
+                                  style={[
+                                    styles.dot,
+                                    { backgroundColor: user.color },
+                                  ]}
+                                />
+                                <Text
+                                  style={styles.tooltipName}
+                                  numberOfLines={1}
+                                >
+                                  {user.username}
+                                </Text>
+                              </View>
+                              <Text style={styles.tooltipValue}>
+                                {realValue}
                               </Text>
                             </View>
-                            <Text style={styles.tooltipValue}>
-                              {items[idx]?.realValue ?? 0}
-                            </Text>
-                          </View>
-                        ))}
+                          );
+                        })}
                       </View>
                     )}
 
@@ -244,7 +259,7 @@ export default function AlcoholismChart() {
                       />
                     )}
 
-                    {/* Flipped Tooltip for High Values */}
+                    {/* 2. Flipped Tooltip (Points Down - for high values) */}
                     {isHighValue && (
                       <View
                         style={[
@@ -258,27 +273,42 @@ export default function AlcoholismChart() {
                         <Text style={styles.tooltipDate}>
                           {items[0]?.fullDate}
                         </Text>
-                        {processedData.activeUsers.map((user, idx) => (
-                          <View key={user.userId} style={styles.tooltipRow}>
-                            <View style={styles.tooltipUser}>
-                              <View
-                                style={[
-                                  styles.dot,
-                                  { backgroundColor: user.color },
-                                ]}
-                              />
-                              <Text
-                                style={styles.tooltipName}
-                                numberOfLines={1}
-                              >
-                                {user.username}
+                        {processedData.activeUsers.map((user, idx) => {
+                          // FIX: Same lookup logic here
+                          let realValue = 0;
+                          if (idx === 0) {
+                            realValue =
+                              processedData.primaryData[selectedIndex]
+                                ?.realValue ?? 0;
+                          } else {
+                            realValue =
+                              processedData.secondaryDataSets[idx - 1]?.data[
+                                selectedIndex
+                              ]?.realValue ?? 0;
+                          }
+
+                          return (
+                            <View key={user.userId} style={styles.tooltipRow}>
+                              <View style={styles.tooltipUser}>
+                                <View
+                                  style={[
+                                    styles.dot,
+                                    { backgroundColor: user.color },
+                                  ]}
+                                />
+                                <Text
+                                  style={styles.tooltipName}
+                                  numberOfLines={1}
+                                >
+                                  {user.username}
+                                </Text>
+                              </View>
+                              <Text style={styles.tooltipValue}>
+                                {realValue}
                               </Text>
                             </View>
-                            <Text style={styles.tooltipValue}>
-                              {items[idx]?.realValue ?? 0}
-                            </Text>
-                          </View>
-                        ))}
+                          );
+                        })}
                       </View>
                     )}
                   </View>

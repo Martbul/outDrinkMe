@@ -9,15 +9,29 @@ import {
   Modal,
   Dimensions,
   Share,
+  Alert,
+  Platform,
 } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons, FontAwesome5, MaterialIcons } from "@expo/vector-icons";
+import {
+  Ionicons,
+  FontAwesome5,
+  MaterialIcons,
+  Feather,
+} from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+
+// --- REQUIRED IMPORTS ---
+import * as MediaLibrary from "expo-media-library";
+import * as FileSystem from "expo-file-system";
+// Note: We use standard FileSystem here for downloadAsync,
+// which is distinct from the 'legacy' upload task used in the Provider.
+
 import { useFunc } from "@/providers/FunctionProvider";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const GRID_SPACING = 12;
 const ITEM_WIDTH = (SCREEN_WIDTH - GRID_SPACING * 3) / 2;
 
@@ -25,8 +39,14 @@ export default function FuncScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
+  // --- MODAL STATE ---
   const [showQrModal, setShowQrModal] = useState(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
+
+  // --- DOWNLOAD STATE ---
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [permissionResponse, requestPermission] = MediaLibrary.usePermissions();
 
   const {
     funcImagesIds,
@@ -35,10 +55,10 @@ export default function FuncScreen() {
     isFuncLoading,
     addImages,
     leaveFunc,
-    uploadQueue, // Assuming this is provided by your updated FunctionProvider
+    uploadQueue,
   } = useFunc();
 
-  // --- Background Upload Stats ---
+  // --- STATS & TIMERS ---
   const uploadStats = useMemo(() => {
     if (!uploadQueue || uploadQueue.length === 0) return null;
     const total = uploadQueue.length;
@@ -49,7 +69,6 @@ export default function FuncScreen() {
       (j) => j.status === "uploading" || j.status === "pending"
     );
     const progress = completed / total;
-
     return { total, completed, active, progress };
   }, [uploadQueue]);
 
@@ -70,16 +89,15 @@ export default function FuncScreen() {
 
   const handlePickAndUpload = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ["images"],
       allowsMultipleSelection: true,
-      selectionLimit: 100, // Handle bulk selection
-      quality: 1, // SET TO 1 FOR MAXIMUM QUALITY
+      selectionLimit: 100,
+      quality: 1,
       exif: false,
     });
 
     if (!result.canceled) {
       const urls = result.assets.map((a) => a.uri);
-      // addImages will now start the background queue process
       await addImages(urls);
     }
   };
@@ -102,10 +120,48 @@ export default function FuncScreen() {
     router.replace("/(tabs)/home");
   };
 
-  
+  // --- SAVE TO GALLERY LOGIC ---
+  const handleSaveToGallery = async () => {
+    if (!selectedImage) return;
+
+    try {
+      setIsDownloading(true);
+
+      // 1. Check/Request Permissions
+      if (permissionResponse?.status !== "granted") {
+        const { status } = await requestPermission();
+        if (status !== "granted") {
+          Alert.alert(
+            "Permission Required",
+            "We need access to your gallery to save this photo."
+          );
+          setIsDownloading(false);
+          return;
+        }
+      }
+
+      // 2. Download remote URL to local file system
+      // MediaLibrary cannot save remote URLs directly on Android, must be local.
+      const filename = `func_${Date.now()}.jpg`;
+      const fileUri = FileSystem.cacheDirectory + filename;
+
+      const { uri } = await FileSystem.downloadAsync(selectedImage, fileUri);
+
+      // 3. Save to System Gallery
+      await MediaLibrary.saveToLibraryAsync(uri);
+
+      Alert.alert("Saved!", "Photo saved to your gallery.");
+    } catch (error) {
+      console.error("Save error:", error);
+      Alert.alert("Error", "Could not save photo.");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   return (
     <View className="flex-1 bg-black">
-      {/* --- INSTAGRAM STYLE UPLOAD BAR --- */}
+      {/* --- UPLOAD BAR --- */}
       {uploadStats?.active && (
         <View
           style={{ paddingTop: insets.top }}
@@ -223,26 +279,76 @@ export default function FuncScreen() {
           </Text>
         </TouchableOpacity>
 
-        {/* --- GRID (Optimization: Cache Policy) --- */}
+        {/* --- GRID --- */}
         <View className="flex-row flex-wrap justify-between mt-6">
           {funcImagesIds.map((url, index) => (
-            <View
+            <TouchableOpacity
               key={index}
+              activeOpacity={0.8}
+              onPress={() => setSelectedImage(url)}
               style={{ width: ITEM_WIDTH, marginBottom: GRID_SPACING }}
-              className="rounded-2xl overflow-hidden bg-white/5 border border-white/10"
+              className="rounded-2xl overflow-hidden bg-white/5 border border-white/10 relative"
             >
               <Image
                 source={{ uri: url }}
                 style={{ width: "100%", aspectRatio: 0.75 }}
                 contentFit="cover"
-                cachePolicy="disk" // Keep images cached locally to save data/quality
+                cachePolicy="disk"
                 transition={200}
               />
-            </View>
+              <View className="absolute bottom-2 right-2 bg-black/50 p-1.5 rounded-full backdrop-blur-md">
+                <Ionicons name="expand" color="white" size={12} />
+              </View>
+            </TouchableOpacity>
           ))}
         </View>
       </ScrollView>
-      {/* --- LEAVE CONFIRMATION MODAL --- */}
+
+      {/* --- LIGHTBOX MODAL --- */}
+      <Modal visible={!!selectedImage} transparent animationType="fade">
+        <View className="flex-1 bg-black/95 justify-center items-center relative">
+          <TouchableOpacity
+            onPress={() => setSelectedImage(null)}
+            style={{ top: insets.top + 20 }}
+            className="absolute right-5 z-50 w-12 h-12 bg-white/10 rounded-full items-center justify-center border border-white/10"
+          >
+            <Ionicons name="close" size={24} color="white" />
+          </TouchableOpacity>
+
+          {selectedImage && (
+            <Image
+              source={{ uri: selectedImage }}
+              style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT * 0.8 }}
+              contentFit="contain"
+              transition={200}
+            />
+          )}
+
+          <View
+            style={{ bottom: insets.bottom + 30 }}
+            className="absolute w-full px-8 items-center"
+          >
+            <TouchableOpacity
+              disabled={isDownloading}
+              onPress={handleSaveToGallery}
+              className="bg-white px-8 py-4 rounded-full flex-row items-center shadow-lg active:opacity-90"
+            >
+              {isDownloading ? (
+                <ActivityIndicator color="black" size="small" />
+              ) : (
+                <>
+                  <Feather name="download" size={20} color="black" />
+                  <Text className="text-black font-black ml-3 tracking-wider">
+                    SAVE TO GALLERY
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* --- LEAVE MODAL --- */}
       <Modal visible={showLeaveModal} transparent animationType="fade">
         <View className="flex-1 bg-black/80 justify-center items-center px-6">
           <View className="bg-[#1A1A1A] w-full rounded-[40px] p-8 border border-white/10 items-center">
@@ -276,6 +382,7 @@ export default function FuncScreen() {
         </View>
       </Modal>
 
+      {/* --- QR MODAL --- */}
       <Modal visible={showQrModal} transparent animationType="slide">
         <View className="flex-1 bg-black/95 justify-end">
           <TouchableOpacity
