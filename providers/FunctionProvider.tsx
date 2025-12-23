@@ -7,18 +7,18 @@ import React, {
   useRef,
   ReactNode,
 } from "react";
-import { useAuth } from "@clerk/clerk-expo";
-import * as Notifications from "expo-notifications";
-import { usePostHog } from "posthog-react-native";
-import { apiService } from "@/api";
 import type {
   FuncMember,
   FuncMetadata,
   UploadJob,
   FuncDataResponse,
 } from "../types/api.types";
+import { useAuth } from "@clerk/clerk-expo";
+import { usePostHog } from "posthog-react-native";
+import { apiService } from "@/api";
 import * as FileSystem from "expo-file-system/legacy";
 import * as ImageManipulator from "expo-image-manipulator";
+import * as Notifications from "expo-notifications";
 
 interface FunctionContextType {
   isPartOfActiveFunc: boolean;
@@ -31,6 +31,8 @@ interface FunctionContextType {
   refreshAll: () => Promise<void>;
   createFunc: () => Promise<void>;
   addImages: (imageUrls: string[]) => Promise<void>;
+  deleteImages: (imageUrls: string[]) => Promise<void>;
+  joinFunc: (inviteCode: string) => Promise<boolean>;
   leaveFunc: () => Promise<void>;
 
   isFuncLoading: boolean;
@@ -140,14 +142,10 @@ export function FunctionProvider({ children }: { children: ReactNode }) {
     try {
       updateJobStatus(job.id, "uploading", 0);
 
-      const manipulated = await ImageManipulator.manipulateAsync(
-        job.uri,
-        [], 
-        {
-          compress: 1, 
-          format: ImageManipulator.SaveFormat.JPEG, 
-        }
-      );
+      const manipulated = await ImageManipulator.manipulateAsync(job.uri, [], {
+        compress: 1,
+        format: ImageManipulator.SaveFormat.JPEG,
+      });
 
       // 2. Cloudinary Upload
       const uploadTask = FileSystem.createUploadTask(
@@ -283,6 +281,45 @@ export function FunctionProvider({ children }: { children: ReactNode }) {
     [posthog]
   );
 
+  const deleteImages = useCallback(
+    async (imageUrls: string[]) => {
+      const token = await getToken();
+      if (!token || !funcMetaData?.sessionID) return;
+
+      if (!metaDataRef.current?.sessionID) {
+        console.warn("Cannot delete: No active session ID found.");
+        return;
+      }
+      await withLoadingAndError(async () => {
+        await apiService.deleteImages(
+          token,
+          imageUrls,
+          funcMetaData?.sessionID
+        );
+      }, "delete_images");
+    },
+    [posthog]
+  );
+
+  const joinFunc = useCallback(
+    async (inviteCode: string): Promise<boolean> => {
+      const token = await getToken();
+      if (!token) return false;
+
+      const result = await withLoadingAndError(async () => {
+        const response = await apiService.joinFunction(token, inviteCode);
+
+        await refreshFuncData(response?.funcId);
+
+        posthog?.capture("func_joined", { inviteCode });
+        return true;
+      }, "join_func");
+
+      return !!result;
+    },
+    [getToken, withLoadingAndError, refreshFuncData]
+  );
+
   const leaveFunc = useCallback(async () => {
     const token = await getToken();
     if (!token || !funcMetaData?.sessionID) return;
@@ -315,6 +352,8 @@ export function FunctionProvider({ children }: { children: ReactNode }) {
         refreshAll,
         createFunc,
         addImages,
+        deleteImages,
+        joinFunc,
         leaveFunc,
         isFuncLoading,
         isInitialLoading,

@@ -20,6 +20,7 @@ import {
   SideQuest,
   SideQuestBoard,
   SideQuestCompletion,
+  Story,
   SubmitQuestProofReq,
   UnreadCountResponse,
   UpdateUserProfileReq,
@@ -1036,6 +1037,65 @@ class ApiService {
       body: JSON.stringify({
         funcId: funcId,
       }),
+    });
+  }
+
+  async deleteImages(
+    token: string,
+    imageUrls: string[],
+    funcId: string
+  ): Promise<void> {
+    return this.makeRequest("/api/v1/func/delete", {
+      method: "DELETE",
+      token,
+      body: JSON.stringify({
+        image_urls: imageUrls,
+        func_id: funcId,
+      }),
+    });
+  }
+  async getStories(token: string): Promise<Story[]> {
+    return this.makeRequest("/user/stories", {
+      method: "GET",
+      token,
+    });
+  }
+
+  async postStory(
+    token: string,
+    data: {
+      videoUrl: string;
+      width: number;
+      height: number;
+      duration: number;
+      taggedBuddies: string[];
+    }
+  ): Promise<void> {
+    return this.makeRequest("/user/stories", {
+      method: "POST",
+      token,
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteStory(token: string, storyId: string): Promise<void> {
+    return this.makeRequest("/user/stories", {
+      method: "DELETE",
+      token,
+      body: JSON.stringify({ storyId }),
+    });
+  }
+
+  async relateStory(
+    token: string,
+    storyId: string,
+    action: "view" | "like"
+  ): Promise<void> {
+    // Fire and forget (don't await strictly in UI)
+    return this.makeRequest("/user/stories/relate", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ storyId, action }),
     });
   }
 

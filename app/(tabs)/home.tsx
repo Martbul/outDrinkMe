@@ -10,6 +10,7 @@ import Header from "@/components/header";
 import InfoTooltip from "@/components/infoTooltip";
 import DrinkingMap from "@/components/map";
 import QrSessionManager from "@/components/qrCodeManager";
+import StoryDrawer from "@/components/story_drawer";
 import ThisWeekGadget from "@/components/thisWeekGadget";
 import { useApp } from "@/providers/AppProvider";
 import { useFunc } from "@/providers/FunctionProvider";
@@ -255,6 +256,7 @@ const handleFunctionPress = () => {
   return (
     <View className="flex-1 bg-black">
       <Header />
+      <StoryDrawer />
 
       {displayedThoughts.map((thought) => (
         <DrunkThought
@@ -322,7 +324,6 @@ const handleFunctionPress = () => {
                 className=" w-16 h-16 rounded-full  items-center justify-center"
               >
                 <Ionicons name="images-outline" size={24} color="#EA580C" />
-                
               </TouchableOpacity>
             </View>
           </View>

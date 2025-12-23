@@ -25,6 +25,7 @@ import type {
   NotificationItem,
   SideQuestBoard,
   MinVersionResponse,
+  Story,
 } from "../types/api.types";
 import { apiService } from "@/api";
 import { usePostHog } from "posthog-react-native";
@@ -46,12 +47,13 @@ interface AppContextType {
   weeklyStats: DaysStat | null;
   friends: UserData[] | [];
   discovery: UserData[] | [];
+  stories: Story[];
 
   // --- Pagination Data ---
   yourMixData: YourMixPostData[] | [];
   yourMixHasMore: boolean;
-  globalMixData: YourMixPostData[] | []; // Added for Global Tab
-  globalMixHasMore: boolean; // Added for Global Tab
+  globalMixData: YourMixPostData[] | [];
+  globalMixHasMore: boolean;
 
   mixTimelineData: YourMixPostData[] | [];
   friendDiscoveryProfile: FriendDiscoveryDisplayProfileResponse | null;
@@ -72,9 +74,9 @@ interface AppContextType {
   refreshWeeklyStats: () => Promise<void>;
   refreshFriends: () => Promise<void>;
   refreshDiscovery: () => Promise<void>;
-
+  refreshStories: () => Promise<void>;
   refreshYourMixData: () => Promise<void>;
-  refreshGlobalMixData: () => Promise<void>; // Added
+  refreshGlobalMixData: () => Promise<void>;
 
   refreshMixTimelineData: () => Promise<void>;
   refreshDrunkThought: () => Promise<void>;
@@ -101,9 +103,20 @@ interface AppContextType {
     } | null,
     alcohols?: string[] | [],
     mentionedBuddies?: UserData[] | [],
-    imageWidth?: number, 
+    imageWidth?: number,
     imageHeight?: number
   ) => Promise<void>;
+
+  createStory: (data: {
+    videoUrl: string;
+    width: number;
+    height: number;
+    duration: number;
+    taggedBuddies: string[];
+  }) => Promise<void>;
+  deleteStory: (storyId: string) => Promise<void>;
+  markStoryAsSeen: (storyId: string) => Promise<void>;
+
   addFriend: (friendId: string) => Promise<void>;
   searchUsers: (searchQuery: string) => Promise<UserData[]>;
   updateUserProfile: (updateReq: UpdateUserProfileReq) => Promise<any>;
@@ -150,8 +163,8 @@ export function AppProvider({ children }: AppProviderProps) {
   const [weeklyStats, setWeeklyStats] = useState<DaysStat | null>(null);
   const [friends, setFriends] = useState<UserData[] | []>([]);
   const [discovery, setDiscovery] = useState<UserData[] | []>([]);
+  const [stories, setStories] = useState<Story[]>([]);
 
-  // --- YOUR MIX PAGINATION STATE ---
   const [yourMixData, setYourMixData] = useState<YourMixPostData[] | []>([]);
   const [yourMixPage, setYourMixPage] = useState(1);
   const [yourMixHasMore, setYourMixHasMore] = useState(true);
@@ -690,7 +703,19 @@ export function AppProvider({ children }: AppProviderProps) {
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
 
- 
+  const refreshStories = useCallback(async () => {
+    if (!isSignedIn) return;
+    try {
+      const token = await getToken();
+      if (token) {
+        const data = await apiService.getStories(token);
+        setStories(data || []);
+      }
+    } catch (e) {
+      console.error("Failed to load stories", e);
+    }
+  }, [isSignedIn, getToken]);
+
   const refreshAll = useCallback(async () => {
     if (!isSignedIn) return;
 
@@ -732,6 +757,7 @@ export function AppProvider({ children }: AppProviderProps) {
         apiService.getUnreadNotificationsCount(token),
         apiService.getBoardQuests(token),
         apiService.getMapFriendsPosts(token),
+        apiService.getStories(token),
       ]);
 
       const [
@@ -755,6 +781,7 @@ export function AppProvider({ children }: AppProviderProps) {
         notifCountResult,
         SideQuestBoardResult,
         mapFriendsPostsResult,
+        storiesRes,
       ] = results;
 
       if (userResult.status === "fulfilled") {
@@ -909,6 +936,12 @@ export function AppProvider({ children }: AppProviderProps) {
           mapFriendsPostsResult.reason
         );
       }
+      if (storiesRes.status === "fulfilled") {
+        setStories(storiesRes.value || []);
+      } else {
+        console.error("Failed to fetch stories:", storiesRes.reason);
+        setStories([]);
+      }
 
       const failedCalls = results.filter((r) => r.status === "rejected");
       if (failedCalls.length > 0) {
@@ -983,6 +1016,69 @@ export function AppProvider({ children }: AppProviderProps) {
       }
     },
     [isSignedIn, getToken, withLoadingAndError]
+  );
+
+  const createStory = useCallback(
+    async (data: {
+      videoUrl: string;
+      width: number;
+      height: number;
+      duration: number;
+      taggedBuddies: string[];
+    }) => {
+      if (!isSignedIn) return;
+      const token = await getToken();
+      if (!token) return;
+
+      await withLoadingAndError(
+        async () => {
+          await apiService.postStory(token, data);
+          posthog?.capture("story_posted");
+          await refreshStories();
+        },
+        undefined,
+        "create_story"
+      );
+    },
+    [isSignedIn, getToken, withLoadingAndError, refreshStories, posthog]
+  );
+
+  const deleteStory = useCallback(
+    async (storyId: string) => {
+      if (!isSignedIn) return;
+      // Optimistic Update
+      setStories((prev) => prev.filter((s) => s.id !== storyId));
+
+      const token = await getToken();
+      if (token) {
+        apiService.deleteStory(token, storyId).catch(() => {
+          refreshStories(); // Revert on failure
+        });
+      }
+    },
+    [isSignedIn, getToken, refreshStories]
+  );
+
+  const markStoryAsSeen = useCallback(
+    async (storyId: string) => {
+      if (!isSignedIn) return;
+
+      // Prevent redundant calls if already seen locally
+      const story = stories.find((s) => s.id === storyId);
+      if (story?.isSeen) return;
+
+      // Optimistic Update
+      setStories((prev) =>
+        prev.map((s) => (s.id === storyId ? { ...s, isSeen: true } : s))
+      );
+
+      const token = await getToken();
+      if (token) {
+        // Fire and forget
+        apiService.relateStory(token, storyId, "view");
+      }
+    },
+    [isSignedIn, getToken, stories]
   );
 
   const addDrunkThought = useCallback(
@@ -1196,6 +1292,7 @@ export function AppProvider({ children }: AppProviderProps) {
     weeklyStats,
     friends,
     discovery,
+    stories,
 
     // Pagination Data
     yourMixData,
@@ -1222,6 +1319,7 @@ export function AppProvider({ children }: AppProviderProps) {
     refreshWeeklyStats,
     refreshFriends,
     refreshDiscovery,
+    refreshStories,
 
     refreshYourMixData,
     refreshGlobalMixData,
@@ -1242,6 +1340,9 @@ export function AppProvider({ children }: AppProviderProps) {
 
     // Actions
     addDrinking,
+    createStory,
+    deleteStory,
+    markStoryAsSeen,
     addFriend,
     removeFriend,
     searchUsers,

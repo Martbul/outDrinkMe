@@ -657,3 +657,18 @@ export interface UploadJob {
   progress: number;
   status: "pending" | "uploading" | "completed" | "failed";
 }
+
+export interface Story {
+  id: string;
+  userId: string;
+  username: string;
+  userImage?: string;
+  videoUrl: string;
+  width: number;
+  height: number;
+  duration: number;
+  createdAt: string;
+  expiresAt: string;
+  isSeen: boolean;
+  taggedUsers?: string[];
+}
