@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useRouter } from "expo-router";
 import { useAuth } from "@clerk/clerk-expo";
@@ -37,14 +37,14 @@ function QrSessionManager({ onClose }: QrSessionManagerProps) {
       const data = await apiService.createFunction(token);
 
       if (data.sessionID) {
-        onClose(); 
+        onClose();
 
         router.push({
           pathname: "/func_screen",
           params: {
             funcId: data.sessionID,
             inviteCode: data.qrToken,
-            qrBase64: data.qrCodeBase64, 
+            qrBase64: data.qrCodeBase64,
           },
         });
       }
@@ -56,24 +56,24 @@ function QrSessionManager({ onClose }: QrSessionManagerProps) {
     }
   };
 
- const handleBarCodeScanned = ({ data }: { data: string }) => {
-   setScanned(true);
-   const token = data.split("/").pop(); 
+  const handleBarCodeScanned = ({ data }: { data: string }) => {
+    setScanned(true);
+    const token = data.split("/").pop();
 
-   Alert.alert("Join Party?", "Do you want to enter this group?", [
-     { text: "Cancel", onPress: () => setScanned(false), style: "cancel" },
-     {
-       text: "Join",
-       onPress: () => {
-         onClose();
-         router.push({
-           pathname: "/func_screen",
-           params: { inviteCode: token },
-         });
-       },
-     },
-   ]);
- };
+    Alert.alert("Join Party?", "Do you want to enter this group?", [
+      { text: "Cancel", onPress: () => setScanned(false), style: "cancel" },
+      {
+        text: "Join",
+        onPress: () => {
+          onClose();
+          router.push({
+            pathname: "/func_screen",
+            params: { inviteCode: token },
+          });
+        },
+      },
+    ]);
+  };
 
   const renderCameraContent = () => {
     if (!permission)
@@ -151,9 +151,9 @@ function QrSessionManager({ onClose }: QrSessionManagerProps) {
           onPress={() => setActiveTab("create")}
           className={`flex-1 py-4 rounded-xl items-center flex-row justify-center gap-2 ${activeTab === "create" ? "bg-[#333]" : ""}`}
         >
-          <Ionicons
-            name="add-circle"
-            size={18}
+          <FontAwesome
+            name="plus-square-o"
+            size={22}
             color={activeTab === "create" ? "white" : "#666"}
           />
           <Text
@@ -166,16 +166,17 @@ function QrSessionManager({ onClose }: QrSessionManagerProps) {
 
       {activeTab === "create" ? (
         <View className="flex-1 items-center justify-center px-4">
-          <View className="bg-orange-600/10 p-8 rounded-full mb-8">
-            <Ionicons name="flash" size={54} color="#EA580C" />
+          <View className="bg-orange-600/10 p-8 rounded-full mb-6">
+            {/* <Ionicons name="flash" size={54} color="#EA580C" /> */}
+            <Ionicons name="images-outline" size={54} color="#EA580C" />
           </View>
 
           <Text className="text-white text-3xl font-black mb-3 text-center">
-            Create a Function
+            Function
           </Text>
 
-          <Text className="text-gray-400 text-center mb-12 leading-6">
-            Share images with friends in real-time. {"\n"}
+          <Text className="text-gray-400 text-center mb-14 leading-6">
+            Share the after party images with friends{"\n"}
             Everything is{" "}
             <Text className="text-orange-500 font-bold">
               automatically wiped
@@ -193,14 +194,14 @@ function QrSessionManager({ onClose }: QrSessionManagerProps) {
             ) : (
               <View className="flex-row items-center gap-3">
                 <Text className="text-black font-black text-lg tracking-[2px]">
-                  START PARTY
+                  CREATE
                 </Text>
                 <Ionicons name="arrow-forward" size={20} color="black" />
               </View>
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={onClose} className="mt-6">
+          <TouchableOpacity onPress={onClose} className="mt-4">
             <Text className="text-white/30 font-bold">CANCEL</Text>
           </TouchableOpacity>
         </View>

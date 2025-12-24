@@ -333,10 +333,27 @@ const handleFunctionPress = () => {
           </Text>
         </View>
 
-        <View className="flex-row gap-3 mb-4">
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: 12, paddingHorizontal: 20 }} // Handles spacing and side padding
+          className="mb-4"
+        >
+          <TouchableOpacity
+            onPress={() => router.push("/(screens)/goals")}
+            className="w-40 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]"
+          >
+            <View className="w-12 h-12 rounded-xl bg-orange-600/20 items-center justify-center mb-3">
+              <MaterialCommunityIcons name="target" size={24} color="#EA580C" />
+            </View>
+            <Text className="text-white text-base font-bold">Goals</Text>
+            <Text className="text-white/40 text-xs font-semibold mt-1">
+              Be proud
+            </Text>
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={() => router.push("/(screens)/mixTimeline")}
-            className="flex-1 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]"
+            className="w-40 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]"
           >
             <View className="w-12 h-12 rounded-xl bg-orange-600/20 items-center justify-center mb-3">
               <AntDesign name="align-center" size={24} color="#EA580C" />
@@ -349,17 +366,17 @@ const handleFunctionPress = () => {
 
           <TouchableOpacity
             onPress={() => router.push("/(screens)/stats")}
-            className="flex-1 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]"
+            className="w-40 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]"
           >
             <View className="w-12 h-12 rounded-xl bg-orange-600/20 items-center justify-center mb-3">
               <MaterialIcons name="query-stats" size={24} color="#EA580C" />
             </View>
-            <Text className="text-white text-base font-bold">Statistics</Text>
+            <Text className="text-white text-base font-bold">Stats</Text>
             <Text className="text-white/40 text-xs font-semibold mt-1">
               Detailed insights
             </Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
 
         <View className="flex-row gap-3 mb-4">
           <TouchableOpacity

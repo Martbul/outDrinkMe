@@ -214,11 +214,12 @@ const UserInfoScreen = () => {
     return paramId || userData?.id;
   }, [rawUserId, userData?.id]);
 
+  //TODO! Constant rerendering caused by getFriendDiscoveryDisplayProfile:
   useEffect(() => {
     if (targetUserId) {
       getFriendDiscoveryDisplayProfile(targetUserId);
     }
-  }, [targetUserId, getFriendDiscoveryDisplayProfile]);
+  }, [targetUserId]);
 
   useEffect(() => {
     const fetchUserCalendar = async () => {
@@ -398,10 +399,7 @@ const UserInfoScreen = () => {
       storeCategory: any[],
       icon: any
     ) => {
-      // 1. FILTER: Only include items with quantity > 0
       const validItems = items?.filter((item) => item.quantity > 0) || [];
-
-      // 2. Calculate Total based on filtered items
       const total =
         validItems.reduce((sum, item) => sum + item.quantity, 0) || 0;
 
