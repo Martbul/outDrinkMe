@@ -268,6 +268,8 @@ export default function GameLobbyScreen() {
                 onRefresh={onRefresh}
                 tintColor="#ff8c00"
                 colors={["#ff8c00"]}
+                            progressBackgroundColor="#000000"
+
               />
             }
           >

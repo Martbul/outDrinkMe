@@ -28,6 +28,7 @@ import type { UserData } from "@/types/api.types";
 import { ImagePickerModal } from "@/components/imagePickerModal";
 import { usePostHog } from "posthog-react-native";
 import * as ImageManipulator from "expo-image-manipulator";
+import { QuickFeedback } from "@/components/quickFeedback";
 
 const DRINK_TYPES = [
   "Vodka",
@@ -88,6 +89,18 @@ export default function AddDrinks() {
   const [thoughtInput, setThoughtInput] = useState("");
   const [isSubmittingDrunkThought, setIsSubmittingDrunkThought] =
     useState(false);
+  const [feedback, setFeedback] = useState<{
+    visible: boolean;
+    message: string;
+    type: "success" | "xp" | "level" | "info";
+  }>({ visible: false, message: "", type: "success" });
+
+  const showFeedback = (
+    message: string,
+    type: "success" | "xp" | "level" | "info" = "success"
+  ) => {
+    setFeedback({ visible: true, message, type });
+  };
 
   const hasCompletedRef = useRef(false);
 
@@ -349,6 +362,8 @@ export default function AddDrinks() {
         imageHeight
       );
 
+      showFeedback("Streak Secured! +100 XP", "xp");
+
       posthog.capture("drink_logged", {
         has_image: !!finalImageUrl,
         buddy_count: mentionedBuddies.length,
@@ -401,6 +416,10 @@ export default function AddDrinks() {
       setIsSubmittingDrunkThought(true);
       try {
         await addDrunkThought(thoughtInput.trim());
+
+        showFeedback("Wisdom Shared! +50XP", "info");
+
+
         posthog?.capture("drunk_thought_shared", {
           char_length: thoughtInput.length,
           is_update: !!drunkThought,
@@ -545,7 +564,9 @@ export default function AddDrinks() {
                   ) : (
                     <>
                       <Text
-                        className={`font-bold text-sm mr-2 ${!thoughtInput.trim() ? "text-white/20" : "text-black"}`}
+                        className={`font-bold text-sm mr-2 ${
+                          !thoughtInput.trim() ? "text-white/20" : "text-black"
+                        }`}
                       >
                         POST TO BUDDIES
                       </Text>
@@ -736,7 +757,9 @@ export default function AddDrinks() {
                   }`}
                 >
                   <Text
-                    className={`font-bold ${isSelected ? "text-black" : "text-white"}`}
+                    className={`font-bold ${
+                      isSelected ? "text-black" : "text-white"
+                    }`}
                   >
                     {friend.username}
                   </Text>
@@ -773,7 +796,9 @@ export default function AddDrinks() {
                   }`}
                 >
                   <Text
-                    className={`text-xs font-bold uppercase tracking-wide ${isSelected ? "text-black" : "text-white/70"}`}
+                    className={`text-xs font-bold uppercase tracking-wide ${
+                      isSelected ? "text-black" : "text-white/70"
+                    }`}
                   >
                     {type}
                   </Text>
@@ -906,6 +931,13 @@ export default function AddDrinks() {
         onClose={() => setImagePickerVisible(false)}
         onSelectCamera={() => handleImageSelection("camera")}
         onSelectLibrary={() => handleImageSelection("library")}
+      />
+
+      <QuickFeedback
+        visible={feedback.visible}
+        message={feedback.message}
+        type={feedback.type}
+        onHide={() => setFeedback((f) => ({ ...f, visible: false }))}
       />
 
       <AdditionalInfoModal

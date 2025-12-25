@@ -155,24 +155,23 @@ export default function HomeScreen() {
     new Animated.Value(Dimensions.get("window").height)
   ).current;
 
-const handleFunctionPress = () => {
-  console.log("Is Part of Func:", isPartOfActiveFunc);
-  console.log("Metadata:", funcMetaData);
+  const handleFunctionPress = () => {
+    console.log("Is Part of Func:", isPartOfActiveFunc);
+    console.log("Metadata:", funcMetaData);
 
-  if (isPartOfActiveFunc && funcMetaData?.sessionID) {
-    router.push({
-      pathname: "/(screens)/func_screen",
-      params: {
-        funcId: funcMetaData.sessionID,
-        inviteCode: funcMetaData.qrToken || funcMetaData.inviteCode,
-        qrBase64: funcMetaData.qrCodeBase64,
-      },
-    });
-  } else {
-    openModal();
-  }
-};
-  
+    if (isPartOfActiveFunc && funcMetaData?.sessionID) {
+      router.push({
+        pathname: "/(screens)/func_screen",
+        params: {
+          funcId: funcMetaData.sessionID,
+          inviteCode: funcMetaData.qrToken || funcMetaData.inviteCode,
+          qrBase64: funcMetaData.qrCodeBase64,
+        },
+      });
+    } else {
+      openModal();
+    }
+  };
 
   const openModal = () => {
     setQrModalVisible(true);
@@ -267,11 +266,12 @@ const handleFunctionPress = () => {
       ))}
 
       <ScrollView
-        className="flex-1"
+        className="flex-1 bg-black"
         contentContainerStyle={{
           paddingHorizontal: 16,
           paddingTop: 24,
           paddingBottom: 100 + insets.bottom,
+          backgroundColor: "black",
         }}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -280,6 +280,7 @@ const handleFunctionPress = () => {
             onRefresh={onRefresh}
             tintColor="#EA580C"
             colors={["#EA580C"]}
+            progressBackgroundColor="#000000"
           />
         }
       >
@@ -620,7 +621,7 @@ const handleFunctionPress = () => {
           )}
         </TouchableOpacity>
       </ScrollView>
-
+{/* 
       <TouchableOpacity
         onPress={() => setFeedbackModalVisible(true)}
         className="absolute bg-orange-600 rounded-full shadow-lg"
@@ -639,9 +640,9 @@ const handleFunctionPress = () => {
         }}
       >
         <Ionicons name="bug-outline" size={24} color="black" />
-      </TouchableOpacity>
+      </TouchableOpacity> */}
 
-      <Modal
+      {/* <Modal
         visible={feedbackModalVisible}
         transparent
         animationType="slide"
@@ -664,7 +665,6 @@ const handleFunctionPress = () => {
               }}
             >
               {feedbackSubmitted ? (
-                // Thank You Screen
                 <View className="px-6 py-16 items-center">
                   <View className="w-20 h-20 rounded-full bg-orange-600/20 items-center justify-center mb-4">
                     <Ionicons
@@ -683,7 +683,6 @@ const handleFunctionPress = () => {
                 </View>
               ) : (
                 <>
-                  {/* Header */}
                   <View className="flex-row items-center justify-between px-6 pt-6 pb-4 border-b border-white/[0.08]">
                     <Text className="text-white text-2xl font-black">
                       Tell us how to suck less
@@ -696,7 +695,6 @@ const handleFunctionPress = () => {
                     </TouchableOpacity>
                   </View>
 
-                  {/* Category Selection */}
                   <View className="px-6 pt-5 pb-3">
                     <Text className="text-white/60 text-sm font-semibold mb-3">
                       What&apos;s this about?
@@ -735,7 +733,6 @@ const handleFunctionPress = () => {
                     </View>
                   </View>
 
-                  {/* Text Input */}
                   <View className="px-6 pb-5">
                     <Text className="text-white/60 text-sm font-semibold mb-3">
                       Tell us more
@@ -789,7 +786,7 @@ const handleFunctionPress = () => {
             </TouchableOpacity>
           </TouchableOpacity>
         </KeyboardAvoidingView>
-      </Modal>
+      </Modal> */}
 
       <Modal visible={qrModalVisible} transparent onRequestClose={closeModal}>
         <View className="flex-1 justify-end bg-black/80">

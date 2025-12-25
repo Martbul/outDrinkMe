@@ -393,7 +393,9 @@ const BuddiesDiscoverScreen = () => {
               onRefresh={handleFriendsRefresh}
               tintColor="#ff8c00"
               colors={["#ff8c00"]}
-              progressBackgroundColor="black"
+                         progressBackgroundColor="#000000"
+
+
             />
           }
         />
@@ -422,7 +424,8 @@ const BuddiesDiscoverScreen = () => {
               onRefresh={handleDiscoveryRefresh}
               tintColor="#ff8c00"
               colors={["#ff8c00"]}
-              progressBackgroundColor="black"
+                          progressBackgroundColor="#000000"
+
             />
           }
         />

@@ -657,18 +657,19 @@ export interface UploadJob {
   progress: number;
   status: "pending" | "uploading" | "completed" | "failed";
 }
-
 export interface Story {
   id: string;
-  userId: string;
-  username: string;
-  userImage?: string;
-  videoUrl: string;
-  width: number;
-  height: number;
-  duration: number;
-  createdAt: string;
-  expiresAt: string;
+  user_id: string;
+  user_image_url: string;
+  video_url: string;
+  video_width: number;
+  video_height: number;
+  video_duration: number;
+  created_at: string;     // Fixed from createdAt
+  expires_at: string;     // Fixed from expiresAt
   isSeen: boolean;
+  relate_count: number;
+  has_related: boolean; 
+  username?: string; 
   taggedUsers?: string[];
 }

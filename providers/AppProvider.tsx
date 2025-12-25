@@ -1032,7 +1032,7 @@ export function AppProvider({ children }: AppProviderProps) {
 
       await withLoadingAndError(
         async () => {
-          await apiService.postStory(token, data);
+          await apiService.createStory(token, data);
           posthog?.capture("story_posted");
           await refreshStories();
         },

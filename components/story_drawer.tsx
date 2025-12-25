@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -9,267 +9,268 @@ import {
   Image,
   Modal,
   StatusBar,
-  Alert,
+  StyleSheet,
+  PanResponder,
+  Pressable,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useUser } from "@clerk/clerk-expo";
-import { Video, ResizeMode } from "expo-av"; // Import Video for playback
+import { useVideoPlayer, VideoView } from "expo-video";
 import { useApp } from "@/providers/AppProvider";
 import { StoryRecorder } from "./story_recorder";
-
-// --- CUSTOM IMPORTS ---
+import * as Haptics from "expo-haptics";
 
 const { width } = Dimensions.get("window");
-const DRAWER_WIDTH = width * 0.25;
+const DRAWER_WIDTH = width * 0.22;
+const GRAB_ZONE_WIDTH = 50;
 
 export default function StoryDrawer() {
-   const insets = useSafeAreaInsets();
-   
-  const { user } = useUser();
-  const { stories, markStoryAsSeen, deleteStory } = useApp(); 
+  const insets = useSafeAreaInsets();
+  const { stories, markStoryAsSeen } = useApp();
 
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
   const [isRecordingModalOpen, setIsRecordingModalOpen] = useState(false);
+  
+  // Track which USER is being watched and which STORY within their list
+  const [activeUserIndex, setActiveUserIndex] = useState<number | null>(null);
+  const [activeStoryIndex, setActiveStoryIndex] = useState(0);
 
+  const [isHolding, setIsHolding] = useState(false);
+  const [videoProgress, setVideoProgress] = useState(0);
+
+  const pressStartTime = useRef<number>(0);
   const slideAnim = useRef(new Animated.Value(0)).current;
 
-  // Find the full story object based on ID
-  const selectedStory = stories.find((s) => s.id === selectedStoryId);
+  // 1. GROUP STORIES BY USER
+  const groupedUsers = useMemo(() => {
+    const groups: Record<string, any> = {};
+    stories.forEach((story) => {
+      if (!groups[story.user_id]) {
+        groups[story.user_id] = {
+          user_id: story.user_id,
+          username: story.username || "User",
+          user_image_url: story.user_image_url,
+          items: [],
+          allSeen: true,
+        };
+      }
+      groups[story.user_id].items.push(story);
+      if (!story.isSeen) groups[story.user_id].allSeen = false;
+    });
+    return Object.values(groups);
+  }, [stories]);
 
-  // Check if the current user owns the selected story
-  // Note: Clerk user.id usually matches backend user.clerk_id,
-  // but your backend Story object uses internal UUIDs for userId.
-  // You might need to compare usernames or handle ID mapping.
-  // Ideally, your backend Story object should return `isMine: boolean`.
-  // For now, let's assume we compare usernames or you add a check.
-  const isMyStory = selectedStory?.username === user?.username;
+  const activeUser = activeUserIndex !== null ? groupedUsers[activeUserIndex] : null;
+  const activeStory = activeUser ? activeUser.items[activeStoryIndex] : null;
 
-  const toggleDrawer = () => {
-    const toValue = isOpen ? 0 : 1;
+  // Initialize Player
+  const player = useVideoPlayer(activeStory?.video_url || null, (p) => {
+    p.loop = false; // We handle the loop manually to move to next story segment
+    p.play();
+  });
+
+  // Smooth progress bar update
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (player && player.duration > 0) {
+        setVideoProgress(player.currentTime / player.duration);
+      }
+    }, 16);
+    return () => clearInterval(interval);
+  }, [player]);
+
+  // Handle source changes when navigating stories
+  useEffect(() => {
+    if (activeStory?.video_url) {
+      setVideoProgress(0);
+      player.replace(activeStory.video_url);
+      player.play();
+      markStoryAsSeen(activeStory.id);
+    }
+  }, [activeStoryIndex, activeUserIndex]);
+
+  // Handle auto-advance
+  useEffect(() => {
+    const sub = player.addListener("playToEnd", () => {
+      handleNext();
+    });
+    return () => sub.remove();
+  }, [player, activeStoryIndex, activeUserIndex]);
+
+  const handleNext = () => {
+    if (activeUser) {
+      if (activeStoryIndex < activeUser.items.length - 1) {
+        // Go to next story of SAME user
+        setActiveStoryIndex(activeStoryIndex + 1);
+      } else {
+        // Loop back to the FIRST story of the same user as requested
+        setActiveStoryIndex(0);
+        player.seekTo(0);
+        player.play();
+      }
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
+
+  const handlePrev = () => {
+    if (activeStoryIndex > 0) {
+      setActiveStoryIndex(activeStoryIndex - 1);
+    } else {
+      player.seekTo(0);
+      player.play();
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const closeStoryViewer = () => {
+    setActiveUserIndex(null);
+    setActiveStoryIndex(0);
+    setIsHolding(false);
+  };
+
+  const onUserPress = (index: number) => {
+    animateDrawer(0);
+    setActiveUserIndex(index);
+    setActiveStoryIndex(0);
+  };
+
+  const handlePressIn = () => {
+    pressStartTime.current = Date.now();
+    setIsHolding(true);
+    player.pause();
+  };
+
+  const handlePressOut = () => {
+    setIsHolding(false);
+    player.play();
+  };
+
+  const handleTap = (direction: "next" | "prev") => {
+    const pressDuration = Date.now() - pressStartTime.current;
+    if (pressDuration < 200) {
+      if (direction === "next") handleNext();
+      else handlePrev();
+    }
+  };
+
+  // Drawer Animation logic remains the same
+  const animateDrawer = (toValue: number) => {
+    const opening = toValue === 1;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Animated.spring(slideAnim, {
       toValue,
       useNativeDriver: true,
       friction: 8,
-      tension: 40,
-    }).start();
-    setIsOpen(!isOpen);
+      tension: 50,
+    }).start(() => setIsOpen(opening));
   };
 
-  const openStory = (id: string) => {
-    setSelectedStoryId(id);
-    markStoryAsSeen(id); // Trigger API call
-  };
-
-  const handleDelete = () => {
-    if (!selectedStoryId) return;
-    Alert.alert("Delete Story?", "This cannot be undone.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => {
-          deleteStory(selectedStoryId);
-          setSelectedStoryId(null);
-        },
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 5,
+      onPanResponderMove: (_, gesture) => {
+        let move = isOpen ? 1 + gesture.dx / DRAWER_WIDTH : -gesture.dx / DRAWER_WIDTH;
+        if (move < 0) move = 0;
+        if (move > 1) move = 1;
+        slideAnim.setValue(move);
       },
-    ]);
-  };
+      onPanResponderRelease: (_, gesture) => {
+        const currentVal = (slideAnim as any)._value;
+        if (isOpen) {
+          gesture.dx > 20 || currentVal < 0.7 ? animateDrawer(0) : animateDrawer(1);
+        } else {
+          gesture.dx < -20 || currentVal > 0.3 ? animateDrawer(1) : animateDrawer(0);
+        }
+      },
+    })
+  ).current;
 
   const translateX = slideAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [DRAWER_WIDTH, 0],
   });
 
-  const arrowRotate = slideAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0deg", "180deg"],
-  });
-
   return (
     <>
-      {/* --- DRAWER --- */}
-      <Animated.View
-        className="absolute right-0 bg-zinc-900/95 rounded-l-3xl border-l border-y border-white/10 z-40 flex-row"
-        style={{
-          top: insets.top + 60,
-          bottom: insets.bottom + 80,
-          width: DRAWER_WIDTH,
-          transform: [{ translateX }],
-        }}
-      >
-        <TouchableOpacity
-          onPress={toggleDrawer}
-          activeOpacity={0.9}
-          className="absolute -left-10 top-1/2 -mt-10 w-10 h-20 bg-zinc-900 rounded-l-2xl border-l border-y border-white/10 justify-center items-center"
-        >
-          <Animated.View style={{ transform: [{ rotate: arrowRotate }] }}>
-            <Ionicons name="chevron-back" size={24} color="#EA580C" />
-          </Animated.View>
-        </TouchableOpacity>
+      {isOpen && <Pressable style={StyleSheet.absoluteFill} onPress={() => animateDrawer(0)} />}
 
-        <View className="flex-1 items-center py-6">
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ alignItems: "center", paddingBottom: 20 }}
-            className="w-full"
-          >
-            {/* POST BUTTON */}
-            <TouchableOpacity
-              onPress={() => setIsRecordingModalOpen(true)}
-              className="items-center mb-5"
-            >
-              <View className="w-[52px] h-[52px] rounded-full border-2 border-white/20 justify-center items-center bg-black">
-                <Ionicons name="add" size={28} color="white" />
-              </View>
-              <Text className="text-white/70 text-[10px] mt-1 font-bold">
-                Post
-              </Text>
+      <View style={[styles.mainWrapper, { top: insets.top + 50, bottom: insets.bottom + 80 }]} pointerEvents="box-none">
+        <Animated.View {...panResponder.panHandlers} style={[styles.drawerInner, { transform: [{ translateX }] }]}>
+          <View style={styles.handlePill}>
+            <TouchableOpacity onPress={() => animateDrawer(1)} style={styles.pillTouchTarget}>
+              <View className="w-1.5 h-12 bg-white/30 rounded-full" />
             </TouchableOpacity>
+          </View>
 
-            {/* REAL STORIES LIST */}
-            {stories.map((story) => (
-              <TouchableOpacity
-                key={story.id}
-                onPress={() => openStory(story.id)}
-                className="items-center mb-5"
+          <View className="flex-1 bg-zinc-900/95 rounded-l-[32px] border-l border-y border-white/10 shadow-2xl overflow-hidden">
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ alignItems: "center", paddingTop: 30 }}>
+              <TouchableOpacity 
+                onPress={() => { animateDrawer(0); setIsRecordingModalOpen(true); }}
+                className="w-12 h-12 rounded-full border border-dashed border-white/30 items-center justify-center mb-8"
               >
-                {!story.isSeen ? (
-                  // Unseen: Gradient Ring
-                  <View className="w-[52px] h-[52px] rounded-full overflow-hidden">
-                    <LinearGradient
-                      colors={[
-                        "#f09433",
-                        "#e6683c",
-                        "#dc2743",
-                        "#cc2366",
-                        "#bc1888",
-                      ]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      className="flex-1 justify-center items-center"
-                    >
-                      <View className="w-[48px] h-[48px] rounded-full bg-black justify-center items-center">
-                        <Image
-                          source={{
-                            uri: story.userImage || "https://i.pravatar.cc/150",
-                          }}
-                          className="w-[44px] h-[44px] rounded-full"
-                        />
-                      </View>
-                    </LinearGradient>
-                  </View>
-                ) : (
-                  // Seen: Grey Ring
-                  <View className="w-[52px] h-[52px] rounded-full border border-white/20 justify-center items-center">
-                    <Image
-                      source={{
-                        uri: story.userImage || "https://i.pravatar.cc/150",
-                      }}
-                      className="w-[44px] h-[44px] rounded-full opacity-40"
-                    />
-                  </View>
-                )}
-                <Text
-                  numberOfLines={1}
-                  className="text-white/70 text-[10px] mt-1 font-bold w-14 text-center"
-                >
-                  {story.username === user?.username ? "You" : story.username}
-                </Text>
+                <Ionicons name="add" size={26} color="white" />
               </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      </Animated.View>
 
-      {/* --- RECORDING MODAL (Connects to Provider via its own internal logic) --- */}
+              {groupedUsers.map((userGroup: any, index: number) => (
+                <TouchableOpacity key={userGroup.user_id} onPress={() => onUserPress(index)} className="mb-6 items-center">
+                  <View className={`p-[2px] rounded-full ${!userGroup.allSeen ? "border-2 border-orange-500" : "border border-white/10"}`}>
+                    <Image source={{ uri: userGroup.user_image_url }} className={`w-10 h-10 rounded-full ${userGroup.allSeen ? "opacity-40" : "opacity-100"}`} />
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </Animated.View>
+      </View>
+
       <Modal visible={isRecordingModalOpen} animationType="slide">
-        {/* Pass close handler */}
         <StoryRecorder onClose={() => setIsRecordingModalOpen(false)} />
       </Modal>
 
-      {/* --- STORY VIEWER MODAL --- */}
-      <Modal
-        visible={!!selectedStory}
-        animationType="fade"
-        onRequestClose={() => setSelectedStoryId(null)}
-      >
+      {/* STORY VIEWER */}
+      <Modal visible={activeUserIndex !== null} animationType="fade" transparent onRequestClose={closeStoryViewer}>
         <View className="flex-1 bg-black">
           <StatusBar hidden />
-
-          {selectedStory && (
+          {activeUser && (
             <>
-              {/* VIDEO PLAYER */}
-              <Video
-                source={{ uri: selectedStory.videoUrl }}
-                style={{ width: "100%", height: "100%" }}
-                resizeMode={ResizeMode.COVER}
-                shouldPlay
-                isLooping={false}
-                // Optional: Close modal when video finishes
-                onPlaybackStatusUpdate={(status) => {
-                  if (status.isLoaded && status.didJustFinish) {
-                    setSelectedStoryId(null);
-                  }
-                }}
-              />
+              <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
 
-              {/* OVERLAYS */}
-              <View
-                className="absolute top-0 w-full"
-                style={{ paddingTop: insets.top + 10 }}
-              >
-                {/* Progress Bar (Simple Static for now, can animate based on duration) */}
-                <View className="px-4 flex-row gap-1 mb-4">
-                  <View className="flex-1 h-0.5 bg-white/80 rounded-full" />
-                </View>
+              {/* Navigation Zones */}
+              <View style={StyleSheet.absoluteFill} className="flex-row">
+                <Pressable style={{ flex: 1 }} onPressIn={handlePressIn} onPressOut={handlePressOut} onPress={() => handleTap("prev")} />
+                <Pressable style={{ flex: 2 }} onPressIn={handlePressIn} onPressOut={handlePressOut} onPress={() => handleTap("next")} />
+              </View>
 
-                {/* Header Info */}
-                <View className="px-4 flex-row items-center justify-between">
-                  <View className="flex-row items-center">
-                    <Image
-                      source={{ uri: selectedStory.userImage }}
-                      className="w-9 h-9 rounded-full border border-white/50"
-                    />
-                    <View className="ml-3">
-                      <Text className="text-white font-bold text-sm">
-                        {selectedStory.username}
-                      </Text>
-                      <Text className="text-white/60 text-[10px]">
-                        {new Date(selectedStory.createdAt).toLocaleTimeString(
-                          [],
-                          { hour: "2-digit", minute: "2-digit" }
-                        )}
-                      </Text>
-                    </View>
+              {/* UI Overlay */}
+              {!isHolding && (
+                <View className="absolute top-0 w-full" style={{ paddingTop: insets.top + 2 }}>
+                  {/* MULTIPLE PROGRESS BARS for the current user */}
+                  <View className="flex-row px-2 mb-3">
+                    {activeUser.items.map((_: any, i: number) => (
+                      <View key={i} className="h-1 flex-1 mx-0.5 rounded-full overflow-hidden bg-white/30">
+                        <View 
+                          style={{ 
+                            height: '100%', 
+                            backgroundColor: 'white', 
+                            width: i < activeStoryIndex ? '100%' : i === activeStoryIndex ? `${videoProgress * 100}%` : '0%' 
+                          }} 
+                        />
+                      </View>
+                    ))}
                   </View>
 
-                  <View className="flex-row items-center">
-                    {/* DELETE BUTTON (Only if My Story) */}
-                    {isMyStory && (
-                      <TouchableOpacity
-                        onPress={handleDelete}
-                        className="p-2 mr-2 bg-red-500/20 rounded-full"
-                      >
-                        <Ionicons
-                          name="trash-outline"
-                          size={20}
-                          color="#ef4444"
-                        />
-                      </TouchableOpacity>
-                    )}
-
-                    <TouchableOpacity
-                      onPress={() => setSelectedStoryId(null)}
-                      className="p-2"
-                    >
-                      <Ionicons name="close" size={30} color="white" />
+                  <View className="px-5 flex-row items-center justify-between">
+                    <View className="flex-row items-center">
+                      <Image source={{ uri: activeUser.user_image_url }} className="w-9 h-9 rounded-full border border-white/20" />
+                      <Text className="ml-3 text-white font-bold">{activeUser.username}</Text>
+                    </View>
+                    <TouchableOpacity onPress={closeStoryViewer} className="bg-white/10 p-2 rounded-full">
+                      <Ionicons name="close" size={24} color="white" />
                     </TouchableOpacity>
                   </View>
                 </View>
-              </View>
+              )}
             </>
           )}
         </View>
@@ -277,3 +278,10 @@ export default function StoryDrawer() {
     </>
   );
 }
+
+const styles = StyleSheet.create({
+  mainWrapper: { position: "absolute", right: 0, width: DRAWER_WIDTH + GRAB_ZONE_WIDTH, zIndex: 100 },
+  drawerInner: { flex: 1, flexDirection: "row", width: DRAWER_WIDTH + GRAB_ZONE_WIDTH },
+  handlePill: { width: GRAB_ZONE_WIDTH, justifyContent: "center", alignItems: "center" },
+  pillTouchTarget: { width: "100%", height: "100%", justifyContent: "center", alignItems: "center" },
+});

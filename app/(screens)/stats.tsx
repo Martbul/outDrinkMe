@@ -160,6 +160,8 @@ export default function StatsPage() {
             onRefresh={onRefresh}
             tintColor="#EA580C"
             colors={["#EA580C"]}
+                        progressBackgroundColor="#000000"
+
           />
         }
       >

@@ -544,6 +544,8 @@ const SideQuestBoard = () => {
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor="#EA580C"
+                        progressBackgroundColor="#000000"
+
           />
         }
       >

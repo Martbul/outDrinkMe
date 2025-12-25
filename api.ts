@@ -44,6 +44,7 @@ class ApiService {
     this.baseUrl = apiUrl || "http://localhost:3000";
     console.log("API initialized with base URL:", this.baseUrl);
   }
+
   private async makeRequest<T>(
     endpoint: string,
     options: RequestInit & { token?: string }
@@ -84,7 +85,7 @@ class ApiService {
 
     try {
       const data = await response.json();
-      console.log(`Success response:`, data);
+      // console.log(`Success response:`, data);
       return data;
     } catch (jsonError) {
       console.error("Failed to parse JSON response:", jsonError);
@@ -165,7 +166,9 @@ class ApiService {
     token: string
   ): Promise<SearchDbAlcoholResult | null> {
     const response = await this.makeRequest<SearchDbAlcoholResult | null>(
-      `/api/v1/user/search-db-alcohol?alcohol_name=${encodeURIComponent(searchQuery)}`,
+      `/api/v1/user/search-db-alcohol?alcohol_name=${encodeURIComponent(
+        searchQuery
+      )}`,
       {
         method: "GET",
         token,
@@ -1001,16 +1004,6 @@ class ApiService {
     });
   }
 
-  // async uploadImage(token: string, funcId: string, imageUrl: string) {
-  //   return this.makeRequest("/api/v1/func/upload", {
-  //     method: "POST",
-  //     token,
-  //     body: JSON.stringify({
-  //       funcId: funcId,
-  //       imageUrl: imageUrl,
-  //     }),
-  //   });
-  // }
 
   async uploadImages(token: string, funcId: string, imageUrls: string[]) {
     return this.makeRequest("/api/v1/func/upload", {
@@ -1018,7 +1011,7 @@ class ApiService {
       token,
       body: JSON.stringify({
         funcId: funcId,
-        imageUrls: imageUrls, // Sending an array now
+        imageUrls: imageUrls, 
       }),
     });
   }
@@ -1054,14 +1047,15 @@ class ApiService {
       }),
     });
   }
+
   async getStories(token: string): Promise<Story[]> {
-    return this.makeRequest("/user/stories", {
+    return this.makeRequest("/api/v1/user/stories", {
       method: "GET",
       token,
     });
   }
 
-  async postStory(
+  async createStory(
     token: string,
     data: {
       videoUrl: string;
@@ -1071,15 +1065,21 @@ class ApiService {
       taggedBuddies: string[];
     }
   ): Promise<void> {
-    return this.makeRequest("/user/stories", {
+    return this.makeRequest("/api/v1/user/stories", {
       method: "POST",
       token,
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        video_url: data.videoUrl,
+        width: data.width,
+        height: data.height,
+        duration: data.duration,
+        tagged_buddies: data.taggedBuddies,
+      }),
     });
   }
 
   async deleteStory(token: string, storyId: string): Promise<void> {
-    return this.makeRequest("/user/stories", {
+    return this.makeRequest("/api/v1/user/stories", {
       method: "DELETE",
       token,
       body: JSON.stringify({ storyId }),
@@ -1091,8 +1091,7 @@ class ApiService {
     storyId: string,
     action: "view" | "like"
   ): Promise<void> {
-    // Fire and forget (don't await strictly in UI)
-    return this.makeRequest("/user/stories/relate", {
+    return this.makeRequest("/api/v1/user/stories/relate", {
       method: "POST",
       token,
       body: JSON.stringify({ storyId, action }),

@@ -444,8 +444,9 @@ export default function StoreScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#ff8c00"
-            colors={["#ff8c00"]}
+            tintColor="#EA580C"
+            colors={["#EA580C "]}
+            progressBackgroundColor="#000000"
           />
         }
       >

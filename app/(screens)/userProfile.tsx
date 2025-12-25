@@ -575,6 +575,8 @@ export default function UserProfileScreen() {
             onRefresh={onRefresh}
             tintColor="#EA580C"
             colors={["#EA580C"]}
+                        progressBackgroundColor="#000000"
+
           />
         }
       >

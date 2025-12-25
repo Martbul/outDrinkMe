@@ -348,6 +348,8 @@ export default function FuncScreen() {
             refreshing={isFuncLoading}
             onRefresh={refreshFuncData}
             tintColor="#EA580C"
+                        progressBackgroundColor="#000000"
+
           />
         }
       >

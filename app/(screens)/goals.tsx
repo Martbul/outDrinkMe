@@ -17,6 +17,8 @@ import {
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import Svg, { Path } from "react-native-svg";
+import NestedScreenHeader from "@/components/nestedScreenHeader";
 
 const { width } = Dimensions.get("window");
 
@@ -26,296 +28,248 @@ export default function GoalSettingScreen() {
 
   // --- STATE ---
   const [maxDrinks, setMaxDrinks] = useState(5);
-  const [daysOut, setDaysOut] = useState(2);
-  const [budget, setBudget] = useState("50");
-
+  const [drunkDaysGoal, setDrunkDaysGoal] = useState(45);
+  const [blackoutGoal, setBlackoutGoal] = useState(0);
+  const [streakGoal, setStreakGoal] = useState(14);
+  
   // Toggles
   const [waterReminders, setWaterReminders] = useState(true);
   const [strictMode, setStrictMode] = useState(false);
-  const [photoQuest, setPhotoQuest] = useState(true);
 
-  // Dynamic Intensity Label
-  const getIntensityLabel = () => {
-    if (maxDrinks <= 3)
-      return { text: "CHILL", color: "text-green-500", bg: "bg-green-500" };
-    if (maxDrinks <= 7)
-      return { text: "BUZZED", color: "text-orange-500", bg: "bg-orange-500" };
-    return { text: "RAGER", color: "text-red-500", bg: "bg-red-500" };
-  };
-
-  const intensity = getIntensityLabel();
+  // Success Rate (Mock data for speedometer)
+  const successPercentage = 84;
 
   const handleSave = () => {
-    Alert.alert("Goals Updated", "Your party parameters have been set!", [
-      { text: "Let's Go", onPress: () => router.back() },
+    Alert.alert("Goals Updated", "Your annual targets have been locked.", [
+      { text: "Done", onPress: () => router.back() },
     ]);
   };
 
+  // --- SPEEDOMETER COMPONENT ---
+  const Speedometer = ({ percentage }: { percentage: number }) => {
+    const radius = 70;
+    const strokeWidth = 10;
+    const circumference = Math.PI * radius; // Half circle
+    const progress = (percentage / 100) * circumference;
+
+    return (
+      <View className="items-center justify-center py-4">
+        <Svg height="100" width="180" viewBox="0 0 180 100">
+          {/* Background Track */}
+          <Path
+            d="M 20 90 A 70 70 0 0 1 160 90"
+            fill="none"
+            stroke="#ffffff10"
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+          />
+          {/* Progress Path */}
+          <Path
+            d="M 20 90 A 70 70 0 0 1 160 90"
+            fill="none"
+            stroke="#EA580C"
+            strokeWidth={strokeWidth}
+            strokeDasharray={`${progress}, ${circumference}`}
+            strokeLinecap="round"
+          />
+        </Svg>
+        <View className="absolute bottom-2 items-center">
+          <Text className="text-white text-3xl font-black">{percentage}%</Text>
+          <Text className="text-orange-600 text-[10px] font-bold tracking-widest uppercase">
+            YEARLY SUCCESS
+          </Text>
+        </View>
+      </View>
+    );
+  };
+
+  // --- CUSTOM COUNTER COMPONENT ---
+  const CounterRow = ({ 
+    label, 
+    subLabel, 
+    value, 
+    onAdd, 
+    onRemove, 
+    icon 
+  }: any) => (
+    <View className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08] mb-3 flex-row justify-between items-center">
+      <View className="flex-row items-center">
+        <View className="w-10 h-10 bg-orange-600/10 rounded-xl items-center justify-center mr-3">
+          {icon}
+        </View>
+        <View>
+          <Text className="text-white font-black text-base">{label}</Text>
+          <Text className="text-white/40 text-[10px] font-bold uppercase tracking-tight">{subLabel}</Text>
+        </View>
+      </View>
+      <View className="flex-row items-center bg-black/40 rounded-xl border border-white/[0.05] p-1">
+        <TouchableOpacity onPress={onRemove} className="w-8 h-8 items-center justify-center">
+          <Ionicons name="remove" size={20} color="#EA580C" />
+        </TouchableOpacity>
+        <View className="px-3 min-w-[40px] items-center">
+          <Text className="text-white font-black text-lg">{value}</Text>
+        </View>
+        <TouchableOpacity onPress={onAdd} className="w-8 h-8 items-center justify-center">
+          <Ionicons name="add" size={20} color="#EA580C" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
   return (
     <View className="flex-1 bg-black">
-      {/* --- HEADER --- */}
-      <View
-        style={{ paddingTop: insets.top + 10 }}
-        className="px-6 pb-6 flex-row items-center justify-between border-b border-white/5 bg-[#0a0a0a]"
-      >
-        <TouchableOpacity
-          onPress={() => router.back()}
-          className="w-10 h-10 items-center justify-center rounded-full bg-white/10"
-        >
-          <Ionicons name="arrow-back" size={24} color="white" />
-        </TouchableOpacity>
-        <Text className="text-white font-black text-xl tracking-wide">
-          YOUR GOALS
-        </Text>
-        <View className="w-10" />
-      </View>
+      <NestedScreenHeader heading="Goals" secondaryHeading="ACCOUNTABILITY" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 120, paddingHorizontal: 20 }}
-        className="pt-6"
+        contentContainerStyle={{ paddingBottom: 120 }}
+        className="px-4 pt-4"
       >
-        {/* --- SECTION 1: LIMITS --- */}
-        <View className="mb-2">
-          <Text className="text-white/50 font-bold text-xs uppercase mb-3 tracking-widest">
-            Tolerance & Limits
-          </Text>
-
-          <View className="bg-[#111] rounded-3xl p-5 border border-white/10 mb-4">
-            <View className="flex-row justify-between items-center mb-6">
-              <View className="flex-row items-center">
-                <View className="w-10 h-10 bg-orange-500/20 rounded-full items-center justify-center mr-3">
-                  <MaterialCommunityIcons
-                    name="glass-cocktail"
-                    size={20}
-                    color="#EA580C"
-                  />
-                </View>
-                <View>
-                  <Text className="text-white font-bold text-lg">
-                    Daily Limit
-                  </Text>
-                  <Text className="text-white/40 text-xs">
-                    Drinks per night
-                  </Text>
-                </View>
-              </View>
-              <Text className={`font-black text-2xl ${intensity.color}`}>
-                {maxDrinks}
-              </Text>
-            </View>
-
-            {/* --- CUSTOM JS "SLIDER" (Visual Bar + Buttons) --- */}
-            <View className="mb-4">
-              {/* Visual Progress Bar */}
-              <View className="h-2 bg-white/10 rounded-full w-full overflow-hidden mb-4">
-                <View
-                  className={`h-full ${intensity.bg}`}
-                  style={{ width: `${(maxDrinks / 15) * 100}%` }}
-                />
-              </View>
-
-              {/* Control Buttons */}
-              <View className="flex-row justify-between items-center bg-black/50 p-2 rounded-2xl border border-white/10">
-                <TouchableOpacity
-                  onPress={() => setMaxDrinks(Math.max(1, maxDrinks - 1))}
-                  className="w-12 h-12 bg-white/10 rounded-xl items-center justify-center active:bg-white/20"
-                >
-                  <Ionicons name="remove" size={24} color="white" />
-                </TouchableOpacity>
-
-                <View className="items-center">
-                  <Text
-                    className={`font-black text-sm tracking-widest ${intensity.color}`}
-                  >
-                    {intensity.text}
-                  </Text>
-                </View>
-
-                <TouchableOpacity
-                  onPress={() => setMaxDrinks(Math.min(15, maxDrinks + 1))}
-                  className="w-12 h-12 bg-white/10 rounded-xl items-center justify-center active:bg-white/20"
-                >
-                  <Ionicons name="add" size={24} color="white" />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <View className="flex-row justify-between px-1">
-              <Text className="text-white/30 text-[10px] font-bold">1</Text>
-              <Text className="text-white/30 text-[10px] font-bold">15</Text>
-            </View>
-          </View>
-
-          {/* Days Per Week Counter */}
-          <View className="bg-[#111] rounded-3xl p-5 border border-white/10 flex-row justify-between items-center">
+        {/* --- SECTION 1: SPEEDOMETER --- */}
+        <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08] mb-6">
+          <View className="flex-row justify-between items-start mb-2">
             <View>
-              <Text className="text-white font-bold text-lg">Frequency</Text>
-              <Text className="text-white/40 text-xs">Nights out / week</Text>
-            </View>
-
-            <View className="flex-row items-center bg-black rounded-full border border-white/10 p-1">
-              <TouchableOpacity
-                onPress={() => setDaysOut(Math.max(1, daysOut - 1))}
-                className="w-10 h-10 bg-white/5 rounded-full items-center justify-center"
-              >
-                <Ionicons name="remove" size={20} color="white" />
-              </TouchableOpacity>
-
-              <Text className="text-white font-black text-xl w-10 text-center">
-                {daysOut}
+              <Text className="text-orange-600 text-[11px] font-bold tracking-widest uppercase">
+                Performance
               </Text>
+              <Text className="text-white text-2xl font-black">2024 Track</Text>
+            </View>
+            <View className="bg-orange-600/20 px-3 py-1 rounded-lg">
+              <Text className="text-orange-600 font-black text-xs">ELITE</Text>
+            </View>
+          </View>
+          
+          <Speedometer percentage={successPercentage} />
+          
+          <View className="flex-row justify-between mt-4 pt-4 border-t border-white/[0.05]">
+            <View className="items-center flex-1">
+              <Text className="text-white font-black">284</Text>
+              <Text className="text-white/40 text-[9px] font-bold uppercase">Safe Days</Text>
+            </View>
+            <View className="items-center flex-1 border-x border-white/[0.05]">
+              <Text className="text-orange-600 font-black">12</Text>
+              <Text className="text-white/40 text-[9px] font-bold uppercase">Streaks</Text>
+            </View>
+            <View className="items-center flex-1">
+              <Text className="text-white font-black">0</Text>
+              <Text className="text-white/40 text-[9px] font-bold uppercase">Lapses</Text>
+            </View>
+          </View>
+        </View>
 
+        {/* --- SECTION 2: ANNUAL TARGETS --- */}
+        <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-3 uppercase px-1">
+          Annual Limits
+        </Text>
+
+        <CounterRow
+          label="Drunk Days"
+          subLabel="Max allowed per year"
+          value={drunkDaysGoal}
+          onAdd={() => setDrunkDaysGoal(prev => prev + 1)}
+          onRemove={() => setDrunkDaysGoal(prev => Math.max(0, prev - 1))}
+          icon={<FontAwesome5 name="beer" size={16} color="#EA580C" />}
+        />
+
+        <CounterRow
+          label="Blackout Goal"
+          subLabel="Zero is the hero"
+          value={blackoutGoal}
+          onAdd={() => setBlackoutGoal(prev => prev + 1)}
+          onRemove={() => setBlackoutGoal(prev => Math.max(0, prev - 1))}
+          icon={<MaterialCommunityIcons name="skull" size={20} color="#EA580C" />}
+        />
+
+        <CounterRow
+          label="Dry Streak"
+          subLabel="Longest consecutive days"
+          value={streakGoal}
+          onAdd={() => setStreakGoal(prev => prev + 1)}
+          onRemove={() => setStreakGoal(prev => Math.max(0, prev - 1))}
+          icon={<Ionicons name="flame" size={20} color="#EA580C" />}
+        />
+
+        {/* --- SECTION 3: SESSION LIMITS --- */}
+        <View className="mt-4">
+          <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-3 uppercase px-1">
+            Session Controls
+          </Text>
+
+          <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08] mb-4">
+            <View className="flex-row justify-between items-center mb-6">
+              <View>
+                <Text className="text-white font-black text-lg">Daily Limit</Text>
+                <Text className="text-white/40 text-[10px] font-bold uppercase">Max drinks per night</Text>
+              </View>
+              <View className="bg-orange-600 px-3 py-1 rounded-lg">
+                <Text className="text-black font-black text-xl">{maxDrinks}</Text>
+              </View>
+            </View>
+
+            <View className="h-1.5 bg-white/[0.05] rounded-full w-full overflow-hidden mb-6">
+              <View
+                className="h-full bg-orange-600"
+                style={{ width: `${(maxDrinks / 15) * 100}%` }}
+              />
+            </View>
+
+            <View className="flex-row justify-between gap-4">
               <TouchableOpacity
-                onPress={() => setDaysOut(Math.min(7, daysOut + 1))}
-                className="w-10 h-10 bg-white/20 rounded-full items-center justify-center"
+                onPress={() => setMaxDrinks(Math.max(1, maxDrinks - 1))}
+                className="flex-1 bg-white/[0.05] py-4 rounded-xl items-center border border-white/[0.08]"
               >
-                <Ionicons name="add" size={20} color="white" />
+                <Ionicons name="remove" size={24} color="white" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setMaxDrinks(Math.min(15, maxDrinks + 1))}
+                className="flex-1 bg-orange-600 py-4 rounded-xl items-center"
+              >
+                <Ionicons name="add" size={24} color="black" />
               </TouchableOpacity>
             </View>
           </View>
         </View>
 
-        {/* --- SECTION 2: SIDE QUESTS --- */}
-        <View className="mt-6 mb-2">
-          <Text className="text-white/50 font-bold text-xs uppercase mb-3 tracking-widest">
-            Social Quests
-          </Text>
-
-          <View className="bg-[#111] rounded-3xl overflow-hidden border border-white/10">
-            {/* Quest Item 1 */}
-            <View className="p-5 flex-row items-center justify-between border-b border-white/5">
-              <View className="flex-row items-center flex-1 pr-4">
-                <View className="w-10 h-10 bg-purple-500/20 rounded-full items-center justify-center mr-3">
-                  <Ionicons name="camera" size={20} color="#a855f7" />
-                </View>
-                <View>
-                  <Text className="text-white font-bold text-base">
-                    Paparazzi
-                  </Text>
-                  <Text className="text-white/40 text-xs">
-                    Goal: Post 3+ stories per night
-                  </Text>
-                </View>
-              </View>
-              <Switch
-                trackColor={{ false: "#333", true: "#a855f7" }}
-                thumbColor={photoQuest ? "#fff" : "#f4f3f4"}
-                onValueChange={setPhotoQuest}
-                value={photoQuest}
-              />
-            </View>
-
-            {/* Quest Item 2 (Budget) */}
-            <View className="p-5 flex-row items-center justify-between">
-              <View className="flex-row items-center flex-1 pr-4">
-                <View className="w-10 h-10 bg-green-500/20 rounded-full items-center justify-center mr-3">
-                  <FontAwesome5
-                    name="money-bill-wave"
-                    size={16}
-                    color="#22c55e"
-                  />
-                </View>
+        {/* --- SECTION 4: TOGGLES --- */}
+        <View className="bg-white/[0.03] rounded-2xl border border-white/[0.08] overflow-hidden">
+            <View className="p-4 flex-row items-center justify-between border-b border-white/[0.05]">
                 <View className="flex-1">
-                  <Text className="text-white font-bold text-base">
-                    Budget Cap
-                  </Text>
-                  <View className="flex-row items-center mt-1">
-                    <Text className="text-white/40 text-xs mr-2">
-                      Max spend:
-                    </Text>
-                    <View className="flex-row items-center border-b border-white/20 pb-0.5 w-16">
-                      <Text className="text-green-500 font-bold text-sm">
-                        $
-                      </Text>
-                      <TextInput
-                        value={budget}
-                        onChangeText={setBudget}
-                        keyboardType="numeric"
-                        className="text-white font-bold text-sm ml-1 p-0 h-5"
-                        placeholder="0"
-                        placeholderTextColor="#555"
-                      />
-                    </View>
-                  </View>
+                    <Text className="text-white font-black text-base">Hydro Homie</Text>
+                    <Text className="text-white/40 text-[10px] font-bold uppercase">Water reminders</Text>
                 </View>
-              </View>
+                <Switch
+                    trackColor={{ false: "#333", true: "#EA580C" }}
+                    thumbColor="white"
+                    onValueChange={setWaterReminders}
+                    value={waterReminders}
+                />
             </View>
-          </View>
-        </View>
-
-        {/* --- SECTION 3: HEALTH & HABITS --- */}
-        <View className="mt-6">
-          <Text className="text-white/50 font-bold text-xs uppercase mb-3 tracking-widest">
-            Health & Safety
-          </Text>
-
-          <View className="bg-[#111] rounded-3xl p-5 border border-white/10 space-y-6">
-            {/* Water Toggle */}
-            <View className="flex-row items-center justify-between">
-              <View className="flex-row items-center flex-1 pr-4">
-                <View className="w-10 h-10 bg-blue-500/20 rounded-full items-center justify-center mr-3">
-                  <Ionicons name="water" size={20} color="#3b82f6" />
+            <View className="p-4 flex-row items-center justify-between">
+                <View className="flex-1">
+                    <Text className="text-white font-black text-base">Strict Mode</Text>
+                    <Text className="text-white/40 text-[10px] font-bold uppercase">Lock app at limit</Text>
                 </View>
-                <View>
-                  <Text className="text-white font-bold text-base">
-                    Hydro Homie
-                  </Text>
-                  <Text className="text-white/40 text-xs">
-                    Hourly water reminders
-                  </Text>
-                </View>
-              </View>
-              <Switch
-                trackColor={{ false: "#333", true: "#3b82f6" }}
-                thumbColor={waterReminders ? "#fff" : "#f4f3f4"}
-                onValueChange={setWaterReminders}
-                value={waterReminders}
-              />
+                <Switch
+                    trackColor={{ false: "#333", true: "#EA580C" }}
+                    thumbColor="white"
+                    onValueChange={setStrictMode}
+                    value={strictMode}
+                />
             </View>
-
-            {/* Strict Mode Toggle */}
-            <View className="flex-row items-center justify-between mt-4">
-              <View className="flex-row items-center flex-1 pr-4">
-                <View className="w-10 h-10 bg-red-500/20 rounded-full items-center justify-center mr-3">
-                  <Ionicons name="alert-circle" size={22} color="#ef4444" />
-                </View>
-                <View>
-                  <Text className="text-white font-bold text-base">
-                    Strict Mode
-                  </Text>
-                  <Text className="text-white/40 text-xs">
-                    Lock app after limit reached
-                  </Text>
-                </View>
-              </View>
-              <Switch
-                trackColor={{ false: "#333", true: "#ef4444" }}
-                thumbColor={strictMode ? "#fff" : "#f4f3f4"}
-                onValueChange={setStrictMode}
-                value={strictMode}
-              />
-            </View>
-          </View>
         </View>
       </ScrollView>
 
       {/* --- SAVE BUTTON --- */}
       <View
-        className="absolute bottom-0 w-full px-6 pt-4 bg-[#0a0a0a] border-t border-white/5"
+        className="absolute bottom-0 w-full px-6 pt-4 bg-black border-t border-white/5"
         style={{ paddingBottom: insets.bottom + 10 }}
       >
         <TouchableOpacity onPress={handleSave}>
-          <LinearGradient
-            colors={["#EA580C", "#C2410C"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            className="w-full py-4 rounded-2xl items-center shadow-lg shadow-orange-900/20"
-          >
-            <Text className="text-white font-black text-base tracking-widest">
+          <View className="bg-orange-600 py-4 rounded-2xl items-center shadow-lg">
+            <Text className="text-black font-black text-base tracking-widest">
               SAVE GOALS
             </Text>
-          </LinearGradient>
+          </View>
         </TouchableOpacity>
       </View>
     </View>

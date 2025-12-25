@@ -679,6 +679,8 @@ export default function NotificationsScreen() {
             tintColor="#EA580C"
             colors={["#EA580C"]}
             progressViewOffset={10}
+                        progressBackgroundColor="#000000"
+
           />
         }
       >

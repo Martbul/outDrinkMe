@@ -590,10 +590,10 @@ const UserInfoScreen = () => {
               isToday && isLogged
                 ? "bg-orange-600/30 border-orange-600"
                 : isToday
-                  ? "bg-white/[0.12] border-orange-600"
-                  : isLogged
-                    ? "bg-orange-600/30 border-orange-600/50"
-                    : "bg-white/[0.03] border-white/[0.08]"
+                ? "bg-white/[0.12] border-orange-600"
+                : isLogged
+                ? "bg-orange-600/30 border-orange-600/50"
+                : "bg-white/[0.03] border-white/[0.08]"
             }
           `}
           >
@@ -602,8 +602,8 @@ const UserInfoScreen = () => {
                 isToday
                   ? "text-white"
                   : isLogged
-                    ? "text-orange-500"
-                    : "text-white/30"
+                  ? "text-orange-500"
+                  : "text-white/30"
               }`}
             >
               {day}
@@ -786,6 +786,7 @@ const UserInfoScreen = () => {
             onRefresh={onRefresh}
             tintColor="#EA580C"
             colors={["#EA580C"]}
+            progressBackgroundColor="#000000"
           />
         }
       >
