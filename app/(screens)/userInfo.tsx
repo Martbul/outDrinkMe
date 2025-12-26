@@ -22,6 +22,7 @@ import {
   Entypo,
   Feather,
   FontAwesome5,
+  Ionicons,
   MaterialCommunityIcons,
   MaterialIcons,
 } from "@expo/vector-icons";
@@ -31,6 +32,7 @@ import { onBackPress } from "@/utils/navigation";
 import LogoutButton from "@/components/logoutButton";
 import { FriendButton } from "@/components/friendButton";
 import { apiService } from "@/api";
+import Feedback from "./feedback";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const GAP = 12;
@@ -213,8 +215,8 @@ const UserInfoScreen = () => {
     const paramId = Array.isArray(rawUserId) ? rawUserId[0] : rawUserId;
     return paramId || userData?.id;
   }, [rawUserId, userData?.id]);
+  const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
 
-  //TODO! Constant rerendering caused by getFriendDiscoveryDisplayProfile:
   useEffect(() => {
     if (targetUserId) {
       getFriendDiscoveryDisplayProfile(targetUserId);
@@ -945,6 +947,22 @@ const UserInfoScreen = () => {
                   {isCurrentUser ? (
                     <>
                       <ModalOption
+                        label="Bug"
+                        subLabel="Report bugs, give ideas and ask for features"
+                        icon={
+                          <Ionicons
+                            name="bug-outline"
+                            size={24}
+                            color="#EA580C"
+                          />
+                        }
+                        onPress={() => {
+                          closeSettingsModal();
+                          setFeedbackModalVisible(true);
+                        }}
+                      />
+
+                      <ModalOption
                         label="Edit Profile"
                         subLabel="Change name, bio, and photo"
                         icon={
@@ -1013,6 +1031,7 @@ const UserInfoScreen = () => {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+      <Feedback feedbackModalVisible={feedbackModalVisible} setFeedbackModalVisible={setFeedbackModalVisible}/>
     </View>
   );
 };

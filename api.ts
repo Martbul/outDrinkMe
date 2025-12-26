@@ -1004,14 +1004,13 @@ class ApiService {
     });
   }
 
-
   async uploadImages(token: string, funcId: string, imageUrls: string[]) {
     return this.makeRequest("/api/v1/func/upload", {
       method: "POST",
       token,
       body: JSON.stringify({
         funcId: funcId,
-        imageUrls: imageUrls, 
+        imageUrls: imageUrls,
       }),
     });
   }
@@ -1089,12 +1088,20 @@ class ApiService {
   async relateStory(
     token: string,
     storyId: string,
-    action: "view" | "like"
+    action: "like"
   ): Promise<void> {
     return this.makeRequest("/api/v1/user/stories/relate", {
       method: "POST",
       token,
-      body: JSON.stringify({ storyId, action }),
+      body: JSON.stringify({ story_id:storyId, action }),
+    });
+  }
+
+  async markStoryAsSeen(token: string, storyId: string): Promise<void> {
+    return this.makeRequest("/api/v1/user/stories/seen", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ story_id: storyId }),
     });
   }
 

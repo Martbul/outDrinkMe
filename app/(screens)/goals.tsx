@@ -8,6 +8,9 @@ import {
   TextInput,
   Dimensions,
   Alert,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -16,7 +19,6 @@ import {
   FontAwesome5,
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Path } from "react-native-svg";
 import NestedScreenHeader from "@/components/nestedScreenHeader";
 
@@ -28,13 +30,25 @@ export default function GoalSettingScreen() {
 
   // --- STATE ---
   const [maxDrinks, setMaxDrinks] = useState(5);
-  const [drunkDaysGoal, setDrunkDaysGoal] = useState(45);
-  const [blackoutGoal, setBlackoutGoal] = useState(0);
-  const [streakGoal, setStreakGoal] = useState(14);
   
+  // Annual Targets
+  const [drunkDaysGoal, setDrunkDaysGoal] = useState(45);
+  const [currentDrunkDays, setCurrentDrunkDays] = useState(12); // Mock current progress
+
+  const [blackoutGoal, setBlackoutGoal] = useState(0);
+  const [currentBlackouts, setCurrentBlackouts] = useState(0);
+
+  const [streakGoal, setStreakGoal] = useState(30);
+  const [currentStreak, setCurrentStreak] = useState(14);
+
   // Toggles
   const [waterReminders, setWaterReminders] = useState(true);
   const [strictMode, setStrictMode] = useState(false);
+
+  // Modal State for "Big Number" Input
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingGoal, setEditingGoal] = useState<{ title: string; val: number; setVal: (n: number) => void } | null>(null);
+  const [tempInputValue, setTempInputValue] = useState("");
 
   // Success Rate (Mock data for speedometer)
   const successPercentage = 84;
@@ -45,17 +59,32 @@ export default function GoalSettingScreen() {
     ]);
   };
 
-  // --- SPEEDOMETER COMPONENT ---
+  const openEditModal = (title: string, val: number, setVal: (n: number) => void) => {
+    setEditingGoal({ title, val, setVal });
+    setTempInputValue(val.toString());
+    setModalVisible(true);
+  };
+
+  const saveModalValue = () => {
+    if (editingGoal) {
+      const num = parseInt(tempInputValue, 10);
+      if (!isNaN(num) && num >= 0) {
+        editingGoal.setVal(num);
+      }
+    }
+    setModalVisible(false);
+  };
+
+  // --- COMPONENT: SPEEDOMETER ---
   const Speedometer = ({ percentage }: { percentage: number }) => {
     const radius = 70;
     const strokeWidth = 10;
-    const circumference = Math.PI * radius; // Half circle
+    const circumference = Math.PI * radius; 
     const progress = (percentage / 100) * circumference;
 
     return (
       <View className="items-center justify-center py-4">
         <Svg height="100" width="180" viewBox="0 0 180 100">
-          {/* Background Track */}
           <Path
             d="M 20 90 A 70 70 0 0 1 160 90"
             fill="none"
@@ -63,7 +92,6 @@ export default function GoalSettingScreen() {
             strokeWidth={strokeWidth}
             strokeLinecap="round"
           />
-          {/* Progress Path */}
           <Path
             d="M 20 90 A 70 70 0 0 1 160 90"
             fill="none"
@@ -83,36 +111,116 @@ export default function GoalSettingScreen() {
     );
   };
 
-  // --- CUSTOM COUNTER COMPONENT ---
-  const CounterRow = ({ 
+  // --- COMPONENT: ENHANCED GOAL CARD (Percentage + Input) ---
+  const EnhancedGoalCard = ({ 
     label, 
     subLabel, 
-    value, 
-    onAdd, 
-    onRemove, 
-    icon 
-  }: any) => (
-    <View className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08] mb-3 flex-row justify-between items-center">
-      <View className="flex-row items-center">
-        <View className="w-10 h-10 bg-orange-600/10 rounded-xl items-center justify-center mr-3">
-          {icon}
+    target, 
+    current, 
+    onPressEdit, 
+    icon,
+    isLimit = true // true implies "don't exceed", false implies "reach this"
+  }: any) => {
+    // Calculate percentage
+    const percent = Math.min(100, Math.max(0, (current / (target || 1)) * 100));
+    const progressColor = isLimit 
+      ? (percent > 80 ? "bg-red-500" : "bg-orange-600") 
+      : "bg-green-500";
+
+    return (
+      <TouchableOpacity 
+        onPress={onPressEdit}
+        className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08] mb-3"
+      >
+        <View className="flex-row justify-between items-center mb-3">
+          <View className="flex-row items-center">
+            <View className="w-10 h-10 bg-orange-600/10 rounded-xl items-center justify-center mr-3">
+              {icon}
+            </View>
+            <View>
+              <Text className="text-white font-black text-base">{label}</Text>
+              <Text className="text-white/40 text-[10px] font-bold uppercase tracking-tight">{subLabel}</Text>
+            </View>
+          </View>
+          
+          <View className="items-end">
+            <View className="flex-row items-baseline">
+                <Text className="text-white font-black text-2xl">{target}</Text>
+                <Text className="text-white/40 text-xs font-bold ml-1">GOAL</Text>
+            </View>
+          </View>
         </View>
-        <View>
-          <Text className="text-white font-black text-base">{label}</Text>
-          <Text className="text-white/40 text-[10px] font-bold uppercase tracking-tight">{subLabel}</Text>
+
+        {/* Progress Bar */}
+        <View className="w-full">
+            <View className="flex-row justify-between mb-1">
+                <Text className="text-white/40 text-[10px] font-bold uppercase">
+                    {current} Current
+                </Text>
+                <Text className="text-white/40 text-[10px] font-bold uppercase">
+                    {Math.round(percent)}%
+                </Text>
+            </View>
+            <View className="h-2 bg-white/10 rounded-full overflow-hidden">
+                <View 
+                    className={`h-full rounded-full ${progressColor}`} 
+                    style={{ width: `${percent}%` }}
+                />
+            </View>
         </View>
-      </View>
-      <View className="flex-row items-center bg-black/40 rounded-xl border border-white/[0.05] p-1">
-        <TouchableOpacity onPress={onRemove} className="w-8 h-8 items-center justify-center">
-          <Ionicons name="remove" size={20} color="#EA580C" />
-        </TouchableOpacity>
-        <View className="px-3 min-w-[40px] items-center">
-          <Text className="text-white font-black text-lg">{value}</Text>
+      </TouchableOpacity>
+    );
+  };
+
+  // --- COMPONENT: BUDDY CHALLENGE (Dual Goals) ---
+  const BuddyChallengeCard = () => (
+    <View className="bg-gradient-to-r from-gray-900 to-black rounded-2xl p-0 border border-orange-600/30 mb-6 overflow-hidden relative">
+        {/* Decorative Background */}
+        <View className="absolute right-0 top-0 opacity-20">
+            <Ionicons name="trophy" size={120} color="#EA580C" />
         </View>
-        <TouchableOpacity onPress={onAdd} className="w-8 h-8 items-center justify-center">
-          <Ionicons name="add" size={20} color="#EA580C" />
-        </TouchableOpacity>
-      </View>
+
+        <View className="p-5">
+            <View className="flex-row justify-between items-center mb-4">
+                <View>
+                    <Text className="text-orange-500 font-bold text-[10px] tracking-widest uppercase">Social Accountability</Text>
+                    <Text className="text-white font-black text-lg">Buddy Challenge</Text>
+                </View>
+                <View className="bg-orange-600/20 px-2 py-1 rounded border border-orange-600/50">
+                    <Text className="text-orange-500 font-black text-[10px] uppercase">Active Bet</Text>
+                </View>
+            </View>
+
+            {/* Duel Rows */}
+            <View className="space-y-4">
+                {/* User */}
+                <View>
+                    <View className="flex-row justify-between mb-1">
+                        <Text className="text-white font-bold text-xs">You</Text>
+                        <Text className="text-white font-bold text-xs">14 Days</Text>
+                    </View>
+                    <View className="h-3 bg-white/10 rounded-full overflow-hidden">
+                        <View className="h-full bg-orange-500 w-[45%]" />
+                    </View>
+                </View>
+
+                {/* Buddy */}
+                <View>
+                    <View className="flex-row justify-between mb-1">
+                        <Text className="text-white/60 font-bold text-xs">Mike (Buddy)</Text>
+                        <Text className="text-white/60 font-bold text-xs">18 Days</Text>
+                    </View>
+                    <View className="h-3 bg-white/10 rounded-full overflow-hidden">
+                        <View className="h-full bg-blue-500 w-[60%]" />
+                    </View>
+                </View>
+            </View>
+
+            <TouchableOpacity className="mt-4 flex-row items-center justify-center bg-white/5 py-3 rounded-xl border border-white/10">
+                <MaterialCommunityIcons name="handshake" size={18} color="white" />
+                <Text className="text-white font-bold ml-2 text-xs uppercase">View Bet Details</Text>
+            </TouchableOpacity>
+        </View>
     </View>
   );
 
@@ -132,7 +240,7 @@ export default function GoalSettingScreen() {
               <Text className="text-orange-600 text-[11px] font-bold tracking-widest uppercase">
                 Performance
               </Text>
-              <Text className="text-white text-2xl font-black">2024 Track</Text>
+              <Text className="text-white text-2xl font-black">2025 Track</Text>
             </View>
             <View className="bg-orange-600/20 px-3 py-1 rounded-lg">
               <Text className="text-orange-600 font-black text-xs">ELITE</Text>
@@ -157,39 +265,43 @@ export default function GoalSettingScreen() {
           </View>
         </View>
 
-        {/* --- SECTION 2: ANNUAL TARGETS --- */}
+        {/* --- SECTION 2: BUDDY CHALLENGE (NEW) --- */}
+        <BuddyChallengeCard />
+
+        {/* --- SECTION 3: ANNUAL TARGETS (ENHANCED) --- */}
         <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-3 uppercase px-1">
           Annual Limits
         </Text>
 
-        <CounterRow
+        <EnhancedGoalCard
           label="Drunk Days"
-          subLabel="Max allowed per year"
-          value={drunkDaysGoal}
-          onAdd={() => setDrunkDaysGoal(prev => prev + 1)}
-          onRemove={() => setDrunkDaysGoal(prev => Math.max(0, prev - 1))}
+          subLabel="Yearly Limit"
+          target={drunkDaysGoal}
+          current={currentDrunkDays}
+          onPressEdit={() => openEditModal("Max Drunk Days", drunkDaysGoal, setDrunkDaysGoal)}
           icon={<FontAwesome5 name="beer" size={16} color="#EA580C" />}
         />
 
-        <CounterRow
+        <EnhancedGoalCard
           label="Blackout Goal"
-          subLabel="Zero is the hero"
-          value={blackoutGoal}
-          onAdd={() => setBlackoutGoal(prev => prev + 1)}
-          onRemove={() => setBlackoutGoal(prev => Math.max(0, prev - 1))}
+          subLabel="Absolute Zero"
+          target={blackoutGoal}
+          current={currentBlackouts}
+          onPressEdit={() => openEditModal("Allowed Blackouts", blackoutGoal, setBlackoutGoal)}
           icon={<MaterialCommunityIcons name="skull" size={20} color="#EA580C" />}
         />
 
-        <CounterRow
+        <EnhancedGoalCard
           label="Dry Streak"
-          subLabel="Longest consecutive days"
-          value={streakGoal}
-          onAdd={() => setStreakGoal(prev => prev + 1)}
-          onRemove={() => setStreakGoal(prev => Math.max(0, prev - 1))}
+          subLabel="Record Target"
+          target={streakGoal}
+          current={currentStreak}
+          isLimit={false}
+          onPressEdit={() => openEditModal("Streak Goal", streakGoal, setStreakGoal)}
           icon={<Ionicons name="flame" size={20} color="#EA580C" />}
         />
 
-        {/* --- SECTION 3: SESSION LIMITS --- */}
+        {/* --- SECTION 4: SESSION LIMITS --- */}
         <View className="mt-4">
           <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-3 uppercase px-1">
             Session Controls
@@ -230,8 +342,8 @@ export default function GoalSettingScreen() {
           </View>
         </View>
 
-        {/* --- SECTION 4: TOGGLES --- */}
-        <View className="bg-white/[0.03] rounded-2xl border border-white/[0.08] overflow-hidden">
+        {/* --- SECTION 5: TOGGLES --- */}
+        <View className="bg-white/[0.03] rounded-2xl border border-white/[0.08] overflow-hidden mb-6">
             <View className="p-4 flex-row items-center justify-between border-b border-white/[0.05]">
                 <View className="flex-1">
                     <Text className="text-white font-black text-base">Hydro Homie</Text>
@@ -258,6 +370,54 @@ export default function GoalSettingScreen() {
             </View>
         </View>
       </ScrollView>
+
+      {/* --- BIG NUMBER INPUT MODAL --- */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <KeyboardAvoidingView 
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            className="flex-1 items-center justify-center bg-black/90 px-6"
+        >
+            <View className="bg-[#1A1A1A] w-full p-6 rounded-3xl border border-white/10">
+                <Text className="text-orange-600 text-xs font-bold tracking-widest uppercase mb-2">
+                    Edit Goal
+                </Text>
+                <Text className="text-white text-2xl font-black mb-6">
+                    {editingGoal?.title}
+                </Text>
+
+                <View className="flex-row items-center bg-black rounded-xl border border-white/20 px-4 py-4 mb-6">
+                    <TextInput 
+                        className="flex-1 text-white text-3xl font-black text-center"
+                        keyboardType="number-pad"
+                        value={tempInputValue}
+                        onChangeText={setTempInputValue}
+                        placeholderTextColor="#444"
+                        autoFocus
+                    />
+                </View>
+
+                <View className="flex-row gap-3">
+                    <TouchableOpacity 
+                        onPress={() => setModalVisible(false)}
+                        className="flex-1 bg-white/10 py-4 rounded-xl items-center"
+                    >
+                        <Text className="text-white font-bold">Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        onPress={saveModalValue}
+                        className="flex-1 bg-orange-600 py-4 rounded-xl items-center"
+                    >
+                        <Text className="text-black font-black">Save Value</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* --- SAVE BUTTON --- */}
       <View

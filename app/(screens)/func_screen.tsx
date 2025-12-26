@@ -218,7 +218,9 @@ export default function FuncScreen() {
 
       const assets: MediaLibrary.Asset[] = [];
       for (const url of urls) {
-        const filename = `func_${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
+        const filename = `func_${Date.now()}_${Math.random()
+          .toString(36)
+          .substring(7)}.jpg`;
         const fileUri = FileSystem.cacheDirectory + filename;
         const { uri } = await FileSystem.downloadAsync(url, fileUri);
         const asset = await MediaLibrary.createAssetAsync(uri);
@@ -348,8 +350,7 @@ export default function FuncScreen() {
             refreshing={isFuncLoading}
             onRefresh={refreshFuncData}
             tintColor="#EA580C"
-                        progressBackgroundColor="#000000"
-
+            progressBackgroundColor="#000000"
           />
         }
       >

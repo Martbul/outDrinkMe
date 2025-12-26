@@ -25,7 +25,9 @@ import type {
   NotificationItem,
   SideQuestBoard,
   MinVersionResponse,
-  Story,
+  UserStories,
+  UploadJob,
+  StoryUploadJob,
 } from "../types/api.types";
 import { apiService } from "@/api";
 import { usePostHog } from "posthog-react-native";
@@ -34,6 +36,7 @@ import * as Notifications from "expo-notifications";
 import { registerForPushNotificationsAsync } from "@/utils/registerPushNotification";
 import { Alert, Platform } from "react-native";
 import * as Application from "expo-application";
+import * as FileSystem from "expo-file-system/legacy";
 
 interface AppContextType {
   // Data
@@ -47,7 +50,7 @@ interface AppContextType {
   weeklyStats: DaysStat | null;
   friends: UserData[] | [];
   discovery: UserData[] | [];
-  stories: Story[];
+  stories: UserStories[];
 
   // --- Pagination Data ---
   yourMixData: YourMixPostData[] | [];
@@ -64,7 +67,7 @@ interface AppContextType {
   unreadNotificationCount: number;
   sideQuestBoards: SideQuestBoard | null;
   mapFriendPosts: YourMixPostData[] | [];
-
+storyUploadQueue: StoryUploadJob[];
   // Refresh Functions (Page 1)
   refreshUserData: () => Promise<void>;
   refreshUserStats: () => Promise<void>;
@@ -163,7 +166,7 @@ export function AppProvider({ children }: AppProviderProps) {
   const [weeklyStats, setWeeklyStats] = useState<DaysStat | null>(null);
   const [friends, setFriends] = useState<UserData[] | []>([]);
   const [discovery, setDiscovery] = useState<UserData[] | []>([]);
-  const [stories, setStories] = useState<Story[]>([]);
+  const [stories, setStories] = useState<UserStories[]>([]);
 
   const [yourMixData, setYourMixData] = useState<YourMixPostData[] | []>([]);
   const [yourMixPage, setYourMixPage] = useState(1);
@@ -204,9 +207,149 @@ export function AppProvider({ children }: AppProviderProps) {
   const [updateMessage, setUpdateMessage] = useState(
     "A new version of the app is available. Please update to continue."
   );
+  const [storyUploadQueue, setStoryUploadQueue] = useState<StoryUploadJob[]>([]);  
 
   const hasInitialized = useRef(false);
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
+const hasStoryUploadNotified = useRef(false);
+  const isStoryProcessing = useRef(false);
+
+   const updateStoryJobStatus = (
+    id: string,
+    status: StoryUploadJob["status"],
+    progress: number
+  ) => {
+    setStoryUploadQueue((prev) =>
+      prev.map((job) => (job.id === id ? { ...job, status, progress } : job))
+    );
+  };
+
+     const processStoryUpload = async (job: StoryUploadJob) => {
+    const token = await getToken();
+    const CLOUDINARY_CLOUD_NAME = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    const PRESET = process.env.EXPO_PUBLIC_CLOUDINARY_STORY_UPLOAD_PRESET;
+
+    // 1. Validation
+    if (!token || !CLOUDINARY_CLOUD_NAME || !PRESET) {
+      console.error("Missing Config for upload");
+      updateStoryJobStatus(job.id, "failed", 0);
+      return;
+    }
+
+    try {
+      updateStoryJobStatus(job.id, "uploading", 0);
+
+      // 2. Cloudinary Upload (VIDEO endpoint)
+      // Note: We use 'video/upload' instead of 'image/upload'
+      const uploadTask = FileSystem.createUploadTask(
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`,
+        job.uri,
+        {
+          httpMethod: "POST",
+          uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+          fieldName: "file",
+          parameters: {
+            upload_preset: PRESET!,
+            folder: "outdrinkme_story", // Optional: keep stories organized
+            resource_type: "video",  // Explicitly tell Cloudinary this is a video
+          },
+        },
+        (p) => {
+          if (p.totalBytesExpectedToSend > 0) {
+            const progress = p.totalBytesSent / p.totalBytesExpectedToSend;
+            // Only update state every ~5% to prevent UI lag
+            updateStoryJobStatus(job.id, "uploading", progress);
+          }
+        }
+      );
+
+      const response = await uploadTask.uploadAsync();
+
+      if (!response || response.status !== 200) {
+        throw new Error(
+          `Cloudinary Error: ${response?.status} - ${response?.body}`
+        );
+      }
+
+      const cloudinaryData = JSON.parse(response.body);
+
+      // 3. Save to DB (Create Story)
+      // We use the secure_url from Cloudinary and the meta data stored in the job
+      await apiService.createStory(token, {
+        videoUrl: cloudinaryData.secure_url,
+        width: job.meta.width,
+        height: job.meta.height,
+        duration: job.meta.duration,
+        taggedBuddies: job.meta.taggedBuddies,
+      });
+
+      // 4. Cleanup & Analytics
+      updateStoryJobStatus(job.id, "completed", 1);
+      posthog?.capture("story_video_uploaded_success");
+      
+      // Refresh stories so the user sees it in their feed
+      refreshStories();
+
+    } catch (err) {
+      console.error("Story Upload Job Failed:", err);
+      updateStoryJobStatus(job.id, "failed", 0);
+      posthog?.capture("story_video_uploaded_failed", { error: String(err) });
+    }
+  };
+
+    
+      // --- QUEUE PROCESSOR EFFECT ---
+  // --- QUEUE PROCESSOR EFFECT ---
+  useEffect(() => {
+    const processQueue = async () => {
+      // Find pending jobs
+      const pendingJob = storyUploadQueue.find((j) => j.status === "pending");
+      const activeJobs = storyUploadQueue.filter(
+        (j) => j.status === "pending" || j.status === "uploading"
+      );
+
+      // If we have work to do...
+      if (activeJobs.length > 0) {
+        hasStoryUploadNotified.current = false;
+
+        // If nothing is currently processing, start the next pending job
+        if (pendingJob && !isStoryProcessing.current) {
+          isStoryProcessing.current = true;
+          await processStoryUpload(pendingJob);
+          isStoryProcessing.current = false;
+        }
+      } 
+      // If queue is empty/finished...
+      else if (storyUploadQueue.length > 0 && activeJobs.length === 0) {
+        if (!hasStoryUploadNotified.current) {
+          hasStoryUploadNotified.current = true;
+
+          const completedCount = storyUploadQueue.filter(
+            (j) => j.status === "completed"
+          ).length;
+
+          // Notify User
+          if (completedCount > 0) {
+            Notifications.scheduleNotificationAsync({
+              content: {
+                title: "Stories Uploaded",
+                body: `Successfully posted ${completedCount} video stor${completedCount > 1 ? "ies" : "y"}.`,
+              },
+              trigger: null,
+            });
+          }
+
+          // Clear queue after a delay
+          setTimeout(() => {
+            setStoryUploadQueue([]);
+            hasStoryUploadNotified.current = false;
+          }, 5000);
+        }
+      }
+    };
+
+    processQueue();
+  }, [storyUploadQueue]); // Dependencies
 
   const withLoadingAndError = useCallback(
     async <T,>(
@@ -326,9 +469,8 @@ export function AppProvider({ children }: AppProviderProps) {
         responseListener.current.remove();
       }
     };
-  }, [isSignedIn, userData, refreshNotifications, registerPushDevice]);
+  }, [isSignedIn, userData, router, refreshNotifications, registerPushDevice]);
 
-  // ... (Keep checkForMandatoryUpdate as is) ...
   const checkForMandatoryUpdate = useCallback(async (): Promise<boolean> => {
     if (!isSignedIn) return false;
     try {
@@ -1018,29 +1160,50 @@ export function AppProvider({ children }: AppProviderProps) {
     [isSignedIn, getToken, withLoadingAndError]
   );
 
+  const addVideoInStoryQueue = useCallback(
+    async (videoUrl: string) => {
+      const videoUploadJob: UploadJob = {
+        id: Math.random().toString(36).substring(7),
+        uri: videoUrl,
+        progress: 0,
+        status: "pending",
+      };
+      hasStoryUploadNotified.current = false;
+      setStoryUploadQueue((prev) => [...prev, videoUploadJob]);
+      posthog?.capture("story_video_queued");
+    },
+    [posthog]
+  );
+
   const createStory = useCallback(
     async (data: {
-      videoUrl: string;
+      videoUrl: string; // This is the local file URI here
       width: number;
       height: number;
       duration: number;
       taggedBuddies: string[];
     }) => {
-      if (!isSignedIn) return;
-      const token = await getToken();
-      if (!token) return;
-
-      await withLoadingAndError(
-        async () => {
-          await apiService.createStory(token, data);
-          posthog?.capture("story_posted");
-          await refreshStories();
+      // Create a new Job
+      const newJob: StoryUploadJob = {
+        id: Math.random().toString(36).substring(7),
+        uri: data.videoUrl, // Local URI
+        progress: 0,
+        status: "pending",
+        meta: {
+          width: data.width,
+          height: data.height,
+          duration: data.duration,
+          taggedBuddies: data.taggedBuddies,
         },
-        undefined,
-        "create_story"
-      );
+      };
+
+      // Add to state (this triggers the useEffect)
+      setStoryUploadQueue((prev) => [...prev, newJob]);
+      
+      // Optional: Navigate user away or show a toast saying "Uploading in background"
+      posthog?.capture("story_upload_queued");
     },
-    [isSignedIn, getToken, withLoadingAndError, refreshStories, posthog]
+    [posthog]
   );
 
   const deleteStory = useCallback(
@@ -1075,7 +1238,7 @@ export function AppProvider({ children }: AppProviderProps) {
       const token = await getToken();
       if (token) {
         // Fire and forget
-        apiService.relateStory(token, storyId, "view");
+        apiService.markStoryAsSeen(token, storyId, "view");
       }
     },
     [isSignedIn, getToken, stories]
@@ -1309,6 +1472,7 @@ export function AppProvider({ children }: AppProviderProps) {
     unreadNotificationCount,
     sideQuestBoards,
     mapFriendPosts,
+     storyUploadQueue,
 
     // Refresh Functions
     refreshUserData,

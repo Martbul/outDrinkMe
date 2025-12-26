@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ActivityIndicator,
   StyleSheet,
   Alert,
 } from "react-native";
@@ -15,8 +14,6 @@ import {
   CameraType,
 } from "expo-camera";
 import { useVideoPlayer, VideoView } from "expo-video";
-import * as FileSystem from "expo-file-system/legacy";
-import { useAuth } from "@clerk/clerk-expo";
 import { useApp } from "@/providers/AppProvider";
 import { QuickFeedback } from "./quickFeedback";
 
@@ -31,26 +28,29 @@ export function StoryRecorder({ onClose }: { onClose: () => void }) {
   const [videoUri, setVideoUri] = useState<string | null>(null);
   const [cameraType, setCameraType] = useState<CameraType>("back");
 
+  // Metadata state
   const [videoMeta, setVideoMeta] = useState<{
     width: number;
     height: number;
     duration: number;
   } | null>(null);
-  const [taggedBuddies, setTaggedBuddies] = useState("");
-  const [isUploading, setIsUploading] = useState(false);
-  const [feedback, setFeedback] = useState<{
-    visible: boolean;
-    message: string;
-    type: "success" | "xp" | "level";
-  }>({
-    visible: false,
-    message: "",
-    type: "success",
-  });
+  
+  const [taggedBuddies, setTaggedBuddies] = useState(""); // Kept if you add an input for this later
+  
+  // const [feedback, setFeedback] = useState<{
+  //   visible: boolean;
+  //   message: string;
+  //   type: "success" | "xp" | "level";
+  // }>({
+  //   visible: false,
+  //   message: "",
+  //   type: "success",
+  // });
 
-  const { getToken } = useAuth();
+  // We no longer need useAuth here, the Context handles the token during background upload
   const { createStory } = useApp();
 
+  // --- Timer Logic ---
   useEffect(() => {
     let interval: number;
     if (isRecording) {
@@ -71,16 +71,20 @@ export function StoryRecorder({ onClose }: { onClose: () => void }) {
     return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
   };
 
+  // --- Video Player Logic ---
   const player = useVideoPlayer(videoUri, (p) => {
     p.loop = true;
     p.play();
   });
 
+  // Extract metadata when player loads
   useEffect(() => {
     if (videoUri && player) {
       const timer = setTimeout(() => {
+        // In a real app, you might want to get actual dimensions from the file or player event
+        // For vertical video on mobile, 1080x1920 is a safe assumption for aspect ratio
         setVideoMeta({
-          width: 1080,
+          width: 1080, 
           height: 1920,
           duration: player.duration || 0,
         });
@@ -89,10 +93,11 @@ export function StoryRecorder({ onClose }: { onClose: () => void }) {
     }
   }, [videoUri, player]);
 
-  const showFeedback = (message: string, type: any = "success") => {
-    setFeedback({ visible: true, message, type });
-  };
+  // const showFeedback = (message: string, type: any = "success") => {
+  //   setFeedback({ visible: true, message, type });
+  // };
 
+  // --- Camera Actions ---
   const handleRecordPress = () =>
     isRecording ? stopRecording() : startRecording();
 
@@ -114,55 +119,34 @@ export function StoryRecorder({ onClose }: { onClose: () => void }) {
     if (isRecording && cameraRef.current) cameraRef.current.stopRecording();
   };
 
+  // --- Hand off to Background Queue ---
   const handlePostStory = async () => {
     if (!videoUri) return;
+
     try {
-      setIsUploading(true);
-      const token = await getToken();
-      if (!token) throw new Error("Not authenticated");
-
-      const CLOUD_NAME = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
-      const PRESET = process.env.EXPO_PUBLIC_CLOUDINARY_STORY_UPLOAD_PRESET;
-
-      const uploadTask = FileSystem.createUploadTask(
-        `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`,
-        videoUri,
-        {
-          httpMethod: "POST",
-          uploadType: FileSystem.FileSystemUploadType.MULTIPART,
-          fieldName: "file",
-          parameters: {
-            upload_preset: PRESET!,
-            folder: "outdrinkme_story",
-            resource_type: "video",
-          },
-        }
-      );
-
-      const response = await uploadTask.uploadAsync();
-      if (!response || response.status !== 200)
-        throw new Error("Upload failed. Ensure preset is Unsigned.");
-
-      const data = JSON.parse(response.body);
       const tags = taggedBuddies
         .split(",")
         .map((t) => t.trim())
         .filter((t) => t.length > 0);
 
+      // We pass the LOCAL videoUri. 
+      // The AppProvider will handle uploading to Cloudinary in the background.
       await createStory({
-        videoUrl: data.secure_url,
+        videoUrl: videoUri, 
         width: videoMeta?.width || 1080,
         height: videoMeta?.height || 1920,
         duration: videoMeta?.duration || 0,
         taggedBuddies: tags,
       });
 
-      showFeedback("Story Posted! +10 XP", "xp");
-      setTimeout(onClose, 1500);
+      // Immediate Feedback to user
+      // showFeedback("Posting in background... +10 XP", "xp");
+      
+      // Close the screen after a brief delay to show the feedback
+      setTimeout(onClose, 1200);
+
     } catch (error: any) {
-      Alert.alert("Upload Error", error.message);
-    } finally {
-      setIsUploading(false);
+      Alert.alert("Error", "Failed to queue story.");
     }
   };
 
@@ -186,14 +170,15 @@ export function StoryRecorder({ onClose }: { onClose: () => void }) {
 
   return (
     <View className="flex-1 bg-black">
-      <QuickFeedback
+      {/* <QuickFeedback
         visible={feedback.visible}
         message={feedback.message}
         type={feedback.type}
         onHide={() => setFeedback((f) => ({ ...f, visible: false }))}
-      />
+      /> */}
 
       {videoUri ? (
+        // --- PREVIEW MODE ---
         <View className="flex-1 bg-black">
           <VideoView
             player={player}
@@ -208,25 +193,20 @@ export function StoryRecorder({ onClose }: { onClose: () => void }) {
             >
               <Ionicons name="arrow-back" size={24} color="white" />
             </TouchableOpacity>
+            
             <TouchableOpacity
               onPress={handlePostStory}
-              disabled={isUploading}
               className="bg-orange-600 w-full py-4 rounded-full flex-row justify-center items-center"
             >
-              {isUploading ? (
-                <ActivityIndicator color="black" />
-              ) : (
-                <>
-                  <Text className="text-black font-black text-lg mr-2">
-                    POST STORY
-                  </Text>
-                  <Ionicons name="send" size={20} color="black" />
-                </>
-              )}
+              <Text className="text-black font-black text-lg mr-2">
+                POST STORY
+              </Text>
+              <Ionicons name="send" size={20} color="black" />
             </TouchableOpacity>
           </View>
         </View>
       ) : (
+        // --- CAMERA MODE ---
         <CameraView
           style={{ flex: 1 }}
           facing={cameraType}
@@ -234,6 +214,7 @@ export function StoryRecorder({ onClose }: { onClose: () => void }) {
           ref={cameraRef}
         >
           <View className="flex-1 justify-between pt-12 pb-10 px-4">
+            {/* Top Bar */}
             <View className="flex-row justify-between items-center">
               <TouchableOpacity
                 onPress={onClose}
@@ -250,6 +231,8 @@ export function StoryRecorder({ onClose }: { onClose: () => void }) {
                 </View>
               )}
             </View>
+
+            {/* Bottom Controls */}
             <View className="flex-row justify-around items-center">
               <TouchableOpacity
                 onPress={() =>
@@ -259,6 +242,7 @@ export function StoryRecorder({ onClose }: { onClose: () => void }) {
               >
                 <Ionicons name="camera-reverse" size={24} color="white" />
               </TouchableOpacity>
+              
               <TouchableOpacity
                 onPress={handleRecordPress}
                 className={`w-20 h-20 rounded-full border-4 items-center justify-center ${
@@ -273,11 +257,9 @@ export function StoryRecorder({ onClose }: { onClose: () => void }) {
                   }
                 />
               </TouchableOpacity>
-              <TouchableOpacity
-               
-                className={`w-12 h-12 rounded-full items-center justify-center `}
-              >
-              </TouchableOpacity>
+              
+              {/* Spacer to balance layout */}
+              <View className="w-12 h-12" />
             </View>
           </View>
         </CameraView>
