@@ -17,6 +17,7 @@ export function QuickFeedback({
   type = "success",
   onHide,
 }: QuickFeedbackProps) {
+  
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-20)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -42,7 +43,7 @@ export function QuickFeedback({
         }),
         Animated.timing(progressAnim, {
           toValue: 1,
-          duration: 2000, // Matches the timer
+          duration: 2200, // Matches the timer
           useNativeDriver: true,
         }),
       ]).start();
@@ -60,7 +61,7 @@ export function QuickFeedback({
             useNativeDriver: true,
           }),
         ]).start(() => onHide());
-      }, 2000);
+      }, 2200);
 
       return () => clearTimeout(timer);
     }
