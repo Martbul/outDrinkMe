@@ -6,7 +6,7 @@
 # jobs:
 #   build:
 #     runs-on: ubuntu-latest
-#     environment: Production 
+#     environment: Production
 #     steps:
 #       - name: Setup Repo
 #         uses: actions/checkout@v4
@@ -82,14 +82,14 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    environment: Production 
+    environment: Production
     steps:
       # --- NEW STEP: Free up ~10GB of space to prevent build crash ---
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
         with:
           tool-cache: false
-          android: false  # IMPORTANT: Keep this false so Android SDKs are not deleted
+          android: false # IMPORTANT: Keep this false so Android SDKs are not deleted
           dotnet: true
           haskell: true
           large-packages: true
@@ -103,14 +103,14 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: "temurin"
+          java-version: "17"
 
       - name: Restore Gradle Cache
         uses: actions/cache@v3
@@ -138,7 +138,8 @@ jobs:
           echo "EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME=${{ secrets.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME }}" >> .env
           echo "EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET=${{ secrets.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET }}" >> .env
           echo "EXPO_PUBLIC_CLOUDINARY_VIDEO_UPLOAD_PRESET=${{ secrets.EXPO_PUBLIC_CLOUDINARY_VIDEO_UPLOAD_PRESET }}" >> .env
-          # We still echo it here for good measure
+                    echo "EXPO_PUBLIC_CLOUDINARY_STORY_UPLOAD_PRESET=${{ secrets.EXPO_PUBLIC_CLOUDINARY_STORY_UPLOAD_PRESET }}" >> .env
+
           echo "EXPO_PUBLIC_MAPBOX_TOKEN_PUBLIC=${{ secrets.EXPO_PUBLIC_MAPBOX_TOKEN_PUBLIC }}" >> .env
 
       - name: Inject Mapbox Secret into app.json
@@ -152,6 +153,7 @@ jobs:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4g"
           EXPO_PUBLIC_MAPBOX_TOKEN_PUBLIC: ${{ secrets.EXPO_PUBLIC_MAPBOX_TOKEN_PUBLIC }}
+          NPM_CONFIG_LEGACY_PEER_DEPS: "true"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
