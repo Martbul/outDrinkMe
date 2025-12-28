@@ -1,68 +1,3 @@
-# name: Development Build
-
-# on:
-#   workflow_dispatch:
-
-# jobs:
-#   build:
-#     runs-on: ubuntu-latest
-#     environment: Development 
-#     steps:
-#       - name: Setup Repo
-#         uses: actions/checkout@v4
-
-#       - name: Setup Node
-#         uses: actions/setup-node@v4
-#         with:
-#           node-version: '20'
-#           cache: 'npm'
-
-#       - name: Setup Java
-#         uses: actions/setup-java@v4
-#         with:
-#           distribution: 'temurin'
-#           java-version: '17'
-
-#       - name: Restore Gradle Cache
-#         uses: actions/cache@v3
-#         with:
-#           path: |
-#             ~/.gradle/caches
-#             ~/.gradle/wrapper
-#           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-#           restore-keys: |
-#             ${{ runner.os }}-gradle-
-
-#       - name: Install Dependencies
-#         run: npm ci
-
-#       - name: Setup EAS
-#         run: npm install -g eas-cli
-
-#       # Map the INDIVIDUAL secrets from the Development Environment
-#       - name: Create .env
-#         run: |
-#           touch .env
-#           echo "EXPO_PUBLIC_ENV=development" >> .env
-#           echo "EXPO_PUBLIC_OUTDRINKME_API_URL=${{ secrets.EXPO_PUBLIC_OUTDRINKME_API_URL }}" >> .env
-#           echo "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY }}" >> .env
-#           echo "EXPO_PUBLIC_POSTHOG_API_KEY=${{ secrets.EXPO_PUBLIC_POSTHOG_API_KEY }}" >> .env
-#           echo "EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME=${{ secrets.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME }}" >> .env
-#           echo "EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET=${{ secrets.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET }}" >> .env
-#           echo "EXPO_PUBLIC_CLOUDINARY_VIDEO_UPLOAD_PRESET=${{ secrets.EXPO_PUBLIC_CLOUDINARY_VIDEO_UPLOAD_PRESET }}" >> .env
-
-#       - name: Build Android Dev
-#         run: eas build --platform android --profile development --local --clear-cache  --non-interactive --output=./app-dev.apk
-#         env:
-#           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }} # Reads from Global Repository Secrets
-#           GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4g -XX:+HeapDumpOnOutOfMemoryError"
-
-#       - name: Upload Artifact
-#         uses: actions/upload-artifact@v4
-#         if: success()
-#         with:
-#           name: outdrinkme-dev
-#           path: ./app-dev.apk
 name: Development Build
 
 on:
@@ -73,6 +8,19 @@ jobs:
     runs-on: ubuntu-latest
     environment: Development 
     steps:
+      # --- NEW STEP: Free up ~10GB of space to prevent build crash ---
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: false  # IMPORTANT: Keep this false so Android SDKs are not deleted
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+      # ---------------------------------------------------------------
+
       - name: Setup Repo
         uses: actions/checkout@v4
 
@@ -115,14 +63,11 @@ jobs:
           echo "EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET=${{ secrets.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET }}" >> .env
           echo "EXPO_PUBLIC_CLOUDINARY_VIDEO_UPLOAD_PRESET=${{ secrets.EXPO_PUBLIC_CLOUDINARY_VIDEO_UPLOAD_PRESET }}" >> .env
           echo "EXPO_PUBLIC_MAPBOX_TOKEN_PUBLIC=${{ secrets.EXPO_PUBLIC_MAPBOX_TOKEN_PUBLIC }}" >> .env
-          # I removed the Secret Token from .env here. It should only go into app.json.
 
-      # --- NEW STEP ---
       - name: Inject Mapbox Secret into app.json
         run: |
           sed -i 's/MAPBOX_SECRET_TOKEN_PLACEHOLDER/${{ secrets.EXPO_PUBLIC_MAPBOX_TOKEN_SECRET }}/g' app.json
           echo "Mapbox secret injected into app.json"
-      # ----------------
 
       - name: Build Android Dev
         run: eas build --platform android --profile development --local --clear-cache  --non-interactive --output=./app-dev.apk
