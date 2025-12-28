@@ -77,16 +77,21 @@ export default function Collection() {
 
   const [formData, setFormData] = useState({ name: "" });
 
+  //! constant refresh
   useEffect(() => {
     refreshUserAlcoholCollection();
-    if (alcoholCollection) {
-      const totalItems = Object.values(alcoholCollection).flat().length;
-      posthog?.capture("collection_viewed", {
-        total_items_collected: totalItems,
-        completion_percentage: (totalItems / totalSlots) * 100,
-      });
-    }
-  }, [alcoholCollection, posthog, refreshUserAlcoholCollection]);
+  }, []);
+
+  useEffect(() => {
+    if (!alcoholCollection) return;
+
+    const totalItems = Object.values(alcoholCollection).flat().length;
+
+    posthog?.capture("collection_viewed", {
+      total_items_collected: totalItems,
+      completion_percentage: (totalItems / totalSlots) * 100,
+    });
+  }, [alcoholCollection, posthog]);
 
   const getFilteredCollection = (): AlcoholDbItem[] => {
     if (!alcoholCollection) return [];
@@ -920,6 +925,8 @@ export default function Collection() {
             onRefresh={onRefresh}
             tintColor="#EA580C"
             colors={["#EA580C"]}
+                        progressBackgroundColor="#000000"
+
           />
         }
       >

@@ -22,15 +22,23 @@ import {
   Entypo,
   Feather,
   FontAwesome5,
+  Ionicons,
   MaterialCommunityIcons,
   MaterialIcons,
 } from "@expo/vector-icons";
-import type { YourMixPostData, CalendarResponse } from "@/types/api.types";
+import type {
+  YourMixPostData,
+  CalendarResponse,
+  StorySegment,
+} from "@/types/api.types";
 import MixPostModal from "@/components/mixPostModal";
 import { onBackPress } from "@/utils/navigation";
 import LogoutButton from "@/components/logoutButton";
 import { FriendButton } from "@/components/friendButton";
 import { apiService } from "@/api";
+import Feedback from "./feedback";
+import { ResizeMode, Video } from "expo-av";
+import { DeleteModal } from "@/components/delete_modal";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const GAP = 12;
@@ -159,16 +167,6 @@ const GalleryItem = ({
               })}
             </Text>
           </View>
-          {item.locationText && (
-            <View className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/90 to-transparent">
-              <Text
-                className="text-white text-[11px] font-bold"
-                numberOfLines={1}
-              >
-                {item.locationText}
-              </Text>
-            </View>
-          )}
         </View>
       </View>
     </TouchableOpacity>
@@ -186,12 +184,14 @@ const UserInfoScreen = () => {
     getFriendDiscoveryDisplayProfile,
     addFriend,
     removeFriend,
+    refreshUserStories,
     storeItems,
     userInventory: currentUserInventory,
+    userStories,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<
-    "overview" | "stats" | "inventory"
+    "overview" | "stats" | "stories" | "inventory"
   >("overview");
   const [refreshing, setRefreshing] = useState(false);
 
@@ -209,16 +209,32 @@ const UserInfoScreen = () => {
   const [currentAspectRatio, setCurrentAspectRatio] = useState(4 / 3);
   const [settingsModalVisible, setSettingsModalVisible] = useState(false);
 
+  // Video State
+  const [playingStoryId, setPlayingStoryId] = useState<string | null>(null);
+
+  // --- NEW: Delete Modal States ---
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+  const [isDeletingStory, setIsDeletingStory] = useState(false);
+  
+  // --- ADDED: Local state to hide deleted stories instantly ---
+  const [deletedStoryIds, setDeletedStoryIds] = useState<string[]>([]);
+
   const targetUserId = useMemo(() => {
     const paramId = Array.isArray(rawUserId) ? rawUserId[0] : rawUserId;
     return paramId || userData?.id;
   }, [rawUserId, userData?.id]);
+  const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
 
   useEffect(() => {
-    if (targetUserId) {
+    if (targetUserId && friendDiscoveryProfile?.user?.id !== targetUserId) {
       getFriendDiscoveryDisplayProfile(targetUserId);
     }
-  }, [targetUserId, getFriendDiscoveryDisplayProfile]);
+  }, [
+    targetUserId,
+    friendDiscoveryProfile?.user?.id,
+    getFriendDiscoveryDisplayProfile,
+  ]);
 
   useEffect(() => {
     const fetchUserCalendar = async () => {
@@ -297,6 +313,9 @@ const UserInfoScreen = () => {
     if (targetUserId) {
       setRefreshing(true);
       await getFriendDiscoveryDisplayProfile(targetUserId);
+      if (activeTab === "stories") {
+        await refreshUserStories(); // Ensure stories are refreshed on pull-to-refresh
+      }
       if (activeTab === "stats") {
         const token = await getToken();
         if (token) {
@@ -325,6 +344,42 @@ const UserInfoScreen = () => {
       await addFriend(friendDiscoveryProfile.user.clerkId);
     } else {
       await removeFriend(friendDiscoveryProfile.user.clerkId);
+    }
+  };
+
+  // --- DELETE STORY LOGIC ---
+  const handlePressDeleteStory = (storyId: string) => {
+    Vibration.vibrate(10);
+    setItemToDelete(storyId);
+    setShowDeleteModal(true);
+  };
+
+  const executeDeleteStory = async () => {
+    if (!itemToDelete) return;
+
+    // 1. Optimistic Update: Hide it immediately from UI
+    const idToDelete = itemToDelete;
+    setDeletedStoryIds((prev) => [...prev, idToDelete]);
+    setShowDeleteModal(false); // Close modal immediately
+    setIsDeletingStory(true);
+
+    try {
+      const token = await getToken();
+      if (token) {
+        await apiService.deleteStory(token, idToDelete);
+        
+        // 2. Fetch new data in the background
+        await onRefresh(); 
+        await refreshUserStories();
+      }
+    } catch (error) {
+      console.error("Failed to delete story:", error);
+      // Revert optimistic update if failed (optional, but good practice)
+      setDeletedStoryIds((prev) => prev.filter((id) => id !== idToDelete));
+      // You could add an alert here
+    } finally {
+      setIsDeletingStory(false);
+      setItemToDelete(null);
     }
   };
 
@@ -381,6 +436,160 @@ const UserInfoScreen = () => {
     setSettingsModalVisible(false);
   };
 
+  const renderStories = () => {
+    if (!isCurrentUser) return null;
+
+    // --- Filter out deleted stories using local state ---
+    const stories = ((userStories || []) as StorySegment[]).filter(
+      (story) => !deletedStoryIds.includes(story.id)
+    );
+
+    // --- GRID WIDTH CALCULATION ---
+    const ITEM_WIDTH = (SCREEN_WIDTH - 84) / 2;
+    const ITEM_HEIGHT = ITEM_WIDTH * 1.77; // 16:9 Aspect Ratio
+
+    const getTimeAgo = (dateString: string) => {
+      const now = new Date();
+      const created = new Date(dateString);
+      const diffInHours =
+        (now.getTime() - created.getTime()) / (1000 * 60 * 60);
+
+      if (diffInHours < 1) {
+        return `${Math.max(0, Math.floor(diffInHours * 60))}m`;
+      }
+      if (diffInHours >= 24) {
+        return `${Math.floor(diffInHours / 24)}d`;
+      }
+      return `${Math.floor(diffInHours)}h`;
+    };
+
+    const getThumbnailUrl = (url: string) => {
+      if (!url) return null;
+      if (url.includes("cloudinary.com")) {
+        return url.replace(/\.(mp4|mov|avi|mkv)$/i, ".jpg");
+      }
+      return null;
+    };
+
+    return (
+      <View className="px-4 mb-4">
+        <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
+          {/* Header Section */}
+          <View className="flex-row justify-between items-center mb-4">
+            <View>
+              <Text className="text-white text-xl font-black">
+                Your Stories
+              </Text>
+            </View>
+            <View className="bg-white/10 rounded-lg px-3 py-1.5 items-center border border-white/5">
+              <Text className="text-orange-500 text-xs font-black">
+                {stories.length} TOTAL
+              </Text>
+            </View>
+          </View>
+
+          {/* Grid Container */}
+          <View className="flex-row flex-wrap" style={{ gap: GAP }}>
+            {stories.map((story) => {
+              const isPlaying = playingStoryId === story.id;
+              const thumbnailUrl = getThumbnailUrl(story.video_url);
+
+              return (
+                <TouchableOpacity
+                  key={story.id}
+                  activeOpacity={0.9}
+                  style={{ width: ITEM_WIDTH, height: ITEM_HEIGHT }}
+                  onPress={() => {
+                    setPlayingStoryId(isPlaying ? null : story.id);
+                  }}
+                >
+                  <View
+                    className={`w-full h-full rounded-xl overflow-hidden border relative bg-zinc-900 ${
+                      isPlaying
+                        ? "border-orange-500"
+                        : !story.is_seen
+                        ? "border-orange-600/50"
+                        : "border-white/10"
+                    }`}
+                  >
+                    {/* DELETE BUTTON - MODIFIED to use new Handler */}
+                    <TouchableOpacity
+                      onPress={() => handlePressDeleteStory(story.id)}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      className="absolute top-2 left-2 bg-black/60 p-1.5 rounded-full z-30 border border-white/10"
+                    >
+                      <Feather name="trash-2" size={12} color="#ef4444" />
+                    </TouchableOpacity>
+
+                    {/* Media Content */}
+                    {isPlaying ? (
+                      <Video
+                        source={{ uri: story.video_url }}
+                        resizeMode={ResizeMode.COVER}
+                        shouldPlay={true}
+                        isLooping={true}
+                        isMuted={false}
+                        style={{ width: "100%", height: "100%" }}
+                        useNativeControls={false}
+                      />
+                    ) : thumbnailUrl ? (
+                      <Image
+                        source={{ uri: thumbnailUrl }}
+                        style={{ width: "100%", height: "100%" }}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View className="w-full h-full items-center justify-center bg-white/[0.05]">
+                        <MaterialCommunityIcons
+                          name="play-circle-outline"
+                          size={40}
+                          color="rgba(255,255,255,0.3)"
+                        />
+                      </View>
+                    )}
+
+                    {/* Play Icon Overlay */}
+                    {!isPlaying && (
+                      <View className="absolute inset-0 items-center justify-center bg-black/20 z-10 pointer-events-none">
+                        <View className="bg-black/40 p-2 rounded-full backdrop-blur-sm">
+                          <Feather name="play" size={20} color="white" />
+                        </View>
+                      </View>
+                    )}
+
+                    {/* Gradient Overlay */}
+                    {!isPlaying && (
+                      <View className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-black/90 to-transparent pointer-events-none" />
+                    )}
+
+                    {/* Time Badge */}
+                    <View className="absolute top-2 right-2 bg-black/60 px-2 py-1 rounded backdrop-blur-sm border border-white/5 z-20">
+                      <Text className="text-white/80 text-[9px] font-bold">
+                        {getTimeAgo(story.created_at)}
+                      </Text>
+                    </View>
+
+                    {/* Relates Count */}
+                    <View className="absolute bottom-3 left-3 flex-row items-center z-20">
+                      <MaterialCommunityIcons
+                        name={story.has_related ? "heart" : "heart-outline"}
+                        size={14}
+                        color={story.has_related ? "#EA580C" : "white"}
+                      />
+                      <Text className="text-white/90 text-[10px] font-bold ml-1.5 shadow-black">
+                        {story.relate_count || 0}
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      </View>
+    );
+  };
+
   const renderInventory = () => {
     const rawInventory = isCurrentUser
       ? currentUserInventory
@@ -398,10 +607,7 @@ const UserInfoScreen = () => {
       storeCategory: any[],
       icon: any
     ) => {
-      // 1. FILTER: Only include items with quantity > 0
       const validItems = items?.filter((item) => item.quantity > 0) || [];
-
-      // 2. Calculate Total based on filtered items
       const total =
         validItems.reduce((sum, item) => sum + item.quantity, 0) || 0;
 
@@ -592,10 +798,10 @@ const UserInfoScreen = () => {
               isToday && isLogged
                 ? "bg-orange-600/30 border-orange-600"
                 : isToday
-                  ? "bg-white/[0.12] border-orange-600"
-                  : isLogged
-                    ? "bg-orange-600/30 border-orange-600/50"
-                    : "bg-white/[0.03] border-white/[0.08]"
+                ? "bg-white/[0.12] border-orange-600"
+                : isLogged
+                ? "bg-orange-600/30 border-orange-600/50"
+                : "bg-white/[0.03] border-white/[0.08]"
             }
           `}
           >
@@ -604,8 +810,8 @@ const UserInfoScreen = () => {
                 isToday
                   ? "text-white"
                   : isLogged
-                    ? "text-orange-500"
-                    : "text-white/30"
+                  ? "text-orange-500"
+                  : "text-white/30"
               }`}
             >
               {day}
@@ -788,6 +994,7 @@ const UserInfoScreen = () => {
             onRefresh={onRefresh}
             tintColor="#EA580C"
             colors={["#EA580C"]}
+            progressBackgroundColor="#000000"
           />
         }
       >
@@ -877,7 +1084,7 @@ const UserInfoScreen = () => {
         <View className="px-4 mb-4">
           <View className="bg-white/[0.03] rounded-xl p-1.5 border border-white/[0.08] flex-row">
             {(isCurrentUser
-              ? ["overview", "inventory"]
+              ? ["overview", "stories", "inventory"]
               : ["overview", "stats", "inventory"]
             ).map((tab) => (
               <TouchableOpacity
@@ -901,6 +1108,7 @@ const UserInfoScreen = () => {
 
         {activeTab === "overview" && renderOverview()}
         {activeTab === "inventory" && renderInventory()}
+        {activeTab === "stories" && renderStories()}
         {activeTab === "stats" && renderStats()}
       </ScrollView>
 
@@ -945,6 +1153,22 @@ const UserInfoScreen = () => {
                 >
                   {isCurrentUser ? (
                     <>
+                      <ModalOption
+                        label="Bug"
+                        subLabel="Report bugs, give ideas and ask for features"
+                        icon={
+                          <Ionicons
+                            name="bug-outline"
+                            size={24}
+                            color="#EA580C"
+                          />
+                        }
+                        onPress={() => {
+                          closeSettingsModal();
+                          setFeedbackModalVisible(true);
+                        }}
+                      />
+
                       <ModalOption
                         label="Edit Profile"
                         subLabel="Change name, bio, and photo"
@@ -1014,6 +1238,22 @@ const UserInfoScreen = () => {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+
+      <DeleteModal
+        visible={showDeleteModal}
+        onClose={() => {
+          if (!isDeletingStory) setShowDeleteModal(false);
+        }}
+        onConfirm={executeDeleteStory}
+        title="Delete Story?"
+        message="This action cannot be undone. Are you sure you want to delete this story?"
+        isDeleting={isDeletingStory}
+      />
+
+      <Feedback
+        feedbackModalVisible={feedbackModalVisible}
+        setFeedbackModalVisible={setFeedbackModalVisible}
+      />
     </View>
   );
 };

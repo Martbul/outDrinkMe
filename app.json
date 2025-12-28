@@ -11,9 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.martbul.outDrinkMe",
-      "associatedDomains": [
-        "applinks:clerk.martbul.com"
-      ],
+      "associatedDomains": ["applinks:clerk.martbul.com"],
       "infoPlist": {
         "NSCameraUsageDescription": "OutDrinkMe needs camera access to scan beverage barcodes for your collection.",
         "ITSAppUsesNonExemptEncryption": false,
@@ -44,10 +42,7 @@
               "scheme": "outdrinkme"
             }
           ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
+          "category": ["BROWSABLE", "DEFAULT"]
         },
         {
           "action": "VIEW",
@@ -59,10 +54,7 @@
               "pathPrefix": "/v1/oauth_callback"
             }
           ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
+          "category": ["BROWSABLE", "DEFAULT"]
         }
       ]
     },
@@ -110,6 +102,14 @@
         {
           "photosPermission": "The app needs access to your photos to let you share images.",
           "cameraPermission": "The app needs access to your camera to take photos."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow OutDrinkMe to save photos to your gallery.",
+          "savePhotosPermission": "Allow OutDrinkMe to save photos to your gallery.",
+          "isAccessMediaLocationEnabled": true
         }
       ],
       [

@@ -20,11 +20,13 @@ import {
   SideQuest,
   SideQuestBoard,
   SideQuestCompletion,
+  StorySegment,
   SubmitQuestProofReq,
   UnreadCountResponse,
   UpdateUserProfileReq,
   UserData,
   UserStats,
+  UserStories,
   VideoPost,
   YourMixPostData,
 } from "./types/api.types";
@@ -43,6 +45,7 @@ class ApiService {
     this.baseUrl = apiUrl || "http://localhost:3000";
     console.log("API initialized with base URL:", this.baseUrl);
   }
+
   private async makeRequest<T>(
     endpoint: string,
     options: RequestInit & { token?: string }
@@ -83,7 +86,7 @@ class ApiService {
 
     try {
       const data = await response.json();
-      console.log(`Success response:`, data);
+      // console.log(`Success response:`, data);
       return data;
     } catch (jsonError) {
       console.error("Failed to parse JSON response:", jsonError);
@@ -164,7 +167,9 @@ class ApiService {
     token: string
   ): Promise<SearchDbAlcoholResult | null> {
     const response = await this.makeRequest<SearchDbAlcoholResult | null>(
-      `/api/v1/user/search-db-alcohol?alcohol_name=${encodeURIComponent(searchQuery)}`,
+      `/api/v1/user/search-db-alcohol?alcohol_name=${encodeURIComponent(
+        searchQuery
+      )}`,
       {
         method: "GET",
         token,
@@ -1000,24 +1005,13 @@ class ApiService {
     });
   }
 
-  // async uploadImage(token: string, funcId: string, imageUrl: string) {
-  //   return this.makeRequest("/api/v1/func/upload", {
-  //     method: "POST",
-  //     token,
-  //     body: JSON.stringify({
-  //       funcId: funcId,
-  //       imageUrl: imageUrl,
-  //     }),
-  //   });
-  // }
-
   async uploadImages(token: string, funcId: string, imageUrls: string[]) {
     return this.makeRequest("/api/v1/func/upload", {
       method: "POST",
       token,
       body: JSON.stringify({
         funcId: funcId,
-        imageUrls: imageUrls, // Sending an array now
+        imageUrls: imageUrls,
       }),
     });
   }
@@ -1036,6 +1030,87 @@ class ApiService {
       body: JSON.stringify({
         funcId: funcId,
       }),
+    });
+  }
+
+  async deleteImages(
+    token: string,
+    imageUrls: string[],
+    funcId: string
+  ): Promise<void> {
+    return this.makeRequest("/api/v1/func/delete", {
+      method: "DELETE",
+      token,
+      body: JSON.stringify({
+        image_urls: imageUrls,
+        func_id: funcId,
+      }),
+    });
+  }
+
+  async getStories(token: string): Promise<UserStories[]> {
+    return this.makeRequest("/api/v1/user/stories", {
+      method: "GET",
+      token,
+    });
+  }
+  
+  async getUserStories(token: string): Promise<StorySegment[]> {
+    return this.makeRequest("/api/v1/user/user-stories", {
+      method: "GET",
+      token,
+    });
+  }
+
+
+  async createStory(
+    token: string,
+    data: {
+      videoUrl: string;
+      width: number;
+      height: number;
+      duration: number;
+      taggedBuddies: string[];
+    }
+  ): Promise<void> {
+    return this.makeRequest("/api/v1/user/stories", {
+      method: "POST",
+      token,
+      body: JSON.stringify({
+        video_url: data.videoUrl,
+        width: data.width,
+        height: data.height,
+        duration: data.duration,
+        tagged_buddies: data.taggedBuddies,
+      }),
+    });
+  }
+
+  async deleteStory(token: string, storyId: string): Promise<void> {
+    const story_id = storyId
+    return this.makeRequest(`/api/v1/user/stories/${story_id}`, {
+      method: "DELETE",
+      token,
+    });
+  }
+
+  async relateStory(
+    token: string,
+    storyId: string,
+    action: "like"
+  ): Promise<void> {
+    return this.makeRequest("/api/v1/user/stories/relate", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ story_id:storyId, action }),
+    });
+  }
+
+  async markStoryAsSeen(token: string, storyId: string): Promise<void> {
+    return this.makeRequest("/api/v1/user/stories/seen", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ story_id: storyId }),
     });
   }
 

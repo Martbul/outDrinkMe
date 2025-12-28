@@ -145,6 +145,8 @@ export default function InventoryScreen() {
             onRefresh={onRefresh}
             tintColor="#EA580C"
             colors={["#EA580C"]}
+                        progressBackgroundColor="#000000"
+
           />
         }
       >

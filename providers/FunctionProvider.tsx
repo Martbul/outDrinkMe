@@ -7,18 +7,18 @@ import React, {
   useRef,
   ReactNode,
 } from "react";
-import { useAuth } from "@clerk/clerk-expo";
-import * as Notifications from "expo-notifications";
-import { usePostHog } from "posthog-react-native";
-import { apiService } from "@/api";
 import type {
   FuncMember,
   FuncMetadata,
   UploadJob,
-  FuncDataResponse, // Added this import
+  FuncDataResponse,
 } from "../types/api.types";
-import * as FileSystem from "expo-file-system";
+import { useAuth } from "@clerk/clerk-expo";
+import { usePostHog } from "posthog-react-native";
+import { apiService } from "@/api";
+import * as FileSystem from "expo-file-system/legacy";
 import * as ImageManipulator from "expo-image-manipulator";
+import * as Notifications from "expo-notifications";
 
 interface FunctionContextType {
   isPartOfActiveFunc: boolean;
@@ -31,6 +31,8 @@ interface FunctionContextType {
   refreshAll: () => Promise<void>;
   createFunc: () => Promise<void>;
   addImages: (imageUrls: string[]) => Promise<void>;
+  deleteImages: (imageUrls: string[]) => Promise<void>;
+  joinFunc: (inviteCode: string) => Promise<boolean>;
   leaveFunc: () => Promise<void>;
 
   isFuncLoading: boolean;
@@ -46,7 +48,6 @@ export function FunctionProvider({ children }: { children: ReactNode }) {
   const { getToken, isSignedIn } = useAuth();
   const posthog = usePostHog();
 
-  // --- State ---
   const [uploadQueue, setUploadQueue] = useState<UploadJob[]>([]);
   const [isPartOfActiveFunc, setIsPartOfActiveFunc] = useState<boolean>(false);
   const [funcMembers, setFuncMembers] = useState<FuncMember[]>([]);
@@ -59,6 +60,12 @@ export function FunctionProvider({ children }: { children: ReactNode }) {
 
   const hasInitialized = useRef(false);
   const isProcessing = useRef(false);
+  const hasNotified = useRef(false);
+  const metaDataRef = useRef<FuncMetadata | null>(null);
+
+  useEffect(() => {
+    metaDataRef.current = funcMetaData;
+  }, [funcMetaData]);
 
   const updateJobStatus = (
     id: string,
@@ -113,110 +120,132 @@ export function FunctionProvider({ children }: { children: ReactNode }) {
     [isSignedIn, getToken, withLoadingAndError]
   );
 
-  const checkIfFinished = useCallback(() => {
-    const activeJobs = uploadQueue.filter(
-      (j) => j.status === "pending" || j.status === "uploading"
-    );
-    // If no more jobs are pending/uploading but we had jobs in the queue
-    if (activeJobs.length === 0 && uploadQueue.length > 0) {
-      const completedCount = uploadQueue.filter(
-        (j) => j.status === "completed"
-      ).length;
+  // --- UPLOAD LOGIC ---
+  const processUpload = useCallback(
+    async (job: UploadJob) => {
+      const token = await getToken();
+      const CLOUDINARY_CLOUD_NAME =
+        process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
+      const PRESET = process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
-      Notifications.scheduleNotificationAsync({
-        content: {
-          title: "Function Updated! 📸",
-          body: `Successfully uploaded ${completedCount} photos to the dump.`,
-        },
-        trigger: null,
-      });
+      const currentSessionId = metaDataRef.current?.sessionID;
 
-      refreshFuncData();
-      // Clear queue after 10 seconds to hide the progress bar in UI
-      setTimeout(() => setUploadQueue([]), 10000);
-    }
-  }, [uploadQueue, refreshFuncData]);
+      // Validation
+      if (!token || !currentSessionId || !CLOUDINARY_CLOUD_NAME || !PRESET) {
+        console.error("Missing Config:", {
+          token: !!token,
+          sessionId: currentSessionId,
+          cloud: !!CLOUDINARY_CLOUD_NAME,
+        });
+        updateJobStatus(job.id, "failed", 0);
+        return;
+      }
 
+      try {
+        updateJobStatus(job.id, "uploading", 0);
+
+        const manipulated = await ImageManipulator.manipulateAsync(
+          job.uri,
+          [],
+          {
+            compress: 1,
+            format: ImageManipulator.SaveFormat.JPEG,
+          }
+        );
+
+        // 2. Cloudinary Upload
+        const uploadTask = FileSystem.createUploadTask(
+          `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+          manipulated.uri,
+          {
+            httpMethod: "POST",
+            uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+            fieldName: "file",
+            parameters: {
+              upload_preset: PRESET,
+              folder: "func-images",
+            },
+          },
+          (p) => {
+            if (p.totalBytesExpectedToSend > 0) {
+              const progress = p.totalBytesSent / p.totalBytesExpectedToSend;
+              updateJobStatus(job.id, "uploading", progress);
+            }
+          }
+        );
+
+        const response = await uploadTask.uploadAsync();
+
+        if (!response || response.status !== 200) {
+          throw new Error(
+            `Cloudinary Error: ${response?.status} - ${response?.body}`
+          );
+        }
+
+        const cloudinaryData = JSON.parse(response.body);
+
+        // 3. Save to DB
+        await apiService.uploadImages(token, currentSessionId, [
+          cloudinaryData.secure_url,
+        ]);
+
+        updateJobStatus(job.id, "completed", 1);
+        posthog?.capture("func_image_uploaded", {
+          sessionId: currentSessionId,
+        });
+      } catch (err) {
+        console.error("Upload Job Failed:", err);
+        updateJobStatus(job.id, "failed", 0);
+      }
+    },
+    [getToken, posthog]
+  );
+
+  // --- QUEUE PROCESSOR EFFECT ---
   useEffect(() => {
-    const processNext = async () => {
-      const nextJob = uploadQueue.find((j) => j.status === "pending");
-      if (nextJob && !isProcessing.current) {
-        isProcessing.current = true;
-        await processUpload(nextJob);
-        isProcessing.current = false;
+    const processQueue = async () => {
+      const pendingJob = uploadQueue.find((j) => j.status === "pending");
+      const activeJobs = uploadQueue.filter(
+        (j) => j.status === "pending" || j.status === "uploading"
+      );
+
+      if (activeJobs.length > 0) {
+        hasNotified.current = false;
+
+        if (pendingJob && !isProcessing.current) {
+          isProcessing.current = true;
+          await processUpload(pendingJob);
+          isProcessing.current = false;
+        }
+      } else if (uploadQueue.length > 0 && activeJobs.length === 0) {
+        if (!hasNotified.current) {
+          hasNotified.current = true;
+
+          const completedCount = uploadQueue.filter(
+            (j) => j.status === "completed"
+          ).length;
+
+          if (completedCount > 0) {
+            Notifications.scheduleNotificationAsync({
+              content: {
+                title: "Function Updated",
+                body: `Successfully uploaded ${completedCount} photos.`,
+              },
+              trigger: null,
+            });
+            refreshFuncData();
+          }
+
+          setTimeout(() => {
+            setUploadQueue([]);
+            hasNotified.current = false;
+          }, 5000);
+        }
       }
     };
-    processNext();
-    // We check if finished every time the queue state changes
-    if (uploadQueue.length > 0) {
-      checkIfFinished();
-    }
-  }, [uploadQueue, checkIfFinished]);
 
-  const processUpload = async (job: UploadJob) => {
-    const token = await getToken();
-    const CLOUD_NAME = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
-    const PRESET = process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
-
-    if (!token || !funcMetaData?.sessionID || !CLOUD_NAME || !PRESET) {
-      updateJobStatus(job.id, "failed", 0);
-      return;
-    }
-
-    try {
-      updateJobStatus(job.id, "uploading", 0);
-
-      // 1. High-Quality Manipulation
-      const manipulated = await ImageManipulator.manipulateAsync(
-        job.uri,
-        [{ resize: { width: 2000 } }],
-        {
-          compress: 0.9,
-          format: ImageManipulator.SaveFormat.JPEG,
-        }
-      );
-
-      // 2. Background Upload to Cloudinary
-      const uploadTask = FileSystem.createUploadTask(
-        `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
-        manipulated.uri,
-        {
-          httpMethod: "POST",
-    uploadType: 0, 
-          parameters: {
-            upload_preset: PRESET,
-            folder: "func-images",
-          },
-        },
-        (p) => {
-          if (p.totalBytesExpectedToSend > 0) {
-            const progress = p.totalBytesSent / p.totalBytesExpectedToSend;
-            updateJobStatus(job.id, "uploading", progress);
-          }
-        }
-      );
-
-      const response = await uploadTask.uploadAsync();
-
-      if (!response || response.status !== 200) {
-        throw new Error(`Cloudinary Error: ${response?.status}`);
-      }
-
-      const cloudinaryData = JSON.parse(response.body);
-
-      await apiService.uploadImages(token, funcMetaData.sessionID, [
-        cloudinaryData.secure_url,
-      ]);
-
-      updateJobStatus(job.id, "completed", 1);
-      posthog?.capture("func_image_uploaded", {
-        sessionId: funcMetaData.sessionID,
-      });
-    } catch (err) {
-      console.error("Critical Upload Error:", err);
-      updateJobStatus(job.id, "failed", 0);
-    }
-  };
+    processQueue();
+  }, [uploadQueue, processUpload, refreshFuncData]);
 
   const refreshAll = useCallback(async () => {
     if (!isSignedIn) {
@@ -241,6 +270,11 @@ export function FunctionProvider({ children }: { children: ReactNode }) {
 
   const addImages = useCallback(
     async (imageUrls: string[]) => {
+      if (!metaDataRef.current?.sessionID) {
+        console.warn("Cannot upload: No active session ID found.");
+        return;
+      }
+
       const newJobs: UploadJob[] = imageUrls.map((uri) => ({
         id: Math.random().toString(36).substring(7),
         uri,
@@ -248,10 +282,50 @@ export function FunctionProvider({ children }: { children: ReactNode }) {
         status: "pending",
       }));
 
+      hasNotified.current = false;
       setUploadQueue((prev) => [...prev, ...newJobs]);
       posthog?.capture("func_images_queued", { count: imageUrls.length });
     },
     [posthog]
+  );
+
+  const deleteImages = useCallback(
+    async (imageUrls: string[]) => {
+      const token = await getToken();
+      if (!token || !funcMetaData?.sessionID) return;
+
+      if (!metaDataRef.current?.sessionID) {
+        console.warn("Cannot delete: No active session ID found.");
+        return;
+      }
+      await withLoadingAndError(async () => {
+        await apiService.deleteImages(
+          token,
+          imageUrls,
+          funcMetaData?.sessionID
+        );
+      }, "delete_images");
+    },
+    [funcMetaData?.sessionID, getToken, withLoadingAndError]
+  );
+
+  const joinFunc = useCallback(
+    async (inviteCode: string): Promise<boolean> => {
+      const token = await getToken();
+      if (!token) return false;
+
+      const result = await withLoadingAndError(async () => {
+        const response = await apiService.joinFunction(token, inviteCode);
+
+        await refreshFuncData(response?.funcId);
+
+        posthog?.capture("func_joined", { inviteCode });
+        return true;
+      }, "join_func");
+
+      return !!result;
+    },
+    [posthog, getToken, withLoadingAndError, refreshFuncData]
   );
 
   const leaveFunc = useCallback(async () => {
@@ -286,6 +360,8 @@ export function FunctionProvider({ children }: { children: ReactNode }) {
         refreshAll,
         createFunc,
         addImages,
+        deleteImages,
+        joinFunc,
         leaveFunc,
         isFuncLoading,
         isInitialLoading,

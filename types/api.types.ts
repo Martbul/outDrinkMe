@@ -657,3 +657,36 @@ export interface UploadJob {
   progress: number;
   status: "pending" | "uploading" | "completed" | "failed";
 }
+
+export interface StoryUploadJob {
+  id: string;
+  uri: string;
+  status: "pending" | "uploading" | "completed" | "failed";
+  progress: number;
+  meta: {
+    width: number;
+    height: number;
+    duration: number;
+    taggedBuddies: string[];
+  };
+}
+
+  export interface StorySegment {
+    id: string;
+    video_url: string;
+    video_width: number;
+    video_height: number;
+    video_duration: number;
+    relate_count: number;
+    has_related: boolean;
+    is_seen: boolean;
+    created_at: string; 
+  }
+
+  export interface UserStories {
+    user_id: string;
+    username: string;
+    user_image_url: string;
+    all_seen: boolean;
+    items: StorySegment[]; 
+  }

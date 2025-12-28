@@ -7,11 +7,12 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useRouter } from "expo-router";
 import { useAuth } from "@clerk/clerk-expo";
 import { apiService } from "@/api";
+import { AlertModal } from "./alert_modal";
 
 interface QrSessionManagerProps {
   onClose: () => void;
@@ -25,6 +26,9 @@ function QrSessionManager({ onClose }: QrSessionManagerProps) {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
 
+  const [joinModalVisible, setJoinModalVisible] = useState(false);
+  const [scannedInviteCode, setScannedInviteCode] = useState<string | null>(null);
+
   const handleCreateFunction = async () => {
     setIsLoading(true);
     try {
@@ -37,14 +41,14 @@ function QrSessionManager({ onClose }: QrSessionManagerProps) {
       const data = await apiService.createFunction(token);
 
       if (data.sessionID) {
-        onClose(); 
+        onClose();
 
         router.push({
           pathname: "/func_screen",
           params: {
             funcId: data.sessionID,
             inviteCode: data.qrToken,
-            qrBase64: data.qrCodeBase64, 
+            qrBase64: data.qrCodeBase64,
           },
         });
       }
@@ -56,24 +60,31 @@ function QrSessionManager({ onClose }: QrSessionManagerProps) {
     }
   };
 
- const handleBarCodeScanned = ({ data }: { data: string }) => {
-   setScanned(true);
-   const token = data.split("/").pop(); 
+  const handleBarCodeScanned = ({ data }: { data: string }) => {
+    setScanned(true);
+    const token = data.split("/").pop();
+    
+    // Instead of Alert.alert, we update state to show the custom modal
+    setScannedInviteCode(token || "");
+    setJoinModalVisible(true);
+  };
 
-   Alert.alert("Join Party?", "Do you want to enter this group?", [
-     { text: "Cancel", onPress: () => setScanned(false), style: "cancel" },
-     {
-       text: "Join",
-       onPress: () => {
-         onClose();
-         router.push({
-           pathname: "/func_screen",
-           params: { inviteCode: token },
-         });
-       },
-     },
-   ]);
- };
+  const handleConfirmJoin = () => {
+    setJoinModalVisible(false);
+    if (scannedInviteCode) {
+      onClose();
+      router.push({
+        pathname: "/func_screen",
+        params: { inviteCode: scannedInviteCode },
+      });
+    }
+  };
+
+  const handleCancelJoin = () => {
+    setJoinModalVisible(false);
+    setScannedInviteCode(null);
+    setTimeout(() => setScanned(false), 1000);
+  };
 
   const renderCameraContent = () => {
     if (!permission)
@@ -107,7 +118,6 @@ function QrSessionManager({ onClose }: QrSessionManagerProps) {
           onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
           barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
         />
-        {/* Scanner Overlay UI */}
         <View className="flex-1 items-center justify-center">
           <View className="w-64 h-64 border-2 border-orange-500/50 rounded-3xl bg-transparent">
             <View className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-orange-500 rounded-tl-xl" />
@@ -125,6 +135,17 @@ function QrSessionManager({ onClose }: QrSessionManagerProps) {
 
   return (
     <View className="flex-1 p-6 bg-[#121212]">
+      <AlertModal
+        visible={joinModalVisible}
+        title="Join Function?"
+        message="Do you want to enter this group and view the gallery?"
+        confirmText="JOIN"
+        cancelText="CANCEL"
+        icon="enter-outline"
+        onConfirm={handleConfirmJoin}
+        onClose={handleCancelJoin}
+      />
+
       <View className="w-12 h-1.5 bg-white/10 rounded-full self-center mb-8" />
 
       <View className="flex-row bg-[#1A1A1A] p-1.5 rounded-2xl mb-10 border border-white/5">
@@ -151,9 +172,9 @@ function QrSessionManager({ onClose }: QrSessionManagerProps) {
           onPress={() => setActiveTab("create")}
           className={`flex-1 py-4 rounded-xl items-center flex-row justify-center gap-2 ${activeTab === "create" ? "bg-[#333]" : ""}`}
         >
-          <Ionicons
-            name="add-circle"
-            size={18}
+          <FontAwesome
+            name="plus-square-o"
+            size={22}
             color={activeTab === "create" ? "white" : "#666"}
           />
           <Text
@@ -166,16 +187,16 @@ function QrSessionManager({ onClose }: QrSessionManagerProps) {
 
       {activeTab === "create" ? (
         <View className="flex-1 items-center justify-center px-4">
-          <View className="bg-orange-600/10 p-8 rounded-full mb-8">
-            <Ionicons name="flash" size={54} color="#EA580C" />
+          <View className="bg-orange-600/10 p-8 rounded-full mb-6">
+            <Ionicons name="images-outline" size={54} color="#EA580C" />
           </View>
 
           <Text className="text-white text-3xl font-black mb-3 text-center">
-            Create a Function
+            Function
           </Text>
 
-          <Text className="text-gray-400 text-center mb-12 leading-6">
-            Share images with friends in real-time. {"\n"}
+          <Text className="text-gray-400 text-center mb-14 leading-6">
+            Share the after party images with friends{"\n"}
             Everything is{" "}
             <Text className="text-orange-500 font-bold">
               automatically wiped
@@ -193,14 +214,14 @@ function QrSessionManager({ onClose }: QrSessionManagerProps) {
             ) : (
               <View className="flex-row items-center gap-3">
                 <Text className="text-black font-black text-lg tracking-[2px]">
-                  START PARTY
+                  CREATE
                 </Text>
                 <Ionicons name="arrow-forward" size={20} color="black" />
               </View>
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={onClose} className="mt-6">
+          <TouchableOpacity onPress={onClose} className="mt-4">
             <Text className="text-white/30 font-bold">CANCEL</Text>
           </TouchableOpacity>
         </View>

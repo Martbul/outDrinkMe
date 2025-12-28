@@ -160,6 +160,7 @@ export default function StatsPage() {
             onRefresh={onRefresh}
             tintColor="#EA580C"
             colors={["#EA580C"]}
+            progressBackgroundColor="#000000"
           />
         }
       >
@@ -225,7 +226,8 @@ export default function StatsPage() {
             {/* Current Streak */}
             <View className="w-1/2 p-2">
               <View className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]">
-                <FontAwesome5 name="fire" size={28} color="#EA580C" />
+                <MaterialCommunityIcons name="fire" size={40} color="#EA580C" />
+
                 <Text className="text-white text-3xl font-black mt-3">
                   {userStats?.current_streak || 0}
                 </Text>
@@ -286,7 +288,9 @@ export default function StatsPage() {
                 <View
                   className="h-full bg-orange-600 rounded-full"
                   style={{
-                    width: `${(daysStat.days_drank / daysStat.total_days) * 100}%`,
+                    width: `${
+                      (daysStat.days_drank / daysStat.total_days) * 100
+                    }%`,
                   }}
                 />
               </View>
@@ -419,7 +423,9 @@ export default function StatsPage() {
                 <View
                   className="h-full bg-orange-600 rounded-full"
                   style={{
-                    width: `${(userStats.total_days_drank / nextMilestone) * 100}%`,
+                    width: `${
+                      (userStats.total_days_drank / nextMilestone) * 100
+                    }%`,
                   }}
                 />
               </View>
