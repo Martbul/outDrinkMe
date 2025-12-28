@@ -157,7 +157,6 @@ export default function FocusIntensityChart() {
             data={formattedConfig.primaryData}
             dataSet={formattedConfig.secondaryDataSets}
             maxValue={100}
-            minValue={0}
             noOfSections={4}
             yAxisThickness={0}
             yAxisTextStyle={{ color: "rgba(255, 255, 255, 0.3)", fontSize: 10, fontWeight: "600" }}

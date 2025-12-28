@@ -12,13 +12,24 @@ import { useAuth } from "@clerk/clerk-expo";
 import { apiService } from "@/api";
 
 type TimeFilter = "1M" | "3M" | "6M" | "1Y" | "ALL";
-interface DataPoint { value: number; date: string; }
-interface UserSeries { userId: string; username: string; color: string; data: DataPoint[]; }
+interface DataPoint {
+  value: number;
+  date: string;
+}
+interface UserSeries {
+  userId: string;
+  username: string;
+  color: string;
+  data: DataPoint[];
+}
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const FILTERS: { label: string; value: TimeFilter }[] = [
-  { label: "1M", value: "1M" }, { label: "3M", value: "3M" },
-  { label: "6M", value: "6M" }, { label: "1Y", value: "1Y" }, { label: "ALL", value: "ALL" },
+  { label: "1M", value: "1M" },
+  { label: "3M", value: "3M" },
+  { label: "6M", value: "6M" },
+  { label: "1Y", value: "1Y" },
+  { label: "ALL", value: "ALL" },
 ];
 
 const toVisualValue = (val: number) => Math.sqrt(Math.max(0, val)) * 10;
@@ -42,7 +53,6 @@ export default function AlcoholismChart() {
         if (isMounted) {
           const series = Array.isArray(data) ? data : [];
           setRawSeries(series);
-          if (visibleUserIds.length === 0) setVisibleUserIds(series.map(u => u.userId));
         }
       } catch (error) {
         console.error("Chart error:", error);
@@ -51,17 +61,35 @@ export default function AlcoholismChart() {
       }
     };
     loadData();
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFilter]);
+  useEffect(() => {
+    if (rawSeries.length > 0) {
+      setVisibleUserIds((prev) => {
+        if (prev.length === 0) {
+          return rawSeries.map((u) => u.userId);
+        }
+        return prev;
+      });
+    }
+  }, [rawSeries]);
 
   const toggleUser = (userId: string) => {
-    setVisibleUserIds(prev => 
-      prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+    setVisibleUserIds((prev) =>
+      prev.includes(userId)
+        ? prev.filter((id) => id !== userId)
+        : [...prev, userId]
     );
   };
 
   const processedData = useMemo(() => {
-    const activeSeries = rawSeries.filter(u => visibleUserIds.includes(u.userId));
+    const activeSeries = rawSeries.filter((u) =>
+      visibleUserIds.includes(u.userId)
+    );
     if (!activeSeries.length || !activeSeries[0].data.length) return null;
 
     const now = new Date();
@@ -70,17 +98,31 @@ export default function AlcoholismChart() {
     let stepDays = 1;
 
     if (selectedFilter === "1M") startDate.setMonth(now.getMonth() - 1);
-    else if (selectedFilter === "3M") { startDate.setMonth(now.getMonth() - 3); stepDays = 2; }
-    else if (selectedFilter === "6M") { startDate.setMonth(now.getMonth() - 6); stepDays = 5; }
-    else if (selectedFilter === "1Y") { startDate.setFullYear(now.getFullYear() - 1); stepDays = 10; }
-    else if (selectedFilter === "ALL") {
-      const allT = rawSeries.flatMap(u => u.data.map(d => new Date(d.date).getTime()));
+    else if (selectedFilter === "3M") {
+      startDate.setMonth(now.getMonth() - 3);
+      stepDays = 2;
+    } else if (selectedFilter === "6M") {
+      startDate.setMonth(now.getMonth() - 6);
+      stepDays = 5;
+    } else if (selectedFilter === "1Y") {
+      startDate.setFullYear(now.getFullYear() - 1);
+      stepDays = 10;
+    } else if (selectedFilter === "ALL") {
+      const allT = rawSeries.flatMap((u) =>
+        u.data.map((d) => new Date(d.date).getTime())
+      );
       startDate = new Date(Math.min(...allT));
       endDate = new Date(Math.max(...allT));
-      stepDays = Math.max(1, Math.ceil(Math.ceil((endDate.getTime() - startDate.getTime()) / 86400000) / 25));
+      stepDays = Math.max(
+        1,
+        Math.ceil(
+          Math.ceil((endDate.getTime() - startDate.getTime()) / 86400000) / 25
+        )
+      );
     }
 
-    const fmt = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    const fmt = (d: Date) =>
+      d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
     const dateRangeText = `${fmt(startDate)} — ${fmt(endDate)}`;
 
     const buckets: string[] = [];
@@ -93,22 +135,28 @@ export default function AlcoholismChart() {
     const formatData = (user: UserSeries) => {
       return buckets.map((bucketDate, index) => {
         const bt = new Date(bucketDate).getTime();
-        const pts = user.data.filter(d => {
+        const pts = user.data.filter((d) => {
           const t = new Date(d.date).getTime();
           return t >= bt && t < bt + stepDays * 86400000;
         });
-        const avg = pts.length ? pts.reduce((s, p) => s + p.value, 0) / pts.length : 0;
+        const avg = pts.length
+          ? pts.reduce((s, p) => s + p.value, 0) / pts.length
+          : 0;
         return {
           value: toVisualValue(avg),
           realValue: Math.round(avg),
-          fullDate: new Date(bucketDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+          fullDate: new Date(bucketDate).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          }),
           index,
         };
       });
     };
 
     const primaryData = formatData(activeSeries[0]);
-    const secondaryDataSets = activeSeries.slice(1).map(s => ({
+    const secondaryDataSets = activeSeries.slice(1).map((s) => ({
       data: formatData(s),
       color: s.color,
       thickness: 3,
@@ -117,16 +165,15 @@ export default function AlcoholismChart() {
       hideDataPoints: true,
     }));
 
-    return { 
-      primaryData, 
-      secondaryDataSets, 
-      calculatedSpacing: (SCREEN_WIDTH - 110) / (buckets.length - 1 || 1), 
+    return {
+      primaryData,
+      secondaryDataSets,
+      calculatedSpacing: (SCREEN_WIDTH - 110) / (buckets.length - 1 || 1),
       dateRangeText,
       totalPoints: buckets.length,
-      activeUsers: activeSeries
+      activeUsers: activeSeries,
     };
   }, [rawSeries, selectedFilter, visibleUserIds]);
-
 
   return (
     <View className="bg-white/[0.03] rounded-3xl p-5 border border-white/10 mb-6 shadow-2xl">
@@ -349,10 +396,14 @@ export default function AlcoholismChart() {
           <TouchableOpacity
             key={f.value}
             onPress={() => setSelectedFilter(f.value)}
-            className={`flex-1 py-2.5 rounded-xl ${selectedFilter === f.value ? "bg-zinc-800" : ""}`}
+            className={`flex-1 py-2.5 rounded-xl ${
+              selectedFilter === f.value ? "bg-zinc-800" : ""
+            }`}
           >
             <Text
-              className={`text-center text-[10px] font-black ${selectedFilter === f.value ? "text-orange-500" : "text-white/20"}`}
+              className={`text-center text-[10px] font-black ${
+                selectedFilter === f.value ? "text-orange-500" : "text-white/20"
+              }`}
             >
               {f.label}
             </Text>
@@ -364,15 +415,15 @@ export default function AlcoholismChart() {
 }
 
 const styles = StyleSheet.create({
-  chartWrapper: { 
-    height: 250, 
+  chartWrapper: {
+    height: 250,
     justifyContent: "flex-end", // Push chart to bottom to give tooltip room at top
     alignItems: "center",
     paddingTop: 40, // Significant padding at the top for the tooltip "Safe Zone"
     paddingBottom: 10,
   },
   axisText: { color: "rgba(255,255,255,0.2)", fontSize: 9, fontWeight: "800" },
-  pointerContainer: { width: 160, justifyContent: 'center', zIndex: 999 },
+  pointerContainer: { width: 160, justifyContent: "center", zIndex: 999 },
   tooltipBox: {
     backgroundColor: "#09090b",
     padding: 10,
@@ -381,16 +432,16 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.15)",
   },
   tooltipCaret: {
-    position: 'absolute',
+    position: "absolute",
     bottom: -8,
     width: 0,
     height: 0,
     borderLeftWidth: 8,
     borderRightWidth: 8,
     borderTopWidth: 8,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderTopColor: '#09090b',
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
+    borderTopColor: "#09090b",
   },
   tooltipCaretFlipped: {
     width: 0,
@@ -398,18 +449,38 @@ const styles = StyleSheet.create({
     borderLeftWidth: 8,
     borderRightWidth: 8,
     borderBottomWidth: 8,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderBottomColor: '#09090b',
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
+    borderBottomColor: "#09090b",
     marginBottom: -1,
   },
-  tooltipDate: { color: "#f97316", fontSize: 9, fontWeight: "900", marginBottom: 8, textAlign: "center" },
-  tooltipRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginVertical: 3 },
+  tooltipDate: {
+    color: "#f97316",
+    fontSize: 9,
+    fontWeight: "900",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  tooltipRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginVertical: 3,
+  },
   tooltipUser: { flexDirection: "row", alignItems: "center", flex: 1 },
   dot: { width: 6, height: 6, borderRadius: 3, marginRight: 8 },
   tooltipName: { color: "white", fontSize: 11, fontWeight: "600" },
   tooltipValue: { color: "white", fontSize: 12, fontWeight: "800" },
-  legendItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,255,255,0.03)' },
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    backgroundColor: "rgba(255,255,255,0.03)",
+  },
   legendDot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
-  legendText: { fontSize: 11, fontWeight: "700", color: 'white' },
+  legendText: { fontSize: 11, fontWeight: "700", color: "white" },
 });

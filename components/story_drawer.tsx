@@ -21,12 +21,12 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useVideoPlayer, VideoView } from "expo-video";
+import { Video, ResizeMode, Audio, AVPlaybackStatus } from "expo-av";
 import { useApp } from "@/providers/AppProvider";
 import { StoryRecorder } from "./story_recorder";
-import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { QuickFeedback } from "./quickFeedback";
+import * as Haptics from "expo-haptics";
 
 const { width, height } = Dimensions.get("window");
 const DRAWER_WIDTH = width * 0.22;
@@ -43,7 +43,6 @@ export default function StoryDrawer() {
     refreshStories,
   } = useApp();
 
-  // --- UI STATE ---
   const [isOpen, setIsOpen] = useState(false);
   const slideAnim = useRef(new Animated.Value(0)).current;
   const [isRecordingModalOpen, setIsRecordingModalOpen] = useState(false);
@@ -52,27 +51,39 @@ export default function StoryDrawer() {
     message: string;
     type: "success" | "xp" | "level";
   }>({ visible: false, message: "", type: "success" });
-  
+
   const showFeedback = (message: string, type: any = "success") =>
     setFeedback({ visible: true, message, type });
 
-  // --- LOGIC STATE ---
-  const [indices, setIndices] = useState<{ uIdx: number; sIdx: number } | null>(null);
-  const [stepCounter, setStepCounter] = useState(0);
+  const [indices, setIndices] = useState<{ uIdx: number; sIdx: number } | null>(
+    null
+  );
+  
+  const [activePlayerIndex, setActivePlayerIndex] = useState<0 | 1>(0);
+  const [videoProgress, setVideoProgress] = useState(0);
   const [isHolding, setIsHolding] = useState(false);
-  
-  // Use REF for preloaded flag to avoid re-rendering the UI during playback
-  const hasPreloaded = useRef(false);
-  
-  // Use REF to prevent infinite "Seen" API loops
+  const [isReadyToLoadNext, setIsReadyToLoadNext] = useState(false);
+
+  const videoARef = useRef<Video>(null);
+  const videoBRef = useRef<Video>(null);
   const lastSeenStoryId = useRef<string | null>(null);
-  
   const pressStartTime = useRef<number>(0);
 
+  // --- AUDIO SETUP ---
+  useEffect(() => {
+    Audio.setAudioModeAsync({
+      allowsRecordingIOS: false,
+      playsInSilentModeIOS: true,
+      shouldDuckAndroid: true,
+      playThroughEarpieceAndroid: false,
+      staysActiveInBackground: false,
+    }).catch((e) => console.warn("Audio Setup Failed", e));
+  }, []);
+
   // --- DATA HELPERS ---
-  const getStoryAt = (uIdx: number, sIdx: number) =>
-    groupedUsers[uIdx]?.items[sIdx] || null;
-    
+  const getStoryAt = useCallback((uIdx: number, sIdx: number) => 
+    groupedUsers[uIdx]?.items[sIdx] || null, [groupedUsers]);
+
   const activeStory = indices ? getStoryAt(indices.uIdx, indices.sIdx) : null;
   const activeUser = indices ? groupedUsers[indices.uIdx] : null;
 
@@ -85,223 +96,98 @@ export default function StoryDrawer() {
     return null;
   }, [indices, groupedUsers]);
 
-  const nextStory = nextIndices
-    ? getStoryAt(nextIndices.uIdx, nextIndices.sIdx)
-    : null;
-
-  // --- PLAYERS ---
-  const playerA = useVideoPlayer(null, (p) => { p.loop = false; });
-  const playerB = useVideoPlayer(null, (p) => { p.loop = false; });
-
-  const isStepEven = stepCounter % 2 === 0;
-  const currentPlayer = isStepEven ? playerA : playerB;
-  const backgroundPlayer = isStepEven ? playerB : playerA;
-
-  // Track sources manually to prevent re-renders
-  const sourceRefA = useRef<string | null>(null);
-  const sourceRefB = useRef<string | null>(null);
-  const currentSourceRef = isStepEven ? sourceRefA : sourceRefB;
-  const backgroundSourceRef = isStepEven ? sourceRefB : sourceRefA;
-
-  // --- 1. SETUP ACTIVE STORY ---
-  useEffect(() => {
-    if (!indices || !activeStory) {
-      try {
-        playerA.pause();
-        playerB.pause();
-      } catch (e) {}
-      return;
-    }
-
-    // FIX: PREVENT INFINITE LOOP
-    // Only mark as seen if we haven't already marked THIS specific story ID in this session
-    if (activeStory.id !== lastSeenStoryId.current) {
-        markStoryAsSeen(activeStory.id);
-        lastSeenStoryId.current = activeStory.id;
-    }
-
-    // Reset preload flag for the new story
-    hasPreloaded.current = false;
-
-    try {
-      // Load active video if needed
-      if (currentSourceRef.current !== activeStory.video_url) {
-        // console.log("Loading Active:", activeStory.id);
-        currentPlayer.replace(activeStory.video_url);
-        currentSourceRef.current = activeStory.video_url;
-        currentPlayer.currentTime = 0;
-      }
-
-      // AGGRESSIVE CLEANUP: Ensure background player is empty/paused initially
-      if (backgroundSourceRef.current) {
-        backgroundPlayer.replace(null);
-        backgroundSourceRef.current = null;
-      }
-
-      currentPlayer.play();
-    } catch (e) {
-      console.log("Player Error: " + e);
-    }
-  }, [
-    indices,
-    stepCounter,
-    // activeStory.id and video_url are the only things that matter for triggers
-    activeStory?.id, 
-    activeStory?.video_url
-  ]);
-
-
-  // --- 2. TRIGGER PRELOAD ---
-  // Using useCallback to keep the reference stable for the interval
-  const triggerPreload = useCallback(() => {
-    if (hasPreloaded.current || !nextStory) return;
-
-    // console.log("Triggering Preload for:", nextStory.id);
-    try {
-      if (backgroundSourceRef.current !== nextStory.video_url) {
-        backgroundPlayer.replace(nextStory.video_url);
-        backgroundSourceRef.current = nextStory.video_url;
-        backgroundPlayer.currentTime = 0;
-        backgroundPlayer.pause();
-      }
-      hasPreloaded.current = true;
-    } catch (e) {
-      console.log("Preload Error: " + e);
-    }
-  }, [backgroundPlayer, backgroundSourceRef, nextStory]); // Deps are stable
-
-
-  // --- 3. PROGRESS LOOP & AUTO-FIXER ---
-  const [videoProgress, setVideoProgress] = useState(0);
-
-  useEffect(() => {
-    if (!indices) return;
-
-    const interval = setInterval(() => {
-      try {
-        if (currentPlayer && !isHolding) {
-          const dur = currentPlayer.duration;
-          const curr = currentPlayer.currentTime;
-
-          // Update UI
-          if (dur > 0 && curr >= 0) setVideoProgress(curr / dur);
-
-          // --- SMART PRELOAD TRIGGER ---
-          // Only load the next video if the current one has successfully
-          // played for 0.5 seconds.
-          if (!hasPreloaded.current && curr > 0.5 && dur > 2) {
-            triggerPreload();
-          }
-
-          // --- SAFETY KICK ---
-          // If supposed to be playing but isn't
-          if (!currentPlayer.playing && currentPlayer.status === "readyToPlay") {
-            if (curr < 0.2) currentPlayer.play();
-          }
-        }
-      } catch (e) {
-         // Silently fail logic updates
-      }
-    }, 50);
-
-    return () => clearInterval(interval);
-  }, [
-    currentPlayer,
-    isHolding,
-    indices,
-    nextStory,
-    triggerPreload,
-  ]);
-
+  const nextStory = nextIndices ? getStoryAt(nextIndices.uIdx, nextIndices.sIdx) : null;
 
   // --- NAVIGATION ---
   const closeStoryViewer = useCallback(() => {
-    try {
-      playerA.replace(null);
-      playerB.replace(null);
-      sourceRefA.current = null;
-      sourceRefB.current = null;
-    } catch (e) {}
-    
     setIndices(null);
-    setStepCounter(0);
+    setVideoProgress(0);
+    setActivePlayerIndex(0);
     setIsHolding(false);
     refreshStories();
-  }, [playerA, playerB, refreshStories]); // Removed refs from deps
+  }, [refreshStories]);
 
-  const handleNext = useCallback(() => {
-    if (!indices) return;
-
+  const goToNext = useCallback(() => {
     if (nextIndices) {
-      setStepCounter((prev) => prev + 1);
+      setActivePlayerIndex((prev) => (prev === 0 ? 1 : 0));
       setIndices(nextIndices);
+      setVideoProgress(0);
+      setIsReadyToLoadNext(false); 
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } else {
       closeStoryViewer();
     }
-  }, [closeStoryViewer, indices, nextIndices]);
+  }, [nextIndices, closeStoryViewer]);
 
-
-  // --- 4. END DETECTION ---
-  useEffect(() => {
-    if (!indices) return;
-    const sub = currentPlayer.addListener("playToEnd", () => {
-      // Prevents premature skipping if event fires at 0:00
-      if (currentPlayer.currentTime > 0.5 || currentPlayer.duration < 1) {
-        handleNext();
-      }
-    });
-    return () => sub.remove();
-  }, [currentPlayer, indices, handleNext]);
-
-
-  // --- MANUAL NAVIGATION ---
-  const handlePrev = () => {
+  const goToPrev = useCallback(() => {
     if (!indices) return;
     const { uIdx, sIdx } = indices;
-
-    const forceReload = (url: string) => {
-      currentPlayer.replace(url);
-      currentSourceRef.current = url;
-      currentPlayer.currentTime = 0;
-      currentPlayer.play();
-    };
-
+    
     if (sIdx > 0) {
-      const prevStory = groupedUsers[uIdx].items[sIdx - 1];
-      forceReload(prevStory.video_url);
       setIndices({ uIdx, sIdx: sIdx - 1 });
+      setActivePlayerIndex((prev) => (prev === 0 ? 1 : 0));
     } else if (uIdx > 0) {
       const prevUserIdx = uIdx - 1;
       const prevUserStories = groupedUsers[prevUserIdx].items;
-      const lastStory = prevUserStories[prevUserStories.length - 1];
-      forceReload(lastStory.video_url);
       setIndices({ uIdx: prevUserIdx, sIdx: prevUserStories.length - 1 });
+      setActivePlayerIndex((prev) => (prev === 0 ? 1 : 0));
     } else {
-      try {
-        currentPlayer.currentTime = 0;
-        currentPlayer.play();
-      } catch (e) {}
+      const ref = activePlayerIndex === 0 ? videoARef.current : videoBRef.current;
+      ref?.replayAsync();
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, [indices, groupedUsers, activePlayerIndex]);
+
+
+  // --- SIDE EFFECTS ---
+  useEffect(() => {
+    if (activeStory && activeStory.id !== lastSeenStoryId.current) {
+      markStoryAsSeen(activeStory.id);
+      lastSeenStoryId.current = activeStory.id;
+    }
+  }, [activeStory, markStoryAsSeen]);
+
+
+  // --- PLAYBACK HANDLER ---
+  const onPlaybackStatusUpdate = (status: AVPlaybackStatus, isForActivePlayer: boolean) => {
+    if (!status.isLoaded) return;
+
+    if (isForActivePlayer) {
+      const duration = status.durationMillis || 1;
+      const position = status.positionMillis;
+      setVideoProgress(position / duration);
+
+      if (!isReadyToLoadNext && position > 500) {
+        setIsReadyToLoadNext(true);
+      }
+
+      if (status.didJustFinish) {
+        goToNext();
+      }
+    }
   };
+
 
   // --- GESTURES ---
   const handlePressIn = () => {
     pressStartTime.current = Date.now();
     setIsHolding(true);
-    try { currentPlayer.pause(); } catch (e) {}
+    const ref = activePlayerIndex === 0 ? videoARef.current : videoBRef.current;
+    ref?.pauseAsync();
   };
   const handlePressOut = () => {
     setIsHolding(false);
-    try { currentPlayer.play(); } catch (e) {}
+    const ref = activePlayerIndex === 0 ? videoARef.current : videoBRef.current;
+    ref?.playAsync();
   };
   const handleTap = (direction: "next" | "prev") => {
-    if (Date.now() - pressStartTime.current < 200) {
-      if (direction === "next") handleNext();
-      else handlePrev();
+    const dur = Date.now() - pressStartTime.current;
+    if (dur < 200) {
+      if (direction === "next") goToNext();
+      else goToPrev();
     }
   };
+
 
   // --- DRAWER ANIMATION ---
   const animateDrawer = (toValue: number) => {
@@ -347,6 +233,17 @@ export default function StoryDrawer() {
   });
   const verticalMargin = (height - DRAWER_HEIGHT) / 2;
 
+  // --- SOURCE CALCULATION ---
+  const sourceA = activePlayerIndex === 0 ? activeStory?.video_url : nextStory?.video_url;
+  const sourceB = activePlayerIndex === 1 ? activeStory?.video_url : nextStory?.video_url;
+
+  const shouldLoadBackground = isReadyToLoadNext;
+  
+  // DETERMINE IF WE SHOULD RENDER PLAYERS
+  // We only render if we have a valid source string AND it is either active or ready to background load
+  const shouldRenderA = (activePlayerIndex === 0 || shouldLoadBackground) && sourceA;
+  const shouldRenderB = (activePlayerIndex === 1 || shouldLoadBackground) && sourceB;
+
   return (
     <>
       {isOpen && (
@@ -356,6 +253,7 @@ export default function StoryDrawer() {
         />
       )}
 
+      {/* DRAWER UI */}
       <View
         style={[
           styles.mainWrapper,
@@ -399,13 +297,9 @@ export default function StoryDrawer() {
                   onPress={() => {
                     animateDrawer(0);
                     setIndices({ uIdx: i, sIdx: 0 });
-                    setStepCounter(0);
-                    try {
-                      playerA.replace(null);
-                      playerB.replace(null);
-                      sourceRefA.current = null;
-                      sourceRefB.current = null;
-                    } catch (e) {}
+                    setVideoProgress(0);
+                    setActivePlayerIndex(0);
+                    setIsReadyToLoadNext(false);
                   }}
                   className="mb-6 items-center"
                 >
@@ -444,6 +338,7 @@ export default function StoryDrawer() {
         />
       </Modal>
 
+      {/* FULL SCREEN VIEWER */}
       <Modal
         visible={indices !== null}
         animationType="fade"
@@ -456,58 +351,56 @@ export default function StoryDrawer() {
 
           {indices && activeStory && (
             <>
-              {/* VIDEO LAYERS */}
-              <View
-                style={[
-                  StyleSheet.absoluteFill,
-                  { zIndex: isStepEven ? 1 : 0 },
-                ]}
-              >
-                <VideoView
-                  player={playerA}
-                  style={StyleSheet.absoluteFill}
-                  contentFit="cover"
-                  nativeControls={false}
-                />
-              </View>
-
-              <View
-                style={[
-                  StyleSheet.absoluteFill,
-                  { zIndex: !isStepEven ? 1 : 0 },
-                ]}
-              >
-                <VideoView
-                  player={playerB}
-                  style={StyleSheet.absoluteFill}
-                  contentFit="cover"
-                  nativeControls={false}
-                />
-              </View>
-
-              {/* FALLBACK IMG */}
+              {/* --- PLAYER A --- */}
               <View
                 style={[
                   StyleSheet.absoluteFill,
                   {
-                    zIndex: -1,
-                    justifyContent: "center",
-                    alignItems: "center",
+                    zIndex: activePlayerIndex === 0 ? 1 : 0,
+                    opacity: activePlayerIndex === 0 ? 1 : 0
                   },
                 ]}
               >
-                <Image
-                  source={{ uri: activeUser?.user_image_url }}
-                  style={{
-                    width: 100,
-                    height: 100,
-                    borderRadius: 50,
-                    opacity: 0.3,
-                  }}
-                />
+                {shouldRenderA ? (
+                  <Video
+                    ref={videoARef}
+                    source={{ uri: sourceA }}
+                    style={StyleSheet.absoluteFill}
+                    resizeMode={ResizeMode.COVER}
+                    shouldPlay={activePlayerIndex === 0 && !isHolding}
+                    isMuted={activePlayerIndex !== 0}
+                    onPlaybackStatusUpdate={(s) => onPlaybackStatusUpdate(s, activePlayerIndex === 0)}
+                    progressUpdateIntervalMillis={50}
+                  />
+                ) : null}
               </View>
 
-              {/* CONTROLS */}
+              {/* --- PLAYER B --- */}
+              <View
+                style={[
+                  StyleSheet.absoluteFill,
+                  {
+                    zIndex: activePlayerIndex === 1 ? 1 : 0,
+                    opacity: activePlayerIndex === 1 ? 1 : 0
+                  },
+                ]}
+              >
+                {shouldRenderB ? (
+                  <Video
+                    ref={videoBRef}
+                    source={{ uri: sourceB }}
+                    style={StyleSheet.absoluteFill}
+                    resizeMode={ResizeMode.COVER}
+                    shouldPlay={activePlayerIndex === 1 && !isHolding}
+                    isMuted={activePlayerIndex !== 1}
+                    onPlaybackStatusUpdate={(s) => onPlaybackStatusUpdate(s, activePlayerIndex === 1)}
+                    progressUpdateIntervalMillis={50}
+                  />
+                ) : null}
+              </View>
+
+
+              {/* CONTROLS LAYER */}
               <View
                 style={[StyleSheet.absoluteFill, { zIndex: 10 }]}
                 className="flex-row"

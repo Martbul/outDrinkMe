@@ -28,6 +28,7 @@ import type {
   UserStories,
   UploadJob,
   StoryUploadJob,
+  StorySegment,
 } from "../types/api.types";
 import { apiService } from "@/api";
 import { usePostHog } from "posthog-react-native";
@@ -43,6 +44,7 @@ interface AppContextType {
   userData: UserData | null;
   userStats: UserStats | null;
   userInventory: InventoryItems | null;
+  userStories: StorySegment[];
   storeItems: StoreItems | null;
   leaderboard: LeaderboardsResponse | null;
   achievements: Achievement[] | null;
@@ -67,7 +69,7 @@ interface AppContextType {
   unreadNotificationCount: number;
   sideQuestBoards: SideQuestBoard | null;
   mapFriendPosts: YourMixPostData[] | [];
-storyUploadQueue: StoryUploadJob[];
+  storyUploadQueue: StoryUploadJob[];
   // Refresh Functions (Page 1)
   refreshUserData: () => Promise<void>;
   refreshUserStats: () => Promise<void>;
@@ -80,7 +82,6 @@ storyUploadQueue: StoryUploadJob[];
   refreshStories: () => Promise<void>;
   refreshYourMixData: () => Promise<void>;
   refreshGlobalMixData: () => Promise<void>;
-
   refreshMixTimelineData: () => Promise<void>;
   refreshDrunkThought: () => Promise<void>;
   refreshFriendsDrunkThoughs: () => Promise<void>;
@@ -89,6 +90,7 @@ storyUploadQueue: StoryUploadJob[];
   refreshStore: () => Promise<void>;
   refreshNotifications: (page?: number) => Promise<void>;
   refreshSideQuestBoard: () => Promise<void>;
+  refreshUserStories: () => Promise<void>;
   refreshAll: () => Promise<void>;
 
   // --- Pagination Actions (Load Next Page) ---
@@ -157,6 +159,8 @@ export function AppProvider({ children }: AppProviderProps) {
   const [userInventory, setUserInventory] = useState<InventoryItems | null>(
     null
   );
+  const [userStories, setUserStories] = useState<StorySegment[]>([]);
+
   const [storeItems, setStoreItems] = useState<StoreItems | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardsResponse | null>(
     null
@@ -207,14 +211,16 @@ export function AppProvider({ children }: AppProviderProps) {
   const [updateMessage, setUpdateMessage] = useState(
     "A new version of the app is available. Please update to continue."
   );
-  const [storyUploadQueue, setStoryUploadQueue] = useState<StoryUploadJob[]>([]);  
+  const [storyUploadQueue, setStoryUploadQueue] = useState<StoryUploadJob[]>(
+    []
+  );
 
   const hasInitialized = useRef(false);
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
-const hasStoryUploadNotified = useRef(false);
+  const hasStoryUploadNotified = useRef(false);
   const isStoryProcessing = useRef(false);
 
-   const updateStoryJobStatus = (
+  const updateStoryJobStatus = (
     id: string,
     status: StoryUploadJob["status"],
     progress: number
@@ -224,7 +230,7 @@ const hasStoryUploadNotified = useRef(false);
     );
   };
 
-     const processStoryUpload = async (job: StoryUploadJob) => {
+  const processStoryUpload = async (job: StoryUploadJob) => {
     const token = await getToken();
     const CLOUDINARY_CLOUD_NAME = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
     const PRESET = process.env.EXPO_PUBLIC_CLOUDINARY_STORY_UPLOAD_PRESET;
@@ -251,7 +257,7 @@ const hasStoryUploadNotified = useRef(false);
           parameters: {
             upload_preset: PRESET!,
             folder: "outdrinkme_story", // Optional: keep stories organized
-            resource_type: "video",  // Explicitly tell Cloudinary this is a video
+            resource_type: "video", // Explicitly tell Cloudinary this is a video
           },
         },
         (p) => {
@@ -286,10 +292,9 @@ const hasStoryUploadNotified = useRef(false);
       // 4. Cleanup & Analytics
       updateStoryJobStatus(job.id, "completed", 1);
       posthog?.capture("story_video_uploaded_success");
-      
+
       // Refresh stories so the user sees it in their feed
       refreshStories();
-
     } catch (err) {
       console.error("Story Upload Job Failed:", err);
       updateStoryJobStatus(job.id, "failed", 0);
@@ -297,8 +302,7 @@ const hasStoryUploadNotified = useRef(false);
     }
   };
 
-    
-      // --- QUEUE PROCESSOR EFFECT ---
+  // --- QUEUE PROCESSOR EFFECT ---
   // --- QUEUE PROCESSOR EFFECT ---
   useEffect(() => {
     const processQueue = async () => {
@@ -318,7 +322,7 @@ const hasStoryUploadNotified = useRef(false);
           await processStoryUpload(pendingJob);
           isStoryProcessing.current = false;
         }
-      } 
+      }
       // If queue is empty/finished...
       else if (storyUploadQueue.length > 0 && activeJobs.length === 0) {
         if (!hasStoryUploadNotified.current) {
@@ -333,7 +337,9 @@ const hasStoryUploadNotified = useRef(false);
             Notifications.scheduleNotificationAsync({
               content: {
                 title: "Stories Uploaded",
-                body: `Successfully posted ${completedCount} video stor${completedCount > 1 ? "ies" : "y"}.`,
+                body: `Successfully posted ${completedCount} video stor${
+                  completedCount > 1 ? "ies" : "y"
+                }.`,
               },
               trigger: null,
             });
@@ -806,6 +812,19 @@ const hasStoryUploadNotified = useRef(false);
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
 
+  const refreshUserStories = useCallback(async () => {
+    if (!isSignedIn) return;
+    await withLoadingAndError(
+      async () => {
+        const token = await getToken();
+        if (!token) throw new Error("No auth token");
+        return await apiService.getUserStories(token);
+      },
+      (data) => setUserStories(data),
+      "refresh_user_stories"
+    );
+  }, [isSignedIn, getToken, withLoadingAndError]);
+
   const refreshStore = useCallback(async () => {
     if (!isSignedIn) return;
     await withLoadingAndError(
@@ -900,6 +919,7 @@ const hasStoryUploadNotified = useRef(false);
         apiService.getBoardQuests(token),
         apiService.getMapFriendsPosts(token),
         apiService.getStories(token),
+        apiService.getUserStories(token),
       ]);
 
       const [
@@ -924,6 +944,7 @@ const hasStoryUploadNotified = useRef(false);
         SideQuestBoardResult,
         mapFriendsPostsResult,
         storiesRes,
+        userStoriesRes,
       ] = results;
 
       if (userResult.status === "fulfilled") {
@@ -1085,6 +1106,12 @@ const hasStoryUploadNotified = useRef(false);
         setStories([]);
       }
 
+      if (userStoriesRes.status === "fulfilled") {
+        setUserStories(userStoriesRes.value || []);
+      } else {
+        console.error("Failed to fetch user stories:", userStoriesRes.reason);
+        setUserStories([]);
+      }
       const failedCalls = results.filter((r) => r.status === "rejected");
       if (failedCalls.length > 0) {
         posthog?.capture("bulk_refresh_partial_failure", {
@@ -1160,21 +1187,6 @@ const hasStoryUploadNotified = useRef(false);
     [isSignedIn, getToken, withLoadingAndError]
   );
 
-  const addVideoInStoryQueue = useCallback(
-    async (videoUrl: string) => {
-      const videoUploadJob: UploadJob = {
-        id: Math.random().toString(36).substring(7),
-        uri: videoUrl,
-        progress: 0,
-        status: "pending",
-      };
-      hasStoryUploadNotified.current = false;
-      setStoryUploadQueue((prev) => [...prev, videoUploadJob]);
-      posthog?.capture("story_video_queued");
-    },
-    [posthog]
-  );
-
   const createStory = useCallback(
     async (data: {
       videoUrl: string; // This is the local file URI here
@@ -1199,7 +1211,7 @@ const hasStoryUploadNotified = useRef(false);
 
       // Add to state (this triggers the useEffect)
       setStoryUploadQueue((prev) => [...prev, newJob]);
-      
+
       // Optional: Navigate user away or show a toast saying "Uploading in background"
       posthog?.capture("story_upload_queued");
     },
@@ -1222,23 +1234,68 @@ const hasStoryUploadNotified = useRef(false);
     [isSignedIn, getToken, refreshStories]
   );
 
+  // const markStoryAsSeen = useCallback(
+  //   async (storyId: string) => {
+  //     if (!isSignedIn) return;
+
+  //     // Prevent redundant calls if already seen locally
+  //     const story = stories.find((s) => s.id === storyId);
+  //     if (story?.isSeen) return;
+
+  //     // Optimistic Update
+  //     setStories((prev) =>
+  //       prev.map((s) => (s.id === storyId ? { ...s, isSeen: true } : s))
+  //     );
+
+  //     const token = await getToken();
+  //     if (token) {
+  //       // Fire and forget
+  //       apiService.markStoryAsSeen(token, storyId, "view");
+  //     }
+  //   },
+  //   [isSignedIn, getToken, stories]
+  // );
+
   const markStoryAsSeen = useCallback(
     async (storyId: string) => {
       if (!isSignedIn) return;
 
-      // Prevent redundant calls if already seen locally
-      const story = stories.find((s) => s.id === storyId);
-      if (story?.isSeen) return;
+      // 1. Find the story in the nested structure to check if already seen
+      // We use flatMap to look through all items of all users
+      const story = stories
+        .flatMap((u) => u.items)
+        .find((s) => s.id === storyId);
 
-      // Optimistic Update
+      // Use is_seen (to match your interface)
+      if (!story || story.is_seen) return;
+
+      // 2. Optimistic Update (Nested)
       setStories((prev) =>
-        prev.map((s) => (s.id === storyId ? { ...s, isSeen: true } : s))
+        prev.map((user) => {
+          // Check if this user actually contains the story we are updating
+          const containsStory = user.items.some((s) => s.id === storyId);
+          if (!containsStory) return user;
+
+          // Update the items within this user
+          const updatedItems = user.items.map((s) =>
+            s.id === storyId ? { ...s, is_seen: true } : s
+          );
+
+          // 3. Optional: Automatically update 'all_seen' for the user
+          const allSeen = updatedItems.every((s) => s.is_seen);
+
+          return {
+            ...user,
+            items: updatedItems,
+            all_seen: allSeen,
+          };
+        })
       );
 
       const token = await getToken();
       if (token) {
         // Fire and forget
-        apiService.markStoryAsSeen(token, storyId, "view");
+        apiService.markStoryAsSeen(token, storyId);
       }
     },
     [isSignedIn, getToken, stories]
@@ -1448,6 +1505,7 @@ const hasStoryUploadNotified = useRef(false);
     userData,
     userStats,
     userInventory,
+    userStories,
     storeItems,
     leaderboard,
     achievements,
@@ -1472,7 +1530,7 @@ const hasStoryUploadNotified = useRef(false);
     unreadNotificationCount,
     sideQuestBoards,
     mapFriendPosts,
-     storyUploadQueue,
+    storyUploadQueue,
 
     // Refresh Functions
     refreshUserData,
@@ -1496,6 +1554,7 @@ const hasStoryUploadNotified = useRef(false);
     refreshStore,
     refreshNotifications,
     refreshSideQuestBoard,
+    refreshUserStories,
     refreshAll,
 
     // Pagination Actions

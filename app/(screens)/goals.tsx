@@ -75,7 +75,6 @@ export default function GoalSettingScreen() {
     setModalVisible(false);
   };
 
-  // --- UI COMPONENTS ---
 
   const Speedometer = ({ percentage }: { percentage: number }) => {
     const radius = 75;
@@ -163,7 +162,6 @@ export default function GoalSettingScreen() {
         contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
         className="px-4 pt-4"
       >
-        {/* SPEEDOMETER SECTION */}
         <View className="bg-white/[0.03] rounded-3xl p-6 border border-white/[0.08] mb-8">
           <View className="flex-row justify-between items-start mb-2">
             <View>
@@ -177,7 +175,6 @@ export default function GoalSettingScreen() {
           <Speedometer percentage={progress.yearlyEfficiency} />
         </View>
 
-        {/* ANNUAL SECTION */}
         <Text className="text-orange-600 text-[11px] font-black tracking-[3px] mb-4 uppercase px-1 italic">— Annual</Text>
         <GoalCard
           section="annual" goalKey="drunk" label="Drunk Days" subLabel="Drink more"
@@ -194,31 +191,7 @@ export default function GoalSettingScreen() {
           target={goals.annual.streak} current={progress.annualStreak} isLimit={false}
           icon={<Ionicons name="flame" size={20} color={ORANGE} />}
         />
-
-        {/* MONTHLY SECTION */}
-        <View className="mt-8">
-          <Text className="text-orange-600 text-[11px] font-black tracking-[3px] mb-4 uppercase px-1 italic">— Monthly</Text>
-          <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
-            <View className="flex-row items-center justify-between mb-2">
-              <Text className="text-white font-black text-base">Hit All Months</Text>
-              <Switch 
-                value={toggles.hitAllMonths} 
-                onValueChange={(v) => setToggles({...toggles, hitAllMonths: v})}
-                trackColor={{ false: "#333", true: ORANGE }}
-                thumbColor="#fff"
-              />
-            </View>
-            <Text className="text-white/40 text-xs mb-4">Drink in every single month of the year</Text>
-            {toggles.hitAllMonths && (
-                <View className="pt-4 border-t border-white/5 flex-row justify-between items-center">
-                    <Text className="text-white/60 text-[10px] font-bold uppercase">Current Status</Text>
-                    <StatusBadge isSuccess={progress.monthsMissed === 0} label={progress.monthsMissed === 0 ? "PERFECT" : "GAP FOUND"} />
-                </View>
-            )}
-          </View>
-        </View>
-
-        {/* WEEKLY SECTION */}
+        
         <View className="mt-8">
           <Text className="text-orange-600 text-[11px] font-black tracking-[3px] mb-4 uppercase px-1 italic">— Weekly</Text>
           <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08] mb-3">

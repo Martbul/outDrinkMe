@@ -7,7 +7,6 @@ import PurchaseConfirmationModal, {
 import { useAds } from "@/providers/AdProvider";
 import { useApp } from "@/providers/AppProvider";
 import {
-  ColorTheme,
   EnergyDrink,
   Flag,
   GemPack,
@@ -68,7 +67,7 @@ export default function StoreScreen() {
     posthog?.capture("store_viewed", {
       user_gem_balance: userData?.gems || 0,
     });
-  }, [userData?.gems]);
+  }, [userData?.gems, posthog]);
 
   const handleGetMorePress = () => {
     // Track intent to buy gems
@@ -368,36 +367,6 @@ export default function StoreScreen() {
     </TouchableOpacity>
   );
 
-  const ColorThemeCard = ({ theme }: { theme: ColorTheme }) => (
-    <TouchableOpacity
-      className={`${theme.bgColor} rounded-2xl p-4 border ${theme.borderColor} mr-3`}
-      style={{ width: 160 }}
-      activeOpacity={0.7}
-    >
-      <View
-        className={`w-16 h-16 rounded-2xl ${theme.color} mb-3 items-center justify-center`}
-      >
-        <View className={`w-12 h-12 rounded-xl ${theme.color} opacity-60`} />
-      </View>
-      <Text className="text-white font-bold mb-1" numberOfLines={1}>
-        {theme.name}
-      </Text>
-      <Text
-        className={`text-xs font-semibold mb-3`}
-        style={{ color: theme.color.replace("bg-", "#") }}
-      >
-        Theme Color
-      </Text>
-      <View className="bg-orange-600/20 rounded-xl py-2 px-3 flex-row items-center justify-center border border-orange-600/40">
-        <Ionicons name="diamond" size={18} color="#EA580C" />
-
-        <Text className="text-orange-600 text-base font-black ml-1">
-          {theme.price}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
-
   const GemPackCard = ({ pack }: { pack: GemPack }) => (
     <TouchableOpacity
       className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08] items-center mr-3 relative"
@@ -560,7 +529,6 @@ export default function StoreScreen() {
           </ScrollView>
         </View>
 
-        {/* Flags Section */}
         <View className="mt-6">
           <View className="mx-4 mb-4 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
             <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">
@@ -579,14 +547,15 @@ export default function StoreScreen() {
             ))}
           </ScrollView>
         </View>
-        {/* Watch Ad Section */}
+
+
         {isAdLoaded && (
           <View className="mx-4 mt-4">
             <TouchableOpacity
               disabled={isWatchingAd}
               className="bg-orange-600/10 rounded-2xl p-5 border-2 border-orange-600/50"
               activeOpacity={0.8}
-              onPress={handleWatchAdPress} // Use the new safe function
+              onPress={handleWatchAdPress} 
             >
               <View
                 className="flex-row items-center justify-between"

@@ -20,12 +20,13 @@ import {
   SideQuest,
   SideQuestBoard,
   SideQuestCompletion,
-  Story,
+  StorySegment,
   SubmitQuestProofReq,
   UnreadCountResponse,
   UpdateUserProfileReq,
   UserData,
   UserStats,
+  UserStories,
   VideoPost,
   YourMixPostData,
 } from "./types/api.types";
@@ -1047,12 +1048,20 @@ class ApiService {
     });
   }
 
-  async getStories(token: string): Promise<Story[]> {
+  async getStories(token: string): Promise<UserStories[]> {
     return this.makeRequest("/api/v1/user/stories", {
       method: "GET",
       token,
     });
   }
+  
+  async getUserStories(token: string): Promise<StorySegment[]> {
+    return this.makeRequest("/api/v1/user/user-stories", {
+      method: "GET",
+      token,
+    });
+  }
+
 
   async createStory(
     token: string,
@@ -1078,10 +1087,10 @@ class ApiService {
   }
 
   async deleteStory(token: string, storyId: string): Promise<void> {
-    return this.makeRequest("/api/v1/user/stories", {
+    const story_id = storyId
+    return this.makeRequest(`/api/v1/user/stories/${story_id}`, {
       method: "DELETE",
       token,
-      body: JSON.stringify({ storyId }),
     });
   }
 

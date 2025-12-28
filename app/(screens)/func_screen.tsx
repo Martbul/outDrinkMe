@@ -26,6 +26,8 @@ import * as MediaLibrary from "expo-media-library";
 import * as FileSystem from "expo-file-system/legacy";
 
 import { useFunc } from "@/providers/FunctionProvider";
+// Ensure this path matches where you saved the component
+import { DeleteModal } from "@/components/delete_modal"; 
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const GRID_SPACING = 12;
@@ -42,6 +44,7 @@ export default function FuncScreen() {
   // NEW: Delete Modal State
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemsToDelete, setItemsToDelete] = useState<string[]>([]);
+  const [isDeletingPhoto, setIsDeletingPhoto] = useState(false);
 
   // --- SUCCESS TOAST STATE ---
   const [showSuccessToast, setShowSuccessToast] = useState(false);
@@ -178,10 +181,14 @@ export default function FuncScreen() {
   };
 
   const confirmDelete = async () => {
-    setShowDeleteModal(false);
+    // Start Loading Spinner in Modal
+    setIsDeletingPhoto(true);
+    
     try {
       if (deleteImages) {
         await deleteImages(itemsToDelete);
+        
+        // Success Actions
         setToastMessage("Photos Deleted");
         setShowSuccessToast(true);
         setSelectedImage(null);
@@ -199,6 +206,10 @@ export default function FuncScreen() {
         "Error",
         "Could not delete photos. You might not be the owner."
       );
+    } finally {
+      // Stop Loading and Close Modal
+      setIsDeletingPhoto(false);
+      setShowDeleteModal(false);
     }
   };
 
@@ -538,12 +549,10 @@ export default function FuncScreen() {
       {/* --- LIGHTBOX MODAL --- */}
       <Modal visible={!!selectedImage} transparent animationType="fade">
         <View className="flex-1 bg-black/95 justify-center items-center relative">
-          {/* Top Bar for Lightbox */}
           <View
             style={{ top: insets.top + 20 }}
             className="absolute w-full px-5 flex-row justify-between z-50"
           >
-            {/* Delete Icon */}
             <TouchableOpacity
               onPress={() =>
                 selectedImage && handleDeleteImages([selectedImage])
@@ -553,7 +562,6 @@ export default function FuncScreen() {
               <Ionicons name="trash-outline" size={24} color="#ef4444" />
             </TouchableOpacity>
 
-            {/* Close Icon */}
             <TouchableOpacity
               onPress={() => setSelectedImage(null)}
               className="w-12 h-12 bg-white/10 rounded-full items-center justify-center border border-white/10"
@@ -595,40 +603,17 @@ export default function FuncScreen() {
         </View>
       </Modal>
 
-      {/* --- DELETE CONFIRMATION MODAL --- */}
-      <Modal visible={showDeleteModal} transparent animationType="fade">
-        <View className="flex-1 bg-black/80 justify-center items-center px-6">
-          <View className="bg-[#1A1A1A] w-full rounded-[40px] p-8 border border-white/10 items-center">
-            <View className="w-16 h-16 bg-red-500/10 rounded-full items-center justify-center mb-6 border border-red-500/20">
-              <Ionicons name="trash-outline" size={32} color="#ef4444" />
-            </View>
-
-            <Text className="text-white text-2xl font-black mb-2 text-center">
-              Delete {itemsToDelete.length} Photo
-              {itemsToDelete.length > 1 ? "s" : ""}?
-            </Text>
-            <Text className="text-white/50 text-center mb-8 px-4 leading-5">
-              This action cannot be undone. Only photos you uploaded can be
-              deleted.
-            </Text>
-
-            <View className="flex-row gap-3 w-full">
-              <TouchableOpacity
-                onPress={() => setShowDeleteModal(false)}
-                className="flex-1 bg-white/10 py-4 rounded-2xl items-center"
-              >
-                <Text className="text-white font-black">CANCEL</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={confirmDelete}
-                className="flex-1 bg-red-600 py-4 rounded-2xl items-center shadow-lg shadow-red-600/20"
-              >
-                <Text className="text-white font-black">DELETE</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      {/* --- STANDARDIZED DELETE MODAL --- */}
+      <DeleteModal
+        visible={showDeleteModal}
+        onClose={() => {
+          if (!isDeletingPhoto) setShowDeleteModal(false);
+        }}
+        onConfirm={confirmDelete}
+        title={`Delete ${itemsToDelete.length} Photo${itemsToDelete.length > 1 ? "s" : ""}?`}
+        message="This action cannot be undone. Only photos you uploaded can be deleted."
+        isDeleting={isDeletingPhoto}
+      />
 
       {/* --- LEAVE MODAL --- */}
       <Modal visible={showLeaveModal} transparent animationType="fade">

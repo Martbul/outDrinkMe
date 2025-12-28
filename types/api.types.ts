@@ -671,22 +671,22 @@ export interface StoryUploadJob {
   };
 }
 
-export interface StorySegment {
-  id: string;
-  video_url: string;
-  video_width: number;
-  video_height: number;
-  video_duration: number;
-  relate_count: number;
-  has_related: boolean;
-  is_seen: boolean;
-  created_at: string; 
-}
+  export interface StorySegment {
+    id: string;
+    video_url: string;
+    video_width: number;
+    video_height: number;
+    video_duration: number;
+    relate_count: number;
+    has_related: boolean;
+    is_seen: boolean;
+    created_at: string; 
+  }
 
-export interface UserStories {
-  user_id: string;
-  username: string;
-  user_image_url: string;
-  all_seen: boolean;
-  items: StorySegment[]; 
-}
+  export interface UserStories {
+    user_id: string;
+    username: string;
+    user_image_url: string;
+    all_seen: boolean;
+    items: StorySegment[]; 
+  }
