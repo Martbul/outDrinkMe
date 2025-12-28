@@ -34,7 +34,7 @@ jobs:
             ${{ runner.os }}-gradle-
 
       - name: Install Dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: Setup EAS
         run: npm install -g eas-cli
@@ -52,19 +52,16 @@ jobs:
           # We still echo it here for good measure, but the 'env' block below is the real fix
           echo "EXPO_PUBLIC_MAPBOX_TOKEN_PUBLIC=${{ secrets.EXPO_PUBLIC_MAPBOX_TOKEN_PUBLIC }}" >> .env
 
-      # --- NEW STEP ---
       - name: Inject Mapbox Secret into app.json
         run: |
           sed -i 's/MAPBOX_SECRET_TOKEN_PLACEHOLDER/${{ secrets.EXPO_PUBLIC_MAPBOX_TOKEN_SECRET }}/g' app.json
           echo "Mapbox secret injected into app.json"
-      # ----------------
 
       - name: Build Android Preview
         run: eas build --platform android --profile preview --local --clear-cache --non-interactive --output=./app-preview.apk
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4g"
-          # 👇 THIS IS THE FIX: Explicitly pass the public token to the build environment
           EXPO_PUBLIC_MAPBOX_TOKEN_PUBLIC: ${{ secrets.EXPO_PUBLIC_MAPBOX_TOKEN_PUBLIC }}
 
       - name: Upload Artifact
