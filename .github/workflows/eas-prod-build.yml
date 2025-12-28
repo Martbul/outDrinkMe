@@ -36,7 +36,7 @@ jobs:
             ${{ runner.os }}-gradle-
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: Setup EAS CLI
         run: npm install -g eas-cli
@@ -57,12 +57,10 @@ jobs:
           
           echo " .env created with Production secrets"
 
-      # --- REQUIRED: INJECT SECRET INTO APP.JSON ---
       - name: Inject Mapbox Secret into app.json
         run: |
           sed -i 's/MAPBOX_SECRET_TOKEN_PLACEHOLDER/${{ secrets.EXPO_PUBLIC_MAPBOX_TOKEN_SECRET }}/g' app.json
           echo "Mapbox secret injected into app.json"
-      # ---------------------------------------------
 
       - name: Setup Android Keystore
         run: |
@@ -91,7 +89,6 @@ jobs:
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4g -XX:+HeapDumpOnOutOfMemoryError"
-          # 👇 THIS IS REQUIRED FOR PRODUCTION TOO
           EXPO_PUBLIC_MAPBOX_TOKEN_PUBLIC: ${{ secrets.EXPO_PUBLIC_MAPBOX_TOKEN_PUBLIC }}
 
       - name: Upload AAB artifact
