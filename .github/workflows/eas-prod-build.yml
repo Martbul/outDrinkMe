@@ -51,10 +51,10 @@
 #           echo "EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME=${{ secrets.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME }}" >> .env
 #           echo "EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET=${{ secrets.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET }}" >> .env
 #           echo "EXPO_PUBLIC_CLOUDINARY_VIDEO_UPLOAD_PRESET=${{ secrets.EXPO_PUBLIC_CLOUDINARY_VIDEO_UPLOAD_PRESET }}" >> .env
-          
+
 #           # We add it to .env for consistency, but the 'env' block below is the real fix
 #           echo "EXPO_PUBLIC_MAPBOX_TOKEN_PUBLIC=${{ secrets.EXPO_PUBLIC_MAPBOX_TOKEN_PUBLIC }}" >> .env
-          
+
 #           echo " .env created with Production secrets"
 
 #       # --- REQUIRED: INJECT SECRET INTO APP.JSON ---
@@ -120,7 +120,7 @@
 #           rm -f credentials.json
 #           rm -f .env
 #           # Revert app.json to avoid leaving the secret key in the workspace if cached
-#           git checkout app.json 
+#           git checkout app.json
 #           echo "Sensitive files cleaned up"
 
 #       - name: Build Summary
@@ -149,7 +149,7 @@ jobs:
         uses: jlumbroso/free-disk-space@main
         with:
           tool-cache: false
-          android: false  # IMPORTANT: Keep this false so Android SDKs are not deleted
+          android: false # IMPORTANT: Keep this false so Android SDKs are not deleted
           dotnet: true
           haskell: true
           large-packages: true
@@ -197,6 +197,8 @@ jobs:
           echo "EXPO_PUBLIC_POSTHOG_API_KEY=${{ secrets.EXPO_PUBLIC_POSTHOG_API_KEY }}" >> .env
           echo "EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME=${{ secrets.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME }}" >> .env
           echo "EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET=${{ secrets.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET }}" >> .env
+                             echo "EXPO_PUBLIC_CLOUDINARY_STORY_UPLOAD_PRESET=${{ secrets.EXPO_PUBLIC_CLOUDINARY_STORY_UPLOAD_PRESET }}" >> .env
+
           echo "EXPO_PUBLIC_CLOUDINARY_VIDEO_UPLOAD_PRESET=${{ secrets.EXPO_PUBLIC_CLOUDINARY_VIDEO_UPLOAD_PRESET }}" >> .env
           echo "EXPO_PUBLIC_MAPBOX_TOKEN_PUBLIC=${{ secrets.EXPO_PUBLIC_MAPBOX_TOKEN_PUBLIC }}" >> .env
           echo " .env created with Production secrets"
