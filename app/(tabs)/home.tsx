@@ -318,10 +318,26 @@ export default function HomeScreen() {
         {/* <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 12, paddingHorizontal: 20 }} 
+          contentContainerStyle={{ gap: 12, paddingHorizontal: 20 }}
           className="mb-4"
         >
-        
+          <TouchableOpacity
+            onPress={() => router.push("/(screens)/collection")}
+            className="w-40 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]"
+          >
+            <View className="w-12 h-12 rounded-xl bg-orange-600/20 items-center justify-center mb-3">
+              <MaterialCommunityIcons
+                name="bottle-tonic-skull"
+                size={24}
+                color="#EA580C"
+              />
+            </View>
+            <Text className="text-white text-base font-bold">Collection</Text>
+            <Text className="text-white/40 text-xs font-semibold mt-1">
+              View your history
+            </Text>
+          </TouchableOpacity>
+
           <TouchableOpacity
             onPress={() => router.push("/(screens)/mixTimeline")}
             className="w-40 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]"
@@ -347,7 +363,7 @@ export default function HomeScreen() {
               Detailed insights
             </Text>
           </TouchableOpacity>
-            <TouchableOpacity
+          <TouchableOpacity
             onPress={() => router.push("/(screens)/goals")}
             className="w-40 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]"
           >
