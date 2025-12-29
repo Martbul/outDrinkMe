@@ -230,83 +230,84 @@ export function AppProvider({ children }: AppProviderProps) {
     );
   };
 
-  const processStoryUpload = async (job: StoryUploadJob) => {
-    const token = await getToken();
-    const CLOUDINARY_CLOUD_NAME = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
-    const PRESET = process.env.EXPO_PUBLIC_CLOUDINARY_STORY_UPLOAD_PRESET;
+  const processStoryUpload = useCallback(
+    async (job: StoryUploadJob) => {
+      const token = await getToken();
+      const CLOUDINARY_CLOUD_NAME =
+        process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
+      const PRESET = process.env.EXPO_PUBLIC_CLOUDINARY_STORY_UPLOAD_PRESET;
 
-    // 1. Validation
-    if (!token || !CLOUDINARY_CLOUD_NAME || !PRESET) {
-      console.error("Missing Config for upload");
-      updateStoryJobStatus(job.id, "failed", 0);
-      return;
-    }
-
-    try {
-      updateStoryJobStatus(job.id, "uploading", 0);
-
-      // 2. Cloudinary Upload (VIDEO endpoint)
-      // Note: We use 'video/upload' instead of 'image/upload'
-      const uploadTask = FileSystem.createUploadTask(
-        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`,
-        job.uri,
-        {
-          httpMethod: "POST",
-          uploadType: FileSystem.FileSystemUploadType.MULTIPART,
-          fieldName: "file",
-          parameters: {
-            upload_preset: PRESET!,
-            folder: "outdrinkme_story", // Optional: keep stories organized
-            resource_type: "video", // Explicitly tell Cloudinary this is a video
-          },
-        },
-        (p) => {
-          if (p.totalBytesExpectedToSend > 0) {
-            const progress = p.totalBytesSent / p.totalBytesExpectedToSend;
-            // Only update state every ~5% to prevent UI lag
-            updateStoryJobStatus(job.id, "uploading", progress);
-          }
-        }
-      );
-
-      const response = await uploadTask.uploadAsync();
-
-      if (!response || response.status !== 200) {
-        throw new Error(
-          `Cloudinary Error: ${response?.status} - ${response?.body}`
-        );
+      // 1. Validation
+      if (!token || !CLOUDINARY_CLOUD_NAME || !PRESET) {
+        console.error("Missing Config for upload");
+        updateStoryJobStatus(job.id, "failed", 0);
+        return;
       }
 
-      const cloudinaryData = JSON.parse(response.body);
+      try {
+        updateStoryJobStatus(job.id, "uploading", 0);
 
-      // 3. Save to DB (Create Story)
-      // We use the secure_url from Cloudinary and the meta data stored in the job
-      await apiService.createStory(token, {
-        videoUrl: cloudinaryData.secure_url,
-        width: job.meta.width,
-        height: job.meta.height,
-        duration: job.meta.duration,
-        taggedBuddies: job.meta.taggedBuddies,
-      });
+        // 2. Cloudinary Upload (VIDEO endpoint)
+        // Note: We use 'video/upload' instead of 'image/upload'
+        const uploadTask = FileSystem.createUploadTask(
+          `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`,
+          job.uri,
+          {
+            httpMethod: "POST",
+            uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+            fieldName: "file",
+            parameters: {
+              upload_preset: PRESET!,
+              folder: "outdrinkme_story", // Optional: keep stories organized
+              resource_type: "video", // Explicitly tell Cloudinary this is a video
+            },
+          },
+          (p) => {
+            if (p.totalBytesExpectedToSend > 0) {
+              const progress = p.totalBytesSent / p.totalBytesExpectedToSend;
+              // Only update state every ~5% to prevent UI lag
+              updateStoryJobStatus(job.id, "uploading", progress);
+            }
+          }
+        );
 
-      // 4. Cleanup & Analytics
-      updateStoryJobStatus(job.id, "completed", 1);
-      posthog?.capture("story_video_uploaded_success");
+        const response = await uploadTask.uploadAsync();
 
-      // Refresh stories so the user sees it in their feed
-      refreshStories();
-    } catch (err) {
-      console.error("Story Upload Job Failed:", err);
-      updateStoryJobStatus(job.id, "failed", 0);
-      posthog?.capture("story_video_uploaded_failed", { error: String(err) });
-    }
-  };
+        if (!response || response.status !== 200) {
+          throw new Error(
+            `Cloudinary Error: ${response?.status} - ${response?.body}`
+          );
+        }
 
-  // --- QUEUE PROCESSOR EFFECT ---
-  // --- QUEUE PROCESSOR EFFECT ---
+        const cloudinaryData = JSON.parse(response.body);
+
+        // 3. Save to DB (Create Story)
+        // We use the secure_url from Cloudinary and the meta data stored in the job
+        await apiService.createStory(token, {
+          videoUrl: cloudinaryData.secure_url,
+          width: job.meta.width,
+          height: job.meta.height,
+          duration: job.meta.duration,
+          taggedBuddies: job.meta.taggedBuddies,
+        });
+
+        // 4. Cleanup & Analytics
+        updateStoryJobStatus(job.id, "completed", 1);
+        posthog?.capture("story_video_uploaded_success");
+
+        // Refresh stories so the user sees it in their feed
+        refreshStories();
+      } catch (err) {
+        console.error("Story Upload Job Failed:", err);
+        updateStoryJobStatus(job.id, "failed", 0);
+        posthog?.capture("story_video_uploaded_failed", { error: String(err) });
+      }
+    },
+    [getToken, posthog]
+  );
+
   useEffect(() => {
     const processQueue = async () => {
-      // Find pending jobs
       const pendingJob = storyUploadQueue.find((j) => j.status === "pending");
       const activeJobs = storyUploadQueue.filter(
         (j) => j.status === "pending" || j.status === "uploading"
@@ -355,7 +356,7 @@ export function AppProvider({ children }: AppProviderProps) {
     };
 
     processQueue();
-  }, [storyUploadQueue]); // Dependencies
+  }, [storyUploadQueue, processStoryUpload]); // Dependencies
 
   const withLoadingAndError = useCallback(
     async <T,>(
