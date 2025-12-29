@@ -164,23 +164,7 @@ export default function TabLayout() {
             ),
           }}
         />
-        <Tabs.Screen
-          name="collection"
-          options={{
-            title: "Collect",
-            tabBarIcon: ({ focused }) => (
-              <View
-                style={{
-                  alignItems: "center",
-                  justifyContent: "center",
-                  opacity: focused ? 1 : 0.5,
-                }}
-              >
-                <Octicons name="trophy" size={24} color="#ff8c00" />
-              </View>
-            ),
-          }}
-        />
+        
         <Tabs.Screen
           name="calendar"
           options={{
@@ -194,6 +178,23 @@ export default function TabLayout() {
                 }}
               >
                 <FontAwesome name="calendar" size={24} color="#ff8c00" />
+              </View>
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="drinkup"
+          options={{
+            title: "DrinkUp",
+            tabBarIcon: ({ focused }) => (
+              <View
+                style={{
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: focused ? 1 : 0.5,
+                }}
+              >
+                <Octicons name="arrow-up" size={24} color="#ff8c00" />
               </View>
             ),
           }}

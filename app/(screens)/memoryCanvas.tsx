@@ -88,8 +88,8 @@ export default function MemoryCanvas() {
 
     if (!post || !userData) return { canEdit: false, foundPost: post };
 
-    const isOwner = post.userId === userData.id;
-    const isTagged = post.mentionedBuddies?.some(
+    const isOwner = post.user_id === userData.id;
+    const isTagged = post.mentioned_buddies?.some(
       (buddy) => buddy.id === userData.id
     );
 
@@ -308,9 +308,9 @@ export default function MemoryCanvas() {
             {
               id: "main-anchor",
               daily_drinking_id: currentPostId,
-              added_by_user_id: foundPost.userId,
+              added_by_user_id: foundPost.user_id,
               item_type: "image",
-              content: foundPost.imageUrl || "https://picsum.photos/600/800",
+              content: foundPost.image_url || "https://picsum.photos/600/800",
               pos_x: -TARGET_WIDTH / 2,
               pos_y: -TARGET_HEIGHT / 2,
               width: TARGET_WIDTH,
@@ -803,7 +803,7 @@ export default function MemoryCanvas() {
                     item={item}
                     screenHeight={SCREEN_HEIGHT}
                     currentUserId={userData?.id}
-                    canEdit={canEdit}
+                    canEdit={Boolean(canEdit)}
                     onUpdate={handleUpdateItem}
                     onGestureEnd={onGestureEndAction}
                     onBringToFront={() => runOnJS(handleBringToFront)(item.id)}

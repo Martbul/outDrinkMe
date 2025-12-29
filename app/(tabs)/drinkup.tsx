@@ -6,9 +6,9 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Modal,
-  Dimensions,
   Alert,
-  Animated,
+  useWindowDimensions,
+  StyleSheet,
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -18,7 +18,7 @@ import {
   FontAwesome5,
   Feather,
 } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient"; // Ensure you have this or remove visual gradient
+import { LinearGradient } from "expo-linear-gradient";
 
 // --- Types ---
 interface Bar {
@@ -33,10 +33,16 @@ interface Bar {
 
 interface UserPoints {
   total: number;
-  byBar: Record<string, number>; // BarID -> Points
+  byBar: Record<string, number>;
 }
 
 // --- Mock Data ---
+const MOCK_USER = {
+  name: "Alex Drinker",
+  avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200",
+  id: "MBR-8821-X",
+};
+
 const MOCK_BARS: Bar[] = [
   {
     id: "1",
@@ -80,7 +86,7 @@ const MOCK_BARS: Bar[] = [
 const mockStripePayment = async (): Promise<boolean> => {
   return new Promise((resolve) => {
     setTimeout(() => {
-      resolve(true); // Simulate success after 2 seconds
+      resolve(true); 
     }, 2000);
   });
 };
@@ -124,24 +130,10 @@ const Paywall = ({ onUnlock }: { onUnlock: () => void }) => {
           </Text>
         </View>
 
-        <View className="space-y-4 gap-4 mb-10">
-          {[
-            "Up to 50% OFF drinks",
-            "Access to Mapbox Locations",
-            "Collect & Redeem Bar Points",
-            "Exclusive Member Events"
-          ].map((benefit, i) => (
-            <View key={i} className="flex-row items-center bg-white/[0.05] p-4 rounded-xl border border-white/10">
-              <Ionicons name="checkmark-circle" size={24} color="#EA580C" />
-              <Text className="text-white font-bold ml-3 text-lg">{benefit}</Text>
-            </View>
-          ))}
-        </View>
-
         <TouchableOpacity
           onPress={handlePay}
           disabled={processing}
-          className="bg-orange-600 py-5 rounded-2xl items-center shadow-lg shadow-orange-600/30"
+          className="bg-orange-600 py-5 rounded-2xl items-center shadow-lg shadow-orange-600/30 mt-10"
         >
           {processing ? (
             <ActivityIndicator color="black" />
@@ -154,14 +146,124 @@ const Paywall = ({ onUnlock }: { onUnlock: () => void }) => {
             </View>
           )}
         </TouchableOpacity>
-        
-        <Text className="text-white/30 text-xs text-center mt-4">
-          Secured by Stripe. Cancel anytime.
-        </Text>
       </View>
     </View>
   );
 };
+
+// --- Component: 3D Passport Modal ---
+const PassportModal = ({ 
+    visible, 
+    onClose, 
+    userPoints 
+}: { 
+    visible: boolean; 
+    onClose: () => void; 
+    userPoints: number; 
+}) => {
+    if (!visible) return null;
+
+    return (
+        <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+            <View className="flex-1 bg-black/90 justify-center items-center px-4">
+                <TouchableOpacity onPress={onClose} className="absolute inset-0" />
+                
+                {/* 3D Card Container */}
+                <View 
+                    style={{ 
+                        width: '100%', 
+                        maxWidth: 380,
+                        aspectRatio: 1.58, // Credit card ratio
+                        transform: [{ perspective: 1000 }, { rotateX: '5deg' }]
+                    }}
+                    className="relative rounded-3xl overflow-hidden shadow-2xl shadow-orange-600/40"
+                >
+                     {/* Background Gradient */}
+                    <LinearGradient
+                        colors={['#1a1a1a', '#000000']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={StyleSheet.absoluteFill}
+                    />
+                    
+                    {/* Decorative Patterns */}
+                    <View className="absolute top-0 right-0 w-64 h-64 bg-orange-600/10 rounded-full -mr-20 -mt-20 blur-2xl" />
+                    <View className="absolute bottom-0 left-0 w-64 h-64 bg-orange-600/5 rounded-full -ml-20 -mb-20 blur-2xl" />
+
+                    {/* Gold/Orange Border (Inset) */}
+                    <View className="absolute inset-2 rounded-2xl border-2 border-orange-600/30" />
+                    
+                    {/* Content Layer */}
+                    <View className="flex-1 p-6 justify-between z-10">
+                        {/* Header */}
+                        <View className="flex-row justify-between items-start">
+                             <View>
+                                <Text className="text-orange-600 text-[10px] font-bold tracking-[3px] uppercase">Official Member</Text>
+                                <Text className="text-white text-2xl font-black mt-1">BAR HUNT PASSPORT</Text>
+                             </View>
+                             <MaterialCommunityIcons name="integrated-circuit-chip" size={32} color="#EA580C" style={{ opacity: 0.8 }} />
+                        </View>
+
+                        {/* Middle Info */}
+                        <View className="flex-row items-center mt-4">
+                            <View className="w-20 h-20 rounded-xl border-2 border-orange-600/50 overflow-hidden bg-gray-800 mr-4">
+                                <Image source={{ uri: MOCK_USER.avatar }} style={{ flex: 1 }} contentFit="cover" />
+                            </View>
+                            <View>
+                                <Text className="text-white/50 text-[10px] uppercase font-bold mb-1">Name</Text>
+                                <Text className="text-white text-xl font-bold mb-2">{MOCK_USER.name}</Text>
+                                
+                                <Text className="text-white/50 text-[10px] uppercase font-bold mb-1">Member ID</Text>
+                                <Text className="text-white/80 text-sm font-mono">{MOCK_USER.id}</Text>
+                            </View>
+                        </View>
+
+                        {/* Footer / BP */}
+                        <View className="flex-row justify-between items-end mt-4">
+                             <View>
+                                <Text className="text-white/50 text-[10px] uppercase font-bold">Total Bar Points</Text>
+                                <Text className="text-orange-600 text-4xl font-black">{userPoints}</Text>
+                             </View>
+                             
+                             {/* Fake Barcode */}
+                             <View className="items-end opacity-60">
+                                <View className="flex-row h-8 items-end gap-[2px]">
+                                    {[...Array(20)].map((_, i) => (
+                                        <View 
+                                            key={i} 
+                                            className="bg-white" 
+                                            style={{ 
+                                                width: Math.random() > 0.5 ? 2 : 4, 
+                                                height: '100%' 
+                                            }} 
+                                        />
+                                    ))}
+                                </View>
+                             </View>
+                        </View>
+                    </View>
+
+                    {/* Holographic Gloss Overlay */}
+                    <LinearGradient
+                        colors={['rgba(255,255,255,0.0)', 'rgba(255,255,255,0.05)', 'rgba(255,255,255,0.0)']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0.5 }}
+                        style={[StyleSheet.absoluteFill, { transform: [{skewX: '-20deg'}] }]}
+                        pointerEvents="none"
+                    />
+                </View>
+
+                {/* Close Button */}
+                <TouchableOpacity 
+                    onPress={onClose}
+                    className="mt-12 bg-white/10 p-4 rounded-full border border-white/20"
+                >
+                    <Ionicons name="close" size={24} color="white" />
+                </TouchableOpacity>
+            </View>
+        </Modal>
+    )
+}
 
 // --- Component: Mapbox Mock ---
 const MockMapbox = ({ location }: { location: string }) => {
@@ -174,10 +276,6 @@ const MockMapbox = ({ location }: { location: string }) => {
         ))}
       </View>
       
-      {/* Map Paths (Artistic) */}
-      <View className="absolute top-1/2 left-0 w-full h-2 bg-gray-700 -rotate-6" />
-      <View className="absolute top-0 left-1/2 w-2 h-full bg-gray-700 rotate-12" />
-
       {/* Pin */}
       <View className="absolute top-1/2 left-1/2 -ml-4 -mt-8 items-center justify-center">
         <View className="w-16 h-16 bg-orange-600/30 rounded-full animate-ping absolute" />
@@ -194,9 +292,18 @@ const MockMapbox = ({ location }: { location: string }) => {
 // --- Main Screen ---
 export default function BarHuntScreen() {
   const insets = useSafeAreaInsets();
-  const [isPremium, setIsPremium] = useState(false); // Toggle to true to skip paywall during dev
-  const [selectedBar, setSelectedBar] = useState<Bar | null>(null);
+  const { width: windowWidth } = useWindowDimensions(); // Dynamic width hook
   
+  const [isPremium, setIsPremium] = useState(false);
+  const [selectedBar, setSelectedBar] = useState<Bar | null>(null);
+  const [showPassport, setShowPassport] = useState(false);
+  
+  // Grid Calculation
+  const PADDING = 16;
+  const GAP = 12;
+  // (ScreenWidth - (LeftPad + RightPad + MiddleGap)) / 2 columns
+  const ITEM_WIDTH = (windowWidth - (PADDING * 2) - GAP) / 2;
+
   // Points State
   const [points, setPoints] = useState<UserPoints>({
     total: 350,
@@ -206,7 +313,6 @@ export default function BarHuntScreen() {
     }
   });
 
-  // Mock Scanning Action
   const handleSimulateScan = (barId: string) => {
     Alert.alert("QR Scanned!", `You collected 50 BP at ${selectedBar?.name}!`);
     setPoints(prev => ({
@@ -234,22 +340,27 @@ export default function BarHuntScreen() {
             Bar Hunt
           </Text>
         </View>
-        <View className="bg-orange-600/10 px-4 py-2 rounded-xl border border-orange-600/30">
-          <Text className="text-orange-600 text-xs font-bold mb-1">TOTAL BP</Text>
-          <Text className="text-white text-xl font-black">{points.total}</Text>
-        </View>
+        
+        {/* Passport Icon Button */}
+        <TouchableOpacity 
+            onPress={() => setShowPassport(true)}
+            className="w-12 h-12 bg-white/[0.05] rounded-full border border-orange-600/30 items-center justify-center"
+        >
+            <MaterialCommunityIcons name="card-account-details-star" size={24} color="#EA580C" />
+        </TouchableOpacity>
       </View>
 
       {/* --- GRID LIST --- */}
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
+      <ScrollView contentContainerStyle={{ padding: PADDING, paddingBottom: 100 }}>
         <Text className="text-white/50 text-xs font-bold tracking-widest mb-4">NEARBY PARTNERS</Text>
         
-        <View className="flex-row flex-wrap justify-between">
+        <View className="flex-row flex-wrap justify-between" style={{ gap: GAP }}>
           {MOCK_BARS.map((bar) => (
             <TouchableOpacity
               key={bar.id}
               onPress={() => setSelectedBar(bar)}
-              className="w-[48%] mb-4 bg-white/[0.03] rounded-2xl overflow-hidden border border-white/[0.08]"
+              style={{ width: ITEM_WIDTH }}
+              className="bg-white/[0.03] rounded-2xl overflow-hidden border border-white/[0.08] mb-3"
             >
               <View className="h-32 bg-gray-800 relative">
                 <Image
@@ -285,6 +396,13 @@ export default function BarHuntScreen() {
         </View>
       </ScrollView>
 
+      {/* --- PASSPORT MODAL --- */}
+      <PassportModal 
+        visible={showPassport} 
+        onClose={() => setShowPassport(false)} 
+        userPoints={points.total}
+      />
+
       {/* --- BAR DETAIL MODAL --- */}
       <Modal
         visible={!!selectedBar}
@@ -295,7 +413,6 @@ export default function BarHuntScreen() {
         <View className="flex-1 bg-[#121212]">
           {selectedBar && (
             <ScrollView contentContainerStyle={{ paddingBottom: 50 }}>
-               {/* Detail Header Image */}
               <View className="h-64 w-full relative">
                 <Image
                   source={{ uri: selectedBar.image_url }}
@@ -315,7 +432,6 @@ export default function BarHuntScreen() {
               </View>
 
               <View className="px-5 -mt-8">
-                {/* Title & Location */}
                 <View className="flex-row justify-between items-end mb-4">
                   <View className="flex-1 mr-4">
                     <Text className="text-white text-3xl font-black leading-tight mb-2">
@@ -347,12 +463,10 @@ export default function BarHuntScreen() {
                     </View>
                 </View>
 
-                {/* Description */}
                 <Text className="text-white/70 text-base leading-6 font-medium mb-6">
                   {selectedBar.description}
                 </Text>
 
-                {/* Mapbox Map */}
                 <Text className="text-white font-black text-lg">Location</Text>
                 <MockMapbox location={selectedBar.location} />
 
@@ -360,14 +474,11 @@ export default function BarHuntScreen() {
                 <View className="mt-8 bg-white text-black p-6 rounded-3xl items-center space-y-4">
                     <Text className="text-black text-xl font-black mb-2">Your Member ID</Text>
                     
-                    {/* Simulated QR Code Visual */}
                     <View className="w-48 h-48 bg-black p-2 rounded-lg relative overflow-hidden">
                          <View className="flex-1 bg-white p-1 flex-row flex-wrap">
-                            {/* Simple noise to look like QR */}
                             {[...Array(64)].map((_, i) => (
                                 <View key={i} className={`w-[12.5%] h-[12.5%] ${Math.random() > 0.5 ? 'bg-black' : 'bg-white'}`} />
                             ))}
-                            {/* Corner squares of QR */}
                             <View className="absolute top-2 left-2 w-10 h-10 border-4 border-black bg-white" />
                             <View className="absolute top-2 right-2 w-10 h-10 border-4 border-black bg-white" />
                             <View className="absolute bottom-2 left-2 w-10 h-10 border-4 border-black bg-white" />
@@ -378,7 +489,6 @@ export default function BarHuntScreen() {
                         Show this code to the bartender to verify your discount and collect points.
                     </Text>
 
-                    {/* Simulation Button for "Scanning" */}
                     <TouchableOpacity 
                         onPress={() => handleSimulateScan(selectedBar.id)}
                         className="w-full bg-orange-600 py-4 rounded-xl items-center mt-4"

@@ -370,22 +370,36 @@ class ApiService {
     token: string,
     page: number = 1,
     limit: number = 20
-  ): Promise<YourMixPostData[]> {
-    try {
-      const response = await this.makeRequest<DailyDrinkingPostResponse[]>(
-        `/api/v1/user/your-mix?page=${page}&limit=${limit}`,
-        {
-          method: "GET",
-          token,
-        }
-      );
-
-      return this.transformMixPosts(response);
-    } catch (error) {
-      console.error("Failed to fetch Your Mix:", error);
-      return [];
-    }
+  ): Promise<DailyDrinkingPostResponse[]> {
+    return this.makeRequest<DailyDrinkingPostResponse[]>(
+      `/api/v1/user/your-mix?page=${page}&limit=${limit}`,
+      {
+        method: "GET",
+        token,
+      }
+    );
   }
+
+  // async getYourMixData(
+  //   token: string,
+  //   page: number = 1,
+  //   limit: number = 20
+  // ): Promise<YourMixPostData[]> {
+  //   try {
+  //     const response = await this.makeRequest<DailyDrinkingPostResponse[]>(
+  //       `/api/v1/user/your-mix?page=${page}&limit=${limit}`,
+  //       {
+  //         method: "GET",
+  //         token,
+  //       }
+  //     );
+
+  //     return this.transformMixPosts(response);
+  //   } catch (error) {
+  //     console.error("Failed to fetch Your Mix:", error);
+  //     return [];
+  //   }
+  // }
 
   async getGlobalMixData(
     token: string,
@@ -887,13 +901,13 @@ class ApiService {
    * Backend Route: GET /api/v1/games/public
    */
   async getPublicGames(token: string): Promise<
-    Array<{
+    {
       sessionId: string;
       gameType: string;
       hostId: string;
       hostUsername: string;
       players: number;
-    }>
+    }[]
   > {
     return this.makeRequest<any>("/api/v1/drinking-games/public", {
       method: "GET",
@@ -1054,14 +1068,13 @@ class ApiService {
       token,
     });
   }
-  
+
   async getUserStories(token: string): Promise<StorySegment[]> {
     return this.makeRequest("/api/v1/user/user-stories", {
       method: "GET",
       token,
     });
   }
-
 
   async createStory(
     token: string,
@@ -1087,7 +1100,7 @@ class ApiService {
   }
 
   async deleteStory(token: string, storyId: string): Promise<void> {
-    const story_id = storyId
+    const story_id = storyId;
     return this.makeRequest(`/api/v1/user/stories/${story_id}`, {
       method: "DELETE",
       token,
@@ -1102,7 +1115,7 @@ class ApiService {
     return this.makeRequest("/api/v1/user/stories/relate", {
       method: "POST",
       token,
-      body: JSON.stringify({ story_id:storyId, action }),
+      body: JSON.stringify({ story_id: storyId, action }),
     });
   }
 

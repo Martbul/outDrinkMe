@@ -1,5 +1,5 @@
 import { useApp } from "@/providers/AppProvider";
-import { YourMixPostData } from "@/types/api.types";
+import { DailyDrinkingPostResponse, YourMixPostData } from "@/types/api.types";
 import { FontAwesome5, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import {
@@ -23,7 +23,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // Define the props interface for better type safety
 interface MixPostModalProps {
-  expandedItem: YourMixPostData | undefined;
+  expandedItem: DailyDrinkingPostResponse | undefined;
   expandedId: string | null;
   setExpandedId: React.Dispatch<React.SetStateAction<string | null>>;
   currentAspectRatio: number; // Add this prop
@@ -89,14 +89,16 @@ export default function MixPostModal({
                 className="p-1"
               >
                 <View className="rounded-2xl overflow-hidden bg-white/5">
-                  <Image
-                    source={{ uri: expandedItem.imageUrl }}
-                    style={{
-                      width: "100%",
-                      aspectRatio: currentAspectRatio,
-                    }}
-                    resizeMode="contain"
-                  />
+                  {expandedItem.image_url && (
+                    <Image
+                      source={{ uri: expandedItem.image_url }}
+                      style={{
+                        width: "100%",
+                        aspectRatio: currentAspectRatio,
+                      }}
+                      resizeMode="contain"
+                    />
+                  )}
                 </View>
               </Animated.View>
 
@@ -108,15 +110,17 @@ export default function MixPostModal({
                   <TouchableOpacity
                     onPress={() =>
                       router.push(
-                        `/(screens)/userInfo?userId=${expandedItem.userId}`
+                        `/(screens)/userInfo?userId=${expandedItem.user_id}`
                       )
                     }
                   >
-                    <Animated.Image
-                      entering={ZoomIn.delay(300).duration(400)}
-                      source={{ uri: expandedItem.userImageUrl }}
-                      className="w-12 h-12 rounded-full border-2 border-orange-600"
-                    />
+                    {expandedItem.user_image_url && (
+                      <Animated.Image
+                        entering={ZoomIn.delay(300).duration(400)}
+                        source={{ uri: expandedItem.user_image_url }}
+                        className="w-12 h-12 rounded-full border-2 border-orange-600"
+                      />
+                    )}
                   </TouchableOpacity>
 
                   <Animated.View entering={FadeInLeft.delay(350).duration(400)}>
@@ -124,12 +128,12 @@ export default function MixPostModal({
                       {expandedItem?.username}
                     </Text>
                     <Text className="text-white/50 text-sm">
-                      {formatTime(expandedItem.loggedAt)}
+                      {formatTime(expandedItem.logged_at)}
                     </Text>
                   </Animated.View>
                 </View>
 
-                {expandedItem.mentionedBuddies.length > 0 && (
+                {expandedItem.mentioned_buddies &&  expandedItem.mentioned_buddies.length > 0 && (
                   <Animated.View
                     entering={FadeInDown.delay(400).duration(400)}
                     className="bg-white/[0.05] rounded-xl p-3"
@@ -141,7 +145,7 @@ export default function MixPostModal({
                       </Text>
                     </View>
                     <View className="flex-row flex-wrap gap-2">
-                      {expandedItem.mentionedBuddies.map((buddy, idx) => (
+                      {expandedItem.mentioned_buddies.map((buddy, idx) => (
                         <TouchableOpacity
                           key={buddy.id}
                           onPress={() =>

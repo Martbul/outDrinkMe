@@ -11,7 +11,13 @@ import {
   View,
 } from "react-native";
 import Header from "@/components/header";
-import { AntDesign, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import {
+  AntDesign,
+  Feather,
+  FontAwesome5,
+  Ionicons,
+  MaterialCommunityIcons,
+} from "@expo/vector-icons";
 import { apiService } from "@/api";
 import { useAuth } from "@clerk/clerk-expo";
 import CustomModal, {
@@ -43,7 +49,6 @@ interface DayDetailModalProps {
   isLoadingThought: boolean;
 }
 
-
 const CalendarDay = ({ day, drank, onPress, isToday }: CalendarDayProps) => {
   return (
     <View style={{ width: "14.28%" }} className="aspect-square p-[2px]">
@@ -55,12 +60,18 @@ const CalendarDay = ({ day, drank, onPress, isToday }: CalendarDayProps) => {
             isToday && drank
               ? "bg-orange-600/30 border-2 border-orange-600"
               : isToday
-                ? "bg-white/[0.12] border-2 border-orange-600"
-                : drank
-                  ? "bg-orange-600/30"
-                  : "bg-white/[0.03]"
+              ? "bg-white/[0.12] border-2 border-orange-600"
+              : drank
+              ? "bg-orange-600/30"
+              : "bg-white/[0.03]"
           }
-          border ${drank && !isToday ? "border-orange-600/50" : isToday ? "border-orange-600" : "border-white/[0.08]"}
+          border ${
+            drank && !isToday
+              ? "border-orange-600/50"
+              : isToday
+              ? "border-orange-600"
+              : "border-white/[0.08]"
+          }
         `}
       >
         <Text
@@ -147,7 +158,10 @@ const DayDetailModal = ({
         presentationStyle="pageSheet"
         onRequestClose={onClose}
       >
-        <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
+        <View
+          className="flex-1 bg-black"
+          style={{ paddingTop: insets.top}}
+        >
           <View className="flex-row justify-between items-center px-4 py-4 border-b border-white/[0.08]">
             <View>
               <Text className="text-white text-2xl font-black">
@@ -179,7 +193,9 @@ const DayDetailModal = ({
               </Text>
               <View className="flex-row items-center">
                 <View
-                  className={`w-14 h-14 rounded-xl ${dayData.drank_today ? "bg-orange-600/20" : "bg-white/[0.05]"} items-center justify-center mr-4`}
+                  className={`w-14 h-14 rounded-xl ${
+                    dayData.drank_today ? "bg-orange-600/20" : "bg-white/[0.05]"
+                  } items-center justify-center mr-4`}
                 >
                   <Text className="text-4xl">
                     {dayData.drank_today ? (
@@ -217,7 +233,7 @@ const DayDetailModal = ({
                 ) : drunkThought && drunkThought.trim().length > 0 ? (
                   <View className="bg-white/[0.05] rounded-xl p-4 border border-white/[0.08]">
                     <Text className="text-white text-base leading-relaxed">
-                      "{drunkThought}"
+                      &ldquo;{drunkThought}&ldquo;
                     </Text>
                   </View>
                 ) : (
@@ -305,7 +321,7 @@ const DayDetailModal = ({
                     <View className="flex-row items-center gap-2">
                       <Feather name="x-circle" size={20} color="#dc2626" />
                       <Text className="text-red-600 text-base font-black tracking-wide">
-                        Haven't Drank?
+                        Haven&apos;t Drank?
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -570,10 +586,9 @@ const CalendarScreen = () => {
   return (
     <View
       className="flex-1 bg-black"
-      style={{ paddingBottom: insets.bottom + 40 }}
     >
       <Header />
-      <ScrollView className="flex-1 px-4 pt-6">
+      <ScrollView className="flex-1 px-4 pt-6" contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}>
         <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
           <View className="flex-row justify-between items-center mb-2">
             <View>
@@ -682,45 +697,89 @@ const CalendarScreen = () => {
           </View>
         </View>
 
-        <View className="bg-white/[0.03] rounded-2xl p-5 mb-24 border border-white/[0.08]">
-          <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-2">
-            YOUR STATS
+        <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
+          <Text className="text-white text-lg font-black mb-4">
+            Your Progress
           </Text>
-          {/* ... stats rows ... */}
-          <View className="flex-row justify-between items-center py-3 border-b border-white/5">
-            <Text className="text-white/50 text-[13px] font-semibold">
-              Total This Year
-            </Text>
-            <Text className="text-white text-[15px] font-bold">
-              {userStats?.days_this_year || 0} days
-            </Text>
-          </View>
 
-          <View className="flex-row justify-between items-center py-3 border-b border-white/5">
-            <Text className="text-white/50 text-[13px] font-semibold">
-              This Month
-            </Text>
-            <Text className="text-white text-[15px] font-bold">
-              {userStats?.days_this_month || 0} days
-            </Text>
-          </View>
+          <View className="space-y-3">
+            <View className="flex-row justify-between items-center py-2.5 border-b border-white/[0.05]">
+              <View className="flex-row items-center">
+                <View className="w-8 h-8 rounded-lg bg-orange-600/20 items-center justify-center mr-3">
+                  <Ionicons name="calendar-outline" size={16} color="#EA580C" />
+                </View>
+                <Text className="text-white/60 text-sm font-semibold">
+                  Drunk This Month
+                </Text>
+              </View>
+              <Text className="text-white text-lg font-black">
+                {userStats?.days_this_month || 0} days
+              </Text>
+            </View>
 
-          <View className="flex-row justify-between items-center py-3 border-b border-white/5">
-            <Text className="text-white/50 text-[13px] font-semibold">
-              Completion Rate
-            </Text>
-            <Text className="text-white text-[15px] font-bold">
-              {completionRate}%
-            </Text>
-          </View>
+            <View className="flex-row justify-between items-center py-2.5 border-b border-white/[0.05]">
+              <View className="flex-row items-center">
+                <View className="w-8 h-8 rounded-lg bg-orange-600/20 items-center justify-center mr-3">
+                  <Ionicons
+                    name="stats-chart-outline"
+                    size={16}
+                    color="#EA580C"
+                  />
+                </View>
+                <Text className="text-white/60 text-sm font-semibold">
+                  Drunk This Year
+                </Text>
+              </View>
+              <Text className="text-white text-lg font-black">
+                {userStats?.days_this_year || 0} days
+              </Text>
+            </View>
 
-          <View className="flex-row justify-between items-center py-3">
-            <Text className="text-white/50 text-[13px] font-semibold">
-              Current Rank
-            </Text>
-            <Text className="text-white text-[15px] font-bold">
-              #{userStats?.rank || 0}
-            </Text>
+            <View className="flex-row justify-between items-center py-2.5 border-b border-white/[0.05]">
+              <View className="flex-row items-center">
+                <View className="w-8 h-8 rounded-lg bg-orange-600/20 items-center justify-center mr-3">
+                  <MaterialCommunityIcons
+                    name="fire"
+                    size={18}
+                    color="#EA580C"
+                  />
+                </View>
+                <Text className="text-white/60 text-sm font-semibold">
+                  Longest Streak
+                </Text>
+              </View>
+              <Text className="text-white text-lg font-black">
+                {userStats?.longest_streak || 0} days
+              </Text>
+            </View>
+
+            <View className="flex-row justify-between items-center py-2.5">
+              <View className="flex-row items-center">
+                <View className="w-8 h-8 rounded-lg bg-orange-600/20 items-center justify-center mr-3">
+                  <Ionicons name="ribbon-outline" size={16} color="#EA580C" />
+                </View>
+                <Text className="text-white/60 text-sm font-semibold">
+                  Achievements
+                </Text>
+              </View>
+              <Text className="text-white text-lg font-black">
+                {userStats?.achievements_count || 0}
+              </Text>
+            </View>
+
+            <View className="flex-row justify-between items-center py-2.5">
+              <View className="flex-row items-center">
+                <View className="w-8 h-8 rounded-lg bg-orange-600/20 items-center justify-center mr-3">
+                  <FontAwesome5 name="percent" size={12} color="#EA580C" />
+                </View>
+                <Text className="text-white/60 text-sm font-semibold">
+                  Completed
+                </Text>
+              </View>
+              <Text className="text-white text-lg font-black">
+                {completionRate}%
+              </Text>
+            </View>
           </View>
         </View>
       </ScrollView>

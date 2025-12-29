@@ -2,7 +2,7 @@ import Header from "@/components/header";
 import MixPostModal from "@/components/mixPostModal";
 import { ReactionsOverlay } from "@/components/reactionOberlay";
 import { useApp } from "@/providers/AppProvider";
-import type { YourMixPostData } from "@/types/api.types";
+import type { DailyDrinkingPostResponse } from "@/types/api.types";
 import { Ionicons } from "@expo/vector-icons";
 import { FlashList } from "@shopify/flash-list";
 import { LinearGradient } from "expo-linear-gradient";
@@ -45,8 +45,8 @@ const getInitialHeight = (id: string) => {
 };
 
 interface YourMixCardProps {
-  item: YourMixPostData;
-  onCardPress: (item: YourMixPostData) => void;
+  item: DailyDrinkingPostResponse;
+  onCardPress: (item: DailyDrinkingPostResponse) => void;
 }
 
 const YourMixCard = React.memo(({ item, onCardPress }: YourMixCardProps) => {
@@ -56,18 +56,19 @@ const YourMixCard = React.memo(({ item, onCardPress }: YourMixCardProps) => {
   const [isAnimating, setIsAnimating] = useState(false);
 
   const cardHeight = useMemo(() => {
-    if (item.imageWidth && item.imageHeight) {
-      const aspectRatio = item.imageHeight / item.imageWidth;
+    if (item.image_width && item.image_height) {
+      const aspectRatio = item.image_height / item.image_width;
       const calculated = COLUMN_WIDTH * aspectRatio;
       return Math.min(Math.max(calculated, MIN_CARD_HEIGHT), MAX_CARD_HEIGHT);
     }
-    console.log(item.imageWidth, item.imageHeight);
+    console.log(item.image_width, item.image_height);
     // Fallback if old posts don't have dimensions yet
     return getInitialHeight(item.id || "0");
-  }, [item.imageWidth, item.imageHeight, item.id]);
+  }, [item.image_width, item.image_height, item.id]);
 
   const isSmallCard = cardHeight < COLUMN_WIDTH * 1.2;
-  const hasBuddies = item.mentionedBuddies && item.mentionedBuddies.length > 0;
+  const hasBuddies =
+    item.mentioned_buddies && item.mentioned_buddies.length > 0;
 
   const handleFlip = (e?: any) => {
     e?.stopPropagation();
@@ -131,12 +132,14 @@ const YourMixCard = React.memo(({ item, onCardPress }: YourMixCardProps) => {
         zIndex: isFlipped ? 0 : 1,
       }}
     >
-      <Image
-        source={{ uri: item.imageUrl }}
-        style={{ width: "100%", height: "100%" }}
-        resizeMode="cover"
-        className="bg-zinc-800"
-      />
+      {item.image_url && (
+        <Image
+          source={{ uri: item.image_url }}
+          style={{ width: "100%", height: "100%" }}
+          resizeMode="cover"
+          className="bg-zinc-800"
+        />
+      )}
 
       <ReactionsOverlay items={item.reactions} />
 
@@ -168,13 +171,13 @@ const YourMixCard = React.memo(({ item, onCardPress }: YourMixCardProps) => {
       <View className="absolute bottom-3 left-3 right-3 flex-row items-end justify-between">
         <TouchableOpacity
           onPress={() =>
-            router.push(`/(screens)/userInfo?userId=${item.userId}`)
+            router.push(`/(screens)/userInfo?userId=${item.user_id}`)
           }
           className="rounded-full border border-white/30 overflow-hidden w-10 h-10 bg-zinc-800"
         >
-          {item.userImageUrl && (
+          {item.user_image_url && (
             <Image
-              source={{ uri: item.userImageUrl }}
+              source={{ uri: item.user_image_url }}
               className="w-full h-full"
             />
           )}
@@ -189,7 +192,7 @@ const YourMixCard = React.memo(({ item, onCardPress }: YourMixCardProps) => {
                 style={{ marginRight: 4 }}
               />
               <Text className="text-white text-[10px] font-bold">
-                {item.mentionedBuddies.length}
+                {item.mentioned_buddies?.length}
               </Text>
             </View>
           )}
@@ -239,47 +242,49 @@ const YourMixCard = React.memo(({ item, onCardPress }: YourMixCardProps) => {
               With
             </Text>
 
-            <View className="flex-row flex-wrap justify-center gap-2">
-              {item.mentionedBuddies.slice(0, 4).map((b, i) => (
-                <TouchableOpacity
-                  onPress={() =>
-                    router.push(`/(screens)/userInfo?userId=${b.id}`)
-                  }
-                  key={i}
-                  className="items-center"
-                >
-                  <Image
-                    source={{ uri: b.imageUrl }}
-                    className={`rounded-full border border-white/20 bg-zinc-800 mb-1 ${
+            {item.mentioned_buddies && (
+              <View className="flex-row flex-wrap justify-center gap-2">
+                {item.mentioned_buddies.slice(0, 4).map((b, i) => (
+                  <TouchableOpacity
+                    onPress={() =>
+                      router.push(`/(screens)/userInfo?userId=${b.id}`)
+                    }
+                    key={i}
+                    className="items-center"
+                  >
+                    <Image
+                      source={{ uri: b.imageUrl }}
+                      className={`rounded-full border border-white/20 bg-zinc-800 mb-1 ${
+                        isSmallCard ? "w-9 h-9" : "w-14 h-14"
+                      }`}
+                    />
+                    <Text
+                      className={`text-white/60 text-center max-w-[60px] ${
+                        isSmallCard ? "text-[8px]" : "text-[10px]"
+                      }`}
+                      numberOfLines={1}
+                    >
+                      {b.firstName}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+                {item.mentioned_buddies.length > 4 && (
+                  <View
+                    className={`rounded-full bg-zinc-800 border border-white/10 items-center justify-center ${
                       isSmallCard ? "w-9 h-9" : "w-14 h-14"
                     }`}
-                  />
-                  <Text
-                    className={`text-white/60 text-center max-w-[60px] ${
-                      isSmallCard ? "text-[8px]" : "text-[10px]"
-                    }`}
-                    numberOfLines={1}
                   >
-                    {b.firstName}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-              {item.mentionedBuddies.length > 4 && (
-                <View
-                  className={`rounded-full bg-zinc-800 border border-white/10 items-center justify-center ${
-                    isSmallCard ? "w-9 h-9" : "w-14 h-14"
-                  }`}
-                >
-                  <Text
-                    className={`text-white/50 ${
-                      isSmallCard ? "text-[9px]" : "text-xs"
-                    }`}
-                  >
-                    +{item.mentionedBuddies.length - 4}
-                  </Text>
-                </View>
-              )}
-            </View>
+                    <Text
+                      className={`text-white/50 ${
+                        isSmallCard ? "text-[9px]" : "text-xs"
+                      }`}
+                    >
+                      +{item.mentioned_buddies.length - 4}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
           </View>
         ) : (
           <View className="items-center justify-center h-full opacity-30">
@@ -355,12 +360,11 @@ const MixScreen = () => {
   const [isPaginating, setIsPaginating] = useState(false);
   const { openPostId } = useLocalSearchParams();
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [expandedItem, setExpandedItem] = useState<YourMixPostData | undefined>(
-    undefined
-  );
+  const [expandedItem, setExpandedItem] = useState<
+    DailyDrinkingPostResponse | undefined
+  >(undefined);
   const [currentAspectRatio, setCurrentAspectRatio] = useState(4 / 3);
 
-  // --- Effects ---
 
   useEffect(() => {
     const allPosts = [...yourMixData, ...globalMixData];
@@ -382,9 +386,9 @@ const MixScreen = () => {
   }, [expandedId, yourMixData, globalMixData]);
 
   useEffect(() => {
-    if (expandedItem?.imageUrl) {
+    if (expandedItem?.image_url) {
       Image.getSize(
-        expandedItem.imageUrl,
+        expandedItem.image_url,
         (width, height) =>
           width && height && setCurrentAspectRatio(width / height),
         () => setCurrentAspectRatio(4 / 3)
@@ -398,9 +402,12 @@ const MixScreen = () => {
   const activeHasMore =
     activeTab === "personal" ? yourMixHasMore : globalMixHasMore;
 
-  const handleCardPressForModal = useCallback((item: YourMixPostData) => {
-    setExpandedId(item.id);
-  }, []);
+  const handleCardPressForModal = useCallback(
+    (item: DailyDrinkingPostResponse) => {
+      setExpandedId(item.id);
+    },
+    []
+  );
 
   const handleLoadMore = async () => {
     if (isPaginating || !activeHasMore) return;
@@ -451,7 +458,7 @@ const MixScreen = () => {
   }, [isLoading, activeData.length, activeTab]);
 
   const renderItem = useCallback(
-    ({ item }: { item: YourMixPostData }) => {
+    ({ item }: { item: DailyDrinkingPostResponse }) => {
       return <YourMixCard item={item} onCardPress={handleCardPressForModal} />;
     },
     [handleCardPressForModal]
@@ -504,7 +511,7 @@ const MixScreen = () => {
         data={activeData}
         numColumns={2}
         getItemType={(item) => {
-          if (item.mentionedBuddies && item.mentionedBuddies.length > 0) {
+          if (item.mentioned_buddies && item.mentioned_buddies.length > 0) {
             return "with_buddies";
           }
           return "solo";

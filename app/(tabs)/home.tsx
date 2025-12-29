@@ -283,7 +283,7 @@ export default function HomeScreen() {
             {coefInfo.title}
           </Text>
         </View>
-        <View className="flex-row gap-3 mb-4">
+        {/* <View className="flex-row gap-3 mb-4">
           <TouchableOpacity
             onPress={() => router.push("/(screens)/mixTimeline")}
             className="flex-1 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]"
@@ -313,9 +313,9 @@ export default function HomeScreen() {
               Detailed insights
             </Text>
           </TouchableOpacity>
-        </View>
+        </View> */}
 
-        {/* <ScrollView
+        <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ gap: 12, paddingHorizontal: 20 }}
@@ -363,7 +363,7 @@ export default function HomeScreen() {
               Detailed insights
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity
+          {/* <TouchableOpacity
             onPress={() => router.push("/(screens)/goals")}
             className="w-40 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]"
           >
@@ -374,8 +374,8 @@ export default function HomeScreen() {
             <Text className="text-white/40 text-xs font-semibold mt-1">
               Be proud
             </Text>
-          </TouchableOpacity>
-        </ScrollView> */}
+          </TouchableOpacity> */}
+        </ScrollView>
 
         <View className="flex-row gap-3 mb-4">
           <TouchableOpacity
@@ -394,43 +394,13 @@ export default function HomeScreen() {
               </View>
             </View>
           </TouchableOpacity>
-
-          {/* <TouchableOpacity
-            onPress={() => router.push("/(screens)/store")}
-            className="w-20 bg-white/[0.03] rounded-2xl border border-white/[0.08] items-center justify-center"
-          >
-            <View className="w-12 h-12 rounded-xl bg-orange-600/20 items-center justify-center">
-              <SimpleLineIcons
-                name="envelope-letter"
-                size={24}
-                color="#EA580C"
-              />
-            </View>
-          </TouchableOpacity> */}
         </View>
-        {/*
-        <TouchableOpacity
-          onPress={() => router.push("/(screens)/profileBuilder")}
-          className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]"
-        >
-          <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">
-            PROFILE BUILDER
-          </Text>
-        </TouchableOpacity> */}
-
-        {/* <DrinkingFrequencyChart/> */}
-        {/* <FocusIntensityChart /> */}
-        {/* <SobrietyTrendChart /> */}
 
         <View className="flex-row gap-3 mb-4">
           <DrinkingMap />
         </View>
-
         <ThisWeekGadget />
-
         <AlcoholismChart />
-
-        {/* <StreakComparisonChart /> */}
 
         <View className="flex-row gap-3 mb-4">
           <TouchableOpacity
@@ -476,102 +446,7 @@ export default function HomeScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-        {/* 
-        <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
-          <View className="flex-row justify-between items-center">
-            <View>
-              <Text className="text-white/50 text-[11px] font-bold tracking-[1.5px] mb-2">
-                CURRENT STREAK
-              </Text>
-
-              <View className="flex-row items-center">
-                <Text className="text-white text-[32px] font-black">
-                  {userStats?.current_streak || 0} Days
-                </Text>
-                <MaterialCommunityIcons name="fire" size={56} color="#EA580C" />
-              </View>
-            </View>
-            {userStats && userStats.current_streak > 0 && (
-              <View className="bg-orange-600/20 px-3.5 py-1.5 rounded-lg">
-                <Text className="text-orange-600 text-[11px] font-black tracking-wide">
-                  ACTIVE
-                </Text>
-              </View>
-            )}
-          </View>
-        </View> */}
-        {/* 
-        <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
-          <Text className="text-white text-lg font-black mb-4">
-            Your Progress
-          </Text>
-
-          <View className="space-y-3">
-            <View className="flex-row justify-between items-center py-2.5 border-b border-white/[0.05]">
-              <View className="flex-row items-center">
-                <View className="w-8 h-8 rounded-lg bg-orange-600/20 items-center justify-center mr-3">
-                  <Ionicons name="calendar-outline" size={16} color="#EA580C" />
-                </View>
-                <Text className="text-white/60 text-sm font-semibold">
-                  Drunk This Month
-                </Text>
-              </View>
-              <Text className="text-white text-lg font-black">
-                {userStats?.days_this_month || 0}
-              </Text>
-            </View>
-
-            <View className="flex-row justify-between items-center py-2.5 border-b border-white/[0.05]">
-              <View className="flex-row items-center">
-                <View className="w-8 h-8 rounded-lg bg-orange-600/20 items-center justify-center mr-3">
-                  <Ionicons
-                    name="stats-chart-outline"
-                    size={16}
-                    color="#EA580C"
-                  />
-                </View>
-                <Text className="text-white/60 text-sm font-semibold">
-                  Drunk This Year
-                </Text>
-              </View>
-              <Text className="text-white text-lg font-black">
-                {userStats?.days_this_year || 0}
-              </Text>
-            </View>
-
-            <View className="flex-row justify-between items-center py-2.5 border-b border-white/[0.05]">
-              <View className="flex-row items-center">
-                <View className="w-8 h-8 rounded-lg bg-orange-600/20 items-center justify-center mr-3">
-                  <MaterialCommunityIcons
-                    name="fire"
-                    size={18}
-                    color="#EA580C"
-                  />
-                </View>
-                <Text className="text-white/60 text-sm font-semibold">
-                  Longest Streak
-                </Text>
-              </View>
-              <Text className="text-white text-lg font-black">
-                {userStats?.longest_streak || 0}
-              </Text>
-            </View>
-
-            <View className="flex-row justify-between items-center py-2.5">
-              <View className="flex-row items-center">
-                <View className="w-8 h-8 rounded-lg bg-orange-600/20 items-center justify-center mr-3">
-                  <Ionicons name="ribbon-outline" size={16} color="#EA580C" />
-                </View>
-                <Text className="text-white/60 text-sm font-semibold">
-                  Achievements
-                </Text>
-              </View>
-              <Text className="text-white text-lg font-black">
-                {userStats?.achievements_count || 0}
-              </Text>
-            </View>
-          </View>
-        </View> */}
+       
         <TouchableOpacity
           className={`rounded-2xl py-6 items-center mb-4 shadow-lg ${
             userStats?.today_status

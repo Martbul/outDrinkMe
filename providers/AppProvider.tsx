@@ -26,9 +26,9 @@ import type {
   SideQuestBoard,
   MinVersionResponse,
   UserStories,
-  UploadJob,
   StoryUploadJob,
   StorySegment,
+  DailyDrinkingPostResponse,
 } from "../types/api.types";
 import { apiService } from "@/api";
 import { usePostHog } from "posthog-react-native";
@@ -55,7 +55,7 @@ interface AppContextType {
   stories: UserStories[];
 
   // --- Pagination Data ---
-  yourMixData: YourMixPostData[] | [];
+  yourMixData: DailyDrinkingPostResponse[] | [];
   yourMixHasMore: boolean;
   globalMixData: YourMixPostData[] | [];
   globalMixHasMore: boolean;
@@ -172,7 +172,7 @@ export function AppProvider({ children }: AppProviderProps) {
   const [discovery, setDiscovery] = useState<UserData[] | []>([]);
   const [stories, setStories] = useState<UserStories[]>([]);
 
-  const [yourMixData, setYourMixData] = useState<YourMixPostData[] | []>([]);
+  const [yourMixData, setYourMixData] = useState<DailyDrinkingPostResponse[] | []>([]);
   const [yourMixPage, setYourMixPage] = useState(1);
   const [yourMixHasMore, setYourMixHasMore] = useState(true);
 
@@ -658,9 +658,6 @@ export function AppProvider({ children }: AppProviderProps) {
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
 
-  // ============================================
-  // PAGINATION LOGIC: YOUR MIX
-  // ============================================
   const refreshYourMixData = useCallback(async () => {
     if (!isSignedIn) return;
 
@@ -668,7 +665,6 @@ export function AppProvider({ children }: AppProviderProps) {
       async () => {
         const token = await getToken();
         if (!token) throw new Error("No auth token");
-        // Reset to page 1
         return await apiService.getYourMixData(token, 1);
       },
       (data) => {
