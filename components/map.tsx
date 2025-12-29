@@ -12,7 +12,7 @@ import { useApp } from "@/providers/AppProvider";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as Location from "expo-location";
-import { YourMixPostData } from "@/types/api.types";
+import { DailyDrinkingPostResponse } from "@/types/api.types";
 
 const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN_PUBLIC;
 
@@ -27,232 +27,12 @@ interface DrinkingMapProps {
 }
 
 // Extend type to hold the calculated "spiderfied" coordinates
-type DispersedPost = YourMixPostData & {
+type DispersedPost = DailyDrinkingPostResponse & {
   visualLat: number;
   visualLng: number;
 };
 
-const PostCard = ({
-  post,
-  position,
-  onClose,
-}: {
-  post: YourMixPostData;
-  position: { x: number; y: number };
-  onClose: () => void;
-}) => {
-  const [imageLoading, setImageLoading] = useState(true);
-  const [imageError, setImageError] = useState(false);
-
-  const buddyCount = post.mentionedBuddies?.length || 0;
-  const buddiesText =
-    buddyCount > 0
-      ? post.mentionedBuddies
-          .slice(0, 2)
-          .map((b) => b.username)
-          .join(", ") + (buddyCount > 2 ? ` +${buddyCount - 2}` : "")
-      : null;
-
-  const PIN_HEIGHT_OFFSET = 42;
-
-  return (
-    <View
-      style={[
-        styles.absoluteCardWrapper,
-        {
-          left: position.x,
-          top: position.y - PIN_HEIGHT_OFFSET,
-        },
-      ]}
-    >
-      <View style={styles.calloutCard}>
-        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-          <Ionicons name="close-circle" size={28} color="#EA580C" />
-        </TouchableOpacity>
-
-        {post.imageUrl && (
-          <View style={styles.imageSection}>
-            <Image
-              source={{ uri: post.imageUrl }}
-              style={styles.postImage}
-              resizeMode="cover"
-              onLoad={() => setImageLoading(false)}
-              onError={() => {
-                setImageLoading(false);
-                setImageError(true);
-              }}
-            />
-            {imageLoading && !imageError && (
-              <View style={styles.imageLoadingOverlay}>
-                <ActivityIndicator size="small" color="#EA580C" />
-              </View>
-            )}
-          </View>
-        )}
-
-        <View style={styles.infoSection}>
-          <View style={styles.userHeader}>
-            <View style={styles.avatarContainer}>
-              {post.userImageUrl ? (
-                <Image
-                  source={{ uri: post.userImageUrl }}
-                  style={styles.avatar}
-                />
-              ) : (
-                <View style={styles.avatarFallback}>
-                  <Text style={styles.avatarText}>
-                    {post.username?.[0]?.toUpperCase()}
-                  </Text>
-                </View>
-              )}
-            </View>
-            <View style={styles.userTextContainer}>
-              <Text style={styles.username} numberOfLines={1}>
-                {post.username}
-              </Text>
-              <Text style={styles.timestamp}>
-                {new Date(post.loggedAt).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </Text>
-            </View>
-          </View>
-
-          {(post.locationText ||
-            (post.alcohol && post.alcohol.length > 0) ||
-            buddiesText) && (
-            <View style={styles.detailsContainer}>
-              {post.locationText && (
-                <View style={styles.detailRow}>
-                  <Ionicons
-                    name="location-sharp"
-                    size={14}
-                    color="rgba(255,255,255,0.5)"
-                  />
-                  <Text style={styles.detailText} numberOfLines={2}>
-                    {post.locationText}
-                  </Text>
-                </View>
-              )}
-              {post.alcohol && post.alcohol.length > 0 && (
-                <View style={styles.detailRow}>
-                  <MaterialCommunityIcons
-                    name="glass-cocktail"
-                    size={14}
-                    color="rgba(255,255,255,0.5)"
-                  />
-                  <Text style={styles.detailText} numberOfLines={2}>
-                    {post.alcohol.join(", ")}
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
-        </View>
-      </View>
-      <View style={styles.cardArrow} />
-    </View>
-  );
-};
-
-// --- 2. Marker Component ---
-const PostMarker = React.memo(
-  ({
-    post,
-    isSelected,
-    isInteractive,
-    onSelect,
-    zoomLevel,
-  }: {
-    post: DispersedPost;
-    isSelected: boolean;
-    isInteractive: boolean;
-    onSelect: (post: DispersedPost) => void;
-    zoomLevel: number;
-  }) => {
-    const annotationRef = useRef<MapboxGL.PointAnnotation>(null);
-    const [markerImageLoading, setMarkerImageLoading] = useState(true);
-
-    const handleMarkerImageLoad = () => {
-      setMarkerImageLoading(false);
-      setTimeout(() => {
-        annotationRef.current?.refresh();
-      }, 100);
-    };
-
-    const scale = Math.min(Math.max(zoomLevel / 18, 0.7), 1.2);
-    const pinImage = post.userImageUrl || post.imageUrl;
-
-    return (
-      <MapboxGL.PointAnnotation
-        ref={annotationRef}
-        id={post.id}
-        // Use the calculated VISUAL coordinates
-        coordinate={[post.visualLng, post.visualLat]}
-        anchor={{ x: 0.5, y: 1 }}
-        onSelected={() => isInteractive && onSelect(post)}
-        // Bring selected pin to front
-        style={{ zIndex: isSelected ? 100 : 1 }}
-      >
-        <View style={[styles.markerContainer, { transform: [{ scale }] }]}>
-          <View
-            style={[styles.pinShadow, isSelected && styles.selectedPinShadow]}
-          >
-            <View
-              style={[styles.pinHead, isSelected && styles.selectedPinHead]}
-            >
-              {pinImage ? (
-                <Image
-                  source={{ uri: pinImage }}
-                  style={styles.markerImage}
-                  resizeMode="cover"
-                  onLoad={handleMarkerImageLoad}
-                />
-              ) : (
-                <View style={styles.fallbackAvatarMarker}>
-                  <Text style={styles.fallbackTextMarker}>
-                    {post.username?.[0]?.toUpperCase() || "?"}
-                  </Text>
-                </View>
-              )}
-            </View>
-            <View
-              style={[styles.pinPoint, isSelected && styles.selectedPinPoint]}
-            />
-          </View>
-        </View>
-      </MapboxGL.PointAnnotation>
-    );
-  }
-);
-
-PostMarker.displayName = "PostMarker";
-
 export default function DrinkingMap({ variant = "preview" }: DrinkingMapProps) {
-  if (!MAPBOX_TOKEN) {
-    return (
-      <View
-        style={[
-          styles.container,
-          {
-            justifyContent: "center",
-            alignItems: "center",
-            backgroundColor: "#121212",
-          },
-        ]}
-      >
-        <Ionicons name="warning-outline" size={32} color="#EA580C" />
-        <Text style={{ color: "white", marginTop: 8, fontWeight: "bold" }}>
-          Map Unavailable
-        </Text>
-        <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 10 }}>
-          Configuration Error (Missing Token)
-        </Text>
-      </View>
-    );
-  }
-
   const { mapFriendPosts } = useApp();
   const router = useRouter();
 
@@ -291,7 +71,7 @@ export default function DrinkingMap({ variant = "preview" }: DrinkingMapProps) {
   const validPosts = useMemo(() => {
     if (!mapFriendPosts) return [];
     return mapFriendPosts.filter(
-      (post): post is YourMixPostData =>
+      (post): post is DailyDrinkingPostResponse =>
         typeof post.latitude === "number" &&
         typeof post.longitude === "number" &&
         Math.abs(post.latitude) > 0.1
@@ -302,7 +82,7 @@ export default function DrinkingMap({ variant = "preview" }: DrinkingMapProps) {
   const dispersedPosts = useMemo<DispersedPost[]>(() => {
     if (validPosts.length === 0) return [];
 
-    const grouped: { [key: string]: YourMixPostData[] } = {};
+    const grouped: { [key: string]: DailyDrinkingPostResponse[] } = {};
     const PRECISION = 4;
 
     validPosts.forEach((post) => {
@@ -416,6 +196,29 @@ export default function DrinkingMap({ variant = "preview" }: DrinkingMapProps) {
     }
   };
 
+  if (!MAPBOX_TOKEN) {
+    return (
+      <View
+        style={[
+          styles.container,
+          {
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: "#121212",
+          },
+        ]}
+      >
+        <Ionicons name="warning-outline" size={32} color="#EA580C" />
+        <Text style={{ color: "white", marginTop: 8, fontWeight: "bold" }}>
+          Map Unavailable
+        </Text>
+        <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 10 }}>
+          Configuration Error (Missing Token)
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <View
       style={[
@@ -495,6 +298,202 @@ export default function DrinkingMap({ variant = "preview" }: DrinkingMapProps) {
     </View>
   );
 }
+
+const PostCard = ({
+  post,
+  position,
+  onClose,
+}: {
+  post: DailyDrinkingPostResponse;
+  position: { x: number; y: number };
+  onClose: () => void;
+}) => {
+  const [imageLoading, setImageLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
+
+  const buddyCount = post.mentioned_buddies?.length || 0;
+  const buddiesText =
+    buddyCount > 0
+      ? post.mentioned_buddies
+          .slice(0, 2)
+          .map((b) => b.username)
+          .join(", ") + (buddyCount > 2 ? ` +${buddyCount - 2}` : "")
+      : null;
+
+  const PIN_HEIGHT_OFFSET = 42;
+
+  return (
+    <View
+      style={[
+        styles.absoluteCardWrapper,
+        {
+          left: position.x,
+          top: position.y - PIN_HEIGHT_OFFSET,
+        },
+      ]}
+    >
+      <View style={styles.calloutCard}>
+        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+          <Ionicons name="close-circle" size={28} color="#EA580C" />
+        </TouchableOpacity>
+
+        {post.image_url && (
+          <View style={styles.imageSection}>
+            <Image
+              source={{ uri: post.image_url }}
+              style={styles.postImage}
+              resizeMode="cover"
+              onLoad={() => setImageLoading(false)}
+              onError={() => {
+                setImageLoading(false);
+                setImageError(true);
+              }}
+            />
+            {imageLoading && !imageError && (
+              <View style={styles.imageLoadingOverlay}>
+                <ActivityIndicator size="small" color="#EA580C" />
+              </View>
+            )}
+          </View>
+        )}
+
+        <View style={styles.infoSection}>
+          <View style={styles.userHeader}>
+            <View style={styles.avatarContainer}>
+              {post.user_image_url ? (
+                <Image
+                  source={{ uri: post.user_image_url }}
+                  style={styles.avatar}
+                />
+              ) : (
+                <View style={styles.avatarFallback}>
+                  <Text style={styles.avatarText}>
+                    {post.username?.[0]?.toUpperCase()}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <View style={styles.userTextContainer}>
+              <Text style={styles.username} numberOfLines={1}>
+                {post.username}
+              </Text>
+              <Text style={styles.timestamp}>
+                {new Date(post.logged_at).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </Text>
+            </View>
+          </View>
+
+          {(post.location_text ||
+            (post.alcohol && post.alcohol.length > 0) ||
+            buddiesText) && (
+            <View style={styles.detailsContainer}>
+              {post.location_text && (
+                <View style={styles.detailRow}>
+                  <Ionicons
+                    name="location-sharp"
+                    size={14}
+                    color="rgba(255,255,255,0.5)"
+                  />
+                  <Text style={styles.detailText} numberOfLines={2}>
+                    {post.location_text}
+                  </Text>
+                </View>
+              )}
+              {post.alcohol && post.alcohol.length > 0 && (
+                <View style={styles.detailRow}>
+                  <MaterialCommunityIcons
+                    name="glass-cocktail"
+                    size={14}
+                    color="rgba(255,255,255,0.5)"
+                  />
+                  <Text style={styles.detailText} numberOfLines={2}>
+                    {post.alcohol.join(", ")}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+        </View>
+      </View>
+      <View style={styles.cardArrow} />
+    </View>
+  );
+};
+
+const PostMarker = React.memo(
+  ({
+    post,
+    isSelected,
+    isInteractive,
+    onSelect,
+    zoomLevel,
+  }: {
+    post: DispersedPost;
+    isSelected: boolean;
+    isInteractive: boolean;
+    onSelect: (post: DispersedPost) => void;
+    zoomLevel: number;
+  }) => {
+    const annotationRef = useRef<MapboxGL.PointAnnotation>(null);
+    const [markerImageLoading, setMarkerImageLoading] = useState(true);
+
+    const handleMarkerImageLoad = () => {
+      setMarkerImageLoading(false);
+      setTimeout(() => {
+        annotationRef.current?.refresh();
+      }, 100);
+    };
+
+    const scale = Math.min(Math.max(zoomLevel / 18, 0.7), 1.2);
+    const pinImage = post.user_image_url || post.image_url;
+
+    return (
+      <MapboxGL.PointAnnotation
+        ref={annotationRef}
+        id={post.id}
+        // Use the calculated VISUAL coordinates
+        coordinate={[post.visualLng, post.visualLat]}
+        anchor={{ x: 0.5, y: 1 }}
+        onSelected={() => isInteractive && onSelect(post)}
+        // Bring selected pin to front
+        style={{ zIndex: isSelected ? 100 : 1 }}
+      >
+        <View style={[styles.markerContainer, { transform: [{ scale }] }]}>
+          <View
+            style={[styles.pinShadow, isSelected && styles.selectedPinShadow]}
+          >
+            <View
+              style={[styles.pinHead, isSelected && styles.selectedPinHead]}
+            >
+              {pinImage ? (
+                <Image
+                  source={{ uri: pinImage }}
+                  style={styles.markerImage}
+                  resizeMode="cover"
+                  onLoad={handleMarkerImageLoad}
+                />
+              ) : (
+                <View style={styles.fallbackAvatarMarker}>
+                  <Text style={styles.fallbackTextMarker}>
+                    {post.username?.[0]?.toUpperCase() || "?"}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <View
+              style={[styles.pinPoint, isSelected && styles.selectedPinPoint]}
+            />
+          </View>
+        </View>
+      </MapboxGL.PointAnnotation>
+    );
+  }
+);
+
+PostMarker.displayName = "PostMarker";
 
 const styles = StyleSheet.create({
   container: {
@@ -579,7 +578,7 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   selectedPinHead: {
-    borderColor: "#EA580C", // Orange border when selected
+    borderColor: "#EA580C",
     borderWidth: 3,
   },
   pinPoint: {
@@ -617,7 +616,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 
-  // --- CARD STYLES ---
   absoluteCardWrapper: {
     position: "absolute",
     zIndex: 1000,

@@ -27,9 +27,9 @@ import {
   MaterialIcons,
 } from "@expo/vector-icons";
 import type {
-  YourMixPostData,
   CalendarResponse,
   StorySegment,
+  DailyDrinkingPostResponse,
 } from "@/types/api.types";
 import MixPostModal from "@/components/mixPostModal";
 import { onBackPress } from "@/utils/navigation";
@@ -123,15 +123,15 @@ const GalleryItem = ({
   item,
   setExpandedId,
 }: {
-  item: YourMixPostData;
+  item: DailyDrinkingPostResponse;
   setExpandedId: (id: string) => void;
 }) => {
   const [height, setHeight] = useState(COLUMN_WIDTH * 1.3);
 
   useEffect(() => {
-    if (item.imageUrl) {
+    if (item.image_url) {
       Image.getSize(
-        item.imageUrl,
+        item.image_url,
         (w, h) => {
           const ratio = Math.min(h / w, 1.5);
           setHeight(COLUMN_WIDTH * ratio);
@@ -139,7 +139,7 @@ const GalleryItem = ({
         () => {}
       );
     }
-  }, [item.imageUrl]);
+  }, [item.image_url]);
 
   const getOptimizedImageUrl = (url: string | undefined) => {
     if (!url || !url.includes("cloudinary.com")) return url;
@@ -154,11 +154,14 @@ const GalleryItem = ({
     >
       <View className="bg-white/[0.03] rounded-2xl overflow-hidden border border-white/[0.08] p-2">
         <View className="rounded-xl overflow-hidden relative">
-          <Image
-            source={{ uri: getOptimizedImageUrl(item.imageUrl) }}
-            style={{ width: "100%", height: height - 16 }}
-            resizeMode="cover"
-          />
+          {item.image_url && (
+            <Image
+              source={{ uri: getOptimizedImageUrl(item.image_url) }}
+              style={{ width: "100%", height: height - 16 }}
+              resizeMode="cover"
+            />
+          )}
+
           <View className="absolute top-2 right-2 bg-black/50 backdrop-blur-md px-2 py-1 rounded border border-white/10">
             <Text className="text-orange-500 text-[9px] font-bold">
               {new Date(item.date).toLocaleDateString("en-US", {
@@ -203,9 +206,9 @@ const UserInfoScreen = () => {
   const [isCalendarLoading, setIsCalendarLoading] = useState(false);
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [expandedItem, setExpandedItem] = useState<YourMixPostData | undefined>(
-    undefined
-  );
+  const [expandedItem, setExpandedItem] = useState<
+    DailyDrinkingPostResponse | undefined
+  >(undefined);
   const [currentAspectRatio, setCurrentAspectRatio] = useState(4 / 3);
   const [settingsModalVisible, setSettingsModalVisible] = useState(false);
 
@@ -216,7 +219,7 @@ const UserInfoScreen = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [isDeletingStory, setIsDeletingStory] = useState(false);
-  
+
   // --- ADDED: Local state to hide deleted stories instantly ---
   const [deletedStoryIds, setDeletedStoryIds] = useState<string[]>([]);
 
@@ -278,9 +281,9 @@ const UserInfoScreen = () => {
   }, [expandedId, friendDiscoveryProfile?.mix_posts]);
 
   useEffect(() => {
-    if (expandedItem?.imageUrl) {
+    if (expandedItem?.image_url) {
       Image.getSize(
-        expandedItem.imageUrl,
+        expandedItem.image_url,
         (width, height) => {
           if (width && height) setCurrentAspectRatio(width / height);
         },
@@ -298,8 +301,8 @@ const UserInfoScreen = () => {
   const { leftColumn, rightColumn } = useMemo(() => {
     if (isDataStale) return { leftColumn: [], rightColumn: [] };
 
-    const left: YourMixPostData[] = [];
-    const right: YourMixPostData[] = [];
+    const left: DailyDrinkingPostResponse[] = [];
+    const right: DailyDrinkingPostResponse[] = [];
     const userPosts = friendDiscoveryProfile?.mix_posts || [];
     userPosts.forEach((item, index) => {
       index % 2 === 0 ? left.push(item) : right.push(item);
@@ -367,9 +370,9 @@ const UserInfoScreen = () => {
       const token = await getToken();
       if (token) {
         await apiService.deleteStory(token, idToDelete);
-        
+
         // 2. Fetch new data in the background
-        await onRefresh(); 
+        await onRefresh();
         await refreshUserStories();
       }
     } catch (error) {

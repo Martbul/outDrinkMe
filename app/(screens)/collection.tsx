@@ -714,7 +714,6 @@ export default function Collection() {
   if (currentScreen === "manual" && !scanning) {
     return (
       <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
-        <Header />
         <ScrollView
           contentContainerStyle={{ paddingBottom: insets.bottom + 700 }}
         >

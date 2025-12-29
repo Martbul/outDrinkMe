@@ -28,14 +28,12 @@ import {
   UserStats,
   UserStories,
   VideoPost,
-  YourMixPostData,
 } from "./types/api.types";
 
 class ApiService {
   private baseUrl: string;
 
   constructor() {
-    // Make sure the env variable exists
     const apiUrl = process.env.EXPO_PUBLIC_OUTDRINKME_API_URL;
 
     if (!apiUrl) {
@@ -69,7 +67,8 @@ class ApiService {
       let errorText: string;
       try {
         errorText = await response.text();
-      } catch (readError) {
+      } catch (error) {
+        console.log(error)
         errorText = `HTTP ${response.status} ${response.statusText}`;
       }
 
@@ -344,27 +343,27 @@ class ApiService {
     return response || [];
   }
 
-  private transformMixPosts(
-    posts: DailyDrinkingPostResponse[]
-  ): YourMixPostData[] {
-    return posts.map((post) => ({
-      id: post.id,
-      userId: post.user_id,
-      userImageUrl: post.user_image_url,
-      username: post.username,
-      date: post.date,
-      drankToday: post.drank_today,
-      loggedAt: post.logged_at,
-      imageUrl: post.image_url,
-      imageWidth: post.image_width,
-      imageHeight: post.image_height,
-      locationText: post.location_text,
-      alcohol: post.alcohol,
-      mentionedBuddies: post.mentioned_buddies || [],
-      sourceType: post.source_type,
-      reactions: post.reactions || [],
-    }));
-  }
+  // private transformMixPosts(
+  //   posts: DailyDrinkingPostResponse[]
+  // ): YourMixPostData[] {
+  //   return posts.map((post) => ({
+  //     id: post.id,
+  //     userId: post.user_id,
+  //     userImageUrl: post.user_image_url,
+  //     username: post.username,
+  //     date: post.date,
+  //     drankToday: post.drank_today,
+  //     loggedAt: post.logged_at,
+  //     imageUrl: post.image_url,
+  //     imageWidth: post.image_width,
+  //     imageHeight: post.image_height,
+  //     locationText: post.location_text,
+  //     alcohol: post.alcohol,
+  //     mentionedBuddies: post.mentioned_buddies || [],
+  //     sourceType: post.source_type,
+  //     reactions: post.reactions || [],
+  //   }));
+  // }
 
   async getYourMixData(
     token: string,
@@ -405,51 +404,44 @@ class ApiService {
     token: string,
     page: number = 1,
     limit: number = 20
-  ): Promise<YourMixPostData[]> {
-    try {
-      const response = await this.makeRequest<DailyDrinkingPostResponse[]>(
-        `/api/v1/user/global-mix?page=${page}&limit=${limit}`,
-        {
-          method: "GET",
-          token,
-        }
-      );
-
-      return this.transformMixPosts(response);
-    } catch (error) {
-      console.error("Failed to fetch Global Mix:", error);
-      return [];
-    }
+  ): Promise<DailyDrinkingPostResponse[]> {
+    return this.makeRequest<DailyDrinkingPostResponse[]>(
+      `/api/v1/user/global-mix?page=${page}&limit=${limit}`,
+      {
+        method: "GET",
+        token,
+      }
+    );
   }
-  async getMixTimeline(token: string): Promise<YourMixPostData[]> {
-    try {
-      const response = await this.makeRequest<DailyDrinkingPostResponse[]>(
-        "/api/v1/user/mix-timeline",
-        {
-          method: "GET",
-          token,
-        }
-      );
 
-      const transformed: YourMixPostData[] = response.map((post) => ({
-        id: post.id,
-        userId: post.user_id,
-        userImageUrl: post.user_image_url,
-        username: post.username,
-        date: post.date, // Changed from post.data to post.date
-        drankToday: post.drank_today,
-        loggedAt: post.logged_at,
-        imageUrl: post.image_url,
-        locationText: post.location_text,
-        mentionedBuddies: post.mentioned_buddies || [],
-        sourceType: post.source_type,
-      }));
+  //  async getGlobalMixData(
+  //   token: string,
+  //   page: number = 1,
+  //   limit: number = 20
+  // ): Promise<YourMixPostData[]> {
+  //   try {
+  //     const response = await this.makeRequest<DailyDrinkingPostResponse[]>(
+  //       `/api/v1/user/global-mix?page=${page}&limit=${limit}`,
+  //       {
+  //         method: "GET",
+  //         token,
+  //       }
+  //     );
 
-      return transformed;
-    } catch (error) {
-      console.error("Failed to fetch Mix Timeline:", error);
-      return [];
-    }
+  //     return this.transformMixPosts(response);
+  //   } catch (error) {
+  //     console.error("Failed to fetch Global Mix:", error);
+  //     return [];
+  //   }
+  // }
+  async getMixTimeline(token: string): Promise<DailyDrinkingPostResponse[]> {
+    return this.makeRequest<DailyDrinkingPostResponse[]>(
+      "/api/v1/user/mix-timeline",
+      {
+        method: "GET",
+        token,
+      }
+    );
   }
 
   async addMixVideo(
@@ -576,7 +568,7 @@ class ApiService {
     token: string
   ): Promise<
     Omit<FriendDiscoveryDisplayProfileResponse, "mix_posts"> & {
-      mix_posts: YourMixPostData[];
+      mix_posts: DailyDrinkingPostResponse[];
     }
   > {
     try {
@@ -589,27 +581,9 @@ class ApiService {
           }
         );
 
-      // Transform the mix_posts array within the profile response
-      const transformedMixPosts: YourMixPostData[] = (
-        response.mix_posts || []
-      ).map((post) => ({
-        id: post.id,
-        userId: post.user_id,
-        userImageUrl: post.user_image_url,
-        username: post.username,
-        date: post.date,
-        drankToday: post.drank_today,
-        loggedAt: post.logged_at,
-        imageUrl: post.image_url,
-        locationText: post.location_text,
-        mentionedBuddies: post.mentioned_buddies || [],
-        sourceType: post.source_type,
-      }));
-
       return {
         ...response,
-        mix_posts: transformedMixPosts,
-        // Ensure inventory is passed through (or default to empty if missing from partial response)
+        mix_posts: response.mix_posts,
         inventory: response.inventory || {},
       };
     } catch (error) {
@@ -932,40 +906,14 @@ class ApiService {
     );
   }
 
-  async getMapFriendsPosts(token: string): Promise<YourMixPostData[]> {
-    try {
-      const response = await this.makeRequest<DailyDrinkingPostResponse[]>(
-        "/api/v1/user/map-friend-posts",
-        {
-          method: "GET",
-          token,
-        }
-      );
-
-      console.log(response);
-
-      const transformed = response.map((post) => ({
-        id: post.id,
-        userId: post.user_id,
-        userImageUrl: post.user_image_url,
-        username: post.username,
-        date: post.date,
-        drankToday: post.drank_today,
-        loggedAt: post.logged_at,
-        imageUrl: post.image_url,
-        locationText: post.location_text,
-        latitude: post.latitude,
-        longitude: post.longitude,
-        alcohol: post.alcohol,
-        mentionedBuddies: post.mentioned_buddies || [],
-        sourceType: post.source_type,
-      }));
-
-      return transformed;
-    } catch (error) {
-      console.error("Failed to fetch Your Mix:", error);
-      return [];
-    }
+  async getMapFriendsPosts(token: string): Promise<DailyDrinkingPostResponse[]> {
+    return this.makeRequest<DailyDrinkingPostResponse[]>(
+      "/api/v1/user/map-friend-posts",
+      {
+        method: "GET",
+        token,
+      }
+    );
   }
 
   async getMemoryWall(postId: string, token: string): Promise<CanvasItem[]> {

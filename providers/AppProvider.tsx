@@ -57,10 +57,10 @@ interface AppContextType {
   // --- Pagination Data ---
   yourMixData: DailyDrinkingPostResponse[] | [];
   yourMixHasMore: boolean;
-  globalMixData: YourMixPostData[] | [];
+  globalMixData: DailyDrinkingPostResponse[] | [];
   globalMixHasMore: boolean;
 
-  mixTimelineData: YourMixPostData[] | [];
+  mixTimelineData: DailyDrinkingPostResponse[] | [];
   friendDiscoveryProfile: FriendDiscoveryDisplayProfileResponse | null;
   drunkThought: string | null;
   friendsDrunkThoughts: DrunkThought[] | [];
@@ -68,7 +68,7 @@ interface AppContextType {
   notifications: NotificationItem[];
   unreadNotificationCount: number;
   sideQuestBoards: SideQuestBoard | null;
-  mapFriendPosts: YourMixPostData[] | [];
+  mapFriendPosts: DailyDrinkingPostResponse[] | [];
   storyUploadQueue: StoryUploadJob[];
   // Refresh Functions (Page 1)
   refreshUserData: () => Promise<void>;
@@ -177,17 +177,17 @@ export function AppProvider({ children }: AppProviderProps) {
   const [yourMixHasMore, setYourMixHasMore] = useState(true);
 
   // --- GLOBAL MIX PAGINATION STATE ---
-  const [globalMixData, setGlobalMixData] = useState<YourMixPostData[] | []>(
+  const [globalMixData, setGlobalMixData] = useState<DailyDrinkingPostResponse[] | []>(
     []
   );
   const [globalMixPage, setGlobalMixPage] = useState(1);
   const [globalMixHasMore, setGlobalMixHasMore] = useState(true);
 
-  const [mapFriendPosts, setMapFriendPosts] = useState<YourMixPostData[] | []>(
+  const [mapFriendPosts, setMapFriendPosts] = useState<DailyDrinkingPostResponse[] | []>(
     []
   );
   const [mixTimelineData, setMixTimelineData] = useState<
-    YourMixPostData[] | []
+    DailyDrinkingPostResponse[] | []
   >([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
@@ -699,9 +699,7 @@ export function AppProvider({ children }: AppProviderProps) {
     );
   }, [isSignedIn, getToken, withLoadingAndError, yourMixPage, yourMixHasMore]);
 
-  // ============================================
-  // PAGINATION LOGIC: GLOBAL MIX
-  // ============================================
+
   const refreshGlobalMixData = useCallback(async () => {
     if (!isSignedIn) return;
 
@@ -709,7 +707,6 @@ export function AppProvider({ children }: AppProviderProps) {
       async () => {
         const token = await getToken();
         if (!token) throw new Error("No auth token");
-        // Assuming your apiService has getGlobalMixData (or standard 'all posts' endpoint)
         return await apiService.getGlobalMixData(token, 1);
       },
       (data) => {

@@ -83,11 +83,10 @@ export default function MixTimeline() {
 
   const expandedItem = mixTimelineData.find((item) => item.id === expandedId);
 
-  // 2. NEW: Calculate image size whenever the expanded item changes
   useEffect(() => {
-    if (expandedItem?.imageUrl) {
+    if (expandedItem?.image_url) {
       Image.getSize(
-        expandedItem.imageUrl,
+        expandedItem.image_url,
         (width, height) => {
           if (width && height) {
             setCurrentAspectRatio(width / height);
@@ -192,14 +191,15 @@ export default function MixTimeline() {
                           elevation: 10,
                         }}
                       >
-                        <Image
-                          source={{ uri: item.imageUrl }}
+                        {item.image_url && ( <Image
+                          source={{ uri: item.image_url }}
                           style={{
                             width: imageWidth,
                             aspectRatio: 4 / 3,
                           }}
                           resizeMode="cover"
-                        />
+                        />)}
+                       
 
                         {/* Multi-layer gradient overlay */}
                         <View className="absolute inset-0">
@@ -216,12 +216,12 @@ export default function MixTimeline() {
                               className="bg-white/10 backdrop-blur-xl px-3 py-1.5 rounded-full border border-white/20"
                             >
                               <Text className="text-white text-xs font-bold">
-                                {getTimeAgo(item.loggedAt)}
+                                {getTimeAgo(item.logged_at)}
                               </Text>
                             </Animated.View>
 
                             {/* Buddies indicator */}
-                            {item.mentionedBuddies.length > 0 && (
+                            {item.mentioned_buddies && item.mentioned_buddies.length > 0 && (
                               <Animated.View
                                 entering={FadeIn.delay(delay + 350).duration(
                                   400
@@ -234,7 +234,7 @@ export default function MixTimeline() {
                                   color="white"
                                 />
                                 <Text className="text-white text-xs font-bold">
-                                  {item.mentionedBuddies.length}
+                                  {item.mentioned_buddies.length}
                                 </Text>
                               </Animated.View>
                             )}
