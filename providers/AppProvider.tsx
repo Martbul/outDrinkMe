@@ -17,13 +17,11 @@ import type {
   UserData,
   UpdateUserProfileReq,
   FriendDiscoveryDisplayProfileResponse,
-  YourMixPostData,
   DrunkThought,
   AlcoholCollectionByType,
   StoreItems,
   InventoryItems,
   NotificationItem,
-  SideQuestBoard,
   MinVersionResponse,
   UserStories,
   StoryUploadJob,
@@ -67,7 +65,6 @@ interface AppContextType {
   alcoholCollection: AlcoholCollectionByType | null;
   notifications: NotificationItem[];
   unreadNotificationCount: number;
-  sideQuestBoards: SideQuestBoard | null;
   mapFriendPosts: DailyDrinkingPostResponse[] | [];
   storyUploadQueue: StoryUploadJob[];
   // Refresh Functions (Page 1)
@@ -89,11 +86,9 @@ interface AppContextType {
   refreshUserInventory: () => Promise<void>;
   refreshStore: () => Promise<void>;
   refreshNotifications: (page?: number) => Promise<void>;
-  refreshSideQuestBoard: () => Promise<void>;
   refreshUserStories: () => Promise<void>;
   refreshAll: () => Promise<void>;
 
-  // --- Pagination Actions (Load Next Page) ---
   loadMoreYourMixData: () => Promise<void>;
   loadMoreGlobalMixData: () => Promise<void>;
 
@@ -200,9 +195,7 @@ export function AppProvider({ children }: AppProviderProps) {
     useState<AlcoholCollectionByType | null>(null);
   const [friendDiscoveryProfile, setFriendDiscoveryProfile] =
     useState<FriendDiscoveryDisplayProfileResponse | null>(null);
-  const [sideQuestBoards, setSideQuestBoards] = useState<SideQuestBoard | null>(
-    null
-  );
+ 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -839,18 +832,6 @@ export function AppProvider({ children }: AppProviderProps) {
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
 
-  const refreshSideQuestBoard = useCallback(async () => {
-    if (!isSignedIn) return;
-    await withLoadingAndError(
-      async () => {
-        const token = await getToken();
-        if (!token) throw new Error("No auth token");
-        return await apiService.getBoardQuests(token);
-      },
-      (data) => setSideQuestBoards(data),
-      "refresh_sidequest_board"
-    );
-  }, [isSignedIn, getToken, withLoadingAndError]);
 
   const refreshMapFriendPosts = useCallback(async () => {
     if (!isSignedIn) return;
@@ -917,7 +898,6 @@ export function AppProvider({ children }: AppProviderProps) {
         apiService.getStore(token),
         apiService.getAllNotifications(token, 1, 50),
         apiService.getUnreadNotificationsCount(token),
-        apiService.getBoardQuests(token),
         apiService.getMapFriendsPosts(token),
         apiService.getStories(token),
         apiService.getUserStories(token),
@@ -942,7 +922,6 @@ export function AppProvider({ children }: AppProviderProps) {
         storeResult,
         notifListResult,
         notifCountResult,
-        SideQuestBoardResult,
         mapFriendsPostsResult,
         storiesRes,
         userStoriesRes,
@@ -1081,15 +1060,7 @@ export function AppProvider({ children }: AppProviderProps) {
         setUnreadNotificationCount(notifCountResult.value.unread_count);
       }
 
-      if (SideQuestBoardResult.status === "fulfilled") {
-        setSideQuestBoards(SideQuestBoardResult.value);
-      } else {
-        setSideQuestBoards(null);
-        console.error(
-          "Failed to fetch sidequest board:",
-          SideQuestBoardResult.reason
-        );
-      }
+    
 
       if (mapFriendsPostsResult.status === "fulfilled") {
         setMapFriendPosts(mapFriendsPostsResult.value);
@@ -1529,7 +1500,6 @@ export function AppProvider({ children }: AppProviderProps) {
     alcoholCollection,
     notifications,
     unreadNotificationCount,
-    sideQuestBoards,
     mapFriendPosts,
     storyUploadQueue,
 
@@ -1554,7 +1524,6 @@ export function AppProvider({ children }: AppProviderProps) {
     refreshUserInventory,
     refreshStore,
     refreshNotifications,
-    refreshSideQuestBoard,
     refreshUserStories,
     refreshAll,
 

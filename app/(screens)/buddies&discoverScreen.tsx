@@ -12,7 +12,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  RefreshControl
+  RefreshControl,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -60,7 +60,7 @@ const BuddiesDiscoverScreen = () => {
           >
             <Text
               className={`text-sm font-black tracking-wider ${
-                activeTab === "friends" ? "text-white" : "text-white/30"
+                activeTab === "friends" ? "text-black" : "text-white/30"
               }`}
             >
               BUDDIES
@@ -74,7 +74,7 @@ const BuddiesDiscoverScreen = () => {
           >
             <Text
               className={`text-sm font-black tracking-wider ${
-                activeTab === "discovery" ? "text-white" : "text-white/30"
+                activeTab === "discovery" ? "text-black" : "text-white/30"
               }`}
             >
               DISCOVERY
@@ -182,7 +182,7 @@ const BuddiesDiscoverScreen = () => {
             No Results Found
           </Text>
           <Text className="text-white/50 text-sm text-center font-semibold">
-            No buddies found matching "{searchQueryFriend}"
+            No buddies found matching &#34;{searchQueryFriend}&#34;
           </Text>
         </View>
       );
@@ -241,24 +241,6 @@ const BuddiesDiscoverScreen = () => {
   const FriendsListHeaderComponent = useMemo(
     () => (
       <View>
-        {/* Header Card */}
-        {/* <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
-          <View className="flex-row justify-between items-center mb-2">
-            <View>
-              <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-2">
-                YOUR DRINKING
-              </Text>
-              <Text className="text-white text-[32px] font-black">Buddies</Text>
-            </View>
-            <View className="bg-orange-600/20 px-3.5 py-1.5 rounded-lg">
-              <Text className="text-orange-600 text-[11px] font-black tracking-wider">
-                {friends.length} TOTAL
-              </Text>
-            </View>
-          </View>
-        </View> */}
-
-        {/* Search Bar */}
         <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
           <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-3">
             SEARCH BUDDIES
@@ -290,7 +272,6 @@ const BuddiesDiscoverScreen = () => {
           </View>
         </View>
 
-        {/* Results Label */}
         {filteredFriends.length > 0 && (
           <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-3">
             {searchQueryFriend.trim()
@@ -306,28 +287,7 @@ const BuddiesDiscoverScreen = () => {
   const DiscoveryListHeaderComponent = useMemo(
     () => (
       <>
-        <View>
-          {/* Header Card */}
-          {/* <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
-            <View className="flex-row justify-between items-center mb-2">
-              <View>
-                <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-2">
-                  FIND BUDDIES
-                </Text>
-                <Text className="text-white text-[32px] font-black">
-                  Discovery
-                </Text>
-              </View>
-              <View className="bg-orange-600/20 px-3.5 py-1.5 rounded-lg">
-                <Text className="text-orange-600 text-[11px] font-black tracking-wider">
-                  {discovery.length} FOUND
-                </Text>
-              </View>
-            </View>
-          </View> */}
-
-          {/* Results Label */}
-        </View>
+        <View></View>
         <View className="mb-6 ">
           <TouchableOpacity
             className="bg-orange-600 rounded-2xl p-5 flex-row items-center justify-center"
@@ -393,9 +353,7 @@ const BuddiesDiscoverScreen = () => {
               onRefresh={handleFriendsRefresh}
               tintColor="#ff8c00"
               colors={["#ff8c00"]}
-                         progressBackgroundColor="#000000"
-
-
+              progressBackgroundColor="#000000"
             />
           }
         />
@@ -424,8 +382,7 @@ const BuddiesDiscoverScreen = () => {
               onRefresh={handleDiscoveryRefresh}
               tintColor="#ff8c00"
               colors={["#ff8c00"]}
-                          progressBackgroundColor="#000000"
-
+              progressBackgroundColor="#000000"
             />
           }
         />
