@@ -237,6 +237,13 @@ export function AppProvider({ children }: AppProviderProps) {
         process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
       const PRESET = process.env.EXPO_PUBLIC_CLOUDINARY_STORY_UPLOAD_PRESET;
 
+      Alert.alert(
+        "Debug Config",
+        `Cloud: ${CLOUDINARY_CLOUD_NAME}\nPreset: ${PRESET}\nToken: ${
+          token ? "Yes" : "No"
+        }`
+      );
+
       // 1. Validation
       if (!token || !CLOUDINARY_CLOUD_NAME || !PRESET) {
         console.error("Missing Config for upload");

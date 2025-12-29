@@ -236,6 +236,9 @@ jobs:
           GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4g -XX:+HeapDumpOnOutOfMemoryError"
           EXPO_PUBLIC_MAPBOX_TOKEN_PUBLIC: ${{ secrets.EXPO_PUBLIC_MAPBOX_TOKEN_PUBLIC }}
           NPM_CONFIG_LEGACY_PEER_DEPS: "true"
+          EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME: ${{ secrets.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME }}
+          EXPO_PUBLIC_CLOUDINARY_STORY_UPLOAD_PRESET: ${{ secrets.EXPO_PUBLIC_CLOUDINARY_STORY_UPLOAD_PRESET }}
+          EXPO_PUBLIC_CLOUDINARY_VIDEO_UPLOAD_PRESET: ${{ secrets.EXPO_PUBLIC_CLOUDINARY_VIDEO_UPLOAD_PRESET }}
 
       - name: Upload AAB artifact
         uses: actions/upload-artifact@v4
