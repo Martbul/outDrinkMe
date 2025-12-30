@@ -760,10 +760,10 @@ export default function MemoryCanvas() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <StatusBar hidden />
+      <StatusBar barStyle="light-content" />
+
       <View style={[StyleSheet.absoluteFill, { backgroundColor: "#f5f5f5" }]} />
 
-      {/* Grid */}
       {showGrid && !isUiHidden && (
         <View
           style={StyleSheet.absoluteFill}
@@ -890,7 +890,9 @@ export default function MemoryCanvas() {
                 <TouchableOpacity
                   key={c}
                   onPress={() => setDrawingColor(c)}
-                  className={`w-8 h-8 rounded-full border-2 ${drawingColor === c ? "border-white" : "border-transparent"}`}
+                  className={`w-8 h-8 rounded-full border-2 ${
+                    drawingColor === c ? "border-white" : "border-transparent"
+                  }`}
                   style={{ backgroundColor: c }}
                 />
               ))}
@@ -1551,8 +1553,8 @@ const DraggableItem = ({
     borderColor: isOverTrash.value
       ? "red"
       : isActive.value
-        ? "#ff8c00"
-        : "transparent",
+      ? "#ff8c00"
+      : "transparent",
     borderWidth: isActive.value || isOverTrash.value ? 2 : 0,
   }));
 

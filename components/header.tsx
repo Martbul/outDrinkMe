@@ -36,7 +36,7 @@ const Header = () => {
 
   return (
     <View className="bg-black" style={{ paddingTop: insets.top }}>
-      <View className="flex-row justify-between items-center px-4 py-2">
+      <View className="flex-row justify-between items-center px-4 pt-1">
         <View className="flex-row items-center flex-1">
           {userData?.imageUrl ? (
             <TouchableOpacity

@@ -588,7 +588,7 @@ const CalendarScreen = () => {
       className="flex-1 bg-black"
     >
       <Header />
-      <ScrollView className="flex-1 px-4 pt-6" contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}>
+      <ScrollView className="flex-1 px-4 pt-6" contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}  showsVerticalScrollIndicator={false}>
         <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
           <View className="flex-row justify-between items-center mb-2">
             <View>
