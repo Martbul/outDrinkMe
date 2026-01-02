@@ -1,5 +1,5 @@
 import { apiService } from "@/api";
-import NestedScreenHeader from "@/components/nestedScreenHeader";
+import {NestedScreenHeader} from "@/components/nestedScreenHeader";
 import PurchaseConfirmationModal, {
   GemPurchaseItem,
   StoreItem,
@@ -402,7 +402,7 @@ export default function StoreScreen() {
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
 
-      <NestedScreenHeader heading="Store" secondaryHeading="DRUNK" />
+      <NestedScreenHeader title="Store" eyebrow="DRUNK" />
 
       <ScrollView
         ref={scrollViewRef}
@@ -548,14 +548,13 @@ export default function StoreScreen() {
           </ScrollView>
         </View>
 
-
         {isAdLoaded && (
           <View className="mx-4 mt-4">
             <TouchableOpacity
               disabled={isWatchingAd}
               className="bg-orange-600/10 rounded-2xl p-5 border-2 border-orange-600/50"
               activeOpacity={0.8}
-              onPress={handleWatchAdPress} 
+              onPress={handleWatchAdPress}
             >
               <View
                 className="flex-row items-center justify-between"

@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FontAwesome5, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useApp } from "@/providers/AppProvider";
 import { CategoryRadarChart } from "@/components/radarChart";
-import NestedScreenHeader from "@/components/nestedScreenHeader";
+import {NestedScreenHeader} from "@/components/nestedScreenHeader";
 
 export default function StatsPage() {
   const insets = useSafeAreaInsets();
@@ -149,7 +149,7 @@ export default function StatsPage() {
 
   return (
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
-      <NestedScreenHeader heading="Stats" secondaryHeading="YOUR" />
+      <NestedScreenHeader title="Stats" eyebrow="YOUR" />
 
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}

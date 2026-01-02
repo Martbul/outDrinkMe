@@ -21,6 +21,7 @@ import { useApp } from "@/providers/AppProvider";
 import { categories, totalSlots } from "@/utils/collection";
 import { getRarityColor } from "@/utils/rarity";
 import { usePostHog } from "posthog-react-native";
+import { NestedScreenHeader } from "@/components/nestedScreenHeader";
 
 interface ModalState {
   visible: boolean;
@@ -517,7 +518,6 @@ export default function Collection() {
     }
   };
 
- 
   const handleScanForManual = async () => {
     if (permission?.granted) {
       setScanning(true);
@@ -586,9 +586,9 @@ export default function Collection() {
         "Camera permission is required to scan barcodes. Please enable it in your device settings.",
         [
           {
-            text: "Open Settings", 
+            text: "Open Settings",
             onPress: () => {
-              Linking.openSettings(); 
+              Linking.openSettings();
               closeModal();
             },
             style: "primary",
@@ -746,10 +746,14 @@ export default function Collection() {
                   <TouchableOpacity
                     key={index}
                     onPress={button.onPress}
-                    className={`${getButtonStyle(button.style)} py-4 rounded-xl items-center`}
+                    className={`${getButtonStyle(
+                      button.style
+                    )} py-4 rounded-xl items-center`}
                   >
                     <Text
-                      className={`${getButtonTextStyle(button.style)} text-base font-black tracking-widest`}
+                      className={`${getButtonTextStyle(
+                        button.style
+                      )} text-base font-black tracking-widest`}
                     >
                       {button.text}
                     </Text>
@@ -790,8 +794,8 @@ export default function Collection() {
             scanned
               ? undefined
               : currentScreen === "manual"
-                ? handleManualBarcodeScan
-                : handleBarCodeScanned
+              ? handleManualBarcodeScan
+              : handleBarCodeScanned
           }
         >
           {loading && (
@@ -842,10 +846,14 @@ export default function Collection() {
                   <TouchableOpacity
                     key={index}
                     onPress={button.onPress}
-                    className={`${getButtonStyle(button.style)} py-4 rounded-xl items-center`}
+                    className={`${getButtonStyle(
+                      button.style
+                    )} py-4 rounded-xl items-center`}
                   >
                     <Text
-                      className={`${getButtonTextStyle(button.style)} text-base font-black tracking-widest`}
+                      className={`${getButtonTextStyle(
+                        button.style
+                      )} text-base font-black tracking-widest`}
                     >
                       {button.text}
                     </Text>
@@ -861,6 +869,8 @@ export default function Collection() {
 
   return (
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
+      <NestedScreenHeader title="Alcohol" eyebrow="COLLECTION" />
+
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
         showsVerticalScrollIndicator={false}
@@ -870,8 +880,7 @@ export default function Collection() {
             onRefresh={onRefresh}
             tintColor="#EA580C"
             colors={["#EA580C"]}
-                        progressBackgroundColor="#000000"
-
+            progressBackgroundColor="#000000"
           />
         }
       >
@@ -1120,10 +1129,14 @@ export default function Collection() {
                   <TouchableOpacity
                     key={index}
                     onPress={button.onPress}
-                    className={`${getButtonStyle(button.style)} py-4 rounded-xl items-center`}
+                    className={`${getButtonStyle(
+                      button.style
+                    )} py-4 rounded-xl items-center`}
                   >
                     <Text
-                      className={`${getButtonTextStyle(button.style)} text-base font-black tracking-widest`}
+                      className={`${getButtonTextStyle(
+                        button.style
+                      )} text-base font-black tracking-widest`}
                     >
                       {button.text}
                     </Text>

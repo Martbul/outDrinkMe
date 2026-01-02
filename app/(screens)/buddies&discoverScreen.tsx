@@ -1,8 +1,3 @@
-import NestedScreenHeader from "@/components/nestedScreenHeader";
-import { useApp } from "@/providers/AppProvider";
-import type { UserData } from "@/types/api.types";
-import { FontAwesome6, Ionicons, Feather } from "@expo/vector-icons";
-import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -13,8 +8,149 @@ import {
   TouchableOpacity,
   View,
   RefreshControl,
+  StatusBar,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { FontAwesome6, Ionicons, Feather } from "@expo/vector-icons";
+import { router } from "expo-router";
+
+import { useApp } from "@/providers/AppProvider";
+import type { UserData } from "@/types/api.types";
+import { NestedScreenHeader } from "@/components/nestedScreenHeader";
+
+
+const CompactSegmentedControl = ({
+  selected,
+  onSelect,
+}: {
+  selected: "friends" | "discovery";
+  onSelect: (val: "friends" | "discovery") => void;
+}) => {
+  return (
+    <View className="mx-12 mb-4 mt-4 h-10 bg-[#1A1A1A] rounded-full border border-white/[0.1] p-1 flex-row relative">
+      <TouchableOpacity
+        onPress={() => onSelect("friends")}
+        className={`flex-1 items-center justify-center rounded-full flex-row ${
+          selected === "friends" ? "bg-orange-600" : "bg-transparent"
+        }`}
+      >
+        <Ionicons
+          name="people"
+          size={12}
+          color={selected === "friends" ? "black" : "#666"}
+          style={{ marginRight: 4 }}
+        />
+        <Text
+          className={`text-[11px] font-black tracking-wide ${
+            selected === "friends" ? "text-black" : "text-white/40"
+          }`}
+        >
+          BUDDIES
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        onPress={() => onSelect("discovery")}
+        className={`flex-1 items-center justify-center rounded-full flex-row ${
+          selected === "discovery" ? "bg-orange-600" : "bg-transparent"
+        }`}
+      >
+        <Ionicons
+          name="compass"
+          size={12}
+          color={selected === "discovery" ? "black" : "#666"}
+          style={{ marginRight: 4 }}
+        />
+        <Text
+          className={`text-[11px] font-black tracking-wide ${
+            selected === "discovery" ? "text-black" : "text-white/40"
+          }`}
+        >
+          DISCOVERY
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+const SearchBar = ({ value, onChangeText, placeholder, onClear }: any) => (
+  <View className="flex-row items-center bg-[#1A1A1A] border border-white/10 rounded-full px-4 h-12 mb-4">
+    <Ionicons name="search" size={20} color="#666" />
+    <TextInput
+      value={value}
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      placeholderTextColor="#666"
+      className="flex-1 ml-3 text-base font-bold text-white"
+      autoCapitalize="none"
+      autoCorrect={false}
+    />
+    {value.length > 0 && (
+      <TouchableOpacity
+        onPress={onClear}
+        className="bg-white/10 rounded-full p-1"
+      >
+        <Ionicons name="close" size={14} color="white" />
+      </TouchableOpacity>
+    )}
+  </View>
+);
+
+const UserRowCard = ({
+  item,
+  actionIcon,
+  onPress,
+  onActionPress,
+}: {
+  item: UserData;
+  actionIcon?: any;
+  onPress: () => void;
+  onActionPress?: () => void;
+}) => {
+  return (
+    <TouchableOpacity
+      activeOpacity={0.7}
+      onPress={onPress}
+      className="bg-[#121212] rounded-3xl p-4 border border-white/[0.08] flex-row items-center mb-3"
+    >
+      {/* Avatar */}
+      <View className="w-12 h-12 rounded-full bg-[#1A1A1A] border border-white/10 items-center justify-center mr-4 overflow-hidden">
+        {item.imageUrl ? (
+          <Image source={{ uri: item.imageUrl }} className="w-full h-full" />
+        ) : (
+          <Text className="text-white/60 text-lg font-black">
+            {item.username?.[0]?.toUpperCase() || "?"}
+          </Text>
+        )}
+      </View>
+
+      {/* Info */}
+      <View className="flex-1">
+        <Text className="text-white text-base font-black mb-0.5">
+          {item.username || "Unknown"}
+        </Text>
+        {(item.firstName || item.lastName) && (
+          <Text className="text-white/40 text-xs font-bold tracking-wide">
+            {[item.firstName, item.lastName].filter(Boolean).join(" ")}
+          </Text>
+        )}
+      </View>
+
+      {onActionPress ? (
+        <TouchableOpacity
+          onPress={onActionPress}
+          className="w-10 h-10 rounded-xl bg-orange-600/10 items-center justify-center border border-orange-600/30"
+        >
+          {actionIcon}
+        </TouchableOpacity>
+      ) : (
+        <View className="w-8 h-8 rounded-full bg-white/[0.05] items-center justify-center">
+          <Feather name="chevron-right" size={16} color="#666" />
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+};
 
 const BuddiesDiscoverScreen = () => {
   const {
@@ -28,19 +164,14 @@ const BuddiesDiscoverScreen = () => {
   } = useApp();
 
   const [searchQueryFriend, setSearchQueryFriend] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("friends");
+  const [activeTab, setActiveTab] = useState<"friends" | "discovery">(
+    "friends"
+  );
   const insets = useSafeAreaInsets();
 
   const filteredFriends = useMemo(() => {
-    if (!Array.isArray(friends)) {
-      return [];
-    }
-
-    if (!searchQueryFriend.trim()) {
-      return friends;
-    }
-
+    if (!Array.isArray(friends)) return [];
+    if (!searchQueryFriend.trim()) return friends;
     return friends.filter((item) =>
       (item.username || "")
         .toLowerCase()
@@ -48,345 +179,163 @@ const BuddiesDiscoverScreen = () => {
     );
   }, [friends, searchQueryFriend]);
 
-  const TabSelection = () => {
-    return (
-      <View className="px-4 pt-1 pb-4">
-        <View className="bg-white/[0.03] rounded-2xl p-1.5 flex-row border border-white/[0.08]">
-          <TouchableOpacity
-            className={`flex-1 py-3 rounded-xl items-center ${
-              activeTab === "friends" ? "bg-orange-600" : ""
-            }`}
-            onPress={() => setActiveTab("friends")}
-          >
-            <Text
-              className={`text-sm font-black tracking-wider ${
-                activeTab === "friends" ? "text-black" : "text-white/30"
-              }`}
-            >
-              BUDDIES
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            className={`flex-1 py-3 rounded-xl items-center ${
-              activeTab === "discovery" ? "bg-orange-600" : ""
-            }`}
-            onPress={() => setActiveTab("discovery")}
-          >
-            <Text
-              className={`text-sm font-black tracking-wider ${
-                activeTab === "discovery" ? "text-black" : "text-white/30"
-              }`}
-            >
-              DISCOVERY
-            </Text>
-          </TouchableOpacity>
+  const handleRefresh = async () => {
+    if (userData?.id) {
+      activeTab === "friends" ? refreshFriends() : refreshDiscovery();
+    }
+  };
+
+  const renderFriendItem = ({ item }: { item: UserData }) => (
+    <UserRowCard
+      item={item}
+      onPress={() => router.push(`/(screens)/userInfo?userId=${item.id}`)}
+    />
+  );
+
+  const renderDiscoveryItem = ({ item }: { item: UserData }) => (
+    <UserRowCard
+      item={item}
+      onPress={() => router.push(`/(screens)/userInfo?userId=${item.id}`)}
+      onActionPress={() => addFriend(item.clerkId)}
+      actionIcon={<Ionicons name="person-add" size={18} color="#EA580C" />}
+    />
+  );
+
+  const ListEmptyComponent = () => {
+    if (isLoading) {
+      return (
+        <View className="py-20 items-center">
+          <ActivityIndicator size="large" color="#EA580C" />
         </View>
+      );
+    }
+
+    const isSearch = searchQueryFriend.trim().length > 0;
+    const iconName =
+      activeTab === "friends"
+        ? isSearch
+          ? "sad-tear"
+          : "people-outline"
+        : "compass-outline";
+    const title =
+      activeTab === "friends"
+        ? isSearch
+          ? "No Results"
+          : "No Buddies Yet"
+        : "No Suggestions";
+    const subtitle =
+      activeTab === "friends"
+        ? isSearch
+          ? `No buddies found matching "${searchQueryFriend}"`
+          : "Who's the one who can bring you back to drinking?"
+        : "Seems there are no drinkers nearby.";
+
+    return (
+      <View className="items-center justify-center pt-20 px-10 opacity-50">
+        <View className="w-20 h-20 bg-white/5 rounded-full items-center justify-center mb-4 border border-white/10">
+          {activeTab === "friends" && isSearch ? (
+            <FontAwesome6 name="sad-tear" size={32} color="white" />
+          ) : (
+            <Ionicons name={iconName as any} size={32} color="white" />
+          )}
+        </View>
+        <Text className="text-white text-lg font-black">{title}</Text>
+        <Text className="text-white/60 text-center text-sm mt-2 font-medium">
+          {subtitle}
+        </Text>
       </View>
     );
   };
 
-  const renderFriendItem = ({ item }: { item: UserData }) => {
-    return (
+  const DiscoveryHeader = () => (
+    <View className="mb-4 mt-2">
       <TouchableOpacity
-        onPress={() => router.push(`/(screens)/userInfo?userId=${item.id}`)}
-        className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08] flex-row items-center mb-3"
+        activeOpacity={0.8}
+        className="bg-orange-600 rounded-3xl p-5 flex-row items-center justify-center shadow-lg shadow-orange-600/20 mb-6"
+        onPress={() => router.push(`/(screens)/searchDrinkers`)}
       >
-        <View className="w-14 h-14 rounded-full bg-orange-600 items-center justify-center mr-4">
-          {item.imageUrl ? (
-            <Image
-              source={{ uri: item.imageUrl }}
-              className="w-full h-full rounded-full"
-            />
-          ) : (
-            <Text className="text-black text-2xl font-black">
-              {item.username?.[0]?.toUpperCase() || "?"}
-            </Text>
-          )}
-        </View>
-        <View className="flex-1">
-          <Text className="text-white text-lg font-bold mb-1">
-            {item.username || "Unknown User"}
-          </Text>
-          {(item.firstName || item.lastName) && (
-            <Text className="text-white/50 text-sm font-semibold">
-              {[item.firstName, item.lastName].filter(Boolean).join(" ")}
-            </Text>
-          )}
-        </View>
-        <View className="w-8 h-8 rounded-lg bg-white/[0.05] items-center justify-center">
-          <Feather name="chevron-right" size={20} color="#999999" />
-        </View>
+        <Ionicons name="search" size={20} color="black" />
+        <Text className="text-black text-base font-black uppercase tracking-wider ml-2">
+          Find New Drinkers
+        </Text>
       </TouchableOpacity>
-    );
-  };
 
-  const renderDiscoveryItem = ({ item }: { item: UserData }) => {
-    return (
-      <TouchableOpacity
-        onPress={() => router.push(`/(screens)/userInfo?userId=${item.id}`)}
-        className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08] flex-row items-center mb-3"
-      >
-        <View className="w-14 h-14 rounded-full bg-orange-600 items-center justify-center mr-4">
-          {item.imageUrl ? (
-            <Image
-              source={{ uri: item.imageUrl }}
-              className="w-full h-full rounded-full"
-            />
-          ) : (
-            <Text className="text-black text-2xl font-black">
-              {item.username?.[0]?.toUpperCase() || "?"}
-            </Text>
-          )}
-        </View>
-        <View className="flex-1">
-          <Text className="text-white text-lg font-bold mb-1">
-            {item.username || "Unknown User"}
-          </Text>
-          {(item.firstName || item.lastName) && (
-            <Text className="text-white/50 text-sm font-semibold">
-              {[item.firstName, item.lastName].filter(Boolean).join(" ")}
-            </Text>
-          )}
-        </View>
-        <TouchableOpacity
-          onPress={() => {
-            addFriend(item.clerkId);
-          }}
-          className="w-10 h-10 rounded-xl bg-orange-600/20 items-center justify-center border border-orange-600/50"
-        >
-          <Ionicons name="person-add" size={20} color="#ff8c00" />
-        </TouchableOpacity>
-      </TouchableOpacity>
-    );
-  };
-
-  const renderEmptyFriendComponent = () => {
-    if (isLoading) {
-      return (
-        <View className="flex-1 items-center justify-center py-16">
-          <ActivityIndicator size="large" color="#ff8c00" />
-          <Text className="text-white/50 mt-4 text-sm font-semibold">
-            Loading buddies...
-          </Text>
-        </View>
-      );
-    }
-
-    if (searchQueryFriend.trim()) {
-      return (
-        <View className="bg-white/[0.03] rounded-2xl p-8 border border-white/[0.08] items-center">
-          <View className="w-20 h-20 rounded-2xl bg-orange-600/20 items-center justify-center mb-4">
-            <FontAwesome6 name="sad-tear" size={40} color="#ff8c00" />
-          </View>
-          <Text className="text-white text-xl font-black mb-2">
-            No Results Found
-          </Text>
-          <Text className="text-white/50 text-sm text-center font-semibold">
-            No buddies found matching &#34;{searchQueryFriend}&#34;
-          </Text>
-        </View>
-      );
-    }
-
-    if (friends.length === 0) {
-      return (
-        <View className="bg-white/[0.03] rounded-2xl p-8 border border-white/[0.08] items-center">
-          <View className="w-24 h-24 rounded-2xl bg-orange-600/20 items-center justify-center mb-4">
-            <Ionicons name="people-outline" size={48} color="#ff8c00" />
-          </View>
-          <Text className="text-white text-xl font-black mb-2">
-            No buddies Yet
-          </Text>
-          <Text className="text-white/50 text-sm text-center font-semibold px-4">
-            Who&apos;s the one who can bring you back to drinking?
-          </Text>
-        </View>
-      );
-    }
-
-    return null;
-  };
-
-  const renderEmptyDiscoveryComponent = () => {
-    if (isLoading) {
-      return (
-        <View className="flex-1 items-center justify-center py-16">
-          <ActivityIndicator size="large" color="#ff8c00" />
-          <Text className="text-white/50 mt-4 text-sm font-semibold">
-            Loading discovery...
-          </Text>
-        </View>
-      );
-    }
-
-    if (discovery.length === 0) {
-      return (
-        <View className="bg-white/[0.03] rounded-2xl p-8 border border-white/[0.08] items-center">
-          <View className="w-24 h-24 rounded-2xl bg-orange-600/20 items-center justify-center mb-4">
-            <Ionicons name="compass-outline" size={48} color="#ff8c00" />
-          </View>
-          <Text className="text-white text-xl font-black mb-2">
-            No Suggestions
-          </Text>
-          <Text className="text-white/50 text-sm text-center font-semibold px-4">
-            Seems there are no drinkers at the moment
-          </Text>
-        </View>
-      );
-    }
-
-    return null;
-  };
-
-  const FriendsListHeaderComponent = useMemo(
-    () => (
-      <View>
-        <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
-          <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-3">
-            SEARCH BUDDIES
-          </Text>
-          <View className="bg-white/[0.05] rounded-xl px-4 py-3 flex-row items-center border border-white/[0.08]">
-            <Ionicons name="search" size={20} color="#ff8c00" />
-            <TextInput
-              value={searchQueryFriend}
-              onChangeText={setSearchQueryFriend}
-              placeholder="Type to search..."
-              placeholderTextColor="#666666"
-              className="flex-1 text-white text-base ml-3 font-semibold"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            {(loading || searchQueryFriend.length > 0) && (
-              <View className="ml-2">
-                {loading ? (
-                  <ActivityIndicator size="small" color="#ff8c00" />
-                ) : (
-                  <TouchableOpacity onPress={() => setSearchQueryFriend("")}>
-                    <View className="w-6 h-6 rounded-full bg-white/[0.05] items-center justify-center">
-                      <Text className="text-white/40 text-sm">✕</Text>
-                    </View>
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
-          </View>
-        </View>
-
-        {filteredFriends.length > 0 && (
-          <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-3">
-            {searchQueryFriend.trim()
-              ? `RESULTS (${filteredFriends.length})`
-              : `ALL BUDDIES (${filteredFriends.length})`}
-          </Text>
-        )}
-      </View>
-    ),
-    [searchQueryFriend, loading, friends.length, filteredFriends.length]
+      {discovery.length > 0 && (
+        <Text className="text-white/40 text-[10px] font-black tracking-[3px] uppercase mb-3 pl-2">
+          SUGGESTED ({discovery.length})
+        </Text>
+      )}
+    </View>
   );
-
-  const DiscoveryListHeaderComponent = useMemo(
-    () => (
-      <>
-        <View></View>
-        <View className="mb-6 ">
-          <TouchableOpacity
-            className="bg-orange-600 rounded-2xl p-5 flex-row items-center justify-center"
-            onPress={() => router.push(`/(screens)/searchDrinkers`)}
-          >
-            <Ionicons name="search" size={22} color="black" />
-            <Text className="text-black text-base font-black uppercase tracking-wider ml-3">
-              Search Drinkers
-            </Text>
-          </TouchableOpacity>
-        </View>
-        {discovery.length > 0 && (
-          <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-1">
-            SUGGESTED DRINKERS ({discovery.length})
-          </Text>
-        )}
-      </>
-    ),
-    [discovery.length]
-  );
-
-  const handleFriendsRefresh = async () => {
-    if (userData?.id) {
-      refreshFriends();
-    }
-  };
-
-  const handleDiscoveryRefresh = async () => {
-    if (userData?.id) {
-      refreshDiscovery();
-    }
-  };
 
   return (
-    <View
-      className="flex-1 bg-black"
-      style={{ paddingBottom: insets.bottom + 40 }}
-    >
-      <NestedScreenHeader heading="Buddies" secondaryHeading="ALCOHOLIC" />
+    <View className="flex-1 bg-black">
+      <StatusBar barStyle="light-content" />
 
-      <TabSelection />
+     
+      <View className="flex-1" style={{ paddingTop: insets.top }}>
+        <NestedScreenHeader
+          eyebrow="DRUNK"
+          title={activeTab === "friends" ? "Your Buddies" : "Discover"}
+          showBack={true}
+          rightAction={
+            activeTab === "friends" ? (
+              <View className="bg-white/10 px-3 py-1 rounded-lg border border-white/10">
+                <Text className="text-white font-bold text-xs">
+                  {filteredFriends.length}
+                </Text>
+              </View>
+            ) : null
+          }
+        />
 
-      {activeTab === "friends" && (
+        <View className="px-4 z-10 bg-black pb-2 border-b border-white/[0.05]">
+          <CompactSegmentedControl
+            selected={activeTab}
+            onSelect={setActiveTab}
+          />
+
+          {activeTab === "friends" && (
+            <SearchBar
+              value={searchQueryFriend}
+              onChangeText={setSearchQueryFriend}
+              onClear={() => setSearchQueryFriend("")}
+              placeholder="Search your list..."
+            />
+          )}
+        </View>
+
         <FlatList
-          data={filteredFriends}
+          data={activeTab === "friends" ? filteredFriends : discovery}
           keyExtractor={(item) =>
             item.id || item.username || Math.random().toString()
           }
           contentContainerStyle={{
             paddingHorizontal: 16,
-            paddingTop: 0,
-            paddingBottom: 48,
+            paddingTop: 10,
+            paddingBottom: 100,
           }}
-          ListHeaderComponent={FriendsListHeaderComponent}
-          renderItem={renderFriendItem}
-          ListEmptyComponent={renderEmptyFriendComponent}
+          ListHeaderComponent={
+            activeTab === "discovery" ? DiscoveryHeader : null
+          }
+          renderItem={
+            activeTab === "friends" ? renderFriendItem : renderDiscoveryItem
+          }
+          ListEmptyComponent={ListEmptyComponent}
           refreshing={isLoading}
-          onRefresh={handleFriendsRefresh}
+          onRefresh={handleRefresh}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
               refreshing={isLoading}
-              onRefresh={handleFriendsRefresh}
-              tintColor="#ff8c00"
-              colors={["#ff8c00"]}
-              progressBackgroundColor="#000000"
+              onRefresh={handleRefresh}
+              tintColor="#EA580C"
+              colors={["#EA580C"]}
+              progressBackgroundColor="#1A1A1A"
             />
           }
         />
-      )}
-
-      {activeTab === "discovery" && (
-        <FlatList
-          data={discovery}
-          keyExtractor={(item) =>
-            item.id || item.username || Math.random().toString()
-          }
-          contentContainerStyle={{
-            paddingHorizontal: 16,
-            paddingTop: 0,
-            paddingBottom: 48,
-          }}
-          ListHeaderComponent={DiscoveryListHeaderComponent}
-          renderItem={renderDiscoveryItem}
-          ListEmptyComponent={renderEmptyDiscoveryComponent}
-          refreshing={isLoading}
-          onRefresh={handleDiscoveryRefresh}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={isLoading}
-              onRefresh={handleDiscoveryRefresh}
-              tintColor="#ff8c00"
-              colors={["#ff8c00"]}
-              progressBackgroundColor="#000000"
-            />
-          }
-        />
-      )}
+      </View>
     </View>
   );
 };

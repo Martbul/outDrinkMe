@@ -78,7 +78,6 @@ export default function DrinkingMap({ variant = "preview" }: DrinkingMapProps) {
     );
   }, [mapFriendPosts]);
 
-  // --- 3. DISPERSION LOGIC ---
   const dispersedPosts = useMemo<DispersedPost[]>(() => {
     if (validPosts.length === 0) return [];
 
@@ -454,11 +453,9 @@ const PostMarker = React.memo(
       <MapboxGL.PointAnnotation
         ref={annotationRef}
         id={post.id}
-        // Use the calculated VISUAL coordinates
         coordinate={[post.visualLng, post.visualLat]}
         anchor={{ x: 0.5, y: 1 }}
         onSelected={() => isInteractive && onSelect(post)}
-        // Bring selected pin to front
         style={{ zIndex: isSelected ? 100 : 1 }}
       >
         <View style={[styles.markerContainer, { transform: [{ scale }] }]}>

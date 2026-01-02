@@ -16,7 +16,7 @@ import { UserCard } from "@/components/userCard";
 import { UserData } from "@/types/api.types";
 import { onBackPress } from "@/utils/navigation";
 import Header from "@/components/header";
-import NestedScreenHeader from "@/components/nestedScreenHeader";
+import {NestedScreenHeader} from "@/components/nestedScreenHeader";
 
 export default function AddByUsername() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -106,7 +106,7 @@ export default function AddByUsername() {
       className="flex-1 bg-black"
       style={{ paddingBottom: insets.bottom + 40 }}
     >
-      <NestedScreenHeader heading="Drinkers" secondaryHeading="SEARCH" />
+      <NestedScreenHeader title="Drinkers" eyebrow="SEARCH" />
       <ScrollView className="flex-1 px-4 pt-6">
         <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
           <View className="bg-white/[0.05] rounded-xl px-4 py-3 flex-row items-center border border-white/[0.08]">

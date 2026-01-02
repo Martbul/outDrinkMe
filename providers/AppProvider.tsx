@@ -1206,28 +1206,6 @@ export function AppProvider({ children }: AppProviderProps) {
     [isSignedIn, getToken, refreshStories]
   );
 
-  // const markStoryAsSeen = useCallback(
-  //   async (storyId: string) => {
-  //     if (!isSignedIn) return;
-
-  //     // Prevent redundant calls if already seen locally
-  //     const story = stories.find((s) => s.id === storyId);
-  //     if (story?.isSeen) return;
-
-  //     // Optimistic Update
-  //     setStories((prev) =>
-  //       prev.map((s) => (s.id === storyId ? { ...s, isSeen: true } : s))
-  //     );
-
-  //     const token = await getToken();
-  //     if (token) {
-  //       // Fire and forget
-  //       apiService.markStoryAsSeen(token, storyId, "view");
-  //     }
-  //   },
-  //   [isSignedIn, getToken, stories]
-  // );
-
   const markStoryAsSeen = useCallback(
     async (storyId: string) => {
       if (!isSignedIn) return;

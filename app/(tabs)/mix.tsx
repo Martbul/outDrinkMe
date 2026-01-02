@@ -35,14 +35,13 @@ import type { DailyDrinkingPostResponse } from "@/types/api.types";
 
 const PRIMARY_ORANGE = "#EA580C";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const GAP = 2;
-const SCREEN_PADDING = 16;
+const GAP = 4;
+const SCREEN_PADDING = 4;
 const COLUMN_WIDTH = (SCREEN_WIDTH - SCREEN_PADDING * 2 - GAP) / 2;
 
 const MAX_CARD_HEIGHT = COLUMN_WIDTH * 1.6;
 const MIN_CARD_HEIGHT = COLUMN_WIDTH * 0.8;
 
-// --- Helper Functions ---
 const getInitialHeight = (id: string) => {
   const hash = id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
   const range = MAX_CARD_HEIGHT - MIN_CARD_HEIGHT;
@@ -81,7 +80,6 @@ const CompactSegmentedControl = ({
         </View>
       </TouchableOpacity>
 
-      {/* Option 2: Global */}
       <TouchableOpacity
         onPress={() => onSelect("global")}
         className={`flex-1 items-center justify-center rounded-full ${
@@ -119,7 +117,6 @@ const YourMixCard = React.memo(({ item, onCardPress }: YourMixCardProps) => {
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const [isAnimating, setIsAnimating] = useState(false);
 
-  // Dynamic Height Calculation
   const cardHeight = useMemo(() => {
     if (item.image_width && item.image_height) {
       const aspectRatio = item.image_height / item.image_width;
@@ -245,7 +242,6 @@ const YourMixCard = React.memo(({ item, onCardPress }: YourMixCardProps) => {
         />
       </TouchableOpacity>
 
-      {/* Bottom Info */}
       <View className="absolute bottom-3 left-3 right-3 flex-row items-end justify-between">
         <TouchableOpacity
           onPress={() =>
@@ -261,7 +257,6 @@ const YourMixCard = React.memo(({ item, onCardPress }: YourMixCardProps) => {
           )}
         </TouchableOpacity>
 
-        {/* Buddies Count Pill */}
         {hasBuddies && (
           <View className="flex-row items-center bg-white/[0.1] px-2 py-1 rounded-full border border-white/[0.1]">
             <Ionicons
@@ -279,7 +274,6 @@ const YourMixCard = React.memo(({ item, onCardPress }: YourMixCardProps) => {
     </Animated.View>
   );
 
-  // --- BACK FACE ---
   const renderBack = () => (
     <Animated.View
       style={{
@@ -293,7 +287,6 @@ const YourMixCard = React.memo(({ item, onCardPress }: YourMixCardProps) => {
       }}
       className="bg-[#1A1A1A] w-full h-full p-3 justify-between border border-white/[0.08] rounded-3xl"
     >
-      {/* Header Back */}
       <View className="flex-row justify-between items-center mb-2">
         <Text className="text-white/40 text-[10px] font-black tracking-widest uppercase">
           DETAILS
@@ -308,7 +301,6 @@ const YourMixCard = React.memo(({ item, onCardPress }: YourMixCardProps) => {
         </TouchableOpacity>
       </View>
 
-      {/* Buddies List */}
       <View className="flex-1 items-center justify-center">
         {hasBuddies ? (
           <View className="items-center">
@@ -395,14 +387,12 @@ const MixScreen = () => {
   const [isPaginating, setIsPaginating] = useState(false);
   const { openPostId } = useLocalSearchParams();
 
-  // Modal State
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [expandedItem, setExpandedItem] = useState<
     DailyDrinkingPostResponse | undefined
   >(undefined);
   const [currentAspectRatio, setCurrentAspectRatio] = useState(4 / 3);
 
-  // --- Effects ---
   useEffect(() => {
     const allPosts = [...yourMixData, ...globalMixData];
     if (openPostId && allPosts.length > 0) {
@@ -528,7 +518,6 @@ const MixScreen = () => {
         showsVerticalScrollIndicator={false}
       />
 
-      {/* --- Detail Modal --- */}
       <MixPostModal
         expandedItem={expandedItem}
         expandedId={expandedId}

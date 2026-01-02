@@ -9,6 +9,7 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   ImageSourcePropType,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
@@ -19,6 +20,7 @@ interface SwipeableSheetProps {
   onClose: () => void;
   coverImage?: string | ImageSourcePropType;
   children: React.ReactNode;
+  fullScreen?: boolean; // New prop
 }
 
 export const SwipeableSheet = ({
@@ -26,6 +28,7 @@ export const SwipeableSheet = ({
   onClose,
   coverImage,
   children,
+  fullScreen = true, 
 }: SwipeableSheetProps) => {
   const panY = useRef(new Animated.Value(0)).current;
   const scrollY = useRef(0);
@@ -66,20 +69,39 @@ export const SwipeableSheet = ({
     <Modal
       visible={visible}
       animationType="slide"
-      presentationStyle="pageSheet"
+      presentationStyle={fullScreen ? "pageSheet" : "overFullScreen"}
+      transparent={!fullScreen}
       onRequestClose={onClose}
     >
-      <View className="flex-1 bg-black">
+      <View
+        className={
+          fullScreen ? "flex-1 bg-black" : "flex-1 bg-black/60 justify-end"
+        }
+      >
+        {!fullScreen && (
+          <TouchableWithoutFeedback onPress={onClose}>
+            <View className="absolute inset-0" />
+          </TouchableWithoutFeedback>
+        )}
+
         <Animated.View
-          style={{ flex: 1, transform: [{ translateY: panY }] }}
+          style={[
+            { transform: [{ translateY: panY }] },
+            !fullScreen && {
+              height: "60%",
+              backgroundColor: "black",
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              overflow: "hidden",
+            },
+            fullScreen && { flex: 1 },
+          ]}
           {...panResponder.panHandlers}
         >
-          {/* Drag Handle */}
           <View className="absolute top-2 left-0 right-0 items-center z-50">
             <View className="w-12 h-1.5 bg-white/30 rounded-full" />
           </View>
 
-          {/* Close Button (Floating) */}
           <TouchableOpacity
             onPress={onClose}
             className="absolute top-4 left-4 z-50 w-10 h-10 bg-black/60 backdrop-blur-md rounded-full items-center justify-center border border-white/10"

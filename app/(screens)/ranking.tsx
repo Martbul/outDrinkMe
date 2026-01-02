@@ -15,7 +15,7 @@ import { MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 import { useApp } from "@/providers/AppProvider";
 import type { LeaderboardEntry } from "@/types/api.types";
 import { LinearGradient } from "expo-linear-gradient";
-import NestedScreenHeader from "@/components/nestedScreenHeader";
+import {NestedScreenHeader} from "@/components/nestedScreenHeader";
 import { getCoefInfo } from "@/utils/levels";
 import { useRouter } from "expo-router";
 
@@ -279,10 +279,7 @@ export default function Leaderboard() {
 
   return (
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top + 6 }}>
-      <NestedScreenHeader
-        heading="Ranking"
-        secondaryHeading="BIGGEST ALCOHOLIC"
-      />
+      <NestedScreenHeader title="Ranking" eyebrow="BIGGEST ALCOHOLIC" />
       <TabSelection />
 
       {isLoading && !refreshing && entries.length === 0 ? (
@@ -303,8 +300,7 @@ export default function Leaderboard() {
               onRefresh={onRefresh}
               tintColor="#ff8c00"
               colors={["#ff8c00"]}
-                          progressBackgroundColor="#000000"
-
+              progressBackgroundColor="#000000"
             />
           }
           ListEmptyComponent={

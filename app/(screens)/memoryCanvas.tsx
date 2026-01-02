@@ -762,7 +762,7 @@ export default function MemoryCanvas() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar barStyle="light-content" />
 
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: "#f5f5f5" }]} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: "#000000ff" }]} />
 
       {showGrid && !isUiHidden && (
         <View

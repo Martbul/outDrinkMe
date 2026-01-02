@@ -26,7 +26,6 @@ import * as MediaLibrary from "expo-media-library";
 import * as FileSystem from "expo-file-system/legacy";
 
 import { useFunc } from "@/providers/FunctionProvider";
-// Ensure this path matches where you saved the component
 import { DeleteModal } from "@/components/delete_modal"; 
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");

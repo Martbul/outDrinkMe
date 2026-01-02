@@ -459,97 +459,6 @@ export interface NotificationItem {
   action_url?: string;
 }
 
-export interface SubmitQuestCompletionRequest {
-  sideQuestId: string;
-  proofImageUrl: string; // Should be uploaded to Cloudinary first
-  proofText?: string;
-}
-
-export interface SubmitQuestCompletionResponse {
-  completion: SideQuestCompletion;
-  message: string;
-}
-
-export interface ReviewSubmissionResponse {
-  completion: SideQuestCompletion;
-  payoutStatus?: PayoutStatus;
-  message: string;
-}
-
-export interface GetQuestsResponse {
-  quests: SideQuest[];
-  total: number;
-}
-
-export interface GetSubmissionsResponse {
-  submissions: SideQuestCompletion[];
-  total: number;
-}
-
-export type QuestStatus = "OPEN" | "COMPLETED" | "EXPIRED" | "CANCELLED";
-export type SubmissionStatus = "PENDING" | "APPROVED" | "REJECTED";
-export type PayoutStatus = "PENDING" | "SUCCESS" | "FAILED";
-
-export interface SideQuest {
-  id: string;
-  issuerId: string;
-  issuerName?: string;
-  issuerImage?: string;
-  title: string;
-  description: string;
-  rewardAmount: number;
-  isLocked: boolean;
-  isPublic: boolean;
-  isAnonymous: boolean;
-  status: QuestStatus;
-  expiresAt: string;
-  createdAt: string;
-  submissionCount?: number;
-}
-
-export interface SideQuestCompletion {
-  id: string;
-  sideQuestId: string;
-  questTitle?: string;
-  completerId: string;
-  completerName?: string;
-  completerImage?: string;
-  proofImageUrl: string;
-  proofText?: string;
-  status: SubmissionStatus;
-  rejectionReason?: string;
-  payoutStatus: PayoutStatus;
-  paidAt?: string;
-  createdAt: string;
-  rewardAmount?: number;
-}
-
-export interface CreateSideQuestReq {
-  title: string;
-  description: string;
-  rewardAmount: number;
-  durationHours: number;
-  isPublic: boolean;
-  isAnonymous: boolean;
-}
-
-export interface SubmitQuestProofReq {
-  proofImageUrl: string;
-  proofText?: string;
-}
-
-export interface ReviewSubmissionRequest {
-  completionId: string;
-  approved: boolean;
-  rejectionReason?: string;
-}
-
-export type SideQuestBoard = {
-  [boardType: string]: SideQuest[];
-};
-
-// types/api.types.ts
-
 export interface CreateGameResponse {
   sessionId: string;
   wsUrl: string;
@@ -671,22 +580,23 @@ export interface StoryUploadJob {
   };
 }
 
-  export interface StorySegment {
-    id: string;
-    video_url: string;
-    video_width: number;
-    video_height: number;
-    video_duration: number;
-    relate_count: number;
-    has_related: boolean;
-    is_seen: boolean;
-    created_at: string; 
-  }
+export interface StorySegment {
+  id: string;
+  video_url: string;
+  video_width: number;
+  video_height: number;
+  video_duration: number;
+  relate_count: number;
+  has_related: boolean;
+  is_seen: boolean;
+  created_at: string;
+}
 
-  export interface UserStories {
-    user_id: string;
-    username: string;
-    user_image_url: string;
-    all_seen: boolean;
-    items: StorySegment[]; 
-  }
+export interface UserStories {
+  user_id: string;
+  username: string;
+  user_image_url: string;
+  all_seen: boolean;
+  items: StorySegment[];
+}
+

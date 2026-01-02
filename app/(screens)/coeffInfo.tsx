@@ -1,11 +1,10 @@
 import React, { useEffect, useRef } from "react";
 import { ScrollView, View, Text } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import NestedScreenHeader from "@/components/nestedScreenHeader";
+import {NestedScreenHeader} from "@/components/nestedScreenHeader";
 import { getCoefInfo } from "@/utils/levels";
 import { useApp } from "@/providers/AppProvider";
 
-// Updated Tiers: Removed emojis, kept colors and titles
 const coefficientTiers = [
   {
     range: "0 - 9",
@@ -71,7 +70,7 @@ export default function CoeffInfoScreen() {
 
   return (
     <View className="flex-1 bg-black">
-      <NestedScreenHeader heading="Tiers" secondaryHeading="POINTS" />
+      <NestedScreenHeader title="Tiers" eyebrow="POINTS" />
       <ScrollView
         ref={scrollViewRef}
         className="flex-1"
@@ -261,8 +260,9 @@ export default function CoeffInfoScreen() {
                   style={{ marginRight: 12, marginTop: 2 }}
                 />
                 <Text className="text-white/70 text-sm flex-1 leading-6">
-                  <Text className="text-white font-bold">Streaks:</Text> Dona&apos;t
-                  break the chain. Long streaks multiply your points.
+                  <Text className="text-white font-bold">Streaks:</Text>{" "}
+                  Dona&apos;t break the chain. Long streaks multiply your
+                  points.
                 </Text>
               </View>
             </View>

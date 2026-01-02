@@ -17,7 +17,7 @@ import {
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
 import Svg, { Path } from "react-native-svg";
-import NestedScreenHeader from "@/components/nestedScreenHeader";
+import {NestedScreenHeader} from "@/components/nestedScreenHeader";
 
 const ORANGE = "#EA580C";
 
@@ -155,7 +155,7 @@ export default function GoalSettingScreen() {
 
   return (
     <View className="flex-1 bg-black">
-      <NestedScreenHeader heading="Goals" secondaryHeading="ACCOUNTABILITY" />
+      <NestedScreenHeader title="Goals" eyebrow="ACCOUNTABILITY" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -165,8 +165,12 @@ export default function GoalSettingScreen() {
         <View className="bg-white/[0.03] rounded-3xl p-6 border border-white/[0.08] mb-8">
           <View className="flex-row justify-between items-start mb-2">
             <View>
-              <Text className="text-orange-600 text-[11px] font-bold tracking-widest uppercase">Performance</Text>
-              <Text className="text-white text-3xl font-black italic">2025 TRACK</Text>
+              <Text className="text-orange-600 text-[11px] font-bold tracking-widest uppercase">
+                Performance
+              </Text>
+              <Text className="text-white text-3xl font-black italic">
+                2025 TRACK
+              </Text>
             </View>
             <View className="bg-orange-600/20 px-3 py-1 rounded-lg border border-orange-600/30">
               <Text className="text-orange-600 font-black text-xs">ELITE</Text>
@@ -175,47 +179,90 @@ export default function GoalSettingScreen() {
           <Speedometer percentage={progress.yearlyEfficiency} />
         </View>
 
-        <Text className="text-orange-600 text-[11px] font-black tracking-[3px] mb-4 uppercase px-1 italic">— Annual</Text>
+        <Text className="text-orange-600 text-[11px] font-black tracking-[3px] mb-4 uppercase px-1 italic">
+          — Annual
+        </Text>
         <GoalCard
-          section="annual" goalKey="drunk" label="Drunk Days" subLabel="Drink more"
-          target={goals.annual.drunk} current={progress.annualDrunk}
+          section="annual"
+          goalKey="drunk"
+          label="Drunk Days"
+          subLabel="Drink more"
+          target={goals.annual.drunk}
+          current={progress.annualDrunk}
           icon={<FontAwesome5 name="beer" size={16} color={ORANGE} />}
         />
         <GoalCard
-          section="annual" goalKey="blackouts" label="Blackouts" subLabel="Obliterate yourself"
-          target={goals.annual.blackouts} current={progress.annualBlackouts}
-          icon={<MaterialCommunityIcons name="skull" size={20} color={ORANGE} />}
+          section="annual"
+          goalKey="blackouts"
+          label="Blackouts"
+          subLabel="Obliterate yourself"
+          target={goals.annual.blackouts}
+          current={progress.annualBlackouts}
+          icon={
+            <MaterialCommunityIcons name="skull" size={20} color={ORANGE} />
+          }
         />
         <GoalCard
-          section="annual" goalKey="streak" label="Longest Streak" subLabel="Days without a gap"
-          target={goals.annual.streak} current={progress.annualStreak} isLimit={false}
+          section="annual"
+          goalKey="streak"
+          label="Longest Streak"
+          subLabel="Days without a gap"
+          target={goals.annual.streak}
+          current={progress.annualStreak}
+          isLimit={false}
           icon={<Ionicons name="flame" size={20} color={ORANGE} />}
         />
-        
+
         <View className="mt-8">
-          <Text className="text-orange-600 text-[11px] font-black tracking-[3px] mb-4 uppercase px-1 italic">— Weekly</Text>
+          <Text className="text-orange-600 text-[11px] font-black tracking-[3px] mb-4 uppercase px-1 italic">
+            — Weekly
+          </Text>
           <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08] mb-3">
             <View className="flex-row items-center justify-between mb-2">
-              <Text className="text-white font-black text-base">Don&apos;t Miss a Week</Text>
-              <Switch 
-                value={toggles.dontMissAWeek} 
-                onValueChange={(v) => setToggles({...toggles, dontMissAWeek: v})}
+              <Text className="text-white font-black text-base">
+                Don&apos;t Miss a Week
+              </Text>
+              <Switch
+                value={toggles.dontMissAWeek}
+                onValueChange={(v) =>
+                  setToggles({ ...toggles, dontMissAWeek: v })
+                }
                 trackColor={{ false: "#333", true: ORANGE }}
                 thumbColor="#fff"
               />
             </View>
-            <Text className="text-white/40 text-xs mb-4">Ensure you log at least one drink every week of the year</Text>
+            <Text className="text-white/40 text-xs mb-4">
+              Ensure you log at least one drink every week of the year
+            </Text>
             {toggles.dontMissAWeek && (
-                <View className="pt-4 border-t border-white/5 flex-row justify-between items-center">
-                    <Text className="text-white/60 text-[10px] font-bold uppercase">Current Status</Text>
-                    <StatusBadge isSuccess={progress.weeksMissed === 0} label={progress.weeksMissed === 0 ? "STREAKING" : "MISSED WEEK"} />
-                </View>
+              <View className="pt-4 border-t border-white/5 flex-row justify-between items-center">
+                <Text className="text-white/60 text-[10px] font-bold uppercase">
+                  Current Status
+                </Text>
+                <StatusBadge
+                  isSuccess={progress.weeksMissed === 0}
+                  label={
+                    progress.weeksMissed === 0 ? "STREAKING" : "MISSED WEEK"
+                  }
+                />
+              </View>
             )}
           </View>
           <GoalCard
-            section="weekly" goalKey="weekStreaks" label="Week Streaks" subLabel="Consecutive active weeks"
-            target={goals.weekly.weekStreaks} current={progress.currentWeekStreak} isLimit={false}
-            icon={<MaterialCommunityIcons name="calendar-check" size={20} color={ORANGE} />}
+            section="weekly"
+            goalKey="weekStreaks"
+            label="Week Streaks"
+            subLabel="Consecutive active weeks"
+            target={goals.weekly.weekStreaks}
+            current={progress.currentWeekStreak}
+            isLimit={false}
+            icon={
+              <MaterialCommunityIcons
+                name="calendar-check"
+                size={20}
+                color={ORANGE}
+              />
+            }
           />
         </View>
 
@@ -226,24 +273,43 @@ export default function GoalSettingScreen() {
 
       {/* EDIT MODAL */}
       <Modal visible={modalVisible} transparent animationType="fade">
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1 items-center justify-center bg-black/95 px-6">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          className="flex-1 items-center justify-center bg-black/95 px-6"
+        >
           <View className="bg-[#121212] w-full p-8 rounded-[40px] border border-orange-600/30">
-            <Text className="text-orange-600 text-[10px] font-black tracking-[3px] uppercase mb-2 text-center">Adjusting</Text>
-            <Text className="text-white text-2xl font-black mb-8 text-center">{editing?.label}</Text>
+            <Text className="text-orange-600 text-[10px] font-black tracking-[3px] uppercase mb-2 text-center">
+              Adjusting
+            </Text>
+            <Text className="text-white text-2xl font-black mb-8 text-center">
+              {editing?.label}
+            </Text>
             <TextInput
               className="text-white text-7xl font-black text-center mb-10"
               keyboardType="number-pad"
               value={editing?.val}
-              onChangeText={(t) => setEditing(prev => prev ? {...prev, val: t} : null)}
+              onChangeText={(t) =>
+                setEditing((prev) => (prev ? { ...prev, val: t } : null))
+              }
               autoFocus
               selectionColor={ORANGE}
             />
             <View className="flex-row gap-4">
-              <TouchableOpacity onPress={() => setModalVisible(false)} className="flex-1 py-4 items-center">
-                <Text className="text-white/40 font-bold uppercase tracking-widest">Cancel</Text>
+              <TouchableOpacity
+                onPress={() => setModalVisible(false)}
+                className="flex-1 py-4 items-center"
+              >
+                <Text className="text-white/40 font-bold uppercase tracking-widest">
+                  Cancel
+                </Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={saveModalValue} className="flex-1 bg-orange-600 py-4 rounded-2xl items-center shadow-lg shadow-orange-600/20">
-                <Text className="text-black font-black uppercase tracking-widest">Confirm</Text>
+              <TouchableOpacity
+                onPress={saveModalValue}
+                className="flex-1 bg-orange-600 py-4 rounded-2xl items-center shadow-lg shadow-orange-600/20"
+              >
+                <Text className="text-black font-black uppercase tracking-widest">
+                  Confirm
+                </Text>
               </TouchableOpacity>
             </View>
           </View>

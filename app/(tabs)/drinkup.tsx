@@ -2,6 +2,7 @@ import React, { useState, useRef, useMemo, useEffect } from "react";
 import {
   View,
   Text,
+  ScrollView,
   TouchableOpacity,
   Modal,
   Alert,
@@ -9,38 +10,39 @@ import {
   TextInput,
   Dimensions,
   StatusBar,
-  ScrollView,
+  Animated,
+  PanResponder,
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import {
-  Ionicons,
-  MaterialCommunityIcons,
-  FontAwesome5,
-  Feather,
-} from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import MapboxGL from "@rnmapbox/maps";
 import { FlashList } from "@shopify/flash-list";
 
 import Header from "@/components/header";
 import DigitalPassport from "@/components/digital_passport";
+import { PaywallModal } from "@/components/paywall_modal";
 
 const PRIMARY_ORANGE = "#EA580C";
 const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN_PUBLIC || "";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const GAP = 16;
 const SCREEN_PADDING = 16;
-
 const COLUMN_WIDTH = SCREEN_WIDTH - SCREEN_PADDING * 2;
 
 if (MAPBOX_TOKEN) {
   MapboxGL.setAccessToken(MAPBOX_TOKEN);
 }
 
-// ============================================================================
-// DATA TYPES
-// ============================================================================
+// --- INTERFACES ---
+interface Cocktail {
+  id: string;
+  name: string;
+  price: string;
+  image: string;
+  description: string;
+}
 
 interface Bar {
   id: string;
@@ -59,6 +61,7 @@ interface Bar {
   coordinates: { lat: number; lng: number };
   tags: string[];
   discount: number;
+  specials: Cocktail[];
 }
 
 const MOCK_BARS: Bar[] = [
@@ -67,7 +70,7 @@ const MOCK_BARS: Bar[] = [
     name: "Club Oblak",
     image_url: require("../../assets/images/oblk_club.jpg"),
     image_width: 1080,
-    image_height: 1350, // Portrait
+    image_height: 1350,
     location: "Bul. Tsar Osvoboditel 10, Sofia",
     distance: 0.1,
     distanceStr: "0.1 km",
@@ -77,19 +80,34 @@ const MOCK_BARS: Bar[] = [
     time: "Live DJ 10 PM",
     description:
       "Exclusive nightlife experience in the heart of Sofia. Premium cocktails and top-tier DJ sets.",
-    // Coordinates near Tsar Osvoboditel 10
     coordinates: { lat: 42.6951828, lng: 23.3289099 },
     tags: ["cocktails", "happy_hour"],
     discount: 10,
+    specials: [
+      {
+        id: "c1",
+        name: "Midnight Mist",
+        price: "$14.00",
+        description: "Gin, Violet liqueur, Lemon, Maraschino",
+        image:
+          "https://images.unsplash.com/photo-1514362545857-3bc16549766b?w=400&q=80",
+      },
+      {
+        id: "c2",
+        name: "Neon Sour",
+        price: "$12.50",
+        description: "Whiskey, Lemon, Egg white, Blue Curaçao syrup",
+        image:
+          "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=400&q=80",
+      },
+    ],
   },
   {
     id: "2",
     name: "Keva Bar",
-    // Bohemian/Garden vibe image
-    image_url:
-      "https://images.unsplash.com/photo-1576014131795-d440191a8e8b?q=80&w=800",
+    image_url: require("../../assets/images/keva_bar.jpg"),
     image_width: 800,
-    image_height: 600, // Landscape
+    image_height: 600,
     location: "Rakovski St 114, Sofia",
     distance: 0.8,
     distanceStr: "0.8 km",
@@ -99,19 +117,35 @@ const MOCK_BARS: Bar[] = [
     time: "Garden Open",
     description:
       "A hidden gem in the theater academy courtyard. Known for its relaxed bohemian atmosphere and lush greenery.",
-    // Coordinates for Rakovski 114
     coordinates: { lat: 42.6936, lng: 23.3283 },
     tags: ["dog_friendly", "happy_hour"],
     discount: 15,
+    specials: [
+      {
+        id: "c3",
+        name: "Garden Spritz",
+        price: "$9.00",
+        description: "Prosecco, Elderflower, Mint, Lime",
+        image:
+          "https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400&q=80",
+      },
+      {
+        id: "c4",
+        name: "Bohemian Rhapsody",
+        price: "$11.00",
+        description: "Rum, Pineapple, Coconut cream, Nutmeg",
+        image:
+          "https://images.unsplash.com/photo-1599021406450-4d5716df1bd6?w=400&q=80",
+      },
+    ],
   },
   {
     id: "3",
     name: "Bar Petuk",
-    // Busy night/street vibe image
     image_url:
       "https://images.unsplash.com/photo-1566737236500-c8ac43014a67?q=80&w=800",
     image_width: 800,
-    image_height: 1200, // Tall Portrait
+    image_height: 1200,
     location: "Gen. Gurko 21, Sofia",
     distance: 1.2,
     distanceStr: "1.2 km",
@@ -121,26 +155,102 @@ const MOCK_BARS: Bar[] = [
     time: "Always Friday",
     description:
       "The legendary 'Bar Friday' where the party never stops. Crowded, loud, and full of energy.",
-    // Coordinates for Gurko 21
     coordinates: { lat: 42.6922, lng: 23.3265 },
     tags: ["cocktails", "dog_friendly"],
     discount: 25,
+    specials: [
+      {
+        id: "c5",
+        name: "Friday Punch",
+        price: "$10.00",
+        description: "Secret house blend of rums and tropical juices",
+        image:
+          "https://images.unsplash.com/photo-1541963463532-d68292c34b19?w=400&q=80",
+      },
+    ],
   },
 ];
-
-// ============================================================================
-// HELPERS
-// ============================================================================
 
 const getImageSource = (img: any) => {
   return typeof img === "string" ? { uri: img } : img;
 };
 
-// ============================================================================
-// REUSABLE COMPONENTS
-// ============================================================================
+// --- COMPONENTS ---
 
-// 1. DetailModal
+interface SwipeableSheetProps {
+  visible: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+}
+
+const SwipeableSheet = ({
+  visible,
+  onClose,
+  children,
+}: SwipeableSheetProps) => {
+  // Use React Native Animated for gestures
+  const panY = useRef(new Animated.Value(0)).current;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => gestureState.dy > 0,
+      onPanResponderGrant: () => {
+        panY.setOffset(0);
+        panY.setValue(0);
+      },
+      onPanResponderMove: Animated.event([null, { dy: panY }], {
+        useNativeDriver: false,
+      }),
+      onPanResponderRelease: (_, gestureState) => {
+        panY.flattenOffset();
+        if (gestureState.dy > 120) {
+          onClose();
+        } else {
+          Animated.spring(panY, {
+            toValue: 0,
+            useNativeDriver: false,
+            bounciness: 4,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
+  useEffect(() => {
+    if (visible) {
+      panY.setValue(0);
+    }
+  }, [visible]);
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
+      <View className="flex-1 bg-black">
+        <Animated.View
+          style={{ flex: 1, transform: [{ translateY: panY }] }}
+          {...panResponder.panHandlers}
+        >
+          <View className="absolute top-2 left-0 right-0 z-50 items-center justify-center">
+            <View className="w-12 h-1.5 bg-white/30 rounded-full" />
+          </View>
+          <TouchableOpacity
+            onPress={onClose}
+            className="absolute top-4 left-4 z-[60] w-10 h-10 bg-black/60 backdrop-blur-md rounded-full items-center justify-center border border-white/10"
+          >
+            <Ionicons name="chevron-down" size={24} color="white" />
+          </TouchableOpacity>
+          <View className="flex-1 pt-16">{children}</View>
+        </Animated.View>
+      </View>
+    </Modal>
+  );
+};
+
 interface DetailModalProps {
   visible: boolean;
   onClose: () => void;
@@ -203,7 +313,6 @@ const DetailModal = ({
   );
 };
 
-// 2. DYNAMIC GLANCE CARD
 const DynamicGlanceCard = ({
   item,
   onPress,
@@ -230,7 +339,6 @@ const DynamicGlanceCard = ({
           contentFit="cover"
           transition={200}
         />
-
         <LinearGradient
           colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.6)"]}
           style={{
@@ -241,11 +349,6 @@ const DynamicGlanceCard = ({
             height: "60%",
           }}
         />
-
-        <TouchableOpacity className="absolute top-3 right-3 w-8 h-8 bg-black/40 backdrop-blur-md rounded-full items-center justify-center border border-white/10">
-          <Feather name="bookmark" size={16} color="white" />
-        </TouchableOpacity>
-
         <View className="absolute bottom-3 right-3 bg-orange-600 rounded-xl px-3 py-1.5 shadow-lg shadow-orange-600/40 items-center justify-center border border-orange-400/50">
           <Text className="text-black font-black text-sm">
             -{item.discount}%
@@ -268,26 +371,14 @@ const DynamicGlanceCard = ({
             </Text>
           </View>
         </View>
-
         <Text className="text-white/50 text-xs font-bold uppercase tracking-wide mb-3">
           {item.location}
         </Text>
-
-        <View className="flex-row items-center flex-wrap gap-2">
-          <View className="bg-white/[0.05] px-2 py-1 rounded border border-white/[0.05]">
-            <Text className="text-[10px] font-bold text-white/70">
-              {item.difficulty}
-            </Text>
-          </View>
-          <Text className="text-white/20 text-[10px]">•</Text>
-          <Text className="text-xs font-bold text-orange-600">{item.time}</Text>
-        </View>
       </View>
     </TouchableOpacity>
   );
 };
 
-// 3. PremiumLock
 const PremiumLock = ({ isLocked, onUnlock, isProcessing, children }: any) => (
   <View className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#121212]">
     <View
@@ -321,7 +412,7 @@ const PremiumLock = ({ isLocked, onUnlock, isProcessing, children }: any) => (
           ) : (
             <>
               <Text className="text-black font-black text-base mr-2 uppercase tracking-wide">
-                Unlock for $4.99
+                Unlock
               </Text>
               <Ionicons name="arrow-forward" color="black" size={18} />
             </>
@@ -332,7 +423,6 @@ const PremiumLock = ({ isLocked, onUnlock, isProcessing, children }: any) => (
   </View>
 );
 
-// 4. FilterPills
 const FilterPills = ({ items, selected, onSelect }: any) => (
   <ScrollView
     horizontal
@@ -361,10 +451,6 @@ const FilterPills = ({ items, selected, onSelect }: any) => (
     ))}
   </ScrollView>
 );
-
-// ============================================================================
-// MAPBOX MAP COMPONENT
-// ============================================================================
 
 const BarHuntMap = ({
   bars,
@@ -400,8 +486,7 @@ const BarHuntMap = ({
         },
       };
     }
-    // Default to Sofia Center
-    return { center: [23.3219, 42.6977], zoom: 12 };
+    return { center: [-74.006, 40.7128], zoom: 12 };
   }, [bars]);
 
   return (
@@ -411,6 +496,7 @@ const BarHuntMap = ({
         style={{ flex: 1 }}
         styleURL={MapboxGL.StyleURL.Dark}
         logoEnabled={false}
+        scaleBarEnabled={false}
         attributionEnabled={false}
       >
         <MapboxGL.Camera
@@ -421,7 +507,6 @@ const BarHuntMap = ({
           animationMode="flyTo"
           animationDuration={1000}
         />
-
         {bars.map((bar) => (
           <MapboxGL.PointAnnotation
             key={bar.id}
@@ -440,10 +525,6 @@ const BarHuntMap = ({
                   borderColor: PRIMARY_ORANGE,
                   alignItems: "center",
                   justifyContent: "center",
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.5,
-                  shadowRadius: 4,
                 }}
               >
                 <Image
@@ -474,50 +555,52 @@ const BarHuntMap = ({
   );
 };
 
-// ============================================================================
-// MAIN SCREEN
-// ============================================================================
 export default function BarHuntScreen() {
   const insets = useSafeAreaInsets();
-
-  // State
   const [selectedBar, setSelectedBar] = useState<Bar | null>(null);
   const [filterId, setFilterId] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [isMapMode, setIsMapMode] = useState(false);
-
-  // Passport Modal State
+  const [detailTab, setDetailTab] = useState<"overview" | "specials">(
+    "overview"
+  );
   const [showPassport, setShowPassport] = useState(false);
-
-  // Premium State
+  const [showPaywall, setShowPaywall] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Filter Logic
+  useEffect(() => {
+    if (selectedBar) {
+      setDetailTab("overview");
+    }
+  }, [selectedBar]);
+
   const filteredBars = useMemo(() => {
     return MOCK_BARS.filter((bar) => {
-      // 1. Text Search
       if (
         searchQuery &&
         !bar.name.toLowerCase().includes(searchQuery.toLowerCase())
       ) {
         return false;
       }
-      // 2. Category Filter
       if (filterId === "nearby") return bar.distance < 1.0;
       if (filterId === "happy_hour") return bar.tags.includes("happy_hour");
-      if (filterId === "dog_friendly") return bar.tags.includes("dog_friendly");
-
-      return true; // "all"
+      return true;
     });
   }, [filterId, searchQuery]);
 
-  const handleUnlock = async () => {
+  const handleUnlockPress = () => {
+    setShowPaywall(true);
+  };
+
+  const handlePurchase = async () => {
     setIsProcessing(true);
-    await new Promise((resolve) => setTimeout(() => resolve(true), 1500));
-    setIsPremium(true);
-    setIsProcessing(false);
-    Alert.alert("Premium Unlocked!", "You can now scan QR codes.");
+    setTimeout(() => {
+      setIsPremium(true);
+      setIsProcessing(false);
+      setShowPaywall(false);
+      Alert.alert("Welcome to Pro!", "You have unlocked all features.");
+    }, 2000);
   };
 
   return (
@@ -526,10 +609,8 @@ export default function BarHuntScreen() {
       <Header />
 
       <View className="flex-1" style={{ paddingTop: insets.top }}>
-        {/* --- HEADER + CONTROLS --- */}
-        <View className="px-4 py-2 z-10 bg-black pb-4">
-          {/* SEARCH + PASSPORT BUTTON */}
-          <View className="flex-row items-center space-x-3 mb-4">
+        <View className="px-4 pt-2 z-10 bg-black">
+          <View className="flex-row items-center space-x-3 mb-4 gap-2">
             <View className="flex-1 flex-row items-center bg-[#1A1A1A] border border-white/10 rounded-full px-4 h-12">
               <Ionicons name="search" size={20} color="#666" />
               <TextInput
@@ -540,8 +621,6 @@ export default function BarHuntScreen() {
                 className="flex-1 ml-3 text-base font-bold text-white"
               />
             </View>
-
-            {/* Passport Button */}
             <TouchableOpacity
               onPress={() => setShowPassport(true)}
               className="w-12 h-12 rounded-full bg-orange-600 items-center justify-center shadow-lg shadow-orange-600/30 border border-white/10"
@@ -591,28 +670,14 @@ export default function BarHuntScreen() {
                   />
                 ),
               },
-              {
-                id: "dog_friendly",
-                label: "Dog-friendly",
-                icon: (
-                  <FontAwesome5
-                    name="dog"
-                    size={14}
-                    color={filterId === "dog_friendly" ? "black" : "white"}
-                  />
-                ),
-              },
             ]}
           />
         </View>
 
-        {/* --- MAIN CONTENT (List vs Map) --- */}
         <View className="flex-1 relative">
           {isMapMode ? (
-            // MAP VIEW
             <BarHuntMap bars={filteredBars} onSelectBar={setSelectedBar} />
           ) : (
-            // LIST VIEW (1 Column FlashList)
             <FlashList
               data={filteredBars}
               numColumns={1}
@@ -632,7 +697,6 @@ export default function BarHuntScreen() {
             />
           )}
 
-          {/* FLOATING TOGGLE BUTTON */}
           <View className="absolute bottom-6 self-center z-20">
             <TouchableOpacity
               onPress={() => setIsMapMode(!isMapMode)}
@@ -640,7 +704,7 @@ export default function BarHuntScreen() {
               className="flex-row items-center bg-orange-600 px-6 py-4 rounded-full shadow-lg shadow-orange-600/40"
             >
               <Feather
-                name={isMapMode ? "list" : "map"}
+                name={isMapMode ? "grid" : "map"}
                 size={18}
                 color="black"
               />
@@ -655,9 +719,7 @@ export default function BarHuntScreen() {
       {/* Mock Bottom Tab Bar */}
       <View className="flex-row justify-around items-center bg-black pt-3 pb-8 border-t border-white/[0.08]">
         <View className="items-center">
-          <View className="w-12 h-8 items-center justify-center">
-            <Ionicons name="search" size={24} color={PRIMARY_ORANGE} />
-          </View>
+          <Ionicons name="search" size={24} color={PRIMARY_ORANGE} />
           <Text className="text-[10px] text-orange-600 font-bold mt-1">
             Explore
           </Text>
@@ -672,25 +734,9 @@ export default function BarHuntScreen() {
             Community
           </Text>
         </View>
-        <View className="items-center opacity-40">
-          <Feather name="navigation" size={24} color="white" />
-          <Text className="text-[10px] text-white font-medium mt-1">
-            Navigate
-          </Text>
-        </View>
-        <View className="items-center opacity-40">
-          <Feather name="bookmark" size={24} color="white" />
-          <Text className="text-[10px] text-white font-medium mt-1">Saved</Text>
-        </View>
-        <View className="items-center opacity-40">
-          <Feather name="user" size={24} color="white" />
-          <Text className="text-[10px] text-white font-medium mt-1">
-            Profile
-          </Text>
-        </View>
       </View>
 
-      {/* BAR DETAIL MODAL */}
+      {/* --- DETAIL MODAL --- */}
       <DetailModal
         visible={!!selectedBar}
         onClose={() => setSelectedBar(null)}
@@ -715,100 +761,157 @@ export default function BarHuntScreen() {
               {selectedBar.distanceStr}
             </Text>
 
-            <View className="flex-row gap-3 mb-8 border-b border-white/[0.08] pb-8">
-              <TouchableOpacity className="flex-1 bg-orange-600 py-4 rounded-xl items-center shadow-lg shadow-orange-600/20">
-                <Text className="text-black font-black tracking-widest">
-                  DIRECTIONS
+            {/* TAB SWITCHER */}
+            <View className="flex-row gap-3 mb-8 border-b border-white/[0.08] pb-6">
+              <TouchableOpacity
+                onPress={() => setDetailTab("overview")}
+                className={`flex-1 py-4 rounded-xl items-center border ${
+                  detailTab === "overview"
+                    ? "bg-orange-600 border-orange-600 shadow-lg shadow-orange-600/20"
+                    : "bg-white/[0.05] border-white/[0.1]"
+                }`}
+              >
+                <Text
+                  className={`${
+                    detailTab === "overview" ? "text-black" : "text-white"
+                  } font-black tracking-widest`}
+                >
+                  OVERVIEW
                 </Text>
               </TouchableOpacity>
-              <TouchableOpacity className="flex-1 bg-white/[0.05] border border-white/[0.1] py-4 rounded-xl items-center">
-                <Text className="text-white font-black tracking-widest">
-                  MENU
+
+              <TouchableOpacity
+                onPress={() => setDetailTab("specials")}
+                className={`flex-1 py-4 rounded-xl items-center border ${
+                  detailTab === "specials"
+                    ? "bg-orange-600 border-orange-600 shadow-lg shadow-orange-600/20"
+                    : "bg-white/[0.05] border-white/[0.1]"
+                }`}
+              >
+                <Text
+                  className={`${
+                    detailTab === "specials" ? "text-black" : "text-white"
+                  } font-black tracking-widest`}
+                >
+                  SPECIALS
                 </Text>
               </TouchableOpacity>
             </View>
 
-            <Text className="text-white text-lg font-black mb-2">
-              Description
-            </Text>
-            <Text className="text-white/60 leading-6 mb-8">
-              {selectedBar.description}
-            </Text>
-
-            <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-white text-lg font-black">
-                Member Discount QR
-              </Text>
-              <View className="bg-orange-600/20 px-2 py-1 rounded border border-orange-600/50">
-                <Text className="text-orange-500 text-[10px] font-bold">
-                  -{selectedBar.discount}% OFF
+            {/* TAB CONTENT (Safe View usage) */}
+            {detailTab === "overview" ? (
+              <View>
+                <Text className="text-white text-lg font-black mb-2">
+                  Description
                 </Text>
-              </View>
-            </View>
+                <Text className="text-white/60 leading-6 mb-8">
+                  {selectedBar.description}
+                </Text>
 
-            <PremiumLock
-              isLocked={!isPremium}
-              onUnlock={handleUnlock}
-              isProcessing={isProcessing}
-            >
-              <View className="items-center justify-center w-full aspect-square p-8">
-                <View className="w-full h-full bg-white rounded-xl p-3 border-4 border-white">
-                  <View className="flex-1 bg-white p-2 flex-row flex-wrap">
-                    {[...Array(100)].map((_, i) => (
-                      <View
-                        key={i}
-                        className={`w-[10%] h-[10%] ${
-                          Math.random() > 0.45 ? "bg-black" : "bg-white"
-                        }`}
-                      />
-                    ))}
-                    <View className="absolute top-2 left-2 w-16 h-16 border-4 border-black bg-white flex items-center justify-center">
-                      <View className="w-8 h-8 bg-black" />
-                    </View>
-                    <View className="absolute top-2 right-2 w-16 h-16 border-4 border-black bg-white flex items-center justify-center">
-                      <View className="w-8 h-8 bg-black" />
-                    </View>
-                    <View className="absolute bottom-2 left-2 w-16 h-16 border-4 border-black bg-white flex items-center justify-center">
-                      <View className="w-8 h-8 bg-black" />
-                    </View>
+                <View className="flex-row items-center justify-between mb-4">
+                  <Text className="text-white text-lg font-black">
+                    Member Discount QR
+                  </Text>
+                  <View className="bg-orange-600/20 px-2 py-1 rounded border border-orange-600/50">
+                    <Text className="text-orange-500 text-[10px] font-bold">
+                      -{selectedBar.discount}% OFF
+                    </Text>
                   </View>
                 </View>
-                <Text className="text-center font-mono font-bold mt-4 tracking-widest text-lg text-white">
-                  MEMBER-8821
-                </Text>
+
+                <PremiumLock
+                  isLocked={!isPremium}
+                  onUnlock={handleUnlockPress}
+                  isProcessing={false}
+                >
+                  <View className="items-center justify-center w-full aspect-square p-8">
+                    <View className="w-full h-full bg-white rounded-xl p-3 border-4 border-white">
+                      <View className="flex-1 bg-white p-2 flex-row flex-wrap">
+                        {[...Array(100)].map((_, i) => (
+                          <View
+                            key={i}
+                            className={`w-[10%] h-[10%] ${
+                              Math.random() > 0.45 ? "bg-black" : "bg-white"
+                            }`}
+                          />
+                        ))}
+                      </View>
+                    </View>
+                    <Text className="text-center font-mono font-bold mt-4 tracking-widest text-lg text-white">
+                      MEMBER-8821
+                    </Text>
+                  </View>
+                </PremiumLock>
               </View>
-            </PremiumLock>
+            ) : (
+              <View>
+                <Text className="text-white text-lg font-black mb-4">
+                  Signature Cocktails
+                </Text>
+                {selectedBar.specials && selectedBar.specials.length > 0 ? (
+                  selectedBar.specials.map((special) => (
+                    <View
+                      key={special.id}
+                      className="bg-[#1A1A1A] rounded-2xl p-3 mb-4 flex-row items-center border border-white/[0.08]"
+                    >
+                      <Image
+                        source={{ uri: special.image }}
+                        style={{ width: 80, height: 80, borderRadius: 12 }}
+                        contentFit="cover"
+                      />
+                      <View className="flex-1 ml-4 justify-center">
+                        <View className="flex-row justify-between items-center mb-1">
+                          <Text className="text-white font-bold text-lg flex-1 mr-2">
+                            {special.name}
+                          </Text>
+                          <Text className="text-orange-500 font-black text-lg">
+                            {special.price}
+                          </Text>
+                        </View>
+                        <Text className="text-white/40 text-xs leading-4">
+                          {special.description}
+                        </Text>
+                      </View>
+                    </View>
+                  ))
+                ) : (
+                  <Text className="text-white/30 text-center py-10">
+                    No specials listed currently.
+                  </Text>
+                )}
+              </View>
+            )}
           </>
         )}
       </DetailModal>
 
-      {/* PASSPORT MODAL */}
-      <Modal visible={showPassport} transparent animationType="slide">
-        <View className="flex-1 bg-black/95 items-center justify-center p-4">
-          <TouchableOpacity
-            onPress={() => setShowPassport(false)}
-            className="absolute top-12 left-6 z-50 w-10 h-10 bg-white/10 rounded-full items-center justify-center"
-          >
-            <Ionicons name="arrow-back" size={24} color="white" />
-          </TouchableOpacity>
+      <PaywallModal
+        visible={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        onPurchase={handlePurchase}
+      />
 
-          <View>
-            <Text className="text-orange-600 text-center text-xs font-black tracking-[4px] mb-2 uppercase">
-              Official Member
-            </Text>
-            <Text className="text-white text-center text-3xl font-black mb-8">
-              DRINKING PASSPORT
-            </Text>
-
+      <SwipeableSheet
+        visible={showPassport}
+        onClose={() => setShowPassport(false)}
+        children={
+          <View className="items-center py-6">
+            <View className="items-center mb-8">
+              <Text className="text-orange-600 text-center text-[10px] font-black tracking-[4px] mb-2 uppercase">
+                Official Member
+              </Text>
+              <Text className="text-white text-center text-3xl font-black">
+                DRINKING PASSPORT
+              </Text>
+            </View>
             <DigitalPassport />
-
-            <Text className="text-white/40 text-center text-xs mt-8 px-10">
+            <Text className="text-white/40 text-center text-xs mt-8 px-10 leading-5">
               Scan this ID at partner venues to collect points and redeem
               discounts.
             </Text>
           </View>
-        </View>
-      </Modal>
+        }
+      />
     </View>
   );
 }

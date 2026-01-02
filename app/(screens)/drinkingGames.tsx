@@ -1,14 +1,13 @@
 import RenderBurnBookBoard from "@/components/drink_games/burn_book";
 import RenderKingsCupBoard from "@/components/drink_games/kings_cup";
 import RenderMafiaBoard from "@/components/drink_games/mafia";
-import NestedScreenHeader from "@/components/nestedScreenHeader";
+import { NestedScreenHeader } from "@/components/nestedScreenHeader";
 import { useApp } from "@/providers/AppProvider";
 import { KingsCupState, useDrunkGame } from "@/providers/DrunkGameProvider";
 import {
   FontAwesome5,
   Ionicons,
   MaterialCommunityIcons,
-  MaterialIcons,
 } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import {
@@ -20,10 +19,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import QRCode from "react-native-qrcode-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Linking from "expo-linking";
-
 
 const MIN_PLAYER_COUNTS: Record<string, number> = {
   Mafia: 4,
@@ -170,7 +167,7 @@ export default function GameLobbyScreen() {
     queryParams: { id: sessionId },
   });
 
-   console.log("QR Code Link:", inviteLink);
+  console.log("QR Code Link:", inviteLink);
   // const scheme = "outdrinkme";
   // const inviteLink = `${scheme}://game?id=${sessionId}`;
   // console.log(inviteLink)
@@ -184,10 +181,7 @@ export default function GameLobbyScreen() {
 
   const renderLobby = () => (
     <View style={{ paddingBottom: insets.bottom + 20 }}>
-      <NestedScreenHeader
-        heading="Drinking Lobby"
-        secondaryHeading="MULTIPLAYER"
-      />
+      <NestedScreenHeader title="Drinking Lobby" eyebrow="MULTIPLAYER" />
 
       <View className="px-4 mb-8 pt-5">
         <Text className="text-white/50 text-[12px] font-bold tracking-widest mb-3 ml-1">
@@ -268,8 +262,7 @@ export default function GameLobbyScreen() {
                 onRefresh={onRefresh}
                 tintColor="#ff8c00"
                 colors={["#ff8c00"]}
-                            progressBackgroundColor="#000000"
-
+                progressBackgroundColor="#000000"
               />
             }
           >
@@ -355,7 +348,9 @@ export default function GameLobbyScreen() {
     const missingPlayers = minPlayersRequired - currentCount;
 
     // Construct reason string
-    const disabledReason = `NEED ${missingPlayers} MORE PLAYER${missingPlayers !== 1 ? "S" : ""}`;
+    const disabledReason = `NEED ${missingPlayers} MORE PLAYER${
+      missingPlayers !== 1 ? "S" : ""
+    }`;
 
     return (
       <View className="flex-1">

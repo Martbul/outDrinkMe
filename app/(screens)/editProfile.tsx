@@ -8,13 +8,14 @@ import {
   Image,
   TextInput,
   StatusBar,
+  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import DeleteAccountButton from "@/components/deleteAccountButton";
 import { openPrivacy, openTerms } from "@/utils/links";
-import NestedScreenHeader from "@/components/nestedScreenHeader";
+import {NestedScreenHeader} from "@/components/nestedScreenHeader";
 
 export default function EditProfileScreen() {
   const { userData, updateUserProfile } = useApp();
@@ -50,12 +51,32 @@ export default function EditProfileScreen() {
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
 
-
-
       {hasChanges && !isLoading ? (
-        <NestedScreenHeader heading="Profile" secondaryHeading="EDIT" buttonHeading="SAVE" buttonAction={handleSave}/>
+        <NestedScreenHeader
+          title="Profile"
+          eyebrow="EDIT"
+          rightAction={
+            hasChanges ? (
+              <TouchableOpacity
+                onPress={handleSave}
+                disabled={isLoading}
+                className={`px-5 py-2 rounded-full flex-row items-center ${
+                  isLoading ? "bg-white/10" : "bg-orange-600"
+                }`}
+              >
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <Text className="text-black font-black text-xs tracking-wider">
+                    SAVE
+                  </Text>
+                )}
+              </TouchableOpacity>
+            ) : null
+          }
+        />
       ) : (
-        <NestedScreenHeader heading="Profile" secondaryHeading="EDIT" />
+        <NestedScreenHeader title="Profile" eyebrow="EDIT" />
       )}
 
       <ScrollView
