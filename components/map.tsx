@@ -26,7 +26,6 @@ interface DrinkingMapProps {
   variant?: "preview" | "full";
 }
 
-// Extend type to hold the calculated "spiderfied" coordinates
 type DispersedPost = DailyDrinkingPostResponse & {
   visualLat: number;
   visualLng: number;

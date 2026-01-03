@@ -12,6 +12,7 @@ export interface UserData {
   xp: number;
   allDaysDrinkingCount: number;
   alcoholism_coefficient: number;
+  drinkup_subscription?: DrinkUpSubscription;
 }
 
 export interface LeaderboardEntry {
@@ -38,12 +39,7 @@ export interface Achievement {
   name: string;
   description: string;
   icon: string;
-  criteria_type:
-    | "streak"
-    | "total_days"
-    | "weeks_won"
-    | "friends"
-    | "perfect_week";
+  criteria_type: "streak" | "total_days" | "weeks_won" | "friends" | "perfect_week";
   criteria_value: number;
   created_at: string;
   unlocked: boolean;
@@ -600,3 +596,81 @@ export interface UserStories {
   items: StorySegment[];
 }
 
+export type DrinkUpSubscriptionStatus =
+  | "active"
+  | "past_due"
+  | "unpaid"
+  | "canceled"
+  | "incomplete"
+  | "incomplete_expired"
+  | "trialing"
+  | "paused";
+
+export interface DrinkUpSubscription {
+  id: string;
+  userId: string;
+  stripeCustomerId: string;
+  stripeSubscriptionId: string;
+  stripePriceId: string;
+  status: DrinkUpSubscriptionStatus;
+  currentPeriodEnd: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SubscribeRequest {
+  priceId: string;
+}
+
+export interface SubscribeResponse {
+  checkoutUrl: string;
+}
+ export type VenueCategory = 
+  | "Club" 
+  | "Bar" 
+  | "Chalga Club" 
+  | "Piano Bar" 
+  | "Beach Bar" 
+  | "Rooftop" 
+  | "Pub" 
+  | "Lounge";
+
+export interface VenueSpecial {
+  id: string;
+  venue_id: string;      
+  name: string;
+  price: string;
+  description: string;
+  image_url: string;     
+}
+
+export interface Venue {
+  id: string;
+  name: string;
+  venue_type: VenueCategory; 
+  
+  image_url: string;     
+  image_width: number;   
+  image_height: number;  
+  
+  location: string;
+  distance_km: number;   
+  distance_str: string;  
+  
+  rating: number;
+  review_count: number;  
+  difficulty: "Cheap" | "Moderate" | "Expensive";
+  
+  event_time: string;    
+  description: string;
+  
+  latitude: number;
+  longitude: number;
+  
+  tags: string[];
+  discount_percentage: number; 
+  created_at?: string;         
+  
+  specials: VenueSpecial[];
+  employees: string[];
+}

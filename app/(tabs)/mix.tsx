@@ -1,10 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -32,6 +26,7 @@ import MixPostModal from "@/components/mixPostModal";
 import { ReactionsOverlay } from "@/components/reactionOberlay";
 import { useApp } from "@/providers/AppProvider";
 import type { DailyDrinkingPostResponse } from "@/types/api.types";
+import { SegmentItem, TabSwitcher } from "@/components/tab_switcher";
 
 const PRIMARY_ORANGE = "#EA580C";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -46,64 +41,6 @@ const getInitialHeight = (id: string) => {
   const hash = id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
   const range = MAX_CARD_HEIGHT - MIN_CARD_HEIGHT;
   return (hash % range) + MIN_CARD_HEIGHT;
-};
-
-const CompactSegmentedControl = ({
-  selected,
-  onSelect,
-}: {
-  selected: "personal" | "global";
-  onSelect: (val: "personal" | "global") => void;
-}) => {
-  return (
-    <View className="mx-16 mb-3 mt-2 h-10 bg-[#1A1A1A] rounded-full border border-white/[0.1] p-1 flex-row relative">
-      <TouchableOpacity
-        onPress={() => onSelect("personal")}
-        className={`flex-1 items-center justify-center rounded-full ${
-          selected === "personal" ? "bg-orange-600" : "bg-transparent"
-        }`}
-      >
-        <View className="flex-row items-center space-x-1">
-          <Ionicons
-            name="person"
-            size={12}
-            color={selected === "personal" ? "black" : "#666"}
-            style={{ marginRight: 4 }}
-          />
-          <Text
-            className={`text-[11px] font-black tracking-wide ${
-              selected === "personal" ? "text-black" : "text-white/40"
-            }`}
-          >
-            MY MIX
-          </Text>
-        </View>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        onPress={() => onSelect("global")}
-        className={`flex-1 items-center justify-center rounded-full ${
-          selected === "global" ? "bg-orange-600" : "bg-transparent"
-        }`}
-      >
-        <View className="flex-row items-center space-x-1">
-          <Ionicons
-            name="earth"
-            size={12}
-            color={selected === "global" ? "black" : "#666"}
-            style={{ marginRight: 4 }}
-          />
-          <Text
-            className={`text-[11px] font-black tracking-wide ${
-              selected === "global" ? "text-black" : "text-white/40"
-            }`}
-          >
-            GLOBAL
-          </Text>
-        </View>
-      </TouchableOpacity>
-    </View>
-  );
 };
 
 interface YourMixCardProps {
@@ -127,8 +64,7 @@ const YourMixCard = React.memo(({ item, onCardPress }: YourMixCardProps) => {
   }, [item.image_width, item.image_height, item.id]);
 
   const isSmallCard = cardHeight < COLUMN_WIDTH * 1.2;
-  const hasBuddies =
-    item.mentioned_buddies && item.mentioned_buddies.length > 0;
+  const hasBuddies = item.mentioned_buddies && item.mentioned_buddies.length > 0;
 
   const handleFlip = (e?: any) => {
     e?.stopPropagation();
@@ -198,11 +134,7 @@ const YourMixCard = React.memo(({ item, onCardPress }: YourMixCardProps) => {
         />
       ) : (
         <View className="flex-1 items-center justify-center bg-zinc-800">
-          <Ionicons
-            name="image-outline"
-            size={32}
-            color="rgba(255,255,255,0.2)"
-          />
+          <Ionicons name="image-outline" size={32} color="rgba(255,255,255,0.2)" />
         </View>
       )}
 
@@ -235,39 +167,23 @@ const YourMixCard = React.memo(({ item, onCardPress }: YourMixCardProps) => {
         hitSlop={10}
         className="absolute top-3 right-3 w-8 h-8 bg-black/40 backdrop-blur-md rounded-full items-center justify-center border border-white/20"
       >
-        <MaterialCommunityIcons
-          name="rotate-3d-variant"
-          size={16}
-          color="white"
-        />
+        <MaterialCommunityIcons name="rotate-3d-variant" size={16} color="white" />
       </TouchableOpacity>
 
       <View className="absolute bottom-3 left-3 right-3 flex-row items-end justify-between">
         <TouchableOpacity
-          onPress={() =>
-            router.push(`/(screens)/userInfo?userId=${item.user_id}`)
-          }
+          onPress={() => router.push(`/(screens)/userInfo?userId=${item.user_id}`)}
           className="rounded-full border border-white/20 overflow-hidden w-8 h-8 bg-zinc-800"
         >
           {item.user_image_url && (
-            <ExpoImage
-              source={{ uri: item.user_image_url }}
-              style={{ width: "100%", height: "100%" }}
-            />
+            <ExpoImage source={{ uri: item.user_image_url }} style={{ width: "100%", height: "100%" }} />
           )}
         </TouchableOpacity>
 
         {hasBuddies && (
           <View className="flex-row items-center bg-white/[0.1] px-2 py-1 rounded-full border border-white/[0.1]">
-            <Ionicons
-              name="people"
-              size={10}
-              color={PRIMARY_ORANGE}
-              style={{ marginRight: 4 }}
-            />
-            <Text className="text-white text-[10px] font-bold">
-              {item.mentioned_buddies?.length}
-            </Text>
+            <Ionicons name="people" size={10} color={PRIMARY_ORANGE} style={{ marginRight: 4 }} />
+            <Text className="text-white text-[10px] font-bold">{item.mentioned_buddies?.length}</Text>
           </View>
         )}
       </View>
@@ -288,25 +204,16 @@ const YourMixCard = React.memo(({ item, onCardPress }: YourMixCardProps) => {
       className="bg-[#1A1A1A] w-full h-full p-3 justify-between border border-white/[0.08] rounded-3xl"
     >
       <View className="flex-row justify-between items-center mb-2">
-        <Text className="text-white/40 text-[10px] font-black tracking-widest uppercase">
-          DETAILS
-        </Text>
+        <Text className="text-white/40 text-[10px] font-black tracking-widest uppercase">DETAILS</Text>
         <TouchableOpacity onPress={handleFlip}>
-          <Ionicons
-            name="close-circle"
-            size={24}
-            color="white"
-            style={{ opacity: 0.5 }}
-          />
+          <Ionicons name="close-circle" size={24} color="white" style={{ opacity: 0.5 }} />
         </TouchableOpacity>
       </View>
 
       <View className="flex-1 items-center justify-center">
         {hasBuddies ? (
           <View className="items-center">
-            <Text className="text-orange-600 font-bold uppercase tracking-widest text-[10px] mb-3">
-              DRINKING WITH
-            </Text>
+            <Text className="text-orange-600 font-bold uppercase tracking-widest text-[10px] mb-3">DRINKING WITH</Text>
             <View className="flex-row flex-wrap justify-center gap-2">
               {item.mentioned_buddies?.slice(0, 3).map((b, i) => (
                 <View key={i} className="items-center">
@@ -315,19 +222,14 @@ const YourMixCard = React.memo(({ item, onCardPress }: YourMixCardProps) => {
                     style={{ width: 36, height: 36, borderRadius: 18 }}
                     className="border border-white/20 mb-1"
                   />
-                  <Text
-                    className="text-white/60 text-[9px] max-w-[50px] text-center"
-                    numberOfLines={1}
-                  >
+                  <Text className="text-white/60 text-[9px] max-w-[50px] text-center" numberOfLines={1}>
                     {b.firstName}
                   </Text>
                 </View>
               ))}
               {item.mentioned_buddies && item.mentioned_buddies.length > 3 && (
                 <View className="w-9 h-9 rounded-full bg-white/10 items-center justify-center border border-white/10">
-                  <Text className="text-white/60 text-[10px] font-bold">
-                    +{item.mentioned_buddies.length - 3}
-                  </Text>
+                  <Text className="text-white/60 text-[10px] font-bold">+{item.mentioned_buddies.length - 3}</Text>
                 </View>
               )}
             </View>
@@ -335,9 +237,7 @@ const YourMixCard = React.memo(({ item, onCardPress }: YourMixCardProps) => {
         ) : (
           <View className="items-center opacity-30">
             <Ionicons name="person" size={32} color="white" />
-            <Text className="text-white text-[10px] font-bold mt-2 uppercase tracking-wide">
-              Solo Session
-            </Text>
+            <Text className="text-white text-[10px] font-bold mt-2 uppercase tracking-wide">Solo Session</Text>
           </View>
         )}
       </View>
@@ -346,9 +246,7 @@ const YourMixCard = React.memo(({ item, onCardPress }: YourMixCardProps) => {
         onPress={handleNavigation}
         className="w-full bg-orange-600/20 rounded-xl border border-orange-600/50 py-3 flex-row items-center justify-center mt-2"
       >
-        <Text className="text-orange-500 font-black text-[10px] mr-1 tracking-widest">
-          OPEN MEMORY
-        </Text>
+        <Text className="text-orange-500 font-black text-[10px] mr-1 tracking-widest">OPEN MEMORY</Text>
         <Ionicons name="arrow-forward" size={10} color="#EA580C" />
       </TouchableOpacity>
     </Animated.View>
@@ -388,9 +286,7 @@ const MixScreen = () => {
   const { openPostId } = useLocalSearchParams();
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [expandedItem, setExpandedItem] = useState<
-    DailyDrinkingPostResponse | undefined
-  >(undefined);
+  const [expandedItem, setExpandedItem] = useState<DailyDrinkingPostResponse | undefined>(undefined);
   const [currentAspectRatio, setCurrentAspectRatio] = useState(4 / 3);
 
   useEffect(() => {
@@ -416,31 +312,24 @@ const MixScreen = () => {
     if (expandedItem?.image_url) {
       Image.getSize(
         expandedItem.image_url,
-        (width, height) =>
-          width && height && setCurrentAspectRatio(width / height),
+        (width, height) => width && height && setCurrentAspectRatio(width / height),
         () => setCurrentAspectRatio(4 / 3)
       );
     }
   }, [expandedItem]);
 
   const activeData = activeTab === "personal" ? yourMixData : globalMixData;
-  const activeHasMore =
-    activeTab === "personal" ? yourMixHasMore : globalMixHasMore;
+  const activeHasMore = activeTab === "personal" ? yourMixHasMore : globalMixHasMore;
 
-  const handleCardPressForModal = useCallback(
-    (item: DailyDrinkingPostResponse) => {
-      setExpandedId(item.id);
-    },
-    []
-  );
+  const handleCardPressForModal = useCallback((item: DailyDrinkingPostResponse) => {
+    setExpandedId(item.id);
+  }, []);
 
   const handleLoadMore = async () => {
     if (isPaginating || !activeHasMore) return;
     setIsPaginating(true);
     try {
-      activeTab === "personal"
-        ? await loadMoreYourMixData()
-        : await loadMoreGlobalMixData();
+      activeTab === "personal" ? await loadMoreYourMixData() : await loadMoreGlobalMixData();
     } finally {
       setIsPaginating(false);
     }
@@ -463,13 +352,9 @@ const MixScreen = () => {
         <View className="w-20 h-20 bg-white/5 rounded-full items-center justify-center mb-4">
           <Ionicons name="images-outline" size={32} color="white" />
         </View>
-        <Text className="text-white text-lg font-black tracking-wide">
-          No Mixes Yet
-        </Text>
+        <Text className="text-white text-lg font-black tracking-wide">No Mixes Yet</Text>
         <Text className="text-white/60 text-center text-sm mt-2 max-w-[200px]">
-          {activeTab === "personal"
-            ? "Start capturing your nights to see them appear here."
-            : "No public mixes found."}
+          {activeTab === "personal" ? "Start capturing your nights to see them appear here." : "No public mixes found."}
         </Text>
       </View>
     );
@@ -481,6 +366,11 @@ const MixScreen = () => {
     },
     [handleCardPressForModal]
   );
+  type FeedType = "personal" | "global";
+  const feedTabs: SegmentItem<FeedType>[] = [
+    { value: "personal", label: "MY MIX", icon: "person" },
+    { value: "global", label: "GLOBAL", icon: "earth" },
+  ];
 
   return (
     <View className="flex-1 bg-black">
@@ -488,8 +378,7 @@ const MixScreen = () => {
 
       <View className="z-10 bg-black" style={{ paddingTop: insets.top }}>
         <Header />
-
-        <CompactSegmentedControl selected={activeTab} onSelect={setActiveTab} />
+        <TabSwitcher items={feedTabs} selected={activeTab} onSelect={setActiveTab} />
       </View>
 
       <FlashList

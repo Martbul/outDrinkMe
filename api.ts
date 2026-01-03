@@ -4,9 +4,9 @@ import {
   AlcoholCollectionByType,
   CalendarResponse,
   CanvasItem,
-  CreateSideQuestReq,
   DailyDrinkingPostResponse,
   DaysStat,
+  DrinkUpSubscription,
   DrunkThought,
   FriendDiscoveryDisplayProfileResponse,
   Friendship,
@@ -22,6 +22,7 @@ import {
   UserData,
   UserStats,
   UserStories,
+  Venue,
   VideoPost,
 } from "./types/api.types";
 
@@ -39,10 +40,7 @@ class ApiService {
     console.log("API initialized with base URL:", this.baseUrl);
   }
 
-  private async makeRequest<T>(
-    endpoint: string,
-    options: RequestInit & { token?: string }
-  ): Promise<T> {
+  private async makeRequest<T>(endpoint: string, options: RequestInit & { token?: string }): Promise<T> {
     const { token, ...fetchOptions } = options;
 
     const headers = {
@@ -63,13 +61,11 @@ class ApiService {
       try {
         errorText = await response.text();
       } catch (error) {
-        console.log(error)
+        console.log(error);
         errorText = `HTTP ${response.status} ${response.statusText}`;
       }
 
-      console.log(
-        `Error response: ${errorText} | failed endpoint: ${endpoint}`
-      );
+      console.log(`Error response: ${errorText} | failed endpoint: ${endpoint}`);
 
       if (response.status === 404) {
         throw new Error("USER_NOT_FOUND");
@@ -115,10 +111,7 @@ class ApiService {
     throw new Error("Unexpected fetch failure");
   }
 
-  async createUser(
-    userData: Partial<UserData>,
-    token: string
-  ): Promise<UserData> {
+  async createUser(userData: Partial<UserData>, token: string): Promise<UserData> {
     return this.makeRequest<UserData>("/api/v1/user", {
       method: "POST",
       token,
@@ -126,10 +119,7 @@ class ApiService {
     });
   }
 
-  async updateUserProfile(
-    updateReq: UpdateUserProfileReq,
-    token: string
-  ): Promise<UserData> {
+  async updateUserProfile(updateReq: UpdateUserProfileReq, token: string): Promise<UserData> {
     return this.makeRequest<UserData>("/api/v1/user/update-profile", {
       method: "PUT",
       token,
@@ -145,25 +135,17 @@ class ApiService {
   }
 
   async searchUsers(searchQuery: string, token: string): Promise<UserData[]> {
-    const response = await this.makeRequest<UserData[]>(
-      `/api/v1/user/search?q=${encodeURIComponent(searchQuery)}`,
-      {
-        method: "GET",
-        token,
-      }
-    );
+    const response = await this.makeRequest<UserData[]>(`/api/v1/user/search?q=${encodeURIComponent(searchQuery)}`, {
+      method: "GET",
+      token,
+    });
 
     return response || [];
   }
 
-  async searchDbAlcoholCollection(
-    searchQuery: string,
-    token: string
-  ): Promise<SearchDbAlcoholResult | null> {
+  async searchDbAlcoholCollection(searchQuery: string, token: string): Promise<SearchDbAlcoholResult | null> {
     const response = await this.makeRequest<SearchDbAlcoholResult | null>(
-      `/api/v1/user/search-db-alcohol?alcohol_name=${encodeURIComponent(
-        searchQuery
-      )}`,
+      `/api/v1/user/search-db-alcohol?alcohol_name=${encodeURIComponent(searchQuery)}`,
       {
         method: "GET",
         token,
@@ -173,24 +155,16 @@ class ApiService {
     return response;
   }
 
-  async getUserAlcoholCollection(
-    token: string
-  ): Promise<AlcoholCollectionByType> {
-    const response = await this.makeRequest<AlcoholCollectionByType>(
-      `/api/v1/user/alcohol-collection`,
-      {
-        method: "GET",
-        token,
-      }
-    );
+  async getUserAlcoholCollection(token: string): Promise<AlcoholCollectionByType> {
+    const response = await this.makeRequest<AlcoholCollectionByType>(`/api/v1/user/alcohol-collection`, {
+      method: "GET",
+      token,
+    });
 
     return response;
   }
 
-  async removeFromAlcoholCollection(
-    itemId: string,
-    token: string
-  ): Promise<any> {
+  async removeFromAlcoholCollection(itemId: string, token: string): Promise<any> {
     const response = await this.makeRequest<any>(
       `/api/v1/user/alcohol-collection?itemId=${encodeURIComponent(itemId)}`,
       {
@@ -209,14 +183,8 @@ class ApiService {
     });
   }
 
-  async addDrinking(
-    data: AddDrinkingRequest,
-    token: string,
-    date?: string
-  ): Promise<{ message: string }> {
-    const url = date
-      ? `/api/v1/user/drink?date=${encodeURIComponent(date)}`
-      : `/api/v1/user/drink`;
+  async addDrinking(data: AddDrinkingRequest, token: string, date?: string): Promise<{ message: string }> {
+    const url = date ? `/api/v1/user/drink?date=${encodeURIComponent(date)}` : `/api/v1/user/drink`;
 
     return await this.makeRequest(url, {
       method: "POST",
@@ -225,18 +193,12 @@ class ApiService {
     });
   }
 
-  async removeDrinking(
-    token: string,
-    date: string
-  ): Promise<{ message: string }> {
+  async removeDrinking(token: string, date: string): Promise<{ message: string }> {
     console.log("devbug for remove drinking");
-    return await this.makeRequest(
-      `/api/v1/user/drink?date=${encodeURIComponent(date)}`,
-      {
-        method: "DELETE",
-        token,
-      }
-    );
+    return await this.makeRequest(`/api/v1/user/drink?date=${encodeURIComponent(date)}`, {
+      method: "DELETE",
+      token,
+    });
   }
 
   async getLeaderboards(token: string): Promise<LeaderboardsResponse> {
@@ -281,12 +243,7 @@ class ApiService {
     });
   }
 
-  async getCalendar(
-    year: number,
-    month: number,
-    token: string,
-    displyUserId?: string
-  ): Promise<CalendarResponse> {
+  async getCalendar(year: number, month: number, token: string, displyUserId?: string): Promise<CalendarResponse> {
     const userIdParam = displyUserId || "";
 
     return this.makeRequest<CalendarResponse>(
@@ -304,37 +261,28 @@ class ApiService {
   }
 
   async getFriends(token: string): Promise<UserData[]> {
-    const response = await this.makeRequest<UserData[]>(
-      "/api/v1/user/friends",
-      {
-        method: "GET",
-        token,
-      }
-    );
+    const response = await this.makeRequest<UserData[]>("/api/v1/user/friends", {
+      method: "GET",
+      token,
+    });
 
     return response || [];
   }
 
   async getDiscovery(token: string): Promise<UserData[]> {
-    const response = await this.makeRequest<UserData[]>(
-      "/api/v1/user/discovery",
-      {
-        method: "GET",
-        token,
-      }
-    );
+    const response = await this.makeRequest<UserData[]>("/api/v1/user/discovery", {
+      method: "GET",
+      token,
+    });
 
     return response || [];
   }
 
   async getFriendsDrunkThoughts(token: string): Promise<DrunkThought[]> {
-    const response = await this.makeRequest<DrunkThought[]>(
-      "/api/v1/user/drunk-friend-thoughts",
-      {
-        method: "GET",
-        token,
-      }
-    );
+    const response = await this.makeRequest<DrunkThought[]>("/api/v1/user/drunk-friend-thoughts", {
+      method: "GET",
+      token,
+    });
     return response || [];
   }
 
@@ -360,18 +308,11 @@ class ApiService {
   //   }));
   // }
 
-  async getYourMixData(
-    token: string,
-    page: number = 1,
-    limit: number = 20
-  ): Promise<DailyDrinkingPostResponse[]> {
-    return this.makeRequest<DailyDrinkingPostResponse[]>(
-      `/api/v1/user/your-mix?page=${page}&limit=${limit}`,
-      {
-        method: "GET",
-        token,
-      }
-    );
+  async getYourMixData(token: string, page: number = 1, limit: number = 20): Promise<DailyDrinkingPostResponse[]> {
+    return this.makeRequest<DailyDrinkingPostResponse[]>(`/api/v1/user/your-mix?page=${page}&limit=${limit}`, {
+      method: "GET",
+      token,
+    });
   }
 
   // async getYourMixData(
@@ -395,18 +336,11 @@ class ApiService {
   //   }
   // }
 
-  async getGlobalMixData(
-    token: string,
-    page: number = 1,
-    limit: number = 20
-  ): Promise<DailyDrinkingPostResponse[]> {
-    return this.makeRequest<DailyDrinkingPostResponse[]>(
-      `/api/v1/user/global-mix?page=${page}&limit=${limit}`,
-      {
-        method: "GET",
-        token,
-      }
-    );
+  async getGlobalMixData(token: string, page: number = 1, limit: number = 20): Promise<DailyDrinkingPostResponse[]> {
+    return this.makeRequest<DailyDrinkingPostResponse[]>(`/api/v1/user/global-mix?page=${page}&limit=${limit}`, {
+      method: "GET",
+      token,
+    });
   }
 
   //  async getGlobalMixData(
@@ -430,21 +364,13 @@ class ApiService {
   //   }
   // }
   async getMixTimeline(token: string): Promise<DailyDrinkingPostResponse[]> {
-    return this.makeRequest<DailyDrinkingPostResponse[]>(
-      "/api/v1/user/mix-timeline",
-      {
-        method: "GET",
-        token,
-      }
-    );
+    return this.makeRequest<DailyDrinkingPostResponse[]>("/api/v1/user/mix-timeline", {
+      method: "GET",
+      token,
+    });
   }
 
-  async addMixVideo(
-    videoUrl: string,
-    caption: string,
-    duration: number,
-    token: string
-  ): Promise<any> {
+  async addMixVideo(videoUrl: string, caption: string, duration: number, token: string): Promise<any> {
     const response = await this.makeRequest<any>("/api/v1/user/mix-videos", {
       method: "POST",
       token,
@@ -463,13 +389,10 @@ class ApiService {
 
   async getMixVideos(token: string): Promise<VideoPost[]> {
     try {
-      const response = await this.makeRequest<any[]>(
-        "/api/v1/user/mix-videos",
-        {
-          method: "GET",
-          token,
-        }
-      );
+      const response = await this.makeRequest<any[]>("/api/v1/user/mix-videos", {
+        method: "GET",
+        token,
+      });
 
       const transformed = response.map((video) => ({
         id: video.id,
@@ -494,16 +417,13 @@ class ApiService {
 
   async addChipsToVideo(token: string, videoId: string): Promise<boolean> {
     try {
-      await this.makeRequest<{ message: string }>(
-        "/api/v1/user/mix-video-chips",
-        {
-          method: "POST",
-          token,
-          body: JSON.stringify({
-            video_id: videoId,
-          }),
-        }
-      );
+      await this.makeRequest<{ message: string }>("/api/v1/user/mix-video-chips", {
+        method: "POST",
+        token,
+        body: JSON.stringify({
+          video_id: videoId,
+        }),
+      });
 
       return true;
     } catch (error) {
@@ -521,9 +441,7 @@ class ApiService {
   }
 
   async getDrunkThought(token: string, date?: string): Promise<any> {
-    const url = date
-      ? `/api/v1/user/drunk-thought?date=${encodeURIComponent(date)}`
-      : `/api/v1/user/drunk-thought`;
+    const url = date ? `/api/v1/user/drunk-thought?date=${encodeURIComponent(date)}` : `/api/v1/user/drunk-thought`;
 
     const response = await this.makeRequest<any>(url, {
       method: "GET",
@@ -533,10 +451,7 @@ class ApiService {
     return response?.drunk_thought ?? null;
   }
 
-  async addDrunkThought(
-    drunkThought: string,
-    token: string
-  ): Promise<{ message: string; drunk_thought: string }> {
+  async addDrunkThought(drunkThought: string, token: string): Promise<{ message: string; drunk_thought: string }> {
     return this.makeRequest("/api/v1/user/drunk-thought", {
       method: "POST",
       token,
@@ -567,14 +482,13 @@ class ApiService {
     }
   > {
     try {
-      const response =
-        await this.makeRequest<FriendDiscoveryDisplayProfileResponse>(
-          `/api/v1/user/friend-discovery/display-profile?friendDiscoveryId=${friendDiscoveryId}`,
-          {
-            method: "GET",
-            token,
-          }
-        );
+      const response = await this.makeRequest<FriendDiscoveryDisplayProfileResponse>(
+        `/api/v1/user/friend-discovery/display-profile?friendDiscoveryId=${friendDiscoveryId}`,
+        {
+          method: "GET",
+          token,
+        }
+      );
 
       return {
         ...response,
@@ -582,10 +496,7 @@ class ApiService {
         inventory: response.inventory || {},
       };
     } catch (error) {
-      console.error(
-        `Failed to fetch friend discovery profile for ${friendDiscoveryId}:`,
-        error
-      );
+      console.error(`Failed to fetch friend discovery profile for ${friendDiscoveryId}:`, error);
       return {
         user: {} as UserData,
         stats: {
@@ -656,50 +567,31 @@ class ApiService {
   ): Promise<NotificationListResponse> {
     const query = `?page=${page}&page_size=${pageSize}&unread_only=${unreadOnly}`;
 
-    return this.makeRequest<NotificationListResponse>(
-      `/api/v1/notifications${query}`,
-      {
-        method: "GET",
-        token,
-      }
-    );
+    return this.makeRequest<NotificationListResponse>(`/api/v1/notifications${query}`, {
+      method: "GET",
+      token,
+    });
   }
 
-  async getUnreadNotificationsCount(
-    token: string
-  ): Promise<UnreadCountResponse> {
-    return this.makeRequest<UnreadCountResponse>(
-      "/api/v1/notifications/unread-count",
-      {
-        method: "GET",
-        token,
-      }
-    );
+  async getUnreadNotificationsCount(token: string): Promise<UnreadCountResponse> {
+    return this.makeRequest<UnreadCountResponse>("/api/v1/notifications/unread-count", {
+      method: "GET",
+      token,
+    });
   }
 
-  async markNotificationAsRead(
-    token: string,
-    id: string
-  ): Promise<{ message: string }> {
-    return this.makeRequest<{ message: string }>(
-      `/api/v1/notifications/${id}/read`,
-      {
-        method: "PUT",
-        token,
-      }
-    );
+  async markNotificationAsRead(token: string, id: string): Promise<{ message: string }> {
+    return this.makeRequest<{ message: string }>(`/api/v1/notifications/${id}/read`, {
+      method: "PUT",
+      token,
+    });
   }
 
-  async markAllNotificationsAsRead(
-    token: string
-  ): Promise<{ message: string }> {
-    return this.makeRequest<{ message: string }>(
-      `/api/v1/notifications/read-all`,
-      {
-        method: "PUT",
-        token,
-      }
-    );
+  async markAllNotificationsAsRead(token: string): Promise<{ message: string }> {
+    return this.makeRequest<{ message: string }>(`/api/v1/notifications/read-all`, {
+      method: "PUT",
+      token,
+    });
   }
 
   async getNotificationPreferences(token: string): Promise<any> {
@@ -716,10 +608,7 @@ class ApiService {
     });
   }
 
-  async registerDevice(
-    token: string,
-    data: { token: string; platform: "android" | "ios" | "web" }
-  ): Promise<any> {
+  async registerDevice(token: string, data: { token: string; platform: "android" | "ios" | "web" }): Promise<any> {
     return this.makeRequest<any>("/api/v1/notifications/register-device", {
       method: "POST",
       token,
@@ -727,22 +616,15 @@ class ApiService {
     });
   }
 
-
   //!create is basicly creating and joingin
-  async createDrinkingGame(
-    gameType: string,
-    token: string
-  ): Promise<{ sessionId: string; wsUrl: string }> {
-    return this.makeRequest<{ sessionId: string; wsUrl: string }>(
-      `/api/v1/drinking-games/create`,
-      {
-        method: "POST",
-        token,
-        body: JSON.stringify({
-          game_type: gameType,
-        }),
-      }
-    );
+  async createDrinkingGame(gameType: string, token: string): Promise<{ sessionId: string; wsUrl: string }> {
+    return this.makeRequest<{ sessionId: string; wsUrl: string }>(`/api/v1/drinking-games/create`, {
+      method: "POST",
+      token,
+      body: JSON.stringify({
+        game_type: gameType,
+      }),
+    });
   }
 
   /**
@@ -792,33 +674,24 @@ class ApiService {
   }
 
   async getAlcoholismChart(token: string, period: string): Promise<any> {
-    return this.makeRequest<any>(
-      `/api/v1/user/alcoholisum_chart?period=${period}`,
-      {
-        method: "GET",
-        token,
-      }
-    );
+    return this.makeRequest<any>(`/api/v1/user/alcoholisum_chart?period=${period}`, {
+      method: "GET",
+      token,
+    });
   }
 
   async getMapFriendsPosts(token: string): Promise<DailyDrinkingPostResponse[]> {
-    return this.makeRequest<DailyDrinkingPostResponse[]>(
-      "/api/v1/user/map-friend-posts",
-      {
-        method: "GET",
-        token,
-      }
-    );
+    return this.makeRequest<DailyDrinkingPostResponse[]>("/api/v1/user/map-friend-posts", {
+      method: "GET",
+      token,
+    });
   }
 
   async getMemoryWall(postId: string, token: string): Promise<CanvasItem[]> {
-    return this.makeRequest<CanvasItem[]>(
-      `/api/v1/user/memory-wall/${postId}`,
-      {
-        method: "GET",
-        token,
-      }
-    );
+    return this.makeRequest<CanvasItem[]>(`/api/v1/user/memory-wall/${postId}`, {
+      method: "GET",
+      token,
+    });
   }
 
   async saveMemoryWall(
@@ -890,11 +763,7 @@ class ApiService {
     });
   }
 
-  async deleteImages(
-    token: string,
-    imageUrls: string[],
-    funcId: string
-  ): Promise<void> {
+  async deleteImages(token: string, imageUrls: string[], funcId: string): Promise<void> {
     return this.makeRequest("/api/v1/func/delete", {
       method: "DELETE",
       token,
@@ -950,11 +819,7 @@ class ApiService {
     });
   }
 
-  async relateStory(
-    token: string,
-    storyId: string,
-    action: "like"
-  ): Promise<void> {
+  async relateStory(token: string, storyId: string, action: "like"): Promise<void> {
     return this.makeRequest("/api/v1/user/stories/relate", {
       method: "POST",
       token,
@@ -970,14 +835,30 @@ class ApiService {
     });
   }
 
+  async getDrinkUpSubscriptionDetails(token: string): Promise<DrinkUpSubscription> {
+    return this.makeRequest("/api/v1/user/subscription", {
+      method: "GET",
+      token,
+    });
+  }
+
+  async makeDrinkUpSubscription(token: string): Promise<void> {
+    return this.makeRequest("/api/v1/user/subscription", {
+      method: "POST",
+      token,
+    });
+  }
+
+  async getAllVenues(token: string): Promise<Venue[]> {
+    return this.makeRequest("/api/v1/venues", {
+      method: "GET",
+      token,
+    });
+  }
+
   getWebSocketUrl(sessionId: string): string {
-    // 1. Strip http/https
     const rawHost = this.baseUrl.replace(/^https?:\/\//, "");
-
-    // 2. Determine protocol (wss if https, ws if http)
     const protocol = this.baseUrl.startsWith("https") ? "wss" : "ws";
-
-    // 3. Construct URL: ws://10.0.2.2:3333/api/v1/games/ws/X7Z9
     return `${protocol}://${rawHost}/api/v1/drinking-games/ws/${sessionId}`;
   }
 }

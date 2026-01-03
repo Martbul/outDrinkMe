@@ -6,28 +6,47 @@ import {
   Animated,
   StyleSheet,
   Pressable,
+  TouchableOpacity,
+  Modal,
+  ScrollView,
 } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import Svg, { Path, Circle, Rect } from "react-native-svg";
+import { PaywallModal } from "./paywall_modal";
+
+
+// --- PASSPORT COMPONENTS & LOGIC ---
 
 const { width } = Dimensions.get("window");
 const CARD_RATIO = 1.586;
-const CARD_WIDTH = width - 48; // Slightly smaller to fit padding
+const CARD_WIDTH = width - 48;
 const CARD_HEIGHT = CARD_WIDTH / CARD_RATIO;
 
 // --- MOCK DATA ---
-const PASSPORT_DATA = {
+const REAL_USER_DATA = {
   name: "ALEXANDER DRINKER",
   id: "DRK-8821-X99",
   joined: "21 JAN 2024",
-  rank: "MALT MASTER",
   nationality: "DRINKUP CITIZEN",
-  dob: "12 AUG 1995",
-  stats: { level: 42, liters: 108.5, streak: 14 },
   avatar:
     "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=400",
+  moneySaved: 425.5,
+  barsVisited: 18,
+  validDue: "12/25",
+};
+
+const EXAMPLE_USER_DATA = {
+  name: "EXAMPLE PASSPORT",
+  id: "000-0000-000",
+  joined: "01 JAN 2024",
+  nationality: "GLOBAL CITIZEN",
+  avatar:
+    "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=400",
+  moneySaved: 1250.0,
+  barsVisited: 42,
+  validDue: "12/99",
 };
 
 // --- SUB-COMPONENTS ---
@@ -141,7 +160,6 @@ const GuillochePattern = () => (
   </View>
 );
 
-// Procedural QR Code Generation for "Techy" look
 const MockQRCode = () => (
   <View className="bg-white p-2 rounded-lg items-center justify-center">
     <View className="flex-row flex-wrap w-32 h-32 bg-white">
@@ -151,7 +169,6 @@ const MockQRCode = () => (
           className={`w-4 h-4 ${Math.random() > 0.4 ? "bg-black" : "bg-white"}`}
         />
       ))}
-      {/* Positioning Squares */}
       <View className="absolute top-0 left-0 w-8 h-8 border-4 border-black bg-white">
         <View className="w-2 h-2 bg-black m-1" />
       </View>
@@ -165,11 +182,21 @@ const MockQRCode = () => (
   </View>
 );
 
-// --- MAIN COMPONENT ---
+interface DigitalPassportProps {
+  hasPremium?: boolean;
+  onBuyPremium?: () => void;
+}
 
-export default function DigitalPassport() {
+export default function DigitalPassport({
+  hasPremium = false,
+  onBuyPremium,
+}: DigitalPassportProps) {
   const [isFlipped, setIsFlipped] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
   const flipAnim = useRef(new Animated.Value(0)).current;
+
+  // Select data based on premium status
+  const DATA = hasPremium ? REAL_USER_DATA : EXAMPLE_USER_DATA;
 
   const handleFlip = () => {
     Animated.spring(flipAnim, {
@@ -236,6 +263,15 @@ export default function DigitalPassport() {
 
   return (
     <View className="items-center justify-center my-6">
+      <PaywallModal
+        visible={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        onPurchase={() => {
+          setShowPaywall(false);
+          if (onBuyPremium) onBuyPremium();
+        }}
+      />
+
       <Pressable onPress={handleFlip}>
         <View style={{ width: CARD_WIDTH, height: CARD_HEIGHT }}>
           {/* --- FRONT SIDE --- */}
@@ -280,21 +316,30 @@ export default function DigitalPassport() {
               <View className="w-[35%] items-start">
                 <View className="w-24 h-32 rounded-lg border-2 border-orange-600/30 p-1 bg-black/50 relative mb-3">
                   <Image
-                    source={{ uri: PASSPORT_DATA.avatar }}
-                    style={{ width: "100%", height: "100%", borderRadius: 4 }}
+                    source={{ uri: DATA.avatar }}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      borderRadius: 4,
+                      opacity: hasPremium ? 1 : 0.6,
+                    }}
                     contentFit="cover"
                   />
-                  <View className="absolute inset-0 bg-orange-600/10 z-10 rounded-sm" />
-                  <View className="absolute bottom-1 right-1">
-                    <MaterialCommunityIcons
-                      name="check-decagram"
-                      size={14}
-                      color="#EA580C"
-                    />
-                  </View>
+                  {hasPremium && (
+                    <>
+                      <View className="absolute inset-0 bg-orange-600/10 z-10 rounded-sm" />
+                      <View className="absolute bottom-1 right-1">
+                        <MaterialCommunityIcons
+                          name="check-decagram"
+                          size={14}
+                          color="#EA580C"
+                        />
+                      </View>
+                    </>
+                  )}
                 </View>
                 <Text className="text-white/30 text-[8px] text-center w-24 font-mono">
-                  IMG_REF_882
+                  REF: {DATA.id.split("-")[1]}
                 </Text>
               </View>
 
@@ -313,7 +358,7 @@ export default function DigitalPassport() {
                       SURNAME / GIVEN NAMES
                     </Text>
                     <Text className="text-white text-lg font-black uppercase leading-5 shadow-black shadow-sm">
-                      {PASSPORT_DATA.name}
+                      {DATA.name}
                     </Text>
                   </View>
                   <View className="flex-row justify-between pr-4">
@@ -322,41 +367,48 @@ export default function DigitalPassport() {
                         JOINED
                       </Text>
                       <Text className="text-white text-xs font-mono font-bold">
-                        {PASSPORT_DATA.joined}
+                        {DATA.joined}
                       </Text>
                     </View>
                     <View>
                       <Text className="text-white/40 text-[8px] font-bold uppercase">
-                        RANK
+                        ORIGIN
                       </Text>
-                      <Text className="text-orange-500 text-xs font-mono font-bold">
-                        {PASSPORT_DATA.rank}
+                      <Text className="text-white text-xs font-mono font-bold">
+                        GLOBAL
                       </Text>
                     </View>
                   </View>
-                  <View className="flex-row gap-2 mt-1">
-                    <View className="bg-white/5 px-2 py-1 rounded border border-white/10 items-center">
-                      <Text className="text-[8px] text-white/50 font-bold">
-                        LVL
+
+                  {/* STATS ROW */}
+                  <View className="flex-row gap-2 mt-2">
+                    {/* Money Saved */}
+                    <View className="bg-white/5 px-2 py-1.5 rounded border border-white/10 items-center min-w-[50px]">
+                      <Text className="text-[7px] text-white/50 font-bold uppercase mb-0.5">
+                        SAVED
                       </Text>
-                      <Text className="text-white font-black text-xs">
-                        {PASSPORT_DATA.stats.level}
-                      </Text>
-                    </View>
-                    <View className="bg-white/5 px-2 py-1 rounded border border-white/10 items-center">
-                      <Text className="text-[8px] text-white/50 font-bold">
-                        LITERS
-                      </Text>
-                      <Text className="text-white font-black text-xs">
-                        {PASSPORT_DATA.stats.liters}
+                      <Text className="text-green-500 font-black text-xs">
+                        ${DATA.moneySaved.toLocaleString()}
                       </Text>
                     </View>
-                    <View className="bg-orange-600/10 px-2 py-1 rounded border border-orange-600/30 items-center">
-                      <Text className="text-[8px] text-orange-500 font-bold">
-                        STREAK
+
+                    {/* Bars Visited */}
+                    <View className="bg-white/5 px-2 py-1.5 rounded border border-white/10 items-center min-w-[50px]">
+                      <Text className="text-[7px] text-white/50 font-bold uppercase mb-0.5">
+                        VISITED
                       </Text>
                       <Text className="text-white font-black text-xs">
-                        {PASSPORT_DATA.stats.streak}
+                        {DATA.barsVisited}
+                      </Text>
+                    </View>
+
+                    {/* Valid Due */}
+                    <View className="bg-orange-600/10 px-2 py-1.5 rounded border border-orange-600/30 items-center min-w-[50px]">
+                      <Text className="text-[7px] text-orange-500 font-bold uppercase mb-0.5">
+                        VALID DUE
+                      </Text>
+                      <Text className="text-white font-black text-xs">
+                        {DATA.validDue}
                       </Text>
                     </View>
                   </View>
@@ -364,10 +416,9 @@ export default function DigitalPassport() {
               </View>
             </View>
 
-           
+          
           </CardFace>
 
-          {/* --- BACK SIDE --- */}
           <CardFace
             style={{
               transform: [{ rotateY: backInterpolate }],
@@ -379,15 +430,13 @@ export default function DigitalPassport() {
             <View className="w-full h-12 bg-[#0a0a0a] mt-6 border-t border-b border-white/5" />
 
             <View className="flex-1 flex-row p-6 items-center">
-              {/* QR Section */}
               <View className="items-center mr-6">
                 <MockQRCode />
                 <Text className="text-white/40 text-[8px] font-mono mt-2 tracking-widest">
-                  {PASSPORT_DATA.id}
+                  {DATA.id}
                 </Text>
               </View>
 
-              {/* Info Section */}
               <View className="flex-1 justify-between h-32">
                 <View>
                   <Text className="text-white/30 text-[8px] font-bold uppercase mb-1">
@@ -395,7 +444,7 @@ export default function DigitalPassport() {
                   </Text>
                   <View className="h-8 bg-white/10 rounded border border-white/20 justify-center px-2">
                     <Text className="font-black text-white/50 text-xs italic opacity-70">
-                      AlexDrinker
+                      {hasPremium ? "AlexDrinker" : "ExampleUser"}
                     </Text>
                   </View>
                 </View>
@@ -426,18 +475,31 @@ export default function DigitalPassport() {
               </View>
             </View>
 
-            {/* Bottom Disclaimer */}
-            <View className="bg-orange-600/10 p-3 border-t border-orange-600/20">
-              <Text className="text-orange-500/60 text-[8px] text-center font-bold">
-                PROPERTY OF DRINKUP INC. IF FOUND RETURN TO NEAREST BAR.
-              </Text>
-            </View>
           </CardFace>
         </View>
       </Pressable>
 
-      {/* Glow Underneath */}
       <View className="absolute -z-10 w-[90%] h-[90%] bg-orange-600/20 blur-3xl rounded-full" />
+
+      {!hasPremium && (
+        <TouchableOpacity
+          onPress={() => setShowPaywall(true)}
+          activeOpacity={0.8}
+          style={{ width: CARD_WIDTH }}
+          className="mt-10 bg-orange-600 py-4 rounded-2xl items-center shadow-lg shadow-orange-600/20 border border-orange-400/20"
+        >
+          <View className="flex-row items-center space-x-2">
+            <MaterialCommunityIcons
+              name="star-four-points"
+              size={18}
+              color="black"
+            />
+            <Text className="text-black font-black text-sm tracking-wide ml-2">
+              UNLOCK PREMIUM PASSPORT
+            </Text>
+          </View>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }

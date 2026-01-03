@@ -4,15 +4,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "@clerk/clerk-expo";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
-import Octicons from "@expo/vector-icons/Octicons";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import SplashScreen from "@/components/spashScreen";
 import { useApp } from "@/providers/AppProvider";
-import * as Notifications from "expo-notifications";
 import { registerForPushNotificationsAsync } from "@/utils/registerPushNotification";
-
+import * as Notifications from "expo-notifications";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -29,10 +27,9 @@ export default function TabLayout() {
   const { isSignedIn, isLoaded } = useAuth();
   const [isReady, setIsReady] = useState(false);
   const { isInitialLoading } = useApp();
-  const { registerPushDevice } = useApp(); 
+  const { registerPushDevice } = useApp();
   const notificationListener = useRef<Notifications.Subscription | null>(null);
   const responseListener = useRef<Notifications.Subscription | null>(null);
-
 
   //! Uselec timer??
   useEffect(() => {
@@ -44,7 +41,6 @@ export default function TabLayout() {
   }, []);
 
   useEffect(() => {
-    // A. Register for Token
     registerForPushNotificationsAsync().then((token) => {
       if (token) {
         console.log("FCM TOKEN:", token);
@@ -53,16 +49,14 @@ export default function TabLayout() {
     });
 
     // B. Listen for incoming notifications (Foreground)
-    notificationListener.current =
-      Notifications.addNotificationReceivedListener((notification) => {
-        console.log("Notification Received:", notification);
-      });
+    notificationListener.current = Notifications.addNotificationReceivedListener((notification) => {
+      console.log("Notification Received:", notification);
+    });
 
     // C. Listen for user tapping the notification
-    responseListener.current =
-      Notifications.addNotificationResponseReceivedListener((response) => {
-        console.log("Notification Tapped:", response);
-      });
+    responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
+      console.log("Notification Tapped:", response);
+    });
 
     return () => {
       // FIX 2: Call .remove() directly on the subscription object
@@ -155,16 +149,12 @@ export default function TabLayout() {
                   opacity: focused ? 1 : 0.5,
                 }}
               >
-                <MaterialIcons
-                  name="add-circle-outline"
-                  size={30}
-                  color="#ff8c00"
-                />
+                <MaterialIcons name="add-circle-outline" size={30} color="#ff8c00" />
               </View>
             ),
           }}
         />
-        
+
         <Tabs.Screen
           name="calendar"
           options={{
@@ -183,9 +173,9 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="drinkup"
+          name="premium"
           options={{
-            title: "DrinkUp",
+            title: "Premium",
             tabBarIcon: ({ focused }) => (
               <View
                 style={{
@@ -194,7 +184,7 @@ export default function TabLayout() {
                   opacity: focused ? 1 : 0.5,
                 }}
               >
-                <Octicons name="arrow-up" size={24} color="#ff8c00" />
+                <MaterialCommunityIcons name="card-account-details-star" size={24} color="#ff8c00" />
               </View>
             ),
           }}
