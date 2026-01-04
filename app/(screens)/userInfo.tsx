@@ -760,7 +760,7 @@ const UserInfoScreen = () => {
                 icon={<FontAwesome6 name="martini-glass-citrus" size={20} color={PRIMARY_ORANGE} />}
                 onPress={() => {
                   setSettingsSheetVisible(false);
-                  router.push("/(bar)/scan");
+                  router.push("/(venue)/scan");
                 }}
               />
               <ModalOption

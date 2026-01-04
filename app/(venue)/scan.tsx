@@ -159,21 +159,14 @@ export default function Scan() {
 
         {/* Bottom Stats Panel (Employee Dashboard) */}
         <View className="absolute bottom-0 left-0 right-0 bg-[#121212] rounded-t-3xl border-t border-white/10 px-6 pt-6 pb-10">
-            <Text className="text-white/40 font-bold text-xs uppercase tracking-widest mb-4">Tonight's Session</Text>
-            <View className="flex-row justify-between">
+            <Text className="text-white/40 font-bold text-xs uppercase tracking-widest mb-4">Tonight</Text>
+            <View className="flex-row justify-center">
                 <View className="bg-[#1A1A1A] flex-1 mr-2 p-4 rounded-2xl border border-white/5">
                     <View className="flex-row items-center mb-2">
                         <MaterialCommunityIcons name="qrcode-scan" size={20} color={PRIMARY_ORANGE} />
                         <Text className="text-white font-bold ml-2">Scans</Text>
                     </View>
                     <Text className="text-3xl font-black text-white">{sessionStats.count}</Text>
-                </View>
-                <View className="bg-[#1A1A1A] flex-1 ml-2 p-4 rounded-2xl border border-white/5">
-                    <View className="flex-row items-center mb-2">
-                        <MaterialCommunityIcons name="cash-multiple" size={20} color="#22c55e" />
-                        <Text className="text-white font-bold ml-2">Value</Text>
-                    </View>
-                    <Text className="text-3xl font-black text-white">${sessionStats.saved}</Text>
                 </View>
             </View>
         </View>

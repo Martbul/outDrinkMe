@@ -1,7 +1,6 @@
 import { Redirect, Stack } from "expo-router";
-import { useApp } from "@/providers/AppProvider";
 
-export default function BarRoutesLayout() {
+export default function VenueRoutesLayout() {
 //   const { registeredAtBar } = useApp();
 
 //   if (registeredAtBar) {
