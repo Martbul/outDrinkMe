@@ -725,14 +725,16 @@ export default function BarHuntScreen() {
       <PaywallModal visible={showPaywall} onClose={() => setShowPaywall(false)} onPurchase={handlePurchase} />
 
       <SwipeableSheet visible={showPassport} onClose={() => setShowPassport(false)}>
-        <View className="items-center py-6">
-          <View className="items-center mb-8">
+        <View className="flex-1 items-center justify-center  pb-12">
+          <View className="items-center mb-24">
             <Text className="text-orange-600 text-center text-[10px] font-black tracking-[4px] mb-2 uppercase">
               Official Member
             </Text>
             <Text className="text-white text-center text-3xl font-black">DRINKING PASSPORT</Text>
           </View>
+
           <DigitalPassport />
+
           <Text className="text-white/40 text-center text-xs mt-8 px-10 leading-5">
             Scan this ID at partner venues to collect points and redeem discounts.
           </Text>

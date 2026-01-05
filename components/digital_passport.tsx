@@ -16,7 +16,6 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import Svg, { Path, Circle, Rect } from "react-native-svg";
 import { PaywallModal } from "./paywall_modal";
 
-
 // --- PASSPORT COMPONENTS & LOGIC ---
 
 const { width } = Dimensions.get("window");
@@ -30,8 +29,7 @@ const REAL_USER_DATA = {
   id: "DRK-8821-X99",
   joined: "21 JAN 2024",
   nationality: "DRINKUP CITIZEN",
-  avatar:
-    "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=400",
+  avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=400",
   moneySaved: 425.5,
   barsVisited: 18,
   validDue: "12/25",
@@ -42,8 +40,7 @@ const EXAMPLE_USER_DATA = {
   id: "000-0000-000",
   joined: "01 JAN 2024",
   nationality: "GLOBAL CITIZEN",
-  avatar:
-    "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=400",
+  avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=400",
   moneySaved: 1250.0,
   barsVisited: 42,
   validDue: "12/99",
@@ -88,20 +85,12 @@ const HolographicOverlay = () => {
     outputRange: [-CARD_WIDTH, CARD_WIDTH],
   });
   return (
-    <View
-      style={StyleSheet.absoluteFill}
-      pointerEvents="none"
-      className="overflow-hidden rounded-3xl"
-    >
+    <View style={StyleSheet.absoluteFill} pointerEvents="none" className="overflow-hidden rounded-3xl">
       <Animated.View
         style={{
           width: "30%",
           height: "200%",
-          transform: [
-            { translateX },
-            { rotate: "25deg" },
-            { translateY: -100 },
-          ],
+          transform: [{ translateX }, { rotate: "25deg" }, { translateY: -100 }],
         }}
       >
         <LinearGradient
@@ -122,36 +111,11 @@ const HolographicOverlay = () => {
 const GuillochePattern = () => (
   <View style={StyleSheet.absoluteFill} className="opacity-[0.03]">
     <Svg height="100%" width="100%">
-      <Rect
-        x="0"
-        y="0"
-        width="100%"
-        height="100%"
-        fill="none"
-        stroke="white"
-        strokeWidth="0.5"
-        strokeDasharray="4,4"
-      />
-      <Circle
-        cx="0"
-        cy={CARD_HEIGHT}
-        r={CARD_WIDTH}
-        stroke="white"
-        strokeWidth="1"
-        fill="none"
-      />
-      <Circle
-        cx={CARD_WIDTH}
-        cy="0"
-        r={CARD_WIDTH / 1.5}
-        stroke="white"
-        strokeWidth="1"
-        fill="none"
-      />
+      <Rect x="0" y="0" width="100%" height="100%" fill="none" stroke="white" strokeWidth="0.5" strokeDasharray="4,4" />
+      <Circle cx="0" cy={CARD_HEIGHT} r={CARD_WIDTH} stroke="white" strokeWidth="1" fill="none" />
+      <Circle cx={CARD_WIDTH} cy="0" r={CARD_WIDTH / 1.5} stroke="white" strokeWidth="1" fill="none" />
       <Path
-        d={`M0 ${CARD_HEIGHT / 2} Q ${CARD_WIDTH / 2} 0 ${CARD_WIDTH} ${
-          CARD_HEIGHT / 2
-        }`}
+        d={`M0 ${CARD_HEIGHT / 2} Q ${CARD_WIDTH / 2} 0 ${CARD_WIDTH} ${CARD_HEIGHT / 2}`}
         stroke="white"
         strokeWidth="1"
         fill="none"
@@ -162,21 +126,18 @@ const GuillochePattern = () => (
 
 const MockQRCode = () => (
   <View className="bg-white p-2 rounded-lg items-center justify-center">
-    <View className="flex-row flex-wrap w-32 h-32 bg-white">
-      {[...Array(64)].map((_, i) => (
-        <View
-          key={i}
-          className={`w-4 h-4 ${Math.random() > 0.4 ? "bg-black" : "bg-white"}`}
-        />
+    <View className="flex-row flex-wrap w-20 h-20 bg-white">
+      {[...Array(25)].map((_, i) => (
+        <View key={i} className={`w-4 h-4 ${Math.random() > 0.4 ? "bg-black" : "bg-white"}`} />
       ))}
-      <View className="absolute top-0 left-0 w-8 h-8 border-4 border-black bg-white">
-        <View className="w-2 h-2 bg-black m-1" />
+      <View className="absolute top-0 left-0 w-6 h-6 border-4 border-black bg-white">
+        <View className="w-1.5 h-1.5 bg-black m-0.5" />
       </View>
-      <View className="absolute top-0 right-0 w-8 h-8 border-4 border-black bg-white">
-        <View className="w-2 h-2 bg-black m-1" />
+      <View className="absolute top-0 right-0 w-6 h-6 border-4 border-black bg-white">
+        <View className="w-1.5 h-1.5 bg-black m-0.5" />
       </View>
-      <View className="absolute bottom-0 left-0 w-8 h-8 border-4 border-black bg-white">
-        <View className="w-2 h-2 bg-black m-1" />
+      <View className="absolute bottom-0 left-0 w-6 h-6 border-4 border-black bg-white">
+        <View className="w-1.5 h-1.5 bg-black m-0.5" />
       </View>
     </View>
   </View>
@@ -187,10 +148,7 @@ interface DigitalPassportProps {
   onBuyPremium?: () => void;
 }
 
-export default function DigitalPassport({
-  hasPremium = false,
-  onBuyPremium,
-}: DigitalPassportProps) {
+export default function DigitalPassport({ hasPremium = false, onBuyPremium }: DigitalPassportProps) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
   const flipAnim = useRef(new Animated.Value(0)).current;
@@ -228,13 +186,7 @@ export default function DigitalPassport({
     outputRange: [0, 1],
   });
 
-  const CardFace = ({
-    children,
-    style,
-  }: {
-    children: React.ReactNode;
-    style: any;
-  }) => (
+  const CardFace = ({ children, style }: { children: React.ReactNode; style: any }) => (
     <Animated.View
       style={[
         {
@@ -251,10 +203,7 @@ export default function DigitalPassport({
         style,
       ]}
     >
-      <LinearGradient
-        colors={["#1a1a1a", "#050505"]}
-        style={StyleSheet.absoluteFill}
-      />
+      <LinearGradient colors={["#1a1a1a", "#050505"]} style={StyleSheet.absoluteFill} />
       <GuillochePattern />
       {children}
       <HolographicOverlay />
@@ -262,241 +211,186 @@ export default function DigitalPassport({
   );
 
   return (
-    <View className="items-center justify-center my-6">
+    <View className="items-center justify-center w-full ">
       <PaywallModal
         visible={showPaywall}
         onClose={() => setShowPaywall(false)}
-        onPurchase={() => {
-          setShowPaywall(false);
-          if (onBuyPremium) onBuyPremium();
-        }}
+        onPurchase={onBuyPremium || (() => {})}
       />
 
-      <Pressable onPress={handleFlip}>
-        <View style={{ width: CARD_WIDTH, height: CARD_HEIGHT }}>
-          {/* --- FRONT SIDE --- */}
-          <CardFace
-            style={{
-              transform: [{ rotateY: frontInterpolate }],
-              opacity: frontOpacity,
-              zIndex: isFlipped ? 0 : 1,
-            }}
-          >
-            <View className="absolute top-0 right-10 w-32 h-full bg-orange-600/5 -skew-x-12 border-l border-r border-orange-600/10" />
+      {/* WRAPPER FOR CARD & GLOW */}
+      <View className="relative items-center justify-center mb-24">
+        {/* --- THE GLOW --- */}
+        <View
+          className="absolute bg-orange-600 rounded-full blur-3xl"
+          style={{
+            width: CARD_WIDTH * 1.1,
+            height: CARD_HEIGHT * 1.3,
+            opacity: 0.4,
+            zIndex: -1,
+          }}
+        />
 
-            {/* Header */}
-            <View className="flex-row justify-between items-center p-5 pb-2">
-              <View className="flex-row items-center">
-                <MaterialCommunityIcons
-                  name="passport"
-                  size={24}
-                  color="#EA580C"
-                />
-                <View className="ml-3">
-                  <Text className="text-white/40 text-[8px] font-black tracking-[3px] uppercase">
-                    OFFICIAL MEMBER
-                  </Text>
-                  <Text className="text-white text-lg font-black tracking-tighter">
-                    DRINKUP<Text className="text-orange-600">ID</Text>
-                  </Text>
-                </View>
-              </View>
-              <View className="items-end">
-                <Text className="text-orange-600 font-bold text-[10px]">
-                  CLASS A
-                </Text>
-                <Text className="text-white/50 text-[8px] font-mono">
-                  VERIFIED
-                </Text>
-              </View>
-            </View>
+        {/* --- THE CARD --- */}
+        <Pressable onPress={handleFlip}>
+          <View style={{ width: CARD_WIDTH, height: CARD_HEIGHT }}>
+            {/* FRONT FACE logic ... */}
+            <CardFace
+              style={{
+                transform: [{ rotateY: frontInterpolate }],
+                opacity: frontOpacity,
+                zIndex: isFlipped ? 0 : 1,
+              }}
+            >
+              <View className="absolute top-0 right-10 w-32 h-full bg-orange-600/5 -skew-x-12 border-l border-r border-orange-600/10" />
 
-            {/* Content */}
-            <View className="flex-1 flex-row px-5 pt-2">
-              <View className="w-[35%] items-start">
-                <View className="w-24 h-32 rounded-lg border-2 border-orange-600/30 p-1 bg-black/50 relative mb-3">
-                  <Image
-                    source={{ uri: DATA.avatar }}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      borderRadius: 4,
-                      opacity: hasPremium ? 1 : 0.6,
-                    }}
-                    contentFit="cover"
-                  />
-                  {hasPremium && (
-                    <>
-                      <View className="absolute inset-0 bg-orange-600/10 z-10 rounded-sm" />
-                      <View className="absolute bottom-1 right-1">
-                        <MaterialCommunityIcons
-                          name="check-decagram"
-                          size={14}
-                          color="#EA580C"
-                        />
-                      </View>
-                    </>
-                  )}
-                </View>
-                <Text className="text-white/30 text-[8px] text-center w-24 font-mono">
-                  REF: {DATA.id.split("-")[1]}
-                </Text>
-              </View>
-
-              <View className="flex-1 pl-2 pt-1">
-                <View className="flex-row items-start justify-between mb-4">
-                  <SmartChip />
-                  <MaterialCommunityIcons
-                    name="nfc"
-                    size={28}
-                    color="rgba(255,255,255,0.3)"
-                  />
-                </View>
-                <View className="space-y-3">
-                  <View>
-                    <Text className="text-orange-600 text-[8px] font-bold uppercase tracking-widest">
-                      SURNAME / GIVEN NAMES
+              {/* Header */}
+              <View className="flex-row justify-between items-center p-5 pb-2">
+                <View className="flex-row items-center">
+                  <MaterialCommunityIcons name="passport" size={24} color="#EA580C" />
+                  <View className="ml-3">
+                    <Text className="text-white/40 text-[8px] font-black tracking-[3px] uppercase">
+                      OFFICIAL MEMBER
                     </Text>
-                    <Text className="text-white text-lg font-black uppercase leading-5 shadow-black shadow-sm">
-                      {DATA.name}
-                    </Text>
-                  </View>
-                  <View className="flex-row justify-between pr-4">
-                    <View>
-                      <Text className="text-white/40 text-[8px] font-bold uppercase">
-                        JOINED
-                      </Text>
-                      <Text className="text-white text-xs font-mono font-bold">
-                        {DATA.joined}
-                      </Text>
-                    </View>
-                    <View>
-                      <Text className="text-white/40 text-[8px] font-bold uppercase">
-                        ORIGIN
-                      </Text>
-                      <Text className="text-white text-xs font-mono font-bold">
-                        GLOBAL
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* STATS ROW */}
-                  <View className="flex-row gap-2 mt-2">
-                    {/* Money Saved */}
-                    <View className="bg-white/5 px-2 py-1.5 rounded border border-white/10 items-center min-w-[50px]">
-                      <Text className="text-[7px] text-white/50 font-bold uppercase mb-0.5">
-                        SAVED
-                      </Text>
-                      <Text className="text-green-500 font-black text-xs">
-                        ${DATA.moneySaved.toLocaleString()}
-                      </Text>
-                    </View>
-
-                    {/* Bars Visited */}
-                    <View className="bg-white/5 px-2 py-1.5 rounded border border-white/10 items-center min-w-[50px]">
-                      <Text className="text-[7px] text-white/50 font-bold uppercase mb-0.5">
-                        VISITED
-                      </Text>
-                      <Text className="text-white font-black text-xs">
-                        {DATA.barsVisited}
-                      </Text>
-                    </View>
-
-                    {/* Valid Due */}
-                    <View className="bg-orange-600/10 px-2 py-1.5 rounded border border-orange-600/30 items-center min-w-[50px]">
-                      <Text className="text-[7px] text-orange-500 font-bold uppercase mb-0.5">
-                        VALID DUE
-                      </Text>
-                      <Text className="text-white font-black text-xs">
-                        {DATA.validDue}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              </View>
-            </View>
-
-          
-          </CardFace>
-
-          <CardFace
-            style={{
-              transform: [{ rotateY: backInterpolate }],
-              opacity: backOpacity,
-              zIndex: isFlipped ? 1 : 0,
-            }}
-          >
-            {/* Magnetic Strip */}
-            <View className="w-full h-12 bg-[#0a0a0a] mt-6 border-t border-b border-white/5" />
-
-            <View className="flex-1 flex-row p-6 items-center">
-              <View className="items-center mr-6">
-                <MockQRCode />
-                <Text className="text-white/40 text-[8px] font-mono mt-2 tracking-widest">
-                  {DATA.id}
-                </Text>
-              </View>
-
-              <View className="flex-1 justify-between h-32">
-                <View>
-                  <Text className="text-white/30 text-[8px] font-bold uppercase mb-1">
-                    AUTHORIZED SIGNATURE
-                  </Text>
-                  <View className="h-8 bg-white/10 rounded border border-white/20 justify-center px-2">
-                    <Text className="font-black text-white/50 text-xs italic opacity-70">
-                      {hasPremium ? "AlexDrinker" : "ExampleUser"}
+                    <Text className="text-white text-lg font-black tracking-tighter">
+                      DRINKUP<Text className="text-orange-600">ID</Text>
                     </Text>
                   </View>
                 </View>
+                <View className="items-end">
+                  <Text className="text-orange-600 font-bold text-[10px]">CLASS A</Text>
+                  <Text className="text-white/50 text-[8px] font-mono">VERIFIED</Text>
+                </View>
+              </View>
 
-                <View>
-                  <Text className="text-orange-600 text-[8px] font-bold uppercase mb-1">
-                    ISSUING AUTHORITY
-                  </Text>
-                  <View className="flex-row items-center">
-                    <MaterialCommunityIcons
-                      name="shield-crown"
-                      size={16}
-                      color="white"
+              {/* Content */}
+              <View className="flex-1 flex-row px-5 pt-2">
+                <View className="w-[35%] items-start">
+                  <View className="w-24 h-24 rounded-full border-2 border-orange-600/30 p-1 bg-black/50 relative mb-3">
+                    <Image
+                      source={{ uri: DATA.avatar }}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        borderRadius: 100,
+                        opacity: hasPremium ? 1 : 0.6,
+                      }}
+                      contentFit="cover"
                     />
-                    <Text className="text-white font-bold text-xs ml-2">
-                      United Drinkers
-                    </Text>
+                    {hasPremium && (
+                      <>
+                        <View className="absolute inset-0 bg-orange-600/10 z-10 rounded-full" />
+                        <View className="absolute bottom-1 right-1">
+                          <MaterialCommunityIcons name="check-decagram" size={14} color="#EA580C" />
+                        </View>
+                      </>
+                    )}
+                  </View>
+                  <Text className="text-white/30 text-[8px] text-center w-24 font-mono">
+                    REF: {DATA.id.split("-")[1]}
+                  </Text>
+                </View>
+
+                <View className="flex-1 pl-2 pt-1">
+                  <View className="flex-row items-start justify-between mb-4">
+                    <SmartChip />
+                    <MaterialCommunityIcons name="nfc" size={28} color="rgba(255,255,255,0.3)" />
+                  </View>
+                  <View className="space-y-3">
+                    <View>
+                      <Text className="text-orange-600 text-[8px] font-bold uppercase tracking-widest">
+                        SURNAME / GIVEN NAMES
+                      </Text>
+                      <Text className="text-white text-lg font-black uppercase leading-5 shadow-black shadow-sm">
+                        {DATA.name}
+                      </Text>
+                    </View>
+                    <View className="flex-row justify-between pr-4">
+                      <View>
+                        <Text className="text-white/40 text-[8px] font-bold uppercase">JOINED</Text>
+                        <Text className="text-white text-xs font-mono font-bold">{DATA.joined}</Text>
+                      </View>
+                      <View>
+                        <Text className="text-white/40 text-[8px] font-bold uppercase">ORIGIN</Text>
+                        <Text className="text-white text-xs font-mono font-bold">GLOBAL</Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            </CardFace>
+
+            {/* BACK FACE logic ... */}
+            <CardFace
+              style={{
+                transform: [{ rotateY: backInterpolate }],
+                opacity: backOpacity,
+                zIndex: isFlipped ? 1 : 0,
+              }}
+            >
+              <View className="flex-1 p-6 justify-between">
+                <View className="flex-row items-start">
+                  <View className="items-center mr-6">
+                    <MockQRCode />
+                    <Text className="text-white/40 text-[8px] font-mono mt-2 tracking-widest">{DATA.id}</Text>
+                  </View>
+
+                  <View className="flex-1 justify-between h-24">
+                    <View>
+                      <Text className="text-white/30 text-[8px] font-bold uppercase mb-1">AUTHORIZED SIGNATURE</Text>
+                      <View className="h-8 bg-white/10 rounded border border-white/20 justify-center px-2">
+                        <Text className="font-black text-white/50 text-xs italic opacity-70">
+                          {hasPremium ? "AlexDrinker" : "ExampleUser"}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View className="flex-row items-center justify-between mt-2">
+                      <View>
+                        <Text className="text-orange-600 text-[8px] font-bold uppercase mb-1">ISSUING AUTHORITY</Text>
+                        <View className="flex-row items-center">
+                          <MaterialCommunityIcons name="shield-crown" size={16} color="white" />
+                          <Text className="text-white font-bold text-xs ml-2">United Drinkers</Text>
+                        </View>
+                      </View>
+                    </View>
                   </View>
                 </View>
 
-                <View className="flex-row gap-1">
-                  <Ionicons name="wifi" size={12} color="#666" />
-                  <Ionicons name="card" size={12} color="#666" />
-                  <Text className="text-white/30 text-[8px]">
-                    CONTACTLESS ENABLED
-                  </Text>
+                {/* Stats Row */}
+                <View className="w-full bg-white/5 border border-white/10 rounded-xl p-3 flex-row justify-between items-center">
+                  <View className="items-center flex-1">
+                    <Text className="text-[7px] text-white/40 font-bold uppercase mb-0.5">SAVED</Text>
+                    <Text className="text-green-500 font-black text-sm">${DATA.moneySaved.toLocaleString()}</Text>
+                  </View>
+                  <View className="w-[1px] h-6 bg-white/10" />
+                  <View className="items-center flex-1">
+                    <Text className="text-[7px] text-white/40 font-bold uppercase mb-0.5">VISITED</Text>
+                    <Text className="text-white font-black text-sm">{DATA.barsVisited}</Text>
+                  </View>
+                  <View className="w-[1px] h-6 bg-white/10" />
+                  <View className="items-center flex-1">
+                    <Text className="text-[7px] text-orange-500/80 font-bold uppercase mb-0.5">VALID DUE</Text>
+                    <Text className="text-white font-black text-sm">{DATA.validDue}</Text>
+                  </View>
                 </View>
               </View>
-            </View>
-
-          </CardFace>
-        </View>
-      </Pressable>
-
-      <View className="absolute -z-10 w-[90%] h-[90%] bg-orange-600/20 blur-3xl rounded-full" />
+            </CardFace>
+          </View>
+        </Pressable>
+      </View>
 
       {!hasPremium && (
         <TouchableOpacity
           onPress={() => setShowPaywall(true)}
           activeOpacity={0.8}
           style={{ width: CARD_WIDTH }}
-          className="mt-10 bg-orange-600 py-4 rounded-2xl items-center shadow-lg shadow-orange-600/20 border border-orange-400/20"
+          // CHANGE 2: Changed 'mt-24' to 'mt-8'. We let the parent handle the big spacing.
+          className="mt-8 bg-orange-600 py-4 rounded-2xl items-center shadow-lg shadow-orange-600/20 border border-orange-400/20"
         >
           <View className="flex-row items-center space-x-2">
-            <MaterialCommunityIcons
-              name="star-four-points"
-              size={18}
-              color="black"
-            />
-            <Text className="text-black font-black text-sm tracking-wide ml-2">
-              UNLOCK PREMIUM PASSPORT
-            </Text>
+            <MaterialCommunityIcons name="star-four-points" size={18} color="black" />
+            <Text className="text-black font-black text-sm tracking-wide ml-2">UNLOCK PREMIUM PASSPORT</Text>
           </View>
         </TouchableOpacity>
       )}

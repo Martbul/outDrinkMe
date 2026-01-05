@@ -20,51 +20,32 @@ import ThisWeekGadget from "@/components/thisWeekGadget";
 import { useApp } from "@/providers/AppProvider";
 import { useFunc } from "@/providers/FunctionProvider";
 import { getCoefInfo } from "@/utils/levels";
-import {
-  AntDesign,
-  Feather,
-  Ionicons,
-  MaterialCommunityIcons,
-  MaterialIcons,
-} from "@expo/vector-icons";
+import { AntDesign, Feather, Ionicons, MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useMemo, useRef, useState } from "react";
 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
+import { SwipeableSheet } from "@/components/swipeable_sheet";
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { isPartOfActiveFunc, funcMetaData } = useFunc();
 
-  const {
-    userStats,
-    userData,
-    friends,
-    friendsDrunkThoughts,
-    isLoading,
-    leaderboard,
-    refreshAll,
-  } = useApp();
+  const { userStats, userData, friends, friendsDrunkThoughts, isLoading, leaderboard, refreshAll } = useApp();
 
   const displayedThoughts = useMemo(() => {
     if (!friendsDrunkThoughts || friendsDrunkThoughts.length === 0) {
       return [];
     }
 
-    const count = Math.min(
-      Math.floor(Math.random() * 2) + 1,
-      friendsDrunkThoughts.length
-    );
+    const count = Math.min(Math.floor(Math.random() * 2) + 1, friendsDrunkThoughts.length);
 
     const result = [];
     const usedIndices = new Set<number>();
 
     while (result.length < count) {
-      const randomIndex = Math.floor(
-        Math.random() * friendsDrunkThoughts.length
-      );
+      const randomIndex = Math.floor(Math.random() * friendsDrunkThoughts.length);
       if (!usedIndices.has(randomIndex)) {
         usedIndices.add(randomIndex);
         result.push(friendsDrunkThoughts[randomIndex]);
@@ -74,18 +55,13 @@ export default function HomeScreen() {
     return result;
   }, [friendsDrunkThoughts]);
 
-  const [isCoefTooltipVisible, setIsCoefTooltipVisible] =
-    useState<boolean>(false);
+  const [isCoefTooltipVisible, setIsCoefTooltipVisible] = useState<boolean>(false);
   const [refreshing, setRefreshing] = useState(false);
   const [qrModalVisible, setQrModalVisible] = useState(false);
-  
-
-  const slideAnim = useRef(
-    new Animated.Value(Dimensions.get("window").height)
-  ).current;
+  const [isMapVisible, setIsMapVisible] = useState(false);
+  const slideAnim = useRef(new Animated.Value(Dimensions.get("window").height)).current;
 
   const handleFunctionPress = () => {
-
     if (isPartOfActiveFunc && funcMetaData?.sessionID) {
       router.push({
         pathname: "/(screens)/func_screen",
@@ -117,8 +93,6 @@ export default function HomeScreen() {
     }).start(() => setQrModalVisible(false));
   };
 
- 
-
   const coefInfo = getCoefInfo(userData?.alcoholism_coefficient);
 
   const onRefresh = async () => {
@@ -131,9 +105,7 @@ export default function HomeScreen() {
     return (
       <View className="flex-1 bg-black justify-center items-center">
         <ActivityIndicator size="large" color="#EA580C" />
-        <Text className="text-white/50 text-sm mt-4">
-          Loading your stats...
-        </Text>
+        <Text className="text-white/50 text-sm mt-4">Loading your stats...</Text>
       </View>
     );
   }
@@ -144,11 +116,7 @@ export default function HomeScreen() {
       <StoryDrawer />
 
       {displayedThoughts.map((thought) => (
-        <DrunkThought
-          key={thought.id}
-          thought={thought.thought}
-          userImageUrl={thought.user_image_url}
-        />
+        <DrunkThought key={thought.id} thought={thought.thought} userImageUrl={thought.user_image_url} />
       ))}
 
       <ScrollView
@@ -184,9 +152,7 @@ export default function HomeScreen() {
               onPress={() => router.push("/(screens)/coeffInfo")}
               className="relative w-[120px] h-[120px] rounded-full bg-orange-600/15 border-4 border-orange-600 justify-center items-center mb-3"
             >
-              <Text className="text-orange-600 text-5xl font-black">
-                {coefInfo.coef}
-              </Text>
+              <Text className="text-orange-600 text-5xl font-black">{coefInfo.coef}</Text>
 
               <TouchableOpacity
                 onPress={() => setIsCoefTooltipVisible(!isCoefTooltipVisible)}
@@ -215,9 +181,7 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          <Text className="text-white text-[22px] font-black tracking-wide">
-            {coefInfo.title}
-          </Text>
+          <Text className="text-white text-[22px] font-black tracking-wide">{coefInfo.title}</Text>
         </View>
 
         <ScrollView
@@ -231,16 +195,10 @@ export default function HomeScreen() {
             className="w-40 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]"
           >
             <View className="w-12 h-12 rounded-xl bg-orange-600/20 items-center justify-center mb-3">
-              <MaterialCommunityIcons
-                name="bottle-tonic-skull"
-                size={24}
-                color="#EA580C"
-              />
+              <MaterialCommunityIcons name="bottle-tonic-skull" size={24} color="#EA580C" />
             </View>
             <Text className="text-white text-base font-bold">Collection</Text>
-            <Text className="text-white/40 text-xs font-semibold mt-1">
-              View your history
-            </Text>
+            <Text className="text-white/40 text-xs font-semibold mt-1">View your history</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -251,9 +209,7 @@ export default function HomeScreen() {
               <AntDesign name="align-center" size={24} color="#EA580C" />
             </View>
             <Text className="text-white text-base font-bold">Mix Timeline</Text>
-            <Text className="text-white/40 text-xs font-semibold mt-1">
-              View your history
-            </Text>
+            <Text className="text-white/40 text-xs font-semibold mt-1">View your history</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -264,9 +220,7 @@ export default function HomeScreen() {
               <MaterialIcons name="query-stats" size={24} color="#EA580C" />
             </View>
             <Text className="text-white text-base font-bold">Stats</Text>
-            <Text className="text-white/40 text-xs font-semibold mt-1">
-              Detailed insights
-            </Text>
+            <Text className="text-white/40 text-xs font-semibold mt-1">Detailed insights</Text>
           </TouchableOpacity>
         </ScrollView>
 
@@ -278,9 +232,7 @@ export default function HomeScreen() {
             <View className="flex-row items-center justify-between">
               <View>
                 <Text className="text-white text-2xl font-black">Buddies</Text>
-                <Text className="text-white/40 text-xs font-semibold mt-1">
-                  {friends.length || 0} friends
-                </Text>
+                <Text className="text-white/40 text-xs font-semibold mt-1">{friends.length || 0} friends</Text>
               </View>
               <View className="w-12 h-12 rounded-xl bg-orange-600/20 items-center justify-center">
                 <Ionicons name="people" size={24} color="#EA580C" />
@@ -290,7 +242,8 @@ export default function HomeScreen() {
         </View>
 
         <View className="flex-row gap-3 mb-4">
-          <DrinkingMap />
+         
+            <DrinkingMap />
         </View>
         <ThisWeekGadget />
         <AlcoholismChart />
@@ -303,12 +256,8 @@ export default function HomeScreen() {
             <View className="w-10 h-10 rounded-xl bg-orange-600/20 items-center justify-center mb-2">
               <MaterialIcons name="leaderboard" size={20} color="#EA580C" />
             </View>
-            <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">
-              GLOBAL RANK
-            </Text>
-            <Text className="text-white text-2xl font-black">
-              #{leaderboard?.global?.user_position?.rank}
-            </Text>
+            <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">GLOBAL RANK</Text>
+            <Text className="text-white text-2xl font-black">#{leaderboard?.global?.user_position?.rank}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => router.push("/(tabs)/calendar")}
@@ -317,12 +266,8 @@ export default function HomeScreen() {
             <View className="w-10 h-10 rounded-xl bg-orange-600/20 items-center justify-center mb-2">
               <Ionicons name="calendar" size={20} color="#EA580C" />
             </View>
-            <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">
-              TOTAL DAYS DRUNK
-            </Text>
-            <Text className="text-white text-2xl font-black">
-              {userStats?.total_days_drank || 0}
-            </Text>
+            <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">TOTAL DAYS DRUNK</Text>
+            <Text className="text-white text-2xl font-black">{userStats?.total_days_drank || 0}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => router.push("/(screens)/stats")}
@@ -331,15 +276,11 @@ export default function HomeScreen() {
             <View className="w-10 h-10 rounded-xl bg-orange-600/20 items-center justify-center mb-2">
               <MaterialCommunityIcons name="fire" size={26} color="#EA580C" />
             </View>
-            <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">
-              LONGEST STREAK
-            </Text>
-            <Text className="text-white text-2xl font-black">
-              {userStats?.longest_streak || 0}
-            </Text>
+            <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">LONGEST STREAK</Text>
+            <Text className="text-white text-2xl font-black">{userStats?.longest_streak || 0}</Text>
           </TouchableOpacity>
         </View>
-       
+
         <TouchableOpacity
           className={`rounded-2xl py-6 items-center mb-4 shadow-lg ${
             userStats?.today_status
@@ -357,30 +298,20 @@ export default function HomeScreen() {
           }}
         >
           {isLoading ? (
-            <ActivityIndicator
-              color={userStats?.today_status ? "#EA580C" : "#000000"}
-            />
+            <ActivityIndicator color={userStats?.today_status ? "#EA580C" : "#000000"} />
           ) : (
             <View className="items-center">
               {userStats?.today_status ? (
                 <>
                   <Ionicons name="checkmark-circle" size={32} color="#EA580C" />
-                  <Text className="text-white text-base font-black tracking-wider mt-2">
-                    LOGGED TODAY
-                  </Text>
-                  <Text className="text-white/40 text-xs font-semibold mt-1">
-                    Great job, my alcoholic!
-                  </Text>
+                  <Text className="text-white text-base font-black tracking-wider mt-2">LOGGED TODAY</Text>
+                  <Text className="text-white/40 text-xs font-semibold mt-1">Great job, my alcoholic!</Text>
                 </>
               ) : (
                 <>
                   <Ionicons name="add-circle" size={32} color="#000000" />
-                  <Text className="text-black text-lg font-black tracking-wider mt-2">
-                    LOG TODAY&apos;S DRINKING
-                  </Text>
-                  <Text className="text-black/60 text-xs font-semibold mt-1">
-                    Keep your streak alive
-                  </Text>
+                  <Text className="text-black text-lg font-black tracking-wider mt-2">LOG TODAY&apos;S DRINKING</Text>
+                  <Text className="text-black/60 text-xs font-semibold mt-1">Keep your streak alive</Text>
                 </>
               )}
             </View>
@@ -400,7 +331,12 @@ export default function HomeScreen() {
           </Animated.View>
         </View>
       </Modal>
+
+      {/* <SwipeableSheet visible={isMapVisible} onClose={() => setIsMapVisible(false)}>
+        <View style={{ height: 550, width: "100%", backgroundColor: "#121212" }}>
+          <DrinkingMap variant="full" />
+        </View>
+      </SwipeableSheet> */}
     </View>
   );
 }
-

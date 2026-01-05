@@ -118,7 +118,7 @@ export const SwipeableSheet = ({
           >
             {/* Optional Hero Image */}
             {coverImage && (
-              <View className="h-72 w-full relative">
+              <View className="h-56 w-full relative">
                 <Image
                   source={
                     typeof coverImage === "string"
