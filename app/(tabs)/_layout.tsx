@@ -6,7 +6,7 @@ import { useAuth } from "@clerk/clerk-expo";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import SplashScreen from "@/components/spashScreen";
 import { useApp } from "@/providers/AppProvider";
 import { registerForPushNotificationsAsync } from "@/utils/registerPushNotification";
@@ -68,6 +68,7 @@ export default function TabLayout() {
       }
     };
   }, [registerPushDevice]);
+
   if (!isSignedIn) {
     return <Redirect href="/(auth)/google-sign-in" />;
   }
@@ -84,14 +85,13 @@ export default function TabLayout() {
           headerShown: false,
           tabBarStyle: {
             backgroundColor: "rgba(0, 0, 0, 0.95)",
-            borderTopWidth: 2,
-            borderTopColor: "rgba(255, 69, 0, 0.3)",
-            paddingTop: 10,
-            paddingBottom: 10 + insets.bottom,
-            height: 75 + insets.bottom,
+            borderTopWidth: 0,
+            paddingTop: 6,
+            paddingBottom: 6 + insets.bottom,
+            height: 62 + insets.bottom,
             position: "absolute",
           },
-          tabBarActiveTintColor: "#ff8c00",
+          tabBarActiveTintColor: "#EA580C",
           tabBarInactiveTintColor: "#666666",
           tabBarLabelStyle: {
             fontSize: 10,
@@ -115,7 +115,7 @@ export default function TabLayout() {
                   opacity: focused ? 1 : 0.5,
                 }}
               >
-                <AntDesign name="home" size={24} color="#ff8c00" />
+                <AntDesign name="home" size={24} color="#EA580C" />
               </View>
             ),
           }}
@@ -132,7 +132,7 @@ export default function TabLayout() {
                   opacity: focused ? 1 : 0.5,
                 }}
               >
-                <Feather name="users" size={28} color="#ff8c00" />
+                <Feather name="users" size={26} color="#EA580C" />
               </View>
             ),
           }}
@@ -149,7 +149,7 @@ export default function TabLayout() {
                   opacity: focused ? 1 : 0.5,
                 }}
               >
-                <MaterialIcons name="add-circle-outline" size={30} color="#ff8c00" />
+                <MaterialIcons name="add-circle-outline" size={30} color="#EA580C" />
               </View>
             ),
           }}
@@ -167,7 +167,7 @@ export default function TabLayout() {
                   opacity: focused ? 1 : 0.5,
                 }}
               >
-                <FontAwesome name="calendar" size={24} color="#ff8c00" />
+                <Ionicons name="calendar-outline" size={26} color="#EA580C" />
               </View>
             ),
           }}
@@ -184,7 +184,7 @@ export default function TabLayout() {
                   opacity: focused ? 1 : 0.5,
                 }}
               >
-                <MaterialCommunityIcons name="card-account-details-star" size={24} color="#ff8c00" />
+                <MaterialCommunityIcons name="card-account-details-star" size={24} color="#EA580C" />
               </View>
             ),
           }}

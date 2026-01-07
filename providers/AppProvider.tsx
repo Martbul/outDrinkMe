@@ -19,8 +19,9 @@ import type {
   StoryUploadJob,
   StorySegment,
   DailyDrinkingPostResponse,
-  DrinkUpSubscription,
   Venue,
+  PaddlePrice,
+  Premium,
 } from "../types/api.types";
 import { apiService } from "@/api";
 import { usePostHog } from "posthog-react-native";
@@ -42,25 +43,26 @@ interface AppContextType {
   achievements: Achievement[] | null;
   calendar: CalendarResponse | null;
   weeklyStats: DaysStat | null;
-  friends: UserData[] | [];
-  discovery: UserData[] | [];
+  friends: UserData[];
+  discovery: UserData[];
   stories: UserStories[];
-  drinkUpSubscription: DrinkUpSubscription | null;
-  venues: Venue[] | [];
+  venues: Venue[];
+  premiumPrices: PaddlePrice[];
+  premium: Premium | null;
 
-  yourMixData: DailyDrinkingPostResponse[] | [];
+  yourMixData: DailyDrinkingPostResponse[];
   yourMixHasMore: boolean;
-  globalMixData: DailyDrinkingPostResponse[] | [];
+  globalMixData: DailyDrinkingPostResponse[];
   globalMixHasMore: boolean;
 
-  mixTimelineData: DailyDrinkingPostResponse[] | [];
+  mixTimelineData: DailyDrinkingPostResponse[];
   friendDiscoveryProfile: FriendDiscoveryDisplayProfileResponse | null;
   drunkThought: string | null;
   friendsDrunkThoughts: DrunkThought[] | [];
   alcoholCollection: AlcoholCollectionByType | null;
   notifications: NotificationItem[];
   unreadNotificationCount: number;
-  mapFriendPosts: DailyDrinkingPostResponse[] | [];
+  mapFriendPosts: DailyDrinkingPostResponse[];
   storyUploadQueue: StoryUploadJob[];
   refreshUserData: () => Promise<void>;
   refreshUserStats: () => Promise<void>;
@@ -81,7 +83,7 @@ interface AppContextType {
   refreshStore: () => Promise<void>;
   refreshNotifications: (page?: number) => Promise<void>;
   refreshUserStories: () => Promise<void>;
-  refreshSubscriptionDetails: () => Promise<void>;
+  refreshPremiumDetails: () => Promise<void>;
   refreshAll: () => Promise<void>;
 
   loadMoreYourMixData: () => Promise<void>;
@@ -186,8 +188,9 @@ export function AppProvider({ children }: AppProviderProps) {
     "A new version of the app is available. Please update to continue."
   );
   const [storyUploadQueue, setStoryUploadQueue] = useState<StoryUploadJob[]>([]);
-  const [drinkUpSubscription, setDrinkUpSubscription] = useState<DrinkUpSubscription | null>(null);
+  const [premium, setPremium] = useState<Premium | null>(null);
   const [venues, setVenues] = useState<Venue[]>([]);
+  const [premiumPrices, setPremiumPrices] = useState<PaddlePrice[]>([]);
 
   const hasInitialized = useRef(false);
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
@@ -798,13 +801,13 @@ export function AppProvider({ children }: AppProviderProps) {
     }
   }, [isSignedIn, getToken]);
 
-  const refreshSubscriptionDetails = useCallback(async () => {
+  const refreshPremiumDetails = useCallback(async () => {
     if (!isSignedIn) return;
     try {
       const token = await getToken();
       if (token) {
-        const data = await apiService.getDrinkUpSubscriptionDetails(token);
-        setDrinkUpSubscription(data || null);
+        const data = await apiService.getPremiumDetails(token);
+        setPremium(data || null);
       }
     } catch (e) {
       console.error("Failed to load stories", e);
@@ -850,8 +853,9 @@ export function AppProvider({ children }: AppProviderProps) {
         apiService.getMapFriendsPosts(token),
         apiService.getStories(token),
         apiService.getUserStories(token),
-        apiService.getDrinkUpSubscriptionDetails(token),
         apiService.getAllVenues(token),
+        apiService.getPremiumPrices(token),
+        apiService.getPremiumDetails(token),
       ]);
 
       const [
@@ -876,8 +880,9 @@ export function AppProvider({ children }: AppProviderProps) {
         mapFriendsPostsResult,
         storiesRes,
         userStoriesRes,
-        subscriptionDetailsResult,
         allVenuesResult,
+        premiumPricesResult,
+        premiumResult,
       ] = results;
 
       if (userResult.status === "fulfilled") {
@@ -1015,19 +1020,30 @@ export function AppProvider({ children }: AppProviderProps) {
         setUserStories([]);
       }
 
-      if (subscriptionDetailsResult.status === "fulfilled") {
-        setDrinkUpSubscription(subscriptionDetailsResult.value || null);
-      } else {
-        console.error("Failed to fetch subscription details:", subscriptionDetailsResult.reason);
-        setDrinkUpSubscription(null);
-      }
-
+    
       if (allVenuesResult.status === "fulfilled") {
         setVenues(allVenuesResult.value || []);
       } else {
         console.error("Failed to fetch venues:", allVenuesResult.reason);
         setVenues([]);
       }
+
+      if (premiumPricesResult.status === "fulfilled") {
+        console.log("Premium Prices Fetched:", JSON.stringify(premiumPricesResult.value, null, 2));
+        setPremiumPrices(premiumPricesResult.value || []);
+      } else {
+        console.error("Failed to fetch venues:", premiumPricesResult.reason);
+        setPremiumPrices([]);
+      }
+
+        if (premiumResult.status === "fulfilled") {
+          setPremium(premiumResult.value || null);
+        } else {
+          console.error("Failed to fetch premium details:", premiumResult.reason);
+          setPremium(null);
+        }
+
+
       const failedCalls = results.filter((r) => r.status === "rejected");
       if (failedCalls.length > 0) {
         posthog?.capture("bulk_refresh_partial_failure", {
@@ -1391,8 +1407,9 @@ export function AppProvider({ children }: AppProviderProps) {
     friends,
     discovery,
     stories,
-    drinkUpSubscription,
     venues,
+    premiumPrices,
+    premium,
 
     yourMixData,
     yourMixHasMore,
@@ -1431,7 +1448,7 @@ export function AppProvider({ children }: AppProviderProps) {
     refreshStore,
     refreshNotifications,
     refreshUserStories,
-    refreshSubscriptionDetails,
+    refreshPremiumDetails,
     refreshAll,
 
     // Pagination Actions

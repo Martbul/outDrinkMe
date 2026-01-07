@@ -674,3 +674,33 @@ export interface Venue {
   specials: VenueSpecial[];
   employees: string[];
 }
+
+export interface PaddlePrice {
+  id: string; 
+  productId: string; 
+  description: string; 
+  amount: string; 
+  currency: string; 
+  interval: string; 
+}
+
+export interface PaddleTransactionResponse {
+  transactionId: string; 
+  checkoutUrl: string; 
+}
+
+export interface Premium {
+  id: number;
+  userId: string;
+  username: string;
+  userImageUrl: string;
+  venuesVisited: number;
+  validUntil: string;
+  isActive: boolean;
+  transactionId: string;
+  customerId: string;
+  amount: string;
+  currency: string; 
+  createdAt: string;
+  updatedAt: string;
+}

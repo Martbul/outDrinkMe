@@ -15,6 +15,9 @@ import {
   LeaderboardsResponse,
   MinVersionResponse,
   NotificationListResponse,
+  PaddlePrice,
+  PaddleTransactionResponse,
+  Premium,
   SearchDbAlcoholResult,
   StorySegment,
   UnreadCountResponse,
@@ -835,22 +838,37 @@ class ApiService {
     });
   }
 
-  async getDrinkUpSubscriptionDetails(token: string): Promise<DrinkUpSubscription> {
-    return this.makeRequest("/api/v1/user/subscription", {
+  async getAllVenues(token: string): Promise<Venue[]> {
+    return this.makeRequest("/api/v1/venues", {
       method: "GET",
       token,
     });
   }
 
-  async makeDrinkUpSubscription(token: string): Promise<void> {
-    return this.makeRequest("/api/v1/user/subscription", {
-      method: "POST",
+  async getPremiumPrices(token: string): Promise<PaddlePrice[]> {
+    return this.makeRequest("/api/v1/paddle/price", {
+      method: "GET",
       token,
     });
   }
 
-  async getAllVenues(token: string): Promise<Venue[]> {
-    return this.makeRequest("/api/v1/venues", {
+  async getPremiumDetails(token: string): Promise<Premium> {
+    return this.makeRequest("/api/v1/user/premium", {
+      method: "GET",
+      token,
+    });
+  }
+
+  async createTransaction(priceId: string, token: string): Promise<PaddleTransactionResponse> {
+    return this.makeRequest("/api/v1/paddle/transaction", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ priceId: priceId }),
+    });
+  }
+
+  async getDynamicQR(token: string): Promise<{ token: string; expiresAt: string }> {
+    return this.makeRequest("/api/v1/user/qr", {
       method: "GET",
       token,
     });

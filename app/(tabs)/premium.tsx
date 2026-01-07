@@ -10,18 +10,25 @@ import {
   TextInput,
   Dimensions,
   StatusBar,
-  Animated,
+  Animated as RNAnimated, // Renamed to avoid conflict
   PanResponder,
   StyleSheet,
   TouchableWithoutFeedback,
   ImageSourcePropType,
+  Image,
 } from "react-native";
-import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons, Feather, MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import MapboxGL from "@rnmapbox/maps";
 import { FlashList } from "@shopify/flash-list";
+import Animated, {
+  useAnimatedScrollHandler,
+  useSharedValue,
+  useDerivedValue,
+  useAnimatedStyle,
+  withTiming,
+} from "react-native-reanimated";
 
 import Header from "@/components/header";
 import DigitalPassport from "@/components/digital_passport";
@@ -29,6 +36,10 @@ import { SegmentItem, TabSwitcher } from "@/components/tab_switcher";
 import { PaywallModal } from "@/components/paywall_modal";
 import { useApp } from "@/providers/AppProvider";
 import { Venue, VenueSpecial } from "@/types/api.types";
+import QRCode from "react-native-qrcode-svg";
+import { SecureQRCode } from "@/components/secure_qr_code";
+
+const AnimatedFlashList = Animated.createAnimatedComponent(FlashList);
 
 const PRIMARY_ORANGE = "#EA580C";
 const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN_PUBLIC || "";
@@ -42,6 +53,7 @@ if (MAPBOX_TOKEN) {
 }
 
 const getImageSource = (img: any) => {
+  console.log(img)
   return typeof img === "string" ? { uri: img } : img;
 };
 
@@ -52,7 +64,7 @@ interface SwipeableSheetProps {
 }
 
 const SwipeableSheet = ({ visible, onClose, children }: SwipeableSheetProps) => {
-  const panY = useRef(new Animated.Value(0)).current;
+  const panY = useRef(new RNAnimated.Value(0)).current;
 
   const panResponder = useRef(
     PanResponder.create({
@@ -62,7 +74,7 @@ const SwipeableSheet = ({ visible, onClose, children }: SwipeableSheetProps) => 
         panY.setOffset(0);
         panY.setValue(0);
       },
-      onPanResponderMove: Animated.event([null, { dy: panY }], {
+      onPanResponderMove: RNAnimated.event([null, { dy: panY }], {
         useNativeDriver: false,
       }),
       onPanResponderRelease: (_, gestureState) => {
@@ -70,7 +82,7 @@ const SwipeableSheet = ({ visible, onClose, children }: SwipeableSheetProps) => 
         if (gestureState.dy > 120) {
           onClose();
         } else {
-          Animated.spring(panY, {
+          RNAnimated.spring(panY, {
             toValue: 0,
             useNativeDriver: false,
             bounciness: 4,
@@ -89,7 +101,7 @@ const SwipeableSheet = ({ visible, onClose, children }: SwipeableSheetProps) => 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View className="flex-1 bg-black">
-        <Animated.View style={{ flex: 1, transform: [{ translateY: panY }] }} {...panResponder.panHandlers}>
+        <RNAnimated.View style={{ flex: 1, transform: [{ translateY: panY }] }} {...panResponder.panHandlers}>
           <View className="absolute top-2 left-0 right-0 z-50 items-center justify-center">
             <View className="w-12 h-1.5 bg-white/30 rounded-full" />
           </View>
@@ -100,7 +112,7 @@ const SwipeableSheet = ({ visible, onClose, children }: SwipeableSheetProps) => 
             <Ionicons name="chevron-down" size={24} color="white" />
           </TouchableOpacity>
           <View className="flex-1 pt-16">{children}</View>
-        </Animated.View>
+        </RNAnimated.View>
       </View>
     </Modal>
   );
@@ -115,7 +127,7 @@ interface DetailModalProps {
 }
 
 const DetailModal = ({ visible, onClose, coverImage, children, fullScreen = true }: DetailModalProps) => {
-  const panY = useRef(new Animated.Value(0)).current;
+  const panY = useRef(new RNAnimated.Value(0)).current;
 
   const panResponder = useRef(
     PanResponder.create({
@@ -131,7 +143,7 @@ const DetailModal = ({ visible, onClose, coverImage, children, fullScreen = true
           onClose();
           setTimeout(() => panY.setValue(0), 200);
         } else {
-          Animated.spring(panY, {
+          RNAnimated.spring(panY, {
             toValue: 0,
             useNativeDriver: true,
             bounciness: 8,
@@ -156,7 +168,7 @@ const DetailModal = ({ visible, onClose, coverImage, children, fullScreen = true
           </TouchableWithoutFeedback>
         )}
 
-        <Animated.View
+        <RNAnimated.View
           style={[
             { transform: [{ translateY: panY }] },
             !fullScreen && {
@@ -187,7 +199,6 @@ const DetailModal = ({ visible, onClose, coverImage, children, fullScreen = true
                 <Image
                   source={typeof coverImage === "string" ? { uri: coverImage } : coverImage}
                   style={{ width: "100%", height: "100%" }}
-                  contentFit="cover"
                 />
                 <LinearGradient
                   colors={["transparent", "#000000"]}
@@ -204,7 +215,7 @@ const DetailModal = ({ visible, onClose, coverImage, children, fullScreen = true
 
             <View className={`flex-1 ${coverImage ? "px-5 -mt-4" : "px-5 pt-16"}`}>{children}</View>
           </View>
-        </Animated.View>
+        </RNAnimated.View>
       </View>
     </Modal>
   );
@@ -224,8 +235,6 @@ const DynamicGlanceCard = ({ item, onPress }: { item: Venue; onPress: () => void
         <Image
           source={getImageSource(item.image_url)}
           style={{ width: "100%", height: "100%" }}
-          contentFit="cover"
-          transition={200}
         />
         <LinearGradient
           colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.6)"]}
@@ -315,7 +324,6 @@ const BarHuntMap = ({ bars, onSelectBar }: { bars: Venue[]; onSelectBar: (bar: V
   const [selectedBarMarker, setSelectedBarMarker] = useState<any | null>(null);
   const mapRef = useRef<MapboxGL.MapView>(null);
   const cameraRef = useRef<MapboxGL.Camera>(null);
-
   const isInteractive = true;
   const [currentZoom, setCurrentZoom] = useState<number>(12);
 
@@ -343,7 +351,7 @@ const BarHuntMap = ({ bars, onSelectBar }: { bars: Venue[]; onSelectBar: (bar: V
         },
       };
     }
-    return { center: [-74.006, 40.7128], zoom: 12 };
+    return { center: [23.3219, 42.6977], zoom: 12 };
   }, [bars]);
 
   const handleMarkerSelect = (bar: Venue) => {
@@ -367,6 +375,7 @@ const BarHuntMap = ({ bars, onSelectBar }: { bars: Venue[]; onSelectBar: (bar: V
           bounds={cameraSettings.bounds}
           centerCoordinate={cameraSettings.center}
           zoomLevel={cameraSettings.zoom}
+      
           animationMode="flyTo"
           animationDuration={1000}
         />
@@ -386,7 +395,6 @@ const BarHuntMap = ({ bars, onSelectBar }: { bars: Venue[]; onSelectBar: (bar: V
   );
 };
 
-
 const BarMarker = React.memo(
   ({
     bar,
@@ -403,9 +411,8 @@ const BarMarker = React.memo(
   }) => {
     const annotationRef = useRef<MapboxGL.PointAnnotation>(null);
     const [markerImageLoading, setMarkerImageLoading] = useState(true);
-
-    const scaleAnim = useRef(new Animated.Value(1)).current;
-    const [isPressed, setIsPressed] = useState(false);
+    const scale = Math.min(Math.max(zoomLevel / 16, 0.9), 1.5);
+    const pinImageSource = getImageSource(bar.image_url);
 
     const handleMarkerImageLoad = () => {
       setMarkerImageLoading(false);
@@ -414,10 +421,6 @@ const BarMarker = React.memo(
       }, 100);
     };
 
-    const scale = Math.min(Math.max(zoomLevel / 16, 0.9), 1.5);
-
-    const pinImageSource = getImageSource(bar.image_url);
-
     return (
       <MapboxGL.PointAnnotation
         ref={annotationRef}
@@ -425,14 +428,14 @@ const BarMarker = React.memo(
         coordinate={[bar.longitude, bar.latitude]}
         anchor={{ x: 0.5, y: 1 }}
         onSelected={() => isInteractive && onSelect(bar)}
-        style={{ zIndex: isSelected || isPressed ? 100 : 1 }}      >
+        style={{ zIndex: isSelected ? 100 : 1 }}
+      >
         <View style={[styles.markerContainer, { transform: [{ scale }] }]}>
           <View style={[styles.pinShadow]}>
             <View style={[styles.pinHead]}>
               <Image
                 source={pinImageSource}
                 style={styles.markerImage}
-                contentFit="cover"
                 onLoad={handleMarkerImageLoad}
               />
             </View>
@@ -443,11 +446,11 @@ const BarMarker = React.memo(
     );
   }
 );
-
 BarMarker.displayName = "BarMarker";
 
+
 export default function BarHuntScreen() {
-  const { venues } = useApp();
+  const { premium, venues } = useApp();
   const insets = useSafeAreaInsets();
   const [selectedBar, setSelectedBar] = useState<Venue | null>(null);
   const [filterId, setFilterId] = useState("all");
@@ -456,8 +459,58 @@ export default function BarHuntScreen() {
   const [detailTab, setDetailTab] = useState<"overview" | "specials">("overview");
   const [showPassport, setShowPassport] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
-  const [isPremium, setIsPremium] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // -- STICKY HEADER STATE --
+  const [headerHeight, setHeaderHeight] = useState(60); // Approx height of Global Header
+  const [controlsHeight, setControlsHeight] = useState(100); // Approx height of Search/Filters
+
+  const scrollY = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const lastContentOffset = useSharedValue(0);
+
+  // 1. Scroll Handler
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+    onBeginDrag: (e) => {
+      lastContentOffset.value = e.contentOffset.y;
+    },
+  });
+
+  // 2. Logic: Translate Up by Header Height (but keep Search visible)
+  useDerivedValue(() => {
+    // If Map Mode, always show header
+    if (isMapMode) {
+      translateY.value = withTiming(0);
+      return;
+    }
+
+    const nextY = scrollY.value;
+    const diff = nextY - lastContentOffset.value;
+
+    if (nextY <= 0) {
+      translateY.value = withTiming(0, { duration: 300 });
+    } else {
+      const newTranslate = translateY.value - diff;
+      // We clamp between -headerHeight (Header Hidden) and 0 (Header Visible)
+      // Note: We DO NOT subtract controlsHeight, because we want Search to Stick
+      translateY.value = Math.max(Math.min(newTranslate, 0), -headerHeight);
+    }
+    lastContentOffset.value = nextY;
+  });
+
+  const animatedHeaderStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
+
+  // Reset scroll state when switching modes
+  useEffect(() => {
+    if (isMapMode) {
+      translateY.value = withTiming(0);
+    }
+  }, [isMapMode]);
 
   useEffect(() => {
     if (selectedBar) {
@@ -469,52 +522,66 @@ export default function BarHuntScreen() {
     return venues.filter((venue) => {
       if (searchQuery && searchQuery.trim().length > 0) {
         const query = searchQuery.toLowerCase().trim();
-        
         const matchesName = venue.name.toLowerCase().includes(query);
         const matchesLocation = venue.location.toLowerCase().includes(query);
         const matchesDiscount = venue.discount_percentage.toString().includes(query);
-
-        if (!matchesName && !matchesLocation && !matchesDiscount) {
-          return false;
-        }
+        if (!matchesName && !matchesLocation && !matchesDiscount) return false;
       }
-
       if (filterId === "all") return true;
-      if (filterId === "nearby") return venue.distance_km < 2.0; // Distance logic
+      if (filterId === "nearby") return venue.distance_km < 2.0;
       if (filterId === "happy_hour") return venue.tags && venue.tags.includes("happy_hour");
-
       return venue.venue_type === filterId;
     });
   }, [venues, filterId, searchQuery]);
 
-  const handleUnlockPress = () => {
-    setShowPaywall(true);
-  };
+  const handleUnlockPress = () => setShowPaywall(true);
 
   const handlePurchase = async () => {
     setIsProcessing(true);
     setTimeout(() => {
-      setIsPremium(true);
       setIsProcessing(false);
       setShowPaywall(false);
-      Alert.alert("Welcome to Pro!", "You have unlocked all features.");
-    }, 2000);
+    });
   };
 
-  type DetailTabType = "overview" | "specials";
+type DetailTabType = "overview" | "specials";
+const detailTabs: SegmentItem<DetailTabType>[] = [
+  {
+    value: "overview",
+    label: "DISCOUNT",
+    icon: { name: "card-account-details-star", library: "MaterialCommunityIcons" },
+  },
+  {
+    value: "specials",
+    label: "SPECIALS",
+    icon: { name: "star-outline", library: "MaterialCommunityIcons" },
+  },
+];
 
-  const detailTabs: SegmentItem<DetailTabType>[] = [
-    { value: "overview", label: "DISCOUNT", icon: "eye-outline" },
-    { value: "specials", label: "SPECIALS", icon: "star-outline" },
-  ];
+  // Combined Top Height for Padding
+  const totalTopPadding = headerHeight + controlsHeight;
 
   return (
     <View className="flex-1 bg-black relative">
       <StatusBar barStyle="light-content" />
-      <Header />
 
-      <View className="flex-1" style={{ paddingTop: insets.topi }}>
-        <View className="px-4 pt-2 z-10 bg-black">
+      {/* 
+        STICKY HEADER WRAPPER 
+        Contains: 
+        1. Global <Header /> (Measured via onLayout)
+        2. Search/Filter Bar (Measured via onLayout)
+      */}
+      <Animated.View style={[animatedHeaderStyle, { position: "absolute", top: 0, left: 0, right: 0, zIndex: 50 }]}>
+        {/* Global Header */}
+        <View onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
+          <Header />
+        </View>
+
+        {/* Search & Filters (Sticks to top when Header slides up) */}
+        <View
+          className="px-4 pt-2 bg-black pb-2 border-b border-white/[0.05]"
+          onLayout={(e) => setControlsHeight(e.nativeEvent.layout.height)}
+        >
           <View className="flex-row items-center space-x-3 mb-4 gap-2">
             <View className="flex-1 flex-row items-center bg-white/[0.03] border border-white/10 rounded-full px-4 h-12">
               <Ionicons name="search" size={20} color="#666" />
@@ -550,12 +617,12 @@ export default function BarHuntScreen() {
                 ),
               },
               {
-                id: "Club", // DB Enum
+                id: "Club",
                 label: "Club",
                 icon: <MaterialCommunityIcons name="disc" size={20} color={filterId === "Club" ? "black" : "white"} />,
               },
               {
-                id: "Bar", // DB Enum
+                id: "Bar",
                 label: "Bar",
                 icon: (
                   <MaterialCommunityIcons
@@ -566,26 +633,26 @@ export default function BarHuntScreen() {
                 ),
               },
               {
-                id: "Chalga Club", // DB Enum
+                id: "Chalga Club",
                 label: "Chalga",
                 icon: (
                   <MaterialIcons name="nightlife" size={20} color={filterId === "Chalga Club" ? "black" : "white"} />
                 ),
               },
               {
-                id: "Piano Bar", // DB Enum
+                id: "Piano Bar",
                 label: "Piano Bar",
                 icon: (
                   <MaterialCommunityIcons name="piano" size={18} color={filterId === "Piano Bar" ? "black" : "white"} />
                 ),
               },
               {
-                id: "Pub", // DB Enum
+                id: "Pub",
                 label: "Pub",
                 icon: <Ionicons name="beer" size={18} color={filterId === "Pub" ? "black" : "white"} />,
               },
               {
-                id: "Rooftop", // DB Enum
+                id: "Rooftop",
                 label: "Rooftop",
                 icon: (
                   <MaterialCommunityIcons
@@ -598,41 +665,45 @@ export default function BarHuntScreen() {
             ]}
           />
         </View>
+      </Animated.View>
 
-        <View className="flex-1 relative">
-          {isMapMode ? (
+      <View className="flex-1 relative">
+        {isMapMode ? (
+          <View className="flex-1" style={{ paddingTop: totalTopPadding }}>
             <BarHuntMap bars={filteredBars} onSelectBar={setSelectedBar} />
-          ) : (
-            <FlashList
-              data={filteredBars}
-              numColumns={1}
-              renderItem={({ item }) => (
-                <View style={{ marginBottom: GAP }}>
-                  <DynamicGlanceCard item={item} onPress={() => setSelectedBar(item)} />
-                </View>
-              )}
-              contentContainerStyle={{
-                paddingHorizontal: SCREEN_PADDING,
-                paddingBottom: 100,
-              }}
-              showsVerticalScrollIndicator={false}
-            />
-          )}
-
-          <View className="absolute bottom-6 self-center z-20">
-            <TouchableOpacity
-              onPress={() => setIsMapMode(!isMapMode)}
-              activeOpacity={0.8}
-              className="flex-row items-center bg-orange-600 px-6 py-4 rounded-full shadow-lg shadow-orange-600/40"
-            >
-              <Feather name={isMapMode ? "grid" : "map"} size={18} color="black" />
-              <Text className="text-black font-black ml-2 tracking-wide">{isMapMode ? "BARS" : "MAP"}</Text>
-            </TouchableOpacity>
           </View>
+        ) : (
+          <AnimatedFlashList
+            data={filteredBars}
+            numColumns={1}
+            renderItem={({ item }: any) => (
+              <View style={{ marginBottom: GAP }}>
+                <DynamicGlanceCard item={item} onPress={() => setSelectedBar(item)} />
+              </View>
+            )}
+            onScroll={scrollHandler}
+            scrollEventThrottle={16}
+            contentContainerStyle={{
+              paddingHorizontal: SCREEN_PADDING,
+              paddingTop: totalTopPadding + 10, // Content starts below the fixed headers
+              paddingBottom: 100,
+            }}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
+
+        <View className="absolute right-6 bottom-6 z-20">
+          <TouchableOpacity
+            onPress={() => setIsMapMode(!isMapMode)}
+            activeOpacity={0.8}
+            className="flex-row items-center bg-orange-600 p-4  rounded-full shadow-lg shadow-orange-600/40"
+          >
+            <Feather name={isMapMode ? "layers" : "map-pin"} size={22} color="black" />
+          </TouchableOpacity>
         </View>
       </View>
 
-      <View className="flex-row justify-around items-center bg-black pt-3 pb-8 border-t border-white/[0.08]">
+      <View className="flex-row justify-around items-center bg-black mt-8 border-t border-white/[0.08]">
         <View className="items-center">
           <Ionicons name="search" size={24} color={PRIMARY_ORANGE} />
           <Text className="text-[10px] text-orange-600 font-bold mt-1">Explore</Text>
@@ -672,21 +743,13 @@ export default function BarHuntScreen() {
                   </View>
                 </View>
 
-                <PremiumLock isLocked={!isPremium} onUnlock={handleUnlockPress} isProcessing={false}>
-                  <View className="items-center justify-center w-full aspect-square p-8">
-                    <View className="w-full h-full bg-white rounded-xl p-3 border-4 border-white">
-                      <View className="flex-1 bg-white p-2 flex-row flex-wrap">
-                        {[...Array(100)].map((_, i) => (
-                          <View
-                            key={i}
-                            className={`w-[10%] h-[10%] ${Math.random() > 0.45 ? "bg-black" : "bg-white"}`}
-                          />
-                        ))}
-                      </View>
-                    </View>
-                    <Text className="text-center font-mono font-bold mt-4 tracking-widest text-lg text-white">
-                      MEMBER-8821
-                    </Text>
+                <PremiumLock isLocked={!Boolean(premium)} onUnlock={handleUnlockPress} isProcessing={false}>
+                  <View className="bg-white items-center justify-center w-full aspect-square p-8 rounded-xl">
+                    {premium ? (
+                      <SecureQRCode size={280} />
+                    ) : (
+                      <View style={{ width: 280, height: 280, backgroundColor: "#eee" }} />
+                    )}
                   </View>
                 </PremiumLock>
               </View>
@@ -700,9 +763,9 @@ export default function BarHuntScreen() {
                       className="bg-[#1A1A1A] rounded-2xl p-3 mb-4 flex-row items-center border border-white/[0.08]"
                     >
                       <Image
-                        source={{ uri: special.image_url }}
+                        source={getImageSource(special.image_url)}
+                        // source={{ uri: special.image_url }}
                         style={{ width: 80, height: 80, borderRadius: 12 }}
-                        contentFit="cover"
                       />
                       <View className="flex-1 ml-4 justify-center">
                         <View className="flex-row justify-between items-center mb-1">
@@ -759,12 +822,6 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 6,
   },
-  selectedPinShadow: {
-    shadowOpacity: 0.8,
-    shadowRadius: 10,
-    elevation: 15,
-    transform: [{ scale: 1.15 }],
-  },
   pinHead: {
     width: 48,
     height: 48,
@@ -776,10 +833,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     zIndex: 2,
-  },
-  selectedPinHead: {
-    borderColor: "#EA580C",
-    borderWidth: 4,
   },
   pinPoint: {
     width: 0,
@@ -794,9 +847,6 @@ const styles = StyleSheet.create({
     borderTopColor: "#FFFFFF",
     marginTop: -1,
     zIndex: 1,
-  },
-  selectedPinPoint: {
-    borderTopColor: "#EA580C",
   },
   markerImage: {
     width: "100%",

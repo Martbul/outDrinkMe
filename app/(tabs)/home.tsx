@@ -25,7 +25,6 @@ import { useRouter } from "expo-router";
 import React, { useMemo, useRef, useState } from "react";
 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { SwipeableSheet } from "@/components/swipeable_sheet";
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();

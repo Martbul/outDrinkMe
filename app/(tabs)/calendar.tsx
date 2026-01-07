@@ -422,7 +422,7 @@ const DayDetailModal = ({
 };
 
 const CalendarScreen = () => {
-  const { getToken,drinkUpSubscription } = useAuth();
+  const { getToken } = useAuth();
   const posthog = usePostHog();
 
   const { userStats, calendar, isLoading, refreshCalendar } = useApp();
@@ -450,7 +450,6 @@ const CalendarScreen = () => {
   ];
 
   useEffect(() => {
-    console.log("!!!"+drinkUpSubscription)
     refreshCalendar(currentYear, currentMonth);
     posthog?.capture("calendar_month_viewed", {
       month: currentMonth,

@@ -23,13 +23,7 @@ interface SwipeableSheetProps {
   fullScreen?: boolean; // New prop
 }
 
-export const SwipeableSheet = ({
-  visible,
-  onClose,
-  coverImage,
-  children,
-  fullScreen = true, 
-}: SwipeableSheetProps) => {
+export const SwipeableSheet = ({ visible, onClose, coverImage, children, fullScreen = true }: SwipeableSheetProps) => {
   const panY = useRef(new Animated.Value(0)).current;
   const scrollY = useRef(0);
 
@@ -37,11 +31,7 @@ export const SwipeableSheet = ({
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        return (
-          gestureState.dy > 5 &&
-          Math.abs(gestureState.dx) < Math.abs(gestureState.dy) &&
-          scrollY.current <= 0
-        );
+        return gestureState.dy > 5 && Math.abs(gestureState.dx) < Math.abs(gestureState.dy) && scrollY.current <= 0;
       },
       onPanResponderMove: (_, gestureState) => {
         if (gestureState.dy > 0) panY.setValue(gestureState.dy);
@@ -73,11 +63,7 @@ export const SwipeableSheet = ({
       transparent={!fullScreen}
       onRequestClose={onClose}
     >
-      <View
-        className={
-          fullScreen ? "flex-1 bg-black" : "flex-1 bg-black/60 justify-end"
-        }
-      >
+      <View className={fullScreen ? "flex-1 bg-black" : "flex-1 bg-black/60 justify-end"}>
         {!fullScreen && (
           <TouchableWithoutFeedback onPress={onClose}>
             <View className="absolute inset-0" />
@@ -120,11 +106,7 @@ export const SwipeableSheet = ({
             {coverImage && (
               <View className="h-56 w-full relative">
                 <Image
-                  source={
-                    typeof coverImage === "string"
-                      ? { uri: coverImage }
-                      : coverImage
-                  }
+                  source={typeof coverImage === "string" ? { uri: coverImage } : coverImage}
                   style={{ width: "100%", height: "100%" }}
                   contentFit="cover"
                 />
@@ -142,9 +124,7 @@ export const SwipeableSheet = ({
             )}
 
             {/* Content Container (Pushes up if image exists) */}
-            <View className={coverImage ? "px-5 -mt-4" : "px-5 pt-16"}>
-              {children}
-            </View>
+            <View className={coverImage ? "px-5 -mt-4" : "px-5 pt-16"}>{children}</View>
           </ScrollView>
         </Animated.View>
       </View>

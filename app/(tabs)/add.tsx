@@ -573,16 +573,11 @@ export default function AddDrinks() {
             onPressOut={cancelHold}
             disabled={isSubmitting}
             activeOpacity={0.9}
-            className="w-full max-w-md bg-white/[0.05] rounded-3xl border-2 border-white/[0.08] overflow-hidden relative"
+            className="w-full max-w-md bg-white/[0.03] rounded-3xl border-2 border-white/[0.08] overflow-hidden relative"
             style={{ minHeight: 170 }}
           >
             <View className="flex-1 items-center justify-center py-8 z-20">
-              {/* <Ionicons
-                color={isHolding ? "#000" : "#EA580C"}
-                name={isHolding ? "beer" : "beer-outline"}
-                size={48}
-                style={{ marginBottom: 16 }}
-              /> */}
+             
               <FontAwesome5
                 name={isHolding ? "cocktail" : "cocktail"}
                 size={48}

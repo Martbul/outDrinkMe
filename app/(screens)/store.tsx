@@ -1,5 +1,7 @@
 import { apiService } from "@/api";
+import DigitalPassport from "@/components/digital_passport";
 import { NestedScreenHeader } from "@/components/nestedScreenHeader";
+import { PassportCard } from "@/components/passport_card";
 import { PaywallModal } from "@/components/paywall_modal";
 import PurchaseConfirmationModal, { GemPurchaseItem, StoreItem } from "@/components/purchaseModal";
 import { useAds } from "@/providers/AdProvider";
@@ -32,16 +34,16 @@ export default function StoreScreen() {
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
   const { isAdLoaded, showRewardedAd } = useAds();
-  const { userData, storeItems, updateUserProfile, refreshStore, refreshUserInventory, refreshUserData } = useApp();
+  const { userData, storeItems,premium,  updateUserProfile, refreshStore, refreshUserInventory, refreshUserData } = useApp();
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [purchaseType, setPurchaseType] = useState<"gem" | "store">("store");
   const [selectedStoreItem, setSelectedStoreItem] = useState<StoreItem | null>(null);
   const [showReferralModal, setShowReferralModal] = useState(false);
-  const [showBuyPremiumModal, setShowBuyPremiumModal] = useState(false);
   const [successfulPurchaseModalVisible, setSuccessfulPurchaseModalVisible] = useState(false);
 
   const [pendingTransaction, setPendingTransaction] = useState(false);
   const [selectedGemItem, setSelectedGemItem] = useState<GemPurchaseItem | null>(null);
+  const [showPaywall, setShowPaywall] = useState(false);
 
   const scrollViewRef = useRef<ScrollView>(null);
   const getMoreGemsSectionRef = useRef<View>(null);
@@ -53,7 +55,6 @@ export default function StoreScreen() {
   }, [userData?.gems, posthog]);
 
   const handleGetMorePress = () => {
-    // Track intent to buy gems
     posthog?.capture("store_scroll_to_gems");
 
     getMoreGemsSectionRef.current?.measureLayout(scrollViewRef.current as any, (x, y, width, height) => {
@@ -64,6 +65,12 @@ export default function StoreScreen() {
   const closeSuccessfulPurchaseModal = () => {
     setShowReferralModal(false);
   };
+
+   const handlePremiumPurchase = async () => {
+     setTimeout(() => {
+       setShowPaywall(false);
+     });
+   };
 
   const handleStoreItemPress = (item: StoreItem) => {
     posthog?.capture("store_item_selected", {
@@ -78,8 +85,6 @@ export default function StoreScreen() {
     setPurchaseType("store");
     setShowPurchaseModal(true);
   };
-
-  
 
   const handleGemPackPress = (pack: GemPack) => {
     posthog?.capture("store_gem_pack_selected", {
@@ -422,36 +427,41 @@ export default function StoreScreen() {
           </TouchableOpacity>
         </View> */}
 
-        <View className="mx-4 mt-4">
-          <TouchableOpacity
-            className="bg-orange-600/10 rounded-2xl p-5 border-2 border-orange-600/50"
-            activeOpacity={0.8}
-            onPress={() => showBuyPremiumModal(true)}
-          >
-            <View className="flex-row items-center justify-between">
-              <View className="flex-1">
-                <View className="flex-row items-center mb-2">
-                  <View className="bg-[#ff8c00] px-2 py-1 rounded-lg mr-2">
-                    <Text className="text-black text-[10px] font-black">PURCHASE</Text>
+        <View className="mx-4 mt-4 justify-center">
+          {premium ? (
+            <PassportCard />
+          ) : (
+            <TouchableOpacity
+              className="bg-orange-600/10 rounded-2xl p-5 border-2 border-orange-600/50"
+              activeOpacity={0.8}
+              onPress={() => setShowPaywall(true)}
+            >
+              <View className="flex-row items-center justify-between">
+                <View className="flex-1">
+                  <View className="flex-row items-center mb-2">
+                    <View className="bg-[#ff8c00] px-2 py-1 rounded-lg mr-2">
+                      <Text className="text-black text-[10px] font-black">PURCHASE</Text>
+                    </View>
+                    <Text className="text-[#ff8c00] text-[11px] font-bold tracking-widest">UNLIMITED DISCOUNTS</Text>
                   </View>
-                  <Text className="text-[#ff8c00] text-[11px] font-bold tracking-widest">UNLIMITED DISCOUNTS</Text>
+                  <Text className="text-white text-xl font-black mb-1">Premium</Text>
+                  <Text className="text-white/70 text-sm font-semibold mb-3">
+                    Use unlimited discounts at every partner&apos;s location
+                  </Text>
                 </View>
-                <Text className="text-white text-xl font-black mb-1">Premium</Text>
-                <Text className="text-white/70 text-sm font-semibold mb-3">
-                  Use unlimited discounts at every partner&apos;s location
-                </Text>
+                <View className="items-center ml-3">
+                  <View className="bg-[#ff8c00] w-16 h-16 rounded-2xl items-center justify-center mb-2">
+                    <MaterialCommunityIcons name="card-account-details-star" size={42} color="black" />
+                  </View>
+                  <View className="bg-[#ff8c00] px-4 py-2 rounded-xl">
+                    <Text className="text-black text-xs font-black">BUY NOW</Text>
+                  </View>
+                </View>
               </View>
-              <View className="items-center ml-3">
-                <View className="bg-[#ff8c00] w-16 h-16 rounded-2xl items-center justify-center mb-2">
-                  <MaterialCommunityIcons name="card-account-details-star" size={42} color="black" />
-                </View>
-                <View className="bg-[#ff8c00] px-4 py-2 rounded-xl">
-                  <Text className="text-black text-xs font-black">BUY NOW</Text>
-                </View>
-              </View>
-            </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
+          )}
         </View>
+
         <View className="mt-6">
           <View className="mx-4 mb-4 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
             <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">BOOST YOUR HEALTH</Text>
@@ -581,14 +591,7 @@ export default function StoreScreen() {
           setSelectedGemItem(null);
         }}
       />
-       <PaywallModal
-              visible={showBuyPremiumModal}
-              onClose={() => setShowBuyPremiumModal(false)}
-              onPurchase={() => {
-                setShowBuyPremiumModal(false);
-                if (onBuyPremium) onBuyPremium();
-              }}
-            />
+
       {/* <ReferralModal
         visible={showReferralModal}
         onClose={() => setShowReferralModal(false)}
@@ -624,6 +627,7 @@ export default function StoreScreen() {
           </TouchableOpacity>
         </KeyboardAvoidingView>
       </Modal>
+      <PaywallModal visible={showPaywall} onClose={() => setShowPaywall(false)} onPurchase={handlePremiumPurchase} />
     </View>
   );
 }
