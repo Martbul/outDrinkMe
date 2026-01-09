@@ -754,7 +754,8 @@ const UserInfoScreen = () => {
                   router.push("/(screens)/editProfile");
                 }}
               />
-              <ModalOption
+              {/* //!do to remove */}
+              {/* <ModalOption
                 label="Bar Mode"
                 subLabel="Working at a bar"
                 icon={<FontAwesome6 name="martini-glass-citrus" size={20} color={PRIMARY_ORANGE} />}
@@ -762,7 +763,7 @@ const UserInfoScreen = () => {
                   setSettingsSheetVisible(false);
                   router.push("/(venue)/scan");
                 }}
-              />
+              /> */}
               <ModalOption
                 label="Bug Report"
                 subLabel="Help us improve"

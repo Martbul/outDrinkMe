@@ -5,17 +5,18 @@ import {
   ScrollView,
   TouchableOpacity,
   Modal,
-  Alert,
   ActivityIndicator,
   TextInput,
   Dimensions,
   StatusBar,
-  Animated as RNAnimated, // Renamed to avoid conflict
+  Animated as RNAnimated,
   PanResponder,
   StyleSheet,
   TouchableWithoutFeedback,
   ImageSourcePropType,
   Image,
+  Linking,
+  Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons, Feather, MaterialIcons } from "@expo/vector-icons";
@@ -29,14 +30,12 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
 } from "react-native-reanimated";
-
 import Header from "@/components/header";
 import DigitalPassport from "@/components/digital_passport";
 import { SegmentItem, TabSwitcher } from "@/components/tab_switcher";
 import { PaywallModal } from "@/components/paywall_modal";
 import { useApp } from "@/providers/AppProvider";
 import { Venue, VenueSpecial } from "@/types/api.types";
-import QRCode from "react-native-qrcode-svg";
 import { SecureQRCode } from "@/components/secure_qr_code";
 
 const AnimatedFlashList = Animated.createAnimatedComponent(FlashList);
@@ -53,7 +52,7 @@ if (MAPBOX_TOKEN) {
 }
 
 const getImageSource = (img: any) => {
-  console.log(img)
+  console.log(img);
   return typeof img === "string" ? { uri: img } : img;
 };
 
@@ -229,13 +228,10 @@ const DynamicGlanceCard = ({ item, onPress }: { item: Venue; onPress: () => void
     <TouchableOpacity
       activeOpacity={0.9}
       onPress={onPress}
-      className="bg-[#121212] rounded-3xl overflow-hidden border border-white/[0.08]"
+      className="bg-white/[0.03] rounded-3xl overflow-hidden border border-white/[0.08]"
     >
       <View style={{ width: "100%", height: cardHeight }} className="relative bg-gray-900">
-        <Image
-          source={getImageSource(item.image_url)}
-          style={{ width: "100%", height: "100%" }}
-        />
+        <Image source={getImageSource(item.image_url)} style={{ width: "100%", height: "100%" }} />
         <LinearGradient
           colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.6)"]}
           style={{
@@ -246,9 +242,10 @@ const DynamicGlanceCard = ({ item, onPress }: { item: Venue; onPress: () => void
             height: "60%",
           }}
         />
-        <View className="absolute bottom-3 right-3 bg-orange-600 rounded-xl px-3 py-1.5 shadow-lg shadow-orange-600/40 items-center justify-center border border-orange-400/50">
+        {/* //! DO NOT REMOVE */}
+        {/* <View className="absolute bottom-3 right-3 bg-orange-600 rounded-xl px-3 py-1.5 shadow-lg shadow-orange-600/40 items-center justify-center border border-orange-400/50">
           <Text className="text-black font-black text-sm">-{item.discount_percentage}%</Text>
-        </View>
+        </View> */}
       </View>
 
       <View className="p-4">
@@ -375,7 +372,6 @@ const BarHuntMap = ({ bars, onSelectBar }: { bars: Venue[]; onSelectBar: (bar: V
           bounds={cameraSettings.bounds}
           centerCoordinate={cameraSettings.center}
           zoomLevel={cameraSettings.zoom}
-      
           animationMode="flyTo"
           animationDuration={1000}
         />
@@ -433,11 +429,7 @@ const BarMarker = React.memo(
         <View style={[styles.markerContainer, { transform: [{ scale }] }]}>
           <View style={[styles.pinShadow]}>
             <View style={[styles.pinHead]}>
-              <Image
-                source={pinImageSource}
-                style={styles.markerImage}
-                onLoad={handleMarkerImageLoad}
-              />
+              <Image source={pinImageSource} style={styles.markerImage} onLoad={handleMarkerImageLoad} />
             </View>
             <View style={[styles.pinPoint]} />
           </View>
@@ -447,7 +439,6 @@ const BarMarker = React.memo(
   }
 );
 BarMarker.displayName = "BarMarker";
-
 
 export default function BarHuntScreen() {
   const { premium, venues } = useApp();
@@ -461,15 +452,15 @@ export default function BarHuntScreen() {
   const [showPaywall, setShowPaywall] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // -- STICKY HEADER STATE --
-  const [headerHeight, setHeaderHeight] = useState(60); // Approx height of Global Header
-  const [controlsHeight, setControlsHeight] = useState(100); // Approx height of Search/Filters
+  const [headerHeight, setHeaderHeight] = useState(60);
+  const [controlsHeight, setControlsHeight] = useState(100);
+  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState("");
 
   const scrollY = useSharedValue(0);
   const translateY = useSharedValue(0);
   const lastContentOffset = useSharedValue(0);
 
-  // 1. Scroll Handler
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
       scrollY.value = event.contentOffset.y;
@@ -479,9 +470,7 @@ export default function BarHuntScreen() {
     },
   });
 
-  // 2. Logic: Translate Up by Header Height (but keep Search visible)
   useDerivedValue(() => {
-    // If Map Mode, always show header
     if (isMapMode) {
       translateY.value = withTiming(0);
       return;
@@ -494,8 +483,6 @@ export default function BarHuntScreen() {
       translateY.value = withTiming(0, { duration: 300 });
     } else {
       const newTranslate = translateY.value - diff;
-      // We clamp between -headerHeight (Header Hidden) and 0 (Header Visible)
-      // Note: We DO NOT subtract controlsHeight, because we want Search to Stick
       translateY.value = Math.max(Math.min(newTranslate, 0), -headerHeight);
     }
     lastContentOffset.value = nextY;
@@ -505,7 +492,6 @@ export default function BarHuntScreen() {
     transform: [{ translateY: translateY.value }],
   }));
 
-  // Reset scroll state when switching modes
   useEffect(() => {
     if (isMapMode) {
       translateY.value = withTiming(0);
@@ -544,40 +530,30 @@ export default function BarHuntScreen() {
     });
   };
 
-type DetailTabType = "overview" | "specials";
-const detailTabs: SegmentItem<DetailTabType>[] = [
-  {
-    value: "overview",
-    label: "DISCOUNT",
-    icon: { name: "card-account-details-star", library: "MaterialCommunityIcons" },
-  },
-  {
-    value: "specials",
-    label: "SPECIALS",
-    icon: { name: "star-outline", library: "MaterialCommunityIcons" },
-  },
-];
+  type DetailTabType = "overview" | "specials";
+  const detailTabs: SegmentItem<DetailTabType>[] = [
+    {
+      value: "overview",
+      label: "DISCOUNT",
+      icon: { name: "card-account-details-star", library: "MaterialCommunityIcons" },
+    },
+    {
+      value: "specials",
+      label: "SPECIALS",
+      icon: { name: "star-outline", library: "MaterialCommunityIcons" },
+    },
+  ];
 
-  // Combined Top Height for Padding
   const totalTopPadding = headerHeight + controlsHeight;
 
   return (
     <View className="flex-1 bg-black relative">
       <StatusBar barStyle="light-content" />
-
-      {/* 
-        STICKY HEADER WRAPPER 
-        Contains: 
-        1. Global <Header /> (Measured via onLayout)
-        2. Search/Filter Bar (Measured via onLayout)
-      */}
       <Animated.View style={[animatedHeaderStyle, { position: "absolute", top: 0, left: 0, right: 0, zIndex: 50 }]}>
-        {/* Global Header */}
         <View onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
           <Header />
         </View>
 
-        {/* Search & Filters (Sticks to top when Header slides up) */}
         <View
           className="px-4 pt-2 bg-black pb-2 border-b border-white/[0.05]"
           onLayout={(e) => setControlsHeight(e.nativeEvent.layout.height)}
@@ -593,12 +569,14 @@ const detailTabs: SegmentItem<DetailTabType>[] = [
                 className="flex-1 ml-3 text-base font-bold text-white"
               />
             </View>
-            <TouchableOpacity
+
+            {/* //! DO NOT REMOVE later */}
+            {/* <TouchableOpacity
               onPress={() => setShowPassport(true)}
               className="w-12 h-12 rounded-full bg-orange-600 items-center justify-center shadow-lg shadow-orange-600/30 border border-white/10"
             >
               <MaterialCommunityIcons name="card-account-details-star" size={24} color="black" />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
 
           <FilterPills
@@ -666,7 +644,6 @@ const detailTabs: SegmentItem<DetailTabType>[] = [
           />
         </View>
       </Animated.View>
-
       <View className="flex-1 relative">
         {isMapMode ? (
           <View className="flex-1" style={{ paddingTop: totalTopPadding }}>
@@ -702,7 +679,6 @@ const detailTabs: SegmentItem<DetailTabType>[] = [
           </TouchableOpacity>
         </View>
       </View>
-
       <View className="flex-row justify-around items-center bg-black mt-8 border-t border-white/[0.08]">
         <View className="items-center">
           <Ionicons name="search" size={24} color={PRIMARY_ORANGE} />
@@ -716,77 +692,193 @@ const detailTabs: SegmentItem<DetailTabType>[] = [
 
       <DetailModal visible={!!selectedBar} onClose={() => setSelectedBar(null)} coverImage={selectedBar?.image_url}>
         {selectedBar && (
-          <>
-            <View className="flex-row justify-between items-start mb-2">
-              <Text className="text-3xl font-black text-white flex-1">{selectedBar.name}</Text>
+          <View className="pb-10">
+            <View className="flex-row justify-between items-start mb-1">
+              <Text className="text-3xl font-black text-orange-600 flex-1 leading-tight">{selectedBar.name}</Text>
+              <View className="bg-white/10 px-3 py-1 rounded-full backdrop-blur-md">
+                <Text className="text-white font-bold text-xs uppercase tracking-wider">
+                  {selectedBar.difficulty || "Open"}
+                </Text>
+              </View>
             </View>
 
-            <Text className="text-white/50 mb-6 font-bold tracking-wide text-xs">
-              {selectedBar.location} • {selectedBar.difficulty} • {selectedBar.distance_str}
-            </Text>
+            <Text className="text-white/50 mb-4 font-bold tracking-wide text-xs uppercase">{selectedBar.location}</Text>
+            <View className="flex-row items-center mb-6 space-x-4 gap-1">
+              <View className="flex-row items-center bg-[#1A1A1A] px-3 py-1.5 rounded-lg border border-white/[0.08]">
+                <Ionicons name="star" size={14} color="#F97316" />
+                <Text className="text-white font-bold ml-1.5">{selectedBar.rating}</Text>
+              </View>
+              <View className="flex-row items-center bg-[#1A1A1A] px-3 py-1.5 rounded-lg border border-white/[0.08]">
+                <Text className="text-emerald-400 font-bold text-xs">$$</Text>
+              </View>
+              <View className="flex-row items-center bg-[#1A1A1A] px-3 py-1.5 rounded-lg border border-white/[0.08]">
+                <Text className="text-white/70 font-bold text-xs">Open until 2AM</Text>
+              </View>
+            </View>
 
-            <TabSwitcher
-              items={detailTabs}
-              selected={detailTab}
-              onSelect={setDetailTab}
-              containerStyle="mx-4 mb-3 border-b border-white/[0.08]"
-            />
+            <View className="flex-row gap-3 mb-8">
+              <TouchableOpacity
+                className="flex-1 bg-white rounded-xl py-3 flex-row items-center justify-center"
+                activeOpacity={0.8}
+                onPress={() => {
+                  if (selectedBar.directions) {
+                    Linking.openURL(selectedBar.directions);
+                  } else {
+                    const scheme = Platform.OS === "ios" ? "maps:" : "geo:";
+                    const url =
+                      Platform.OS === "ios"
+                        ? `maps:0,0?q=${selectedBar.name}@${selectedBar.latitude},${selectedBar.longitude}`
+                        : `geo:${selectedBar.latitude},${selectedBar.longitude}?q=${encodeURIComponent(
+                            selectedBar.name
+                          )}`;
+                    Linking.openURL(url);
+                  }
+                }}
+              >
+                <Ionicons name="navigate" size={18} color="black" />
+                <Text className="text-black font-black ml-2 text-sm">Get Directions</Text>
+              </TouchableOpacity>
 
-            {detailTab === "overview" ? (
-              <View>
-                <View className="flex-row items-center justify-between mb-4">
-                  <Text className="text-white text-lg font-black">Premium Discount QR</Text>
-                  <View className="bg-orange-600/20 px-2 py-1 rounded border border-orange-600/50">
-                    <Text className="text-orange-500 text-[13px] font-bold">
-                      -{selectedBar.discount_percentage}% OFF
-                    </Text>
+              <TouchableOpacity
+                className={`w-12 rounded-xl border border-white/[0.08] items-center justify-center ${
+                  selectedBar.phone ? "bg-[#1A1A1A]" : "bg-[#1A1A1A]/50"
+                }`}
+                disabled={!selectedBar.phone}
+                onPress={() => selectedBar.phone && Linking.openURL(`tel:${selectedBar.phone}`)}
+              >
+                <Ionicons name="call" size={20} color={selectedBar.phone ? "white" : "gray"} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                className={`w-12 rounded-xl border border-white/[0.08] items-center justify-center ${
+                  selectedBar.website ? "bg-[#1A1A1A]" : "bg-[#1A1A1A]/50"
+                }`}
+                disabled={!selectedBar.website}
+                onPress={() => selectedBar.website && Linking.openURL(selectedBar.website)}
+              >
+                <Ionicons name="globe-outline" size={20} color={selectedBar.website ? "white" : "gray"} />
+              </TouchableOpacity>
+            </View>
+
+            <View className="mb-8">
+              <Text className="text-orange-600 text-lg font-black mb-2">About</Text>
+              <Text className="text-white/60 leading-6 font-medium">
+                {selectedBar.description ||
+                  "An upscale venue featuring modern aesthetics, curated playlists, and an exclusive atmosphere. Perfect for late-night conversations and tasting premium spirits in the heart of the district."}
+              </Text>
+            </View>
+
+            <View className="mb-8">
+              <View className="flex-row justify-between items-end mb-3">
+                <Text className="text-orange-600 text-lg font-black">Vibe Check</Text>
+
+                <TouchableOpacity onPress={() => setIsGalleryOpen(true)}>
+                  <Text className="text-white text-xs font-bold">See All</Text>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="gap-3">
+                {selectedBar.gallery.slice(0, 4).map((img, index) => (
+                  <TouchableOpacity onPress={() => setSelectedImage(img)}>
+                    <Image
+                      key={index}
+                      source={{ uri: img || "https://via.placeholder.com/300" }}
+                      className="w-40 h-28 rounded-2xl bg-white/5 border border-white/10 mx-1"
+                      style={{ opacity: 0.9 }}
+                    />
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+
+            <View className="mb-8">
+              <Text className="text-orange-600 text-lg font-black mb-3">Features</Text>
+              <View className="flex-row flex-wrap gap-2">
+                {selectedBar.features.map((f, i) => (
+                  <View key={i} className="bg-white/5 px-3 py-1.5 rounded-lg border border-white/10">
+                    <Text className="text-white/70 text-xs font-bold">{f}</Text>
                   </View>
+                ))}
+              </View>
+            </View>
+
+           
+            {/* <TabSwitcher
+            items={detailTabs}
+            selected={detailTab}
+            onSelect={setDetailTab}
+            containerStyle="mx-4 mb-3 border-b border-white/[0.08]"
+          />
+          {detailTab === "overview" ? (
+            <View>
+              <View className="flex-row items-center justify-between mb-4">
+                <Text className="text-white text-lg font-black">Premium Discount QR</Text>
+                <View className="bg-orange-600/20 px-2 py-1 rounded border border-orange-600/50">
+                  <Text className="text-orange-500 text-[13px] font-bold">
+                    -{selectedBar.discount_percentage}% OFF
+                  </Text>
                 </View>
-
-                <PremiumLock isLocked={!Boolean(premium)} onUnlock={handleUnlockPress} isProcessing={false}>
-                  <View className="bg-white items-center justify-center w-full aspect-square p-8 rounded-xl">
-                    {premium ? (
-                      <SecureQRCode size={280} />
-                    ) : (
-                      <View style={{ width: 280, height: 280, backgroundColor: "#eee" }} />
-                    )}
-                  </View>
-                </PremiumLock>
               </View>
-            ) : (
-              <View>
-                <Text className="text-white text-lg font-black mb-4">Signature Cocktails</Text>
-                {selectedBar.specials && selectedBar.specials.length > 0 ? (
-                  selectedBar.specials.map((special: VenueSpecial) => (
-                    <View
-                      key={special.id}
-                      className="bg-[#1A1A1A] rounded-2xl p-3 mb-4 flex-row items-center border border-white/[0.08]"
-                    >
-                      <Image
-                        source={getImageSource(special.image_url)}
-                        // source={{ uri: special.image_url }}
-                        style={{ width: 80, height: 80, borderRadius: 12 }}
-                      />
-                      <View className="flex-1 ml-4 justify-center">
-                        <View className="flex-row justify-between items-center mb-1">
-                          <Text className="text-white font-bold text-lg flex-1 mr-2">{special.name}</Text>
-                          <Text className="text-orange-500 font-black text-lg">{special.price}</Text>
-                        </View>
-                        <Text className="text-white/40 text-xs leading-4">{special.description}</Text>
+              <PremiumLock isLocked={!Boolean(premium)} onUnlock={handleUnlockPress} isProcessing={false}>
+                <View className="bg-white items-center justify-center w-full aspect-square p-8 rounded-xl">
+                  {premium ? (
+                    <SecureQRCode size={280} />
+                  ) : (
+                    <View style={{ width: 280, height: 280, backgroundColor: "#eee" }} />
+                  )}
+                </View>
+              </PremiumLock>
+            </View>
+          ) : (
+            <View>
+              <Text className="text-white text-lg font-black mb-4">Signature Cocktails</Text>
+              {selectedBar.specials && selectedBar.specials.length > 0 ? (
+                selectedBar.specials.map((special: VenueSpecial) => (
+                  <View key={special.id} className="bg-[#1A1A1A] rounded-2xl p-3 mb-4 flex-row items-center border border-white/[0.08]">
+                    <Image source={getImageSource(special.image_url)} style={{ width: 80, height: 80, borderRadius: 12 }} />
+                    <View className="flex-1 ml-4 justify-center">
+                      <View className="flex-row justify-between items-center mb-1">
+                        <Text className="text-white font-bold text-lg flex-1 mr-2">{special.name}</Text>
+                        <Text className="text-orange-500 font-black text-lg">{special.price}</Text>
                       </View>
+                      <Text className="text-white/40 text-xs leading-4">{special.description}</Text>
                     </View>
-                  ))
-                ) : (
-                  <Text className="text-white/30 text-center py-10">No specials listed currently.</Text>
-                )}
-              </View>
-            )}
-          </>
+                  </View>
+                ))
+              ) : (
+                <Text className="text-white/30 text-center py-10">No specials listed currently.</Text>
+              )}
+            </View>
+          )} */}
+          </View>
         )}
       </DetailModal>
+      <SwipeableSheet visible={isGalleryOpen} onClose={() => setIsGalleryOpen(false)}>
+        <View>
+          <View className="justify-center items-center ">
+            <Text className="justify-center items-center text-orange-600 text-2xl font-black mb-4">Gallery</Text>
+          </View>
+          <View className="flex-row flex-wrap justify-between">
+            {selectedBar?.gallery.map((img, index) => (
+              <TouchableOpacity
+                onPress={() => setSelectedImage(img)}
+                key={index}
+                className="w-[32%] aspect-square mb-2 rounded-lg overflow-hidden bg-white/10"
+              >
+                <Image key={index} source={{ uri: img }} style={{ width: "100%", height: "100%" }} />
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </SwipeableSheet>
+
+      <SwipeableSheet visible={Boolean(selectedImage)} onClose={() => setSelectedImage("")}>
+        <View className="flex-1 bg-black w-full h-full justify-center items-center">
+          <Image source={{ uri: selectedImage }} style={{ width: "100%", height: "100%" }} resizeMode="contain" />
+        </View>
+      </SwipeableSheet>
 
       <PaywallModal visible={showPaywall} onClose={() => setShowPaywall(false)} onPurchase={handlePurchase} />
-
       <SwipeableSheet visible={showPassport} onClose={() => setShowPassport(false)}>
         <View className="flex-1 items-center justify-center  pb-12">
           <View className="items-center mb-24">

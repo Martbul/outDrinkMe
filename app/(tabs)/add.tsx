@@ -573,7 +573,7 @@ export default function AddDrinks() {
             onPressOut={cancelHold}
             disabled={isSubmitting}
             activeOpacity={0.9}
-            className="w-full max-w-md bg-white/[0.03] rounded-3xl border-2 border-white/[0.08] overflow-hidden relative"
+            className="w-full max-w-md bg-white/[0.03] rounded-3xl border border-white/[0.08] overflow-hidden relative"
             style={{ minHeight: 170 }}
           >
             <View className="flex-1 items-center justify-center py-8 z-20">

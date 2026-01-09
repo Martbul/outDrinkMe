@@ -427,7 +427,9 @@ export default function StoreScreen() {
           </TouchableOpacity>
         </View> */}
 
-        <View className="mx-4 mt-4 justify-center">
+        
+        {/* //!DO NOT REMOVE */}
+        {/* <View className="mx-4 mt-4 justify-center">
           {premium ? (
             <PassportCard />
           ) : (
@@ -460,7 +462,7 @@ export default function StoreScreen() {
               </View>
             </TouchableOpacity>
           )}
-        </View>
+        </View> */}
 
         <View className="mt-6">
           <View className="mx-4 mb-4 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">

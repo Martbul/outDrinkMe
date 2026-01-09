@@ -647,30 +647,36 @@ export interface VenueSpecial {
 export interface Venue {
   id: string;
   name: string;
-  venue_type: VenueCategory; 
-  
-  image_url: string;     
-  image_width: number;   
-  image_height: number;  
-  
+  venue_type: VenueCategory;
+
+  image_url: string;
+  image_width: number;
+  image_height: number;
+
   location: string;
-  distance_km: number;   
-  distance_str: string;  
-  
+  distance_km: number;
+  distance_str: string;
+
   rating: number;
-  review_count: number;  
+  review_count: number;
   difficulty: "Cheap" | "Moderate" | "Expensive";
-  
-  event_time: string;    
+
+  event_time: string;
   description: string;
-  
+
   latitude: number;
   longitude: number;
-  
+
   tags: string[];
-  discount_percentage: number; 
-  created_at?: string;         
-  
+  discount_percentage: number;
+  created_at?: string;
+
+  gallery: string[]; // e.g. ["https://...", "https://..."]
+  features: string[]; // e.g. ["Live DJ", "Rooftop"]
+  phone?: string;
+  website?: string;
+  directions?: string; // URL
+
   specials: VenueSpecial[];
   employees: string[];
 }

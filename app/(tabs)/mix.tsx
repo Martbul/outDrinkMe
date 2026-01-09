@@ -31,12 +31,11 @@ import Animated, {
 
 import Header from "@/components/header";
 import MixPostModal from "@/components/mixPostModal";
-import { ReactionsOverlay } from "@/components/reactionOberlay";
 import { useApp } from "@/providers/AppProvider";
 import type { DailyDrinkingPostResponse } from "@/types/api.types";
 import { SegmentItem, TabSwitcher } from "@/components/tab_switcher";
+import { ReactionsOverlay } from "@/components/reaction_overlay";
 
-// 1. Create Animated FlashList for Reanimated support
 const AnimatedFlashList = Animated.createAnimatedComponent(FlashList);
 
 const PRIMARY_ORANGE = "#EA580C";
@@ -59,9 +58,7 @@ interface YourMixCardProps {
   onCardPress: (item: DailyDrinkingPostResponse) => void;
 }
 
-// ----------------------------------------------------------------------
-// OPTIMIZED CARD COMPONENT
-// ----------------------------------------------------------------------
+
 const YourMixCard = React.memo(({ item, onCardPress }: YourMixCardProps) => {
   const posthog = usePostHog();
   const [showFriends, setShowFriends] = useState(false);
@@ -85,13 +82,20 @@ const YourMixCard = React.memo(({ item, onCardPress }: YourMixCardProps) => {
     }
   };
 
-  const handleNavigation = () => {
-    posthog?.capture("memory_canvas_opened", { postId: item.id });
-    router.push({
-      pathname: "/(screens)/memoryCanvas",
-      params: { postId: item.id },
-    });
-  };
+const handleNavigation = () => {
+  console.log("CLICKED CARD ID", item.id);
+  posthog?.capture("memory_canvas_opened", { postId: item.id });
+
+  router.push({
+    pathname: "/(screens)/memory_canvas",
+    params: {
+      postId: item.id,
+      initialImage: item.image_url,
+      initialAuthor: item.username,
+      initialOwnerId: item.user_id,
+    },
+  });
+};
 
   return (
     <Pressable onPress={handleNavigation} style={{ padding: GAP / 2 }}>
@@ -99,7 +103,6 @@ const YourMixCard = React.memo(({ item, onCardPress }: YourMixCardProps) => {
         style={{ width: "100%", height: cardHeight }}
         className="rounded-3xl overflow-hidden border border-white/[0.08] bg-[#121212] relative shadow-sm"
       >
-        {/* Main Image */}
         {item.image_url ? (
           <ExpoImage
             source={{ uri: item.image_url }}
@@ -113,16 +116,16 @@ const YourMixCard = React.memo(({ item, onCardPress }: YourMixCardProps) => {
             <Ionicons name="image-outline" size={32} color="rgba(255,255,255,0.2)" />
           </View>
         )}
-
         <LinearGradient
           colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.4)", "rgba(0,0,0,0.9)"]}
           style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "50%" }}
         />
-
-        <View className="absolute top-0 left-0 right-0 p-2">
+        <View
+          className="absolute bottom-4 left-0 right-0 p-2 z-50"
+          style={{ overflow: "visible" }}
+        >
           <ReactionsOverlay items={item.reactions} />
         </View>
-
         <View className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-2 py-1 rounded-md border border-white/10">
           <Text className="text-white font-bold text-[10px] uppercase tracking-wider">
             {new Date(item.date).toLocaleDateString("en-US", {
@@ -131,8 +134,6 @@ const YourMixCard = React.memo(({ item, onCardPress }: YourMixCardProps) => {
             })}
           </Text>
         </View>
-
-        {/* Bottom Section */}
         <View className="absolute bottom-3 left-3 right-3 flex-row items-end justify-between pointer-events-box-none">
           <TouchableOpacity
             onPress={() => router.push(`/(screens)/userInfo?userId=${item.user_id}`)}
@@ -146,7 +147,6 @@ const YourMixCard = React.memo(({ item, onCardPress }: YourMixCardProps) => {
           {hasBuddies && (
             <View>
               {showFriends ? (
-                // Horizontal Friend Slider
                 <Animated.View
                   entering={FadeInRight.duration(300)}
                   exiting={FadeOutRight.duration(200)}
@@ -189,9 +189,7 @@ const YourMixCard = React.memo(({ item, onCardPress }: YourMixCardProps) => {
 
 YourMixCard.displayName = "YourMixCard";
 
-// ----------------------------------------------------------------------
-// MAIN SCREEN
-// ----------------------------------------------------------------------
+
 const MixScreen = () => {
   const {
     yourMixData,
@@ -260,7 +258,7 @@ const MixScreen = () => {
 
   useEffect(() => {
     if (expandedId) {
-      const allPosts = [...yourMixData, ...globalMixData];
+     const allPosts = [...yourMixData, ...(globalMixData || [])];
       const item = allPosts.find((post) => post.id === expandedId);
       setExpandedItem(item);
     } else {
@@ -363,16 +361,13 @@ const feedTabs: SegmentItem<FeedType>[] = [
         data={activeData}
         numColumns={2}
         renderItem={renderItem}
-        // Critical for performance optimization
         estimatedItemSize={280}
         keyExtractor={(item: any) => item.id}
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
-        // Connect Scroll to Reanimated
         onScroll={scrollHandler}
         scrollEventThrottle={16}
         ListEmptyComponent={ListEmptyComponent}
-        // Push content down by header height
         contentContainerStyle={{
           paddingHorizontal: SCREEN_PADDING - GAP / 2,
           paddingTop: headerHeight,

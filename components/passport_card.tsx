@@ -128,7 +128,7 @@ const FrontFace = memo(({ data, isPremium }: { data: any; isPremium: boolean }) 
           <View className="ml-3">
             <Text className="text-white/40 text-[8px] font-black tracking-[3px] uppercase">OFFICIAL MEMBER</Text>
             <Text className="text-white text-lg font-black tracking-tighter">
-              DRINKUP<Text className="text-orange-600">ID</Text>
+              PREMIUM<Text className="text-orange-600">ID</Text>
             </Text>
           </View>
         </View>
