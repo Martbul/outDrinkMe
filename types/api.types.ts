@@ -352,6 +352,20 @@ export interface EnergyDrink {
   image: any;
 }
 
+
+export interface Bottle {
+  id: number;
+  title: string;
+  price: number;
+  image: any;
+}
+
+export interface Special {
+  id: number;
+  title: string;
+  price: number;
+  image: any;
+}
 export interface ColorTheme {
   id: number;
   name: string;

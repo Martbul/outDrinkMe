@@ -9,13 +9,14 @@ import {
   Platform,
   UIManager,
   Image,
+  StatusBar,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
+import { MaterialCommunityIcons, Ionicons, Feather } from "@expo/vector-icons";
 import { useApp } from "@/providers/AppProvider";
 import type { LeaderboardEntry } from "@/types/api.types";
 import { LinearGradient } from "expo-linear-gradient";
-import {NestedScreenHeader} from "@/components/nestedScreenHeader";
+import { NestedScreenHeader } from "@/components/nestedScreenHeader";
 import { getCoefInfo } from "@/utils/levels";
 import { useRouter } from "expo-router";
 
@@ -26,7 +27,61 @@ if (
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-export default function Leaderboard() {
+const CompactSegmentedControl = ({
+  selected,
+  onSelect,
+}: {
+  selected: "friends" | "global";
+  onSelect: (val: "friends" | "global") => void;
+}) => {
+  return (
+    <View className="mx-12 mb-4 mt-4 h-10 bg-[#1A1A1A] rounded-full border border-white/[0.1] p-1 flex-row relative">
+      <TouchableOpacity
+        onPress={() => onSelect("friends")}
+        className={`flex-1 items-center justify-center rounded-full flex-row ${
+          selected === "friends" ? "bg-orange-600" : "bg-transparent"
+        }`}
+      >
+        <Ionicons
+          name="people"
+          size={12}
+          color={selected === "friends" ? "black" : "#666"}
+          style={{ marginRight: 4 }}
+        />
+        <Text
+          className={`text-[11px] font-black tracking-wide ${
+            selected === "friends" ? "text-black" : "text-white/40"
+          }`}
+        >
+          BUDDIES
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        onPress={() => onSelect("global")}
+        className={`flex-1 items-center justify-center rounded-full flex-row ${
+          selected === "global" ? "bg-orange-600" : "bg-transparent"
+        }`}
+      >
+        <Ionicons
+          name="earth"
+          size={12}
+          color={selected === "global" ? "black" : "#666"}
+          style={{ marginRight: 4 }}
+        />
+        <Text
+          className={`text-[11px] font-black tracking-wide ${
+            selected === "global" ? "text-black" : "text-white/40"
+          }`}
+        >
+          GLOBAL
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+export default function Ranking() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { leaderboard, refreshLeaderboard, userData, isLoading } = useApp();
@@ -42,19 +97,11 @@ export default function Leaderboard() {
   );
   const userPosition = currentLeaderboard?.user_position;
 
-  console.log("-----------------------------------------------");
-  console.log(entries);
-
   const onRefresh = async () => {
     setRefreshing(true);
     await refreshLeaderboard();
     setRefreshing(false);
   };
-
-  const handleTabChange = (tab: "friends" | "global") => {
-    setActiveTab(tab);
-  };
-
 
   const renderPodium = () => {
     if (entries.length === 0) return null;
@@ -65,26 +112,20 @@ export default function Leaderboard() {
 
     return (
       <View className="flex-row justify-center items-end mb-10 mt-6 px-4 gap-3">
+        {/* 2nd Place */}
         {second && (
           <View className="items-center w-1/3 mb-4">
             <TouchableOpacity
-              onPress={() =>
-                router.push(`/(screens)/userInfo?userId=${second.user_id}`)
-              }
+              onPress={() => router.push(`/(screens)/userInfo?userId=${second.user_id}`)}
               className="p-1 bg-black mb-2"
             >
               <Image
-                source={{
-                  uri: second?.image_url || "https://github.com/shadcn.png",
-                }}
+                source={{ uri: second?.image_url || "https://github.com/shadcn.png" }}
                 className="w-16 h-16 rounded-full"
                 style={{ opacity: 0.8 }}
               />
             </TouchableOpacity>
-            <Text
-              className="text-white font-bold text-sm mb-1"
-              numberOfLines={1}
-            >
+            <Text className="text-white font-bold text-sm mb-1" numberOfLines={1}>
               {second.username}
             </Text>
             <Text className="text-white/40 text-xs font-bold">
@@ -96,6 +137,7 @@ export default function Leaderboard() {
           </View>
         )}
 
+        {/* 1st Place */}
         {first && (
           <View className="items-center w-1/3 z-10">
             <MaterialCommunityIcons
@@ -105,22 +147,15 @@ export default function Leaderboard() {
               style={{ marginBottom: -10, zIndex: 10 }}
             />
             <TouchableOpacity
-              onPress={() =>
-                router.push(`/(screens)/userInfo?userId=${first.user_id}`)
-              }
+              onPress={() => router.push(`/(screens)/userInfo?userId=${first.user_id}`)}
               className=" p-1 bg-black shadow-lg shadow-orange-600/50 mb-2"
             >
               <Image
-                source={{
-                  uri: first.image_url || "https://github.com/shadcn.png",
-                }}
+                source={{ uri: first.image_url || "https://github.com/shadcn.png" }}
                 className="w-24 h-24 rounded-full"
               />
             </TouchableOpacity>
-            <Text
-              className="text-white font-bold text-base mb-1"
-              numberOfLines={1}
-            >
+            <Text className="text-white font-bold text-base mb-1" numberOfLines={1}>
               {first.username}
             </Text>
             <View className="bg-orange-600/20 px-3 py-1 rounded-full mb-1 border border-orange-600/30">
@@ -134,8 +169,6 @@ export default function Leaderboard() {
 
             <LinearGradient
               colors={["#EA580C", "transparent"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 1 }}
               className="w-full h-32 rounded-t-xl mt-2 items-center justify-start pt-2 opacity-80"
             >
               <Text className="text-5xl font-black text-black/50 mt-1">1</Text>
@@ -143,26 +176,20 @@ export default function Leaderboard() {
           </View>
         )}
 
+        {/* 3rd Place */}
         {third && (
           <View className="items-center w-1/3 mb-2">
             <TouchableOpacity
-              onPress={() =>
-                router.push(`/(screens)/userInfo?userId=${third.user_id}`)
-              }
+              onPress={() => router.push(`/(screens)/userInfo?userId=${third.user_id}`)}
               className="p-1 bg-black mb-2"
             >
               <Image
-                source={{
-                  uri: third.image_url || "https://github.com/shadcn.png",
-                }}
+                source={{ uri: third.image_url || "https://github.com/shadcn.png" }}
                 className="w-16 h-16 rounded-full"
                 style={{ opacity: 0.6 }}
               />
             </TouchableOpacity>
-            <Text
-              className="text-white font-bold text-sm mb-1"
-              numberOfLines={1}
-            >
+            <Text className="text-white font-bold text-sm mb-1" numberOfLines={1}>
               {third.username}
             </Text>
             <Text className="text-white/40 text-xs font-bold">
@@ -177,56 +204,19 @@ export default function Leaderboard() {
     );
   };
 
-  const TabSelection = () => {
-    return (
-      <View className="px-2">
-        <View className="bg-white/[0.03] rounded-2xl p-1.5 flex-row border border-white/[0.08]">
-          <TouchableOpacity
-            className={`flex-1 py-3 rounded-xl items-center ${
-              activeTab === "friends" ? "bg-orange-600" : ""
-            }`}
-            onPress={() => handleTabChange("friends")}
-          >
-            <Text
-              className={`text-sm font-black tracking-wider ${
-                activeTab === "friends" ? "text-white" : "text-white/30"
-              }`}
-            >
-              BUDDIES
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            className={`flex-1 py-3 rounded-xl items-center ${
-              activeTab === "global" ? "bg-orange-600" : ""
-            }`}
-            onPress={() => handleTabChange("global")}
-          >
-            <Text
-              className={`text-sm font-black tracking-wider ${
-                activeTab === "global" ? "text-white" : "text-white/30"
-              }`}
-            >
-              GLOBAL
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  };
   const renderRankItem = ({ item }: { item: LeaderboardEntry }) => {
+    // Skip top 1 as they are in the podium
     if (item.rank === 1) return null;
 
     const isMe = item.user_id === userData?.id;
 
     return (
       <TouchableOpacity
-        onPress={() =>
-          router.push(`/(screens)/userInfo?userId=${item.user_id}`)
-        }
+        onPress={() => router.push(`/(screens)/userInfo?userId=${item.user_id}`)}
         className={`flex-row items-center p-4 mx-4 mb-3 rounded-2xl border ${
           isMe
             ? "bg-orange-600/10 border-orange-600"
-            : "bg-white/[0.03] border-white/[0.08]"
+            : "bg-[#121212] border-white/[0.08]"
         }`}
       >
         <Text
@@ -237,28 +227,21 @@ export default function Leaderboard() {
           {item.rank}
         </Text>
 
-        <View className="w-12 h-12 rounded-full overflow-hidden mr-4 bg-white/5 border border-white/10">
+        <View className="w-12 h-12 rounded-full overflow-hidden mr-4 bg-[#1A1A1A] border border-white/10">
           <Image
             source={{ uri: item.image_url || "https://github.com/shadcn.png" }}
             className="w-full h-full"
-            resizeMode="cover"
           />
         </View>
 
         <View className="flex-1">
           <View className="flex-row items-center gap-2">
-            <Text
-              className={`font-bold text-base ${
-                isMe ? "text-orange-500" : "text-white"
-              }`}
-            >
+            <Text className={`font-bold text-base ${isMe ? "text-orange-500" : "text-white"}`}>
               {item.username}
             </Text>
             {isMe && (
               <View className="bg-orange-600/20 px-2 rounded-md">
-                <Text className="text-orange-600 text-[9px] font-bold">
-                  YOU
-                </Text>
+                <Text className="text-orange-600 text-[9px] font-bold">YOU</Text>
               </View>
             )}
           </View>
@@ -278,45 +261,59 @@ export default function Leaderboard() {
   };
 
   return (
-    <View className="flex-1 bg-black" style={{ paddingTop: insets.top + 6 }}>
-      <NestedScreenHeader title="Ranking" eyebrow="BIGGEST ALCOHOLIC" />
-      <TabSelection />
+    <View className="flex-1 bg-black">
+      <StatusBar barStyle="light-content" />
 
-      {isLoading && !refreshing && entries.length === 0 ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#EA580C" />
-        </View>
-      ) : (
-        <FlatList
-          data={entries}
-          keyExtractor={(item) => item.user_id}
-          ListHeaderComponent={renderPodium}
-          renderItem={renderRankItem}
-          contentContainerStyle={{ paddingBottom: 120 }}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor="#ff8c00"
-              colors={["#ff8c00"]}
-              progressBackgroundColor="#000000"
-            />
-          }
-          ListEmptyComponent={
-            <View className="items-center py-20 opacity-50">
-              <Ionicons name="trophy-outline" size={64} color="white" />
-              <Text className="text-white mt-4 font-bold">
-                No ranking data yet.
-              </Text>
-            </View>
-          }
+      <View className="flex-1" style={{ paddingTop: insets.top }}>
+        <NestedScreenHeader
+          eyebrow="BIGGEST ALCOHOLIC"
+          title="Ranking"
+          showBack={true}
         />
-      )}
 
+        {/* Replaced old TabSelection with CompactSegmentedControl style */}
+        <View className="px-4 z-10 bg-black pb-2 border-b border-white/[0.05]">
+          <CompactSegmentedControl
+            selected={activeTab}
+            onSelect={setActiveTab}
+          />
+        </View>
+
+        {isLoading && !refreshing && entries.length === 0 ? (
+          <View className="flex-1 items-center justify-center">
+            <ActivityIndicator size="large" color="#EA580C" />
+          </View>
+        ) : (
+          <FlatList
+            data={entries}
+            keyExtractor={(item) => item.user_id}
+            ListHeaderComponent={renderPodium}
+            renderItem={renderRankItem}
+            contentContainerStyle={{ paddingBottom: 150, paddingTop: 10 }}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor="#EA580C"
+                colors={["#EA580C"]}
+                progressBackgroundColor="#1A1A1A"
+              />
+            }
+            ListEmptyComponent={
+              <View className="items-center py-20 opacity-50">
+                <Ionicons name="trophy-outline" size={64} color="white" />
+                <Text className="text-white mt-4 font-bold">No ranking data yet.</Text>
+              </View>
+            }
+          />
+        )}
+      </View>
+
+      {/* Floating User Position Bar */}
       {userPosition && (
         <View
-          className="absolute bottom-0 left-0 right-0 bg-[#0F0F0F] border-t-2 border-orange-600 pb-10 pt-4 px-4 shadow-2xl"
+          className="absolute bottom-0 left-0 right-0 bg-[#0F0F0F] border-t-2 border-orange-600 pt-4 px-4 shadow-2xl"
           style={{ paddingBottom: insets.bottom + 10 }}
         >
           <View className="flex-row items-center justify-between">
@@ -328,17 +325,12 @@ export default function Leaderboard() {
               </View>
 
               <Image
-                source={{
-                  uri:
-                    userPosition.image_url || "https://github.com/shadcn.png",
-                }}
+                source={{ uri: userPosition.image_url || "https://github.com/shadcn.png" }}
                 className="w-10 h-10 rounded-full bg-gray-800 mr-3 border border-white/20"
               />
 
               <View>
-                <Text className="text-white font-bold text-sm">
-                  Your Position
-                </Text>
+                <Text className="text-white font-bold text-sm">Your Position</Text>
                 <Text className="text-white/40 text-[10px] font-bold tracking-widest uppercase">
                   {getCoefInfo(userPosition.alcoholism_coefficient).title}
                 </Text>

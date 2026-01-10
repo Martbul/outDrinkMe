@@ -632,7 +632,7 @@ const UserInfoScreen = () => {
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor="#EA580C"
-            colors={["#EA580C "]}
+            colors={["#EA580C"]}
             progressBackgroundColor="#000000"
           />
         }

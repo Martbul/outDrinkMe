@@ -31,6 +31,7 @@ import { registerForPushNotificationsAsync } from "@/utils/registerPushNotificat
 import { Alert, Platform } from "react-native";
 import * as Application from "expo-application";
 import * as FileSystem from "expo-file-system/legacy";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface AppContextType {
   // Data
@@ -124,6 +125,8 @@ interface AppContextType {
   markNotificationRead: (id: string) => Promise<void>;
   markAllNotificationsRead: () => Promise<void>;
   registerPushDevice: (token: string) => Promise<void>;
+  showRateModal: boolean;
+  closeRateModal: () => void;
 
   // Versioning
   showMandatoryUpdateModal: boolean;
@@ -191,6 +194,7 @@ export function AppProvider({ children }: AppProviderProps) {
   const [premium, setPremium] = useState<Premium | null>(null);
   const [venues, setVenues] = useState<Venue[]>([]);
   const [premiumPrices, setPremiumPrices] = useState<PaddlePrice[]>([]);
+  const [showRateModal, setShowRateModal] = useState(false);
 
   const hasInitialized = useRef(false);
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
@@ -219,8 +223,6 @@ export function AppProvider({ children }: AppProviderProps) {
       try {
         updateStoryJobStatus(job.id, "uploading", 0);
 
-        // 2. Cloudinary Upload (VIDEO endpoint)
-        // Note: We use 'video/upload' instead of 'image/upload'
         const uploadTask = FileSystem.createUploadTask(
           `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`,
           job.uri,
@@ -230,14 +232,13 @@ export function AppProvider({ children }: AppProviderProps) {
             fieldName: "file",
             parameters: {
               upload_preset: PRESET!,
-              folder: "outdrinkme_story", // Optional: keep stories organized
-              resource_type: "video", // Explicitly tell Cloudinary this is a video
+              folder: "outdrinkme_story",
+              resource_type: "video",
             },
           },
           (p) => {
             if (p.totalBytesExpectedToSend > 0) {
               const progress = p.totalBytesSent / p.totalBytesExpectedToSend;
-              // Only update state every ~5% to prevent UI lag
               updateStoryJobStatus(job.id, "uploading", progress);
             }
           }
@@ -320,7 +321,25 @@ export function AppProvider({ children }: AppProviderProps) {
     };
 
     processQueue();
-  }, [storyUploadQueue, processStoryUpload]); // Dependencies
+  }, [storyUploadQueue, processStoryUpload]);
+
+  const triggerRateAppCheck = useCallback(async () => {
+    try {
+      const STORAGE_KEY = "RATE_APP_LAST_SHOWN_DATE";
+      const lastShownStr = await AsyncStorage.getItem(STORAGE_KEY);
+      const now = Date.now();
+      const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+      if (!lastShownStr || now - parseInt(lastShownStr) > ONE_WEEK_MS) {
+        setShowRateModal(true);
+        await AsyncStorage.setItem(STORAGE_KEY, now.toString());
+      }
+    } catch (error) {
+      console.error("Failed to check rate app eligibility", error);
+    }
+  }, []);
+
+  const closeRateModal = () => setShowRateModal(false);
 
   const withLoadingAndError = useCallback(
     async <T,>(
@@ -638,7 +657,7 @@ export function AppProvider({ children }: AppProviderProps) {
         }
       },
       "load_more_your_mix",
-      true // Skip global loading
+      true 
     );
   }, [isSignedIn, getToken, withLoadingAndError, yourMixPage, yourMixHasMore]);
 
@@ -679,11 +698,10 @@ export function AppProvider({ children }: AppProviderProps) {
         }
       },
       "load_more_global_mix",
-      true // Skip global loading
+      true 
     );
   }, [isSignedIn, getToken, withLoadingAndError, globalMixPage, globalMixHasMore]);
 
-  // ... (Keep other simple refreshes) ...
   const refreshMixTimelineData = useCallback(async () => {
     if (!isSignedIn) return;
     await withLoadingAndError(
@@ -775,19 +793,6 @@ export function AppProvider({ children }: AppProviderProps) {
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
 
-  const refreshMapFriendPosts = useCallback(async () => {
-    if (!isSignedIn) return;
-    await withLoadingAndError(
-      async () => {
-        const token = await getToken();
-        if (!token) throw new Error("No auth token");
-        return await apiService.getMapFriendsPosts(token);
-      },
-      (data) => setMapFriendPosts(data),
-      "refresh_map_friends_posts"
-    );
-  }, [isSignedIn, getToken, withLoadingAndError]);
-
   const refreshStories = useCallback(async () => {
     if (!isSignedIn) return;
     try {
@@ -839,8 +844,8 @@ export function AppProvider({ children }: AppProviderProps) {
         apiService.getCurrentMonthCalendar(token),
         apiService.getFriends(token),
         apiService.getDiscovery(token),
-        apiService.getYourMixData(token, 1), // Page 1
-        apiService.getGlobalMixData(token, 1), // Page 1 (New)
+        apiService.getYourMixData(token, 1), 
+        apiService.getGlobalMixData(token, 1), 
         apiService.getMixTimeline(token),
         apiService.getWeeklyStats(token),
         apiService.getDrunkThought(token),
@@ -1020,7 +1025,6 @@ export function AppProvider({ children }: AppProviderProps) {
         setUserStories([]);
       }
 
-    
       if (allVenuesResult.status === "fulfilled") {
         setVenues(allVenuesResult.value || []);
       } else {
@@ -1036,13 +1040,12 @@ export function AppProvider({ children }: AppProviderProps) {
         setPremiumPrices([]);
       }
 
-        if (premiumResult.status === "fulfilled") {
-          setPremium(premiumResult.value || null);
-        } else {
-          console.error("Failed to fetch premium details:", premiumResult.reason);
-          setPremium(null);
-        }
-
+      if (premiumResult.status === "fulfilled") {
+        setPremium(premiumResult.value || null);
+      } else {
+        console.error("Failed to fetch premium details:", premiumResult.reason);
+        setPremium(null);
+      }
 
       const failedCalls = results.filter((r) => r.status === "rejected");
       if (failedCalls.length > 0) {
@@ -1112,23 +1115,25 @@ export function AppProvider({ children }: AppProviderProps) {
         setLeaderboard(result.board);
         setCalendar(result.cal);
         setWeeklyStats(result.weekly);
+        setTimeout(() => {
+          triggerRateAppCheck();
+        }, 2000); 
       }
     },
-    [isSignedIn, getToken, withLoadingAndError]
+    [isSignedIn, getToken, withLoadingAndError,triggerRateAppCheck]
   );
 
   const createStory = useCallback(
     async (data: {
-      videoUrl: string; // This is the local file URI here
+      videoUrl: string; 
       width: number;
       height: number;
       duration: number;
       taggedBuddies: string[];
     }) => {
-      // Create a new Job
       const newJob: StoryUploadJob = {
         id: Math.random().toString(36).substring(7),
-        uri: data.videoUrl, // Local URI
+        uri: data.videoUrl, 
         progress: 0,
         status: "pending",
         meta: {
@@ -1139,10 +1144,7 @@ export function AppProvider({ children }: AppProviderProps) {
         },
       };
 
-      // Add to state (this triggers the useEffect)
       setStoryUploadQueue((prev) => [...prev, newJob]);
-
-      // Optional: Navigate user away or show a toast saying "Uploading in background"
       posthog?.capture("story_upload_queued");
     },
     [posthog]
@@ -1151,7 +1153,6 @@ export function AppProvider({ children }: AppProviderProps) {
   const deleteStory = useCallback(
     async (storyId: string) => {
       if (!isSignedIn) return;
-      // Optimistic Update
       setStories((prev) => prev.filter((s) => s.id !== storyId));
 
       const token = await getToken();
@@ -1168,24 +1169,17 @@ export function AppProvider({ children }: AppProviderProps) {
     async (storyId: string) => {
       if (!isSignedIn) return;
 
-      // 1. Find the story in the nested structure to check if already seen
-      // We use flatMap to look through all items of all users
       const story = stories.flatMap((u) => u.items).find((s) => s.id === storyId);
 
-      // Use is_seen (to match your interface)
       if (!story || story.is_seen) return;
 
-      // 2. Optimistic Update (Nested)
       setStories((prev) =>
         prev.map((user) => {
-          // Check if this user actually contains the story we are updating
           const containsStory = user.items.some((s) => s.id === storyId);
           if (!containsStory) return user;
 
-          // Update the items within this user
           const updatedItems = user.items.map((s) => (s.id === storyId ? { ...s, is_seen: true } : s));
 
-          // 3. Optional: Automatically update 'all_seen' for the user
           const allSeen = updatedItems.every((s) => s.is_seen);
 
           return {
@@ -1472,6 +1466,8 @@ export function AppProvider({ children }: AppProviderProps) {
     registerPushDevice,
     showMandatoryUpdateModal,
     updateMessage,
+    showRateModal,
+    closeRateModal,
 
     // Global State
     isLoading,

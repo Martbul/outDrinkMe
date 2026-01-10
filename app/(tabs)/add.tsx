@@ -29,6 +29,7 @@ import { ImagePickerModal } from "@/components/imagePickerModal";
 import { usePostHog } from "posthog-react-native";
 import * as ImageManipulator from "expo-image-manipulator";
 import { QuickFeedback } from "@/components/quickFeedback";
+import { PRIMARY_ORANGE } from "@/utils/constants";
 
 const DRINK_TYPES = [
   "Vodka",
@@ -43,6 +44,7 @@ const DRINK_TYPES = [
   "Cocktail",
   "Other",
 ];
+
 
 export default function AddDrinks() {
   const posthog = usePostHog();
@@ -403,14 +405,13 @@ export default function AddDrinks() {
 
     return (
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 0}
-      >
+        keyboardVerticalOffset={Platform.OS === "ios" ? insets.top : 0}>
         <ScrollView
           contentContainerStyle={{
             flexGrow: 1,
-            paddingBottom: insets.bottom + 100,
+            paddingBottom: insets.bottom + 120,
             paddingTop: 20,
           }}
           showsVerticalScrollIndicator={false}
@@ -453,7 +454,7 @@ export default function AddDrinks() {
               </View>
             </View>
 
-            <View className="flex-row items-center bg-white/[0.04] rounded-2xl p-5 mb-8 border border-white/[0.08] mx-2">
+            <View className="flex-row items-center bg-white/[0.03] rounded-2xl p-5 mb-8 border border-white/[0.08] mx-2">
               <View className="w-16 h-16 rounded-full bg-orange-500/10 items-center justify-center mr-4">
                 <MaterialCommunityIcons name="fire" size={44} color="#EA580C" />
               </View>
@@ -488,9 +489,10 @@ export default function AddDrinks() {
                 </Text>
               </View>
             ) : (
-              <View className="bg-[#1A1A1A] rounded-3xl p-5 mb-6 mx-2 border border-white/[0.1]">
+              
+              <View className="bg-white/[0.03] rounded-3xl p-5 mb-6 mx-2 border border-white/[0.1]">
                 <View className="flex-row items-center mb-4 ml-1">
-                  <Feather name="edit-3" size={14} color="#ff8c00" />
+                  <Feather name="edit-3" size={14} color={PRIMARY_ORANGE} />
                   <Text className="text-white/60 text-xs font-bold ml-2">Share a drunk thought</Text>
                 </View>
 

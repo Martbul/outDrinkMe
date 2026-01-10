@@ -3,10 +3,11 @@ import DigitalPassport from "@/components/digital_passport";
 import { NestedScreenHeader } from "@/components/nestedScreenHeader";
 import { PassportCard } from "@/components/passport_card";
 import { PaywallModal } from "@/components/paywall_modal";
+import PurchaseBottomSheet from "@/components/purchase_bottmo_sheet";
 import PurchaseConfirmationModal, { GemPurchaseItem, StoreItem } from "@/components/purchaseModal";
 import { useAds } from "@/providers/AdProvider";
 import { useApp } from "@/providers/AppProvider";
-import { EnergyDrink, Flag, GemPack, Smoking } from "@/types/api.types";
+import { Bottle, EnergyDrink, Flag, GemPack, Smoking, Special } from "@/types/api.types";
 import { handleEarnGems } from "@/utils/adsReward";
 import { useAuth } from "@clerk/clerk-expo";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -34,7 +35,8 @@ export default function StoreScreen() {
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
   const { isAdLoaded, showRewardedAd } = useAds();
-  const { userData, storeItems,premium,  updateUserProfile, refreshStore, refreshUserInventory, refreshUserData } = useApp();
+  const { userData, storeItems, premium, updateUserProfile, refreshStore, refreshUserInventory, refreshUserData } =
+    useApp();
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [purchaseType, setPurchaseType] = useState<"gem" | "store">("store");
   const [selectedStoreItem, setSelectedStoreItem] = useState<StoreItem | null>(null);
@@ -66,11 +68,11 @@ export default function StoreScreen() {
     setShowReferralModal(false);
   };
 
-   const handlePremiumPurchase = async () => {
-     setTimeout(() => {
-       setShowPaywall(false);
-     });
-   };
+  const handlePremiumPurchase = async () => {
+    setTimeout(() => {
+      setShowPaywall(false);
+    });
+  };
 
   const handleStoreItemPress = (item: StoreItem) => {
     posthog?.capture("store_item_selected", {
@@ -204,6 +206,22 @@ export default function StoreScreen() {
     storeItem: drink,
   }));
 
+  const bottles: Bottle[] = (storeItems?.bottle || []).map((bottle: any, index: number) => ({
+    id: index + 1,
+    title: bottle.name,
+    price: bottle.base_price,
+    image: { uri: bottle.image_url },
+    storeItem: bottle,
+  }));
+
+  const specials: Special[] = (storeItems?.special || []).map((bottle: any, index: number) => ({
+    id: index + 1,
+    title: bottle.name,
+    price: bottle.base_price,
+    image: { uri: bottle.image_url },
+    storeItem: bottle,
+  }));
+
   const gemPacks: GemPack[] = [
     {
       id: 1,
@@ -256,7 +274,7 @@ export default function StoreScreen() {
 
   const SmokingCard = ({ device }: { device: any }) => (
     <TouchableOpacity
-      className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08] items-center mr-3"
+      className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08] mr-3"
       style={{ width: 140 }}
       activeOpacity={0.7}
       onPress={() => device.storeItem && handleStoreItemPress(device.storeItem)}
@@ -264,8 +282,8 @@ export default function StoreScreen() {
       <Text className="text-white text-sm font-bold mb-1" numberOfLines={1}>
         {device.title}
       </Text>
-      <View className="bg-black/20 rounded-xl p-3 w-full items-center mb-3">
-        <Image source={device.image} style={{ width: 70, height: 60 }} resizeMode="contain" />
+      <View className="bg-black/20 rounded-xl w-full items-center mb-3">
+        <Image source={device.image} style={{ width: 140, height: 120 }} resizeMode="contain" />
       </View>
 
       <View className="bg-orange-600/20 rounded-xl py-2 px-3 flex-row items-center justify-center border border-orange-600/40 w-full">
@@ -278,7 +296,7 @@ export default function StoreScreen() {
 
   const EnergyDrinkCard = ({ drink }: { drink: any }) => (
     <TouchableOpacity
-      className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08] items-center mr-3"
+      className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08] mr-3"
       style={{ width: 140 }}
       activeOpacity={0.7}
       onPress={() => drink.storeItem && handleStoreItemPress(drink.storeItem)}
@@ -286,8 +304,8 @@ export default function StoreScreen() {
       <Text className="text-white text-sm font-bold mb-1" numberOfLines={1}>
         {drink.title}
       </Text>
-      <View className="bg-black/20 rounded-xl p-3 w-full items-center mb-3">
-        <Image source={drink.image} style={{ width: 100, height: 100 }} resizeMode="contain" />
+      <View className="bg-black/20 rounded-xl  w-full items-center">
+        <Image source={drink.image} style={{ width: 100, height: 130 }} resizeMode="contain" />
       </View>
 
       <View className="bg-orange-600/20 rounded-xl py-2 px-3 flex-row items-center justify-center border border-orange-600/40 w-full">
@@ -309,6 +327,47 @@ export default function StoreScreen() {
       </Text>
       <View className="items-center py-4 bg-black/20 rounded-xl">
         <Image source={item.image} style={{ width: 170, height: 70 }} resizeMode="contain" />
+      </View>
+      <View className="bg-orange-600/20 rounded-xl py-2 px-3 flex-row items-center justify-center border border-orange-600/40 mt-3">
+        <Ionicons name="diamond" size={18} color="#EA580C" />
+
+        <Text className="text-orange-600 text-lg font-black ml-1">{item.price}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+
+  const BottleCard = ({ item }: { item: any }) => (
+    <TouchableOpacity
+      className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08] mr-3"
+      style={{ width: 160 }}
+      activeOpacity={0.7}
+      onPress={() => item.storeItem && handleStoreItemPress(item.storeItem)}
+    >
+      <Text className="text-white text-sm font-bold mb-1" numberOfLines={1}>
+        {item.title}
+      </Text>
+      <View className="items-center py-1 bg-black/20 rounded-xl">
+        <Image source={item.image} style={{ width: 200, height: 160 }} resizeMode="contain" />
+      </View>
+      <View className="bg-orange-600/20 rounded-xl py-2 px-3 flex-row items-center justify-center border border-orange-600/40 mt-3">
+        <Ionicons name="diamond" size={18} color="#EA580C" />
+        <Text className="text-orange-600 text-lg font-black ml-1">{item.price}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+
+  const SpecialsCard = ({ item }: { item: any }) => (
+    <TouchableOpacity
+      className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08] mr-3"
+      style={{ width: 160 }}
+      activeOpacity={0.7}
+      onPress={() => item.storeItem && handleStoreItemPress(item.storeItem)}
+    >
+      <Text className="text-white text-sm font-bold mb-1" numberOfLines={1}>
+        {item.title}
+      </Text>
+      <View className="items-center bg-black/20 rounded-xl">
+        <Image source={item.image} style={{ width: 200, height: 190 }} resizeMode="contain" />
       </View>
       <View className="bg-orange-600/20 rounded-xl py-2 px-3 flex-row items-center justify-center border border-orange-600/40 mt-3">
         <Ionicons name="diamond" size={18} color="#EA580C" />
@@ -357,7 +416,7 @@ export default function StoreScreen() {
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor="#EA580C"
-            colors={["#EA580C "]}
+            colors={["#EA580C"]}
             progressBackgroundColor="#000000"
           />
         }
@@ -427,7 +486,6 @@ export default function StoreScreen() {
           </TouchableOpacity>
         </View> */}
 
-        
         {/* //!DO NOT REMOVE */}
         {/* <View className="mx-4 mt-4 justify-center">
           {premium ? (
@@ -463,11 +521,10 @@ export default function StoreScreen() {
             </TouchableOpacity>
           )}
         </View> */}
-
         <View className="mt-6">
           <View className="mx-4 mb-4 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
-            <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">BOOST YOUR HEALTH</Text>
-            <Text className="text-white text-2xl font-black">Smoking</Text>
+            <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">Alcoholism</Text>
+            <Text className="text-white text-2xl font-black">Bottles</Text>
           </View>
 
           <ScrollView
@@ -475,14 +532,15 @@ export default function StoreScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 16 }}
           >
-            {smokingDevices.map((device) => (
-              <SmokingCard key={device.id} device={device} />
+            {bottles.map((item) => (
+              <BottleCard key={item.id} item={item} />
             ))}
           </ScrollView>
         </View>
+
         <View className="mt-6">
           <View className="mx-4 mb-4 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
-            <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">IMPROVE YOUR SLEEP</Text>
+            <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">SLEEP IMPROVEMENT</Text>
             <Text className="text-white text-2xl font-black">Energy</Text>
           </View>
 
@@ -493,6 +551,23 @@ export default function StoreScreen() {
           >
             {energyDrinks.map((drink) => (
               <EnergyDrinkCard key={drink.id} drink={drink} />
+            ))}
+          </ScrollView>
+        </View>
+
+        <View className="mt-6">
+          <View className="mx-4 mb-4 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
+            <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">Wild</Text>
+            <Text className="text-white text-2xl font-black">Specials</Text>
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 16 }}
+          >
+            {specials.map((special) => (
+              <SpecialsCard key={special.id} item={special} />
             ))}
           </ScrollView>
         </View>
@@ -510,6 +585,22 @@ export default function StoreScreen() {
           >
             {flags.map((item) => (
               <FlagCard key={item.id} item={item} />
+            ))}
+          </ScrollView>
+        </View>
+        <View className="mt-6">
+          <View className="mx-4 mb-4 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
+            <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">HEALTH BOOST</Text>
+            <Text className="text-white text-2xl font-black">Smoking</Text>
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 16 }}
+          >
+            {smokingDevices.map((device) => (
+              <SmokingCard key={device.id} device={device} />
             ))}
           </ScrollView>
         </View>
@@ -578,7 +669,25 @@ export default function StoreScreen() {
           </ScrollView>
         </View> */}
       </ScrollView>
-      <PurchaseConfirmationModal
+
+
+      {/* <PurchaseConfirmationModal
+        visible={showPurchaseModal}
+        isPending={pendingTransaction}
+        itemType={purchaseType}
+        gemItem={selectedGemItem}
+        storeItem={selectedStoreItem}
+        currentGems={userData?.gems || 0}
+        onConfirm={handleConfirmPurchase}
+        onCancel={() => {
+          setPendingTransaction(false);
+          setShowPurchaseModal(false);
+          setSelectedStoreItem(null);
+          setSelectedGemItem(null);
+        }}
+      /> */}
+
+         <PurchaseBottomSheet
         visible={showPurchaseModal}
         isPending={pendingTransaction}
         itemType={purchaseType}

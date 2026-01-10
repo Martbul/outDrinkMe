@@ -20,7 +20,7 @@ interface SwipeableSheetProps {
   onClose: () => void;
   coverImage?: string | ImageSourcePropType;
   children: React.ReactNode;
-  fullScreen?: boolean; // New prop
+  fullScreen?: boolean; 
 }
 
 export const SwipeableSheet = ({ visible, onClose, coverImage, children, fullScreen = true }: SwipeableSheetProps) => {

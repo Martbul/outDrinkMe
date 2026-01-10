@@ -20,18 +20,18 @@ import ThisWeekGadget from "@/components/thisWeekGadget";
 import { useApp } from "@/providers/AppProvider";
 import { useFunc } from "@/providers/FunctionProvider";
 import { getCoefInfo } from "@/utils/levels";
-import { AntDesign, Feather, Ionicons, MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
+import { AntDesign, Feather, FontAwesome6, Ionicons, MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useMemo, useRef, useState } from "react";
-
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { HighPerfCounter } from "@/components/animated_counter";
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { isPartOfActiveFunc, funcMetaData } = useFunc();
 
-  const { userStats, userData, friends, friendsDrunkThoughts, isLoading, leaderboard, refreshAll } = useApp();
+  const { userStats, userData, friends, friendsDrunkThoughts, isLoading, refreshAll } = useApp();
 
   const displayedThoughts = useMemo(() => {
     if (!friendsDrunkThoughts || friendsDrunkThoughts.length === 0) {
@@ -57,7 +57,6 @@ export default function HomeScreen() {
   const [isCoefTooltipVisible, setIsCoefTooltipVisible] = useState<boolean>(false);
   const [refreshing, setRefreshing] = useState(false);
   const [qrModalVisible, setQrModalVisible] = useState(false);
-  const [isMapVisible, setIsMapVisible] = useState(false);
   const slideAnim = useRef(new Animated.Value(Dimensions.get("window").height)).current;
 
   const handleFunctionPress = () => {
@@ -147,15 +146,21 @@ export default function HomeScreen() {
                 <Ionicons name="dice-outline" size={32} color="#EA580C" />
               </TouchableOpacity>
             </View>
+
             <TouchableOpacity
               onPress={() => router.push("/(screens)/coeffInfo")}
               className="relative w-[120px] h-[120px] rounded-full bg-orange-600/15 border-4 border-orange-600 justify-center items-center mb-3"
             >
-              <Text className="text-orange-600 text-5xl font-black">{coefInfo.coef}</Text>
+              <HighPerfCounter
+                toValue={Number(coefInfo.coef)} 
+                duration={2000}
+                className="text-orange-600 text-5xl font-black text-center"
+                style={{ color: "#EA580C" }} 
+              />
 
               <TouchableOpacity
                 onPress={() => setIsCoefTooltipVisible(!isCoefTooltipVisible)}
-                className="absolute  w-8 h-8 rounded-full  items-center justify-center"
+                className="absolute w-8 h-8 rounded-full  items-center justify-center"
                 style={{ zIndex: 10, right: -14, bottom: -10 }}
               >
                 <Feather name="help-circle" size={24} color="#666666" />
@@ -170,6 +175,7 @@ export default function HomeScreen() {
                 ></InfoTooltip>
               )}
             </TouchableOpacity>
+
             <View className="rounded-full bg-orange-600/15 border-orange-600">
               <TouchableOpacity
                 onPress={handleFunctionPress}
@@ -190,14 +196,25 @@ export default function HomeScreen() {
           className="mb-4"
         >
           <TouchableOpacity
+            onPress={() => router.push("/(screens)/ranking")}
+            className="w-40 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]"
+          >
+            <View className="w-12 h-12 rounded-xl bg-orange-600/20 items-center justify-center mb-3">
+              <FontAwesome6 name="ranking-star" size={24} color="#EA580C" />
+            </View>
+            <Text className="text-white text-base font-bold">Ranking</Text>
+            <Text className="text-white/40 text-xs font-semibold mt-1">Prove yourself</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             onPress={() => router.push("/(screens)/collection")}
             className="w-40 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]"
           >
             <View className="w-12 h-12 rounded-xl bg-orange-600/20 items-center justify-center mb-3">
-              <MaterialCommunityIcons name="bottle-tonic-skull" size={24} color="#EA580C" />
+              <MaterialCommunityIcons name="bottle-tonic-skull" size={32} color="#EA580C" />
             </View>
             <Text className="text-white text-base font-bold">Collection</Text>
-            <Text className="text-white/40 text-xs font-semibold mt-1">View your history</Text>
+            <Text className="text-white/40 text-xs font-semibold mt-1">Build a legacy</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -209,17 +226,6 @@ export default function HomeScreen() {
             </View>
             <Text className="text-white text-base font-bold">Mix Timeline</Text>
             <Text className="text-white/40 text-xs font-semibold mt-1">View your history</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => router.push("/(screens)/stats")}
-            className="w-40 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]"
-          >
-            <View className="w-12 h-12 rounded-xl bg-orange-600/20 items-center justify-center mb-3">
-              <MaterialIcons name="query-stats" size={24} color="#EA580C" />
-            </View>
-            <Text className="text-white text-base font-bold">Stats</Text>
-            <Text className="text-white/40 text-xs font-semibold mt-1">Detailed insights</Text>
           </TouchableOpacity>
         </ScrollView>
 
@@ -241,35 +247,25 @@ export default function HomeScreen() {
         </View>
 
         <View className="flex-row gap-3 mb-4">
-         
-            <DrinkingMap />
+          <DrinkingMap />
         </View>
         <ThisWeekGadget />
         <AlcoholismChart />
 
         <View className="flex-row gap-3 mb-4">
           <TouchableOpacity
-            onPress={() => router.push("/(screens)/ranking")}
+            onPress={() => router.push("/(screens)/stats")}
             className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]"
           >
             <View className="w-10 h-10 rounded-xl bg-orange-600/20 items-center justify-center mb-2">
-              <MaterialIcons name="leaderboard" size={20} color="#EA580C" />
-            </View>
-            <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">GLOBAL RANK</Text>
-            <Text className="text-white text-2xl font-black">#{leaderboard?.global?.user_position?.rank}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => router.push("/(tabs)/calendar")}
-            className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]"
-          >
-            <View className="w-10 h-10 rounded-xl bg-orange-600/20 items-center justify-center mb-2">
-              <Ionicons name="calendar" size={20} color="#EA580C" />
+              <MaterialIcons name="query-stats" size={24} color="#EA580C" />
             </View>
             <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">TOTAL DAYS DRUNK</Text>
             <Text className="text-white text-2xl font-black">{userStats?.total_days_drank || 0}</Text>
           </TouchableOpacity>
+
           <TouchableOpacity
-            onPress={() => router.push("/(screens)/stats")}
+            onPress={() => router.push("/(tabs)/calendar")}
             className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]"
           >
             <View className="w-10 h-10 rounded-xl bg-orange-600/20 items-center justify-center mb-2">
@@ -330,12 +326,6 @@ export default function HomeScreen() {
           </Animated.View>
         </View>
       </Modal>
-
-      {/* <SwipeableSheet visible={isMapVisible} onClose={() => setIsMapVisible(false)}>
-        <View style={{ height: 550, width: "100%", backgroundColor: "#121212" }}>
-          <DrinkingMap variant="full" />
-        </View>
-      </SwipeableSheet> */}
     </View>
   );
 }

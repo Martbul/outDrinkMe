@@ -706,7 +706,7 @@ export default function BarHuntScreen() {
             <View className="flex-row items-center mb-6 space-x-4 gap-1">
               <View className="flex-row items-center bg-[#1A1A1A] px-3 py-1.5 rounded-lg border border-white/[0.08]">
                 <Ionicons name="star" size={14} color="#F97316" />
-                <Text className="text-white font-bold ml-1.5">{selectedBar.rating}</Text>
+                <Text className="text-white font-bold  text-xs ml-1.5">{selectedBar.rating}</Text>
               </View>
               <View className="flex-row items-center bg-[#1A1A1A] px-3 py-1.5 rounded-lg border border-white/[0.08]">
                 <Text className="text-emerald-400 font-bold text-xs">$$</Text>
@@ -779,9 +779,8 @@ export default function BarHuntScreen() {
 
               <ScrollView horizontal showsHorizontalScrollIndicator={false} className="gap-3">
                 {selectedBar.gallery.slice(0, 4).map((img, index) => (
-                  <TouchableOpacity onPress={() => setSelectedImage(img)}>
+                  <TouchableOpacity key={index} onPress={() => setSelectedImage(img)}>
                     <Image
-                      key={index}
                       source={{ uri: img || "https://via.placeholder.com/300" }}
                       className="w-40 h-28 rounded-2xl bg-white/5 border border-white/10 mx-1"
                       style={{ opacity: 0.9 }}
