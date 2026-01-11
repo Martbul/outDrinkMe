@@ -23,7 +23,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useApp } from "@/providers/AppProvider";
 import { FontAwesome5, Ionicons } from "@expo/vector-icons";
-import NestedScreenHeader from "@/components/nestedScreenHeader";
+import {NestedScreenHeader} from "@/components/nestedScreenHeader";
 import MixPostModal from "@/components/mixPostModal";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -83,11 +83,10 @@ export default function MixTimeline() {
 
   const expandedItem = mixTimelineData.find((item) => item.id === expandedId);
 
-  // 2. NEW: Calculate image size whenever the expanded item changes
   useEffect(() => {
-    if (expandedItem?.imageUrl) {
+    if (expandedItem?.image_url) {
       Image.getSize(
-        expandedItem.imageUrl,
+        expandedItem.image_url,
         (width, height) => {
           if (width && height) {
             setCurrentAspectRatio(width / height);
@@ -107,7 +106,7 @@ export default function MixTimeline() {
 
   return (
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
-      <NestedScreenHeader heading="Timeline" secondaryHeading="MIX" />
+      <NestedScreenHeader title="Timeline" eyebrow="MIX" />
       <ScrollView
         className="flex-1 px-4 mt-1"
         contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
@@ -192,14 +191,16 @@ export default function MixTimeline() {
                           elevation: 10,
                         }}
                       >
-                        <Image
-                          source={{ uri: item.imageUrl }}
-                          style={{
-                            width: imageWidth,
-                            aspectRatio: 4 / 3,
-                          }}
-                          resizeMode="cover"
-                        />
+                        {item.image_url && (
+                          <Image
+                            source={{ uri: item.image_url }}
+                            style={{
+                              width: imageWidth,
+                              aspectRatio: 4 / 3,
+                            }}
+                            resizeMode="cover"
+                          />
+                        )}
 
                         {/* Multi-layer gradient overlay */}
                         <View className="absolute inset-0">
@@ -216,28 +217,29 @@ export default function MixTimeline() {
                               className="bg-white/10 backdrop-blur-xl px-3 py-1.5 rounded-full border border-white/20"
                             >
                               <Text className="text-white text-xs font-bold">
-                                {getTimeAgo(item.loggedAt)}
+                                {getTimeAgo(item.logged_at)}
                               </Text>
                             </Animated.View>
 
                             {/* Buddies indicator */}
-                            {item.mentionedBuddies.length > 0 && (
-                              <Animated.View
-                                entering={FadeIn.delay(delay + 350).duration(
-                                  400
-                                )}
-                                className="flex-row items-center gap-1 bg-white/10 backdrop-blur-xl px-2.5 py-1.5 rounded-full border border-white/20"
-                              >
-                                <FontAwesome5
-                                  name="users"
-                                  size={10}
-                                  color="white"
-                                />
-                                <Text className="text-white text-xs font-bold">
-                                  {item.mentionedBuddies.length}
-                                </Text>
-                              </Animated.View>
-                            )}
+                            {item.mentioned_buddies &&
+                              item.mentioned_buddies.length > 0 && (
+                                <Animated.View
+                                  entering={FadeIn.delay(delay + 350).duration(
+                                    400
+                                  )}
+                                  className="flex-row items-center gap-1 bg-white/10 backdrop-blur-xl px-2.5 py-1.5 rounded-full border border-white/20"
+                                >
+                                  <FontAwesome5
+                                    name="users"
+                                    size={10}
+                                    color="white"
+                                  />
+                                  <Text className="text-white text-xs font-bold">
+                                    {item.mentioned_buddies.length}
+                                  </Text>
+                                </Animated.View>
+                              )}
                           </View>
                         </View>
 
@@ -266,7 +268,7 @@ export default function MixTimeline() {
         expandedItem={expandedItem}
         expandedId={expandedId}
         setExpandedId={setExpandedId}
-        currentAspectRatio={currentAspectRatio} 
+        currentAspectRatio={currentAspectRatio}
       />
     </View>
   );

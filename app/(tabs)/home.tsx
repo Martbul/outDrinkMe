@@ -2,7 +2,6 @@ import {
   ActivityIndicator,
   Animated,
   Dimensions,
-  Image,
   Modal,
   RefreshControl,
   ScrollView,
@@ -21,104 +20,31 @@ import ThisWeekGadget from "@/components/thisWeekGadget";
 import { useApp } from "@/providers/AppProvider";
 import { useFunc } from "@/providers/FunctionProvider";
 import { getCoefInfo } from "@/utils/levels";
-import {
-  AntDesign,
-  Feather,
-  Ionicons,
-  MaterialCommunityIcons,
-  MaterialIcons,
-} from "@expo/vector-icons";
+import { AntDesign, Feather, FontAwesome6, Ionicons, MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useMemo, useRef, useState } from "react";
-
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { HighPerfCounter } from "@/components/animated_counter";
 
-interface GroupSession {
-  id: string;
-  name: string;
-  hostName: string;
-  expiresAt: Date;
-  memberCount: number;
-  thumbnailUrls: string[];
-  isActive: boolean;
-}
-
-interface PhotoMessage {
-  id: string;
-  userId: string;
-  userAvatar: string;
-  imageUrl: string;
-  timestamp: Date;
-  caption?: string;
-}
-
-const MOCK_DISK_PHOTOS: PhotoMessage[] = [
-  {
-    id: "p1",
-    userId: "u1",
-    userAvatar: "https://i.pravatar.cc/150?img=11",
-    imageUrl:
-      "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400",
-    timestamp: new Date(),
-    caption: "Cheers!",
-  },
-  {
-    id: "p2",
-    userId: "u2",
-    userAvatar: "https://i.pravatar.cc/150?img=5",
-    imageUrl: "https://images.unsplash.com/photo-1543007630-9710e4a00a20?w=400",
-    timestamp: new Date(),
-    caption: "DJ was crazy",
-  },
-  {
-    id: "p3",
-    userId: "u1",
-    userAvatar: "https://i.pravatar.cc/150?img=11",
-    imageUrl:
-      "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=400",
-    timestamp: new Date(),
-  },
-  {
-    id: "p4",
-    userId: "u3",
-    userAvatar: "https://i.pravatar.cc/150?img=8",
-    imageUrl:
-      "https://images.unsplash.com/photo-1514525253440-b393452e8d26?w=400",
-    timestamp: new Date(),
-  },
-];
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { isPartOfActiveFunc, funcMetaData } = useFunc();
 
-  const {
-    userStats,
-    userData,
-    friends,
-    friendsDrunkThoughts,
-    isLoading,
-    leaderboard,
-    refreshAll,
-  } = useApp();
+  const { userStats, userData, friends, friendsDrunkThoughts, isLoading, refreshAll } = useApp();
 
   const displayedThoughts = useMemo(() => {
     if (!friendsDrunkThoughts || friendsDrunkThoughts.length === 0) {
       return [];
     }
 
-    const count = Math.min(
-      Math.floor(Math.random() * 2) + 1,
-      friendsDrunkThoughts.length
-    );
+    const count = Math.min(Math.floor(Math.random() * 2) + 1, friendsDrunkThoughts.length);
 
     const result = [];
     const usedIndices = new Set<number>();
 
     while (result.length < count) {
-      const randomIndex = Math.floor(
-        Math.random() * friendsDrunkThoughts.length
-      );
+      const randomIndex = Math.floor(Math.random() * friendsDrunkThoughts.length);
       if (!usedIndices.has(randomIndex)) {
         usedIndices.add(randomIndex);
         result.push(friendsDrunkThoughts[randomIndex]);
@@ -128,22 +54,12 @@ export default function HomeScreen() {
     return result;
   }, [friendsDrunkThoughts]);
 
-  const [isCoefTooltipVisible, setIsCoefTooltipVisible] =
-    useState<boolean>(false);
+  const [isCoefTooltipVisible, setIsCoefTooltipVisible] = useState<boolean>(false);
   const [refreshing, setRefreshing] = useState(false);
   const [qrModalVisible, setQrModalVisible] = useState(false);
-  const [selectedSession, setSelectedSession] = useState<GroupSession | null>(
-    null
-  );
-
-  const slideAnim = useRef(
-    new Animated.Value(Dimensions.get("window").height)
-  ).current;
+  const slideAnim = useRef(new Animated.Value(Dimensions.get("window").height)).current;
 
   const handleFunctionPress = () => {
-    console.log("Is Part of Func:", isPartOfActiveFunc);
-    console.log("Metadata:", funcMetaData);
-
     if (isPartOfActiveFunc && funcMetaData?.sessionID) {
       router.push({
         pathname: "/(screens)/func_screen",
@@ -174,14 +90,6 @@ export default function HomeScreen() {
       useNativeDriver: true,
     }).start(() => setQrModalVisible(false));
   };
-  if (selectedSession) {
-    return (
-      <SessionDiskView
-        session={selectedSession}
-        onBack={() => setSelectedSession(null)}
-      />
-    );
-  }
 
   const coefInfo = getCoefInfo(userData?.alcoholism_coefficient);
 
@@ -195,9 +103,7 @@ export default function HomeScreen() {
     return (
       <View className="flex-1 bg-black justify-center items-center">
         <ActivityIndicator size="large" color="#EA580C" />
-        <Text className="text-white/50 text-sm mt-4">
-          Loading your stats...
-        </Text>
+        <Text className="text-white/50 text-sm mt-4">Loading your stats...</Text>
       </View>
     );
   }
@@ -208,11 +114,7 @@ export default function HomeScreen() {
       <StoryDrawer />
 
       {displayedThoughts.map((thought) => (
-        <DrunkThought
-          key={thought.id}
-          thought={thought.thought}
-          userImageUrl={thought.user_image_url}
-        />
+        <DrunkThought key={thought.id} thought={thought.thought} userImageUrl={thought.user_image_url} />
       ))}
 
       <ScrollView
@@ -244,17 +146,21 @@ export default function HomeScreen() {
                 <Ionicons name="dice-outline" size={32} color="#EA580C" />
               </TouchableOpacity>
             </View>
+
             <TouchableOpacity
               onPress={() => router.push("/(screens)/coeffInfo")}
               className="relative w-[120px] h-[120px] rounded-full bg-orange-600/15 border-4 border-orange-600 justify-center items-center mb-3"
             >
-              <Text className="text-orange-600 text-5xl font-black">
-                {coefInfo.coef}
-              </Text>
+              <HighPerfCounter
+                toValue={Number(coefInfo.coef)} 
+                duration={2000}
+                className="text-orange-600 text-5xl font-black text-center"
+                style={{ color: "#EA580C" }} 
+              />
 
               <TouchableOpacity
                 onPress={() => setIsCoefTooltipVisible(!isCoefTooltipVisible)}
-                className="absolute  w-8 h-8 rounded-full  items-center justify-center"
+                className="absolute w-8 h-8 rounded-full  items-center justify-center"
                 style={{ zIndex: 10, right: -14, bottom: -10 }}
               >
                 <Feather name="help-circle" size={24} color="#666666" />
@@ -269,6 +175,7 @@ export default function HomeScreen() {
                 ></InfoTooltip>
               )}
             </TouchableOpacity>
+
             <View className="rounded-full bg-orange-600/15 border-orange-600">
               <TouchableOpacity
                 onPress={handleFunctionPress}
@@ -279,63 +186,35 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          <Text className="text-white text-[22px] font-black tracking-wide">
-            {coefInfo.title}
-          </Text>
-        </View>
-        <View className="flex-row gap-3 mb-4">
-          <TouchableOpacity
-            onPress={() => router.push("/(screens)/mixTimeline")}
-            className="flex-1 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]"
-          >
-            <View className="w-12 h-12 rounded-xl bg-orange-600/20 items-center justify-center mb-3">
-              <AntDesign name="align-center" size={24} color="#EA580C" />
-            </View>
-
-            <Text className="text-white text-base font-bold">Mix Timeline</Text>
-
-            <Text className="text-white/40 text-xs font-semibold mt-1">
-              View your history
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => router.push("/(screens)/stats")}
-            className="flex-1 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]"
-          >
-            <View className="w-12 h-12 rounded-xl bg-orange-600/20 items-center justify-center mb-3">
-              <MaterialIcons name="query-stats" size={24} color="#EA580C" />
-            </View>
-
-            <Text className="text-white text-base font-bold">Statistics</Text>
-
-            <Text className="text-white/40 text-xs font-semibold mt-1">
-              Detailed insights
-            </Text>
-          </TouchableOpacity>
+          <Text className="text-white text-[22px] font-black tracking-wide">{coefInfo.title}</Text>
         </View>
 
-        {/* <ScrollView
+        <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ gap: 12, paddingHorizontal: 20 }}
           className="mb-4"
         >
           <TouchableOpacity
+            onPress={() => router.push("/(screens)/ranking")}
+            className="w-40 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]"
+          >
+            <View className="w-12 h-12 rounded-xl bg-orange-600/20 items-center justify-center mb-3">
+              <FontAwesome6 name="ranking-star" size={24} color="#EA580C" />
+            </View>
+            <Text className="text-white text-base font-bold">Ranking</Text>
+            <Text className="text-white/40 text-xs font-semibold mt-1">Prove yourself</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             onPress={() => router.push("/(screens)/collection")}
             className="w-40 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]"
           >
             <View className="w-12 h-12 rounded-xl bg-orange-600/20 items-center justify-center mb-3">
-              <MaterialCommunityIcons
-                name="bottle-tonic-skull"
-                size={24}
-                color="#EA580C"
-              />
+              <MaterialCommunityIcons name="bottle-tonic-skull" size={32} color="#EA580C" />
             </View>
             <Text className="text-white text-base font-bold">Collection</Text>
-            <Text className="text-white/40 text-xs font-semibold mt-1">
-              View your history
-            </Text>
+            <Text className="text-white/40 text-xs font-semibold mt-1">Build a legacy</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -346,36 +225,9 @@ export default function HomeScreen() {
               <AntDesign name="align-center" size={24} color="#EA580C" />
             </View>
             <Text className="text-white text-base font-bold">Mix Timeline</Text>
-            <Text className="text-white/40 text-xs font-semibold mt-1">
-              View your history
-            </Text>
+            <Text className="text-white/40 text-xs font-semibold mt-1">View your history</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => router.push("/(screens)/stats")}
-            className="w-40 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]"
-          >
-            <View className="w-12 h-12 rounded-xl bg-orange-600/20 items-center justify-center mb-3">
-              <MaterialIcons name="query-stats" size={24} color="#EA580C" />
-            </View>
-            <Text className="text-white text-base font-bold">Stats</Text>
-            <Text className="text-white/40 text-xs font-semibold mt-1">
-              Detailed insights
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => router.push("/(screens)/goals")}
-            className="w-40 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]"
-          >
-            <View className="w-12 h-12 rounded-xl bg-orange-600/20 items-center justify-center mb-3">
-              <MaterialCommunityIcons name="target" size={24} color="#EA580C" />
-            </View>
-            <Text className="text-white text-base font-bold">Goals</Text>
-            <Text className="text-white/40 text-xs font-semibold mt-1">
-              Be proud
-            </Text>
-          </TouchableOpacity>
-        </ScrollView> */}
+        </ScrollView>
 
         <View className="flex-row gap-3 mb-4">
           <TouchableOpacity
@@ -385,193 +237,45 @@ export default function HomeScreen() {
             <View className="flex-row items-center justify-between">
               <View>
                 <Text className="text-white text-2xl font-black">Buddies</Text>
-                <Text className="text-white/40 text-xs font-semibold mt-1">
-                  {friends.length || 0} friends
-                </Text>
+                <Text className="text-white/40 text-xs font-semibold mt-1">{friends.length || 0} friends</Text>
               </View>
               <View className="w-12 h-12 rounded-xl bg-orange-600/20 items-center justify-center">
                 <Ionicons name="people" size={24} color="#EA580C" />
               </View>
             </View>
           </TouchableOpacity>
-
-          {/* <TouchableOpacity
-            onPress={() => router.push("/(screens)/store")}
-            className="w-20 bg-white/[0.03] rounded-2xl border border-white/[0.08] items-center justify-center"
-          >
-            <View className="w-12 h-12 rounded-xl bg-orange-600/20 items-center justify-center">
-              <SimpleLineIcons
-                name="envelope-letter"
-                size={24}
-                color="#EA580C"
-              />
-            </View>
-          </TouchableOpacity> */}
         </View>
-        {/*
-        <TouchableOpacity
-          onPress={() => router.push("/(screens)/profileBuilder")}
-          className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]"
-        >
-          <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">
-            PROFILE BUILDER
-          </Text>
-        </TouchableOpacity> */}
-
-        {/* <DrinkingFrequencyChart/> */}
-        {/* <FocusIntensityChart /> */}
-        {/* <SobrietyTrendChart /> */}
 
         <View className="flex-row gap-3 mb-4">
           <DrinkingMap />
         </View>
-
         <ThisWeekGadget />
-
         <AlcoholismChart />
 
-        {/* <StreakComparisonChart /> */}
-
         <View className="flex-row gap-3 mb-4">
-          <TouchableOpacity
-            onPress={() => router.push("/(screens)/ranking")}
-            className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]"
-          >
-            <View className="w-10 h-10 rounded-xl bg-orange-600/20 items-center justify-center mb-2">
-              <MaterialIcons name="leaderboard" size={20} color="#EA580C" />
-            </View>
-            <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">
-              GLOBAL RANK
-            </Text>
-            <Text className="text-white text-2xl font-black">
-              #{leaderboard?.global?.user_position?.rank}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => router.push("/(tabs)/calendar")}
-            className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]"
-          >
-            <View className="w-10 h-10 rounded-xl bg-orange-600/20 items-center justify-center mb-2">
-              <Ionicons name="calendar" size={20} color="#EA580C" />
-            </View>
-            <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">
-              TOTAL DAYS DRUNK
-            </Text>
-            <Text className="text-white text-2xl font-black">
-              {userStats?.total_days_drank || 0}
-            </Text>
-          </TouchableOpacity>
           <TouchableOpacity
             onPress={() => router.push("/(screens)/stats")}
             className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]"
           >
             <View className="w-10 h-10 rounded-xl bg-orange-600/20 items-center justify-center mb-2">
+              <MaterialIcons name="query-stats" size={24} color="#EA580C" />
+            </View>
+            <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">TOTAL DAYS DRUNK</Text>
+            <Text className="text-white text-2xl font-black">{userStats?.total_days_drank || 0}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => router.push("/(tabs)/calendar")}
+            className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]"
+          >
+            <View className="w-10 h-10 rounded-xl bg-orange-600/20 items-center justify-center mb-2">
               <MaterialCommunityIcons name="fire" size={26} color="#EA580C" />
             </View>
-            <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">
-              LONGEST STREAK
-            </Text>
-            <Text className="text-white text-2xl font-black">
-              {userStats?.longest_streak || 0}
-            </Text>
+            <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">LONGEST STREAK</Text>
+            <Text className="text-white text-2xl font-black">{userStats?.longest_streak || 0}</Text>
           </TouchableOpacity>
         </View>
-        {/* 
-        <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
-          <View className="flex-row justify-between items-center">
-            <View>
-              <Text className="text-white/50 text-[11px] font-bold tracking-[1.5px] mb-2">
-                CURRENT STREAK
-              </Text>
 
-              <View className="flex-row items-center">
-                <Text className="text-white text-[32px] font-black">
-                  {userStats?.current_streak || 0} Days
-                </Text>
-                <MaterialCommunityIcons name="fire" size={56} color="#EA580C" />
-              </View>
-            </View>
-            {userStats && userStats.current_streak > 0 && (
-              <View className="bg-orange-600/20 px-3.5 py-1.5 rounded-lg">
-                <Text className="text-orange-600 text-[11px] font-black tracking-wide">
-                  ACTIVE
-                </Text>
-              </View>
-            )}
-          </View>
-        </View> */}
-        {/* 
-        <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
-          <Text className="text-white text-lg font-black mb-4">
-            Your Progress
-          </Text>
-
-          <View className="space-y-3">
-            <View className="flex-row justify-between items-center py-2.5 border-b border-white/[0.05]">
-              <View className="flex-row items-center">
-                <View className="w-8 h-8 rounded-lg bg-orange-600/20 items-center justify-center mr-3">
-                  <Ionicons name="calendar-outline" size={16} color="#EA580C" />
-                </View>
-                <Text className="text-white/60 text-sm font-semibold">
-                  Drunk This Month
-                </Text>
-              </View>
-              <Text className="text-white text-lg font-black">
-                {userStats?.days_this_month || 0}
-              </Text>
-            </View>
-
-            <View className="flex-row justify-between items-center py-2.5 border-b border-white/[0.05]">
-              <View className="flex-row items-center">
-                <View className="w-8 h-8 rounded-lg bg-orange-600/20 items-center justify-center mr-3">
-                  <Ionicons
-                    name="stats-chart-outline"
-                    size={16}
-                    color="#EA580C"
-                  />
-                </View>
-                <Text className="text-white/60 text-sm font-semibold">
-                  Drunk This Year
-                </Text>
-              </View>
-              <Text className="text-white text-lg font-black">
-                {userStats?.days_this_year || 0}
-              </Text>
-            </View>
-
-            <View className="flex-row justify-between items-center py-2.5 border-b border-white/[0.05]">
-              <View className="flex-row items-center">
-                <View className="w-8 h-8 rounded-lg bg-orange-600/20 items-center justify-center mr-3">
-                  <MaterialCommunityIcons
-                    name="fire"
-                    size={18}
-                    color="#EA580C"
-                  />
-                </View>
-                <Text className="text-white/60 text-sm font-semibold">
-                  Longest Streak
-                </Text>
-              </View>
-              <Text className="text-white text-lg font-black">
-                {userStats?.longest_streak || 0}
-              </Text>
-            </View>
-
-            <View className="flex-row justify-between items-center py-2.5">
-              <View className="flex-row items-center">
-                <View className="w-8 h-8 rounded-lg bg-orange-600/20 items-center justify-center mr-3">
-                  <Ionicons name="ribbon-outline" size={16} color="#EA580C" />
-                </View>
-                <Text className="text-white/60 text-sm font-semibold">
-                  Achievements
-                </Text>
-              </View>
-              <Text className="text-white text-lg font-black">
-                {userStats?.achievements_count || 0}
-              </Text>
-            </View>
-          </View>
-        </View> */}
         <TouchableOpacity
           className={`rounded-2xl py-6 items-center mb-4 shadow-lg ${
             userStats?.today_status
@@ -589,30 +293,20 @@ export default function HomeScreen() {
           }}
         >
           {isLoading ? (
-            <ActivityIndicator
-              color={userStats?.today_status ? "#EA580C" : "#000000"}
-            />
+            <ActivityIndicator color={userStats?.today_status ? "#EA580C" : "#000000"} />
           ) : (
             <View className="items-center">
               {userStats?.today_status ? (
                 <>
                   <Ionicons name="checkmark-circle" size={32} color="#EA580C" />
-                  <Text className="text-white text-base font-black tracking-wider mt-2">
-                    LOGGED TODAY
-                  </Text>
-                  <Text className="text-white/40 text-xs font-semibold mt-1">
-                    Great job, my alcoholic!
-                  </Text>
+                  <Text className="text-white text-base font-black tracking-wider mt-2">LOGGED TODAY</Text>
+                  <Text className="text-white/40 text-xs font-semibold mt-1">Great job, my alcoholic!</Text>
                 </>
               ) : (
                 <>
                   <Ionicons name="add-circle" size={32} color="#000000" />
-                  <Text className="text-black text-lg font-black tracking-wider mt-2">
-                    LOG TODAY&apos;S DRINKING
-                  </Text>
-                  <Text className="text-black/60 text-xs font-semibold mt-1">
-                    Keep your streak alive
-                  </Text>
+                  <Text className="text-black text-lg font-black tracking-wider mt-2">LOG TODAY&apos;S DRINKING</Text>
+                  <Text className="text-black/60 text-xs font-semibold mt-1">Keep your streak alive</Text>
                 </>
               )}
             </View>
@@ -632,115 +326,6 @@ export default function HomeScreen() {
           </Animated.View>
         </View>
       </Modal>
-    </View>
-  );
-}
-
-function SessionDiskView({
-  session,
-  onBack,
-}: {
-  session: GroupSession;
-  onBack: () => void;
-}) {
-  const windowWidth = Dimensions.get("window").width;
-  const itemSize = (windowWidth - 32) / 2;
-
-  return (
-    <View className="flex-1 bg-black">
-      <View className="pt-14 pb-2 px-4 flex-row items-center justify-between z-10 bg-black/80">
-        <TouchableOpacity
-          onPress={onBack}
-          className="w-10 h-10 rounded-full bg-[#1A1A1A] items-center justify-center"
-        >
-          <Feather name="arrow-left" size={20} color="white" />
-        </TouchableOpacity>
-
-        <View className="items-center">
-          <Text className="text-white font-bold text-lg">{session.name}</Text>
-          <Text className="text-orange-500 text-xs font-bold tracking-widest">
-            EXPIRES IN 23H 14M
-          </Text>
-        </View>
-
-        <TouchableOpacity className="w-10 h-10 rounded-full bg-[#1A1A1A] items-center justify-center">
-          <Ionicons name="settings-outline" size={20} color="white" />
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView contentContainerStyle={{ padding: 16 }}>
-        <View className="bg-[#1A1A1A] rounded-2xl p-4 mb-6 flex-row items-center justify-between border border-white/5">
-          <View className="flex-row items-center">
-            <View className="flex-row -space-x-2 mr-3">
-              {session.thumbnailUrls.map((url, i) => (
-                <Image
-                  key={i}
-                  source={{ uri: url }}
-                  className="w-8 h-8 rounded-full border border-black"
-                />
-              ))}
-            </View>
-            <Text className="text-gray-400 text-xs">
-              {session.memberCount} members active
-            </Text>
-          </View>
-          <TouchableOpacity className="bg-white/10 px-3 py-1.5 rounded-full">
-            <Text className="text-white text-xs font-bold">Invite +</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View className="flex-row flex-wrap justify-between">
-          {MOCK_DISK_PHOTOS.map((photo) => (
-            <View
-              key={photo.id}
-              className="mb-4 relative"
-              style={{ width: itemSize }}
-            >
-              <Image
-                source={{ uri: photo.imageUrl }}
-                style={{ width: itemSize, height: itemSize * 1.3 }}
-                className="rounded-2xl bg-[#1A1A1A]"
-                resizeMode="cover"
-              />
-
-              <View className="absolute bottom-0 w-full h-16 rounded-b-2xl bg-black/40" />
-
-              <View className="absolute bottom-2 left-2 flex-row items-center">
-                <Image
-                  source={{ uri: photo.userAvatar }}
-                  className="w-6 h-6 rounded-full border border-white mr-2"
-                />
-                {photo.caption && (
-                  <Text
-                    className="text-white text-xs font-bold shadow-sm"
-                    numberOfLines={1}
-                  >
-                    {photo.caption}
-                  </Text>
-                )}
-              </View>
-            </View>
-          ))}
-
-          <TouchableOpacity
-            style={{ width: itemSize, height: itemSize * 1.3 }}
-            className="rounded-2xl bg-[#111] border border-white/10 border-dashed items-center justify-center mb-4"
-          >
-            <View className="w-14 h-14 rounded-full bg-[#222] items-center justify-center mb-2">
-              <Ionicons name="camera" size={28} color="#EA580C" />
-            </View>
-            <Text className="text-gray-500 font-bold text-xs">Add to Disk</Text>
-          </TouchableOpacity>
-        </View>
-        <View className="h-20" />
-      </ScrollView>
-
-      <View className="absolute bottom-8 self-center">
-        <TouchableOpacity className="bg-orange-600 px-6 py-3 rounded-full flex-row items-center shadow-lg shadow-orange-600/30">
-          <Ionicons name="cloud-upload" size={20} color="white" />
-          <Text className="text-white font-bold ml-2">Upload Photo</Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 }

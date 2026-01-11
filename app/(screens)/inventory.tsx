@@ -15,7 +15,7 @@ import {
 import { useApp } from "@/providers/AppProvider";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import NestedScreenHeader from "@/components/nestedScreenHeader";
+import {NestedScreenHeader} from "@/components/nestedScreenHeader";
 
 // Types for inventory items
 interface InventoryItem {
@@ -134,7 +134,7 @@ export default function InventoryScreen() {
 
   return (
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
-      <NestedScreenHeader heading="Inventory" secondaryHeading="YOUR" />
+      <NestedScreenHeader title="Inventory" eyebrow="YOUR" />
 
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
@@ -145,8 +145,7 @@ export default function InventoryScreen() {
             onRefresh={onRefresh}
             tintColor="#EA580C"
             colors={["#EA580C"]}
-                        progressBackgroundColor="#000000"
-
+            progressBackgroundColor="#000000"
           />
         }
       >

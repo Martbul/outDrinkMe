@@ -71,34 +71,41 @@ export default function MemoryCanvas() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
-  const { postId } = useLocalSearchParams();
-  const {
-    yourMixData,
-    userData,
-    storeItems,
-    userInventory,
-    refreshUserInventory,
-  } = useApp();
+  const { postId, initialImage, initialAuthor, initialOwnerId } = useLocalSearchParams();
+  const { yourMixData, userData, storeItems, userInventory, refreshUserInventory } = useApp();
   const { getToken } = useAuth();
 
-  // --- PERMISSIONS ---
   const { canEdit, foundPost } = useMemo(() => {
     const currentPostId = Array.isArray(postId) ? postId[0] : postId;
     const post = yourMixData.find((p) => p.id === currentPostId);
 
-    if (!post || !userData) return { canEdit: false, foundPost: post };
+    // If we have the post in store, use it.
+    if (post && userData) {
+      const isOwner = post.user_id === userData.id;
+      const isTagged = post.mentioned_buddies?.some((buddy) => buddy.id === userData.id);
+      return { canEdit: isOwner || isTagged, foundPost: post };
+    }
 
-    const isOwner = post.userId === userData.id;
-    const isTagged = post.mentionedBuddies?.some(
-      (buddy) => buddy.id === userData.id
-    );
+    // FALLBACK: If not in store, check params against user data
+    // Note: We might miss "isTagged" check here if data isn't full,
+    // but at least the owner can edit.
+    if (userData && initialOwnerId) {
+      const isOwner = initialOwnerId === userData.id;
+      return {
+        canEdit: isOwner,
+        foundPost: {
+          id: currentPostId,
+          image_url: initialImage,
+          username: initialAuthor,
+          user_id: initialOwnerId,
+        },
+      };
+    }
 
-    return { canEdit: isOwner || isTagged, foundPost: post };
-  }, [yourMixData, postId, userData]);
+    return { canEdit: false, foundPost: null };
+  }, [yourMixData, postId, userData, initialOwnerId]); // Add initialOwnerId to dependency
 
-  const [optimisticUsage, setOptimisticUsage] = useState<
-    Record<string, number>
-  >({});
+  const [optimisticUsage, setOptimisticUsage] = useState<Record<string, number>>({});
 
   const [items, setItems] = useState<CanvasItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -123,9 +130,7 @@ export default function MemoryCanvas() {
   const [stickerModalVisible, setStickerModalVisible] = useState(false);
 
   const [itemOptionsVisible, setItemOptionsVisible] = useState(false);
-  const [selectedItemForOptions, setSelectedItemForOptions] = useState<
-    string | null
-  >(null);
+  const [selectedItemForOptions, setSelectedItemForOptions] = useState<string | null>(null);
 
   // Drawing
   const [isDrawingMode, setIsDrawingMode] = useState(false);
@@ -213,9 +218,7 @@ export default function MemoryCanvas() {
 
         // Check if there are any left optimistically
         if (currentQuantity > 0) {
-          const storeDef = storeCategory.find(
-            (s: any) => s.id === invItem.item_id
-          );
+          const storeDef = storeCategory.find((s: any) => s.id === invItem.item_id);
           if (storeDef?.image_url) {
             stickers.push({
               ...storeDef,
@@ -230,21 +233,16 @@ export default function MemoryCanvas() {
   }, [userInventory, storeItems, optimisticUsage]); // Add optimisticUsage to dependency array
 
   // --- CLOUDINARY UPLOAD HELPER ---
-  const uploadToCloudinary = async (
-    localUri: string
-  ): Promise<string | null> => {
+  const uploadToCloudinary = async (localUri: string): Promise<string | null> => {
     try {
-      const manipulatedResult = await ImageManipulator.manipulateAsync(
-        localUri,
-        [{ resize: { width: 1080 } }],
-        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
-      );
+      const manipulatedResult = await ImageManipulator.manipulateAsync(localUri, [{ resize: { width: 1080 } }], {
+        compress: 0.8,
+        format: ImageManipulator.SaveFormat.JPEG,
+      });
 
       const uriToUpload = manipulatedResult.uri;
-      const CLOUDINARY_CLOUD_NAME =
-        process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
-      const CLOUDINARY_UPLOAD_PRESET =
-        process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+      const CLOUDINARY_CLOUD_NAME = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
+      const CLOUDINARY_UPLOAD_PRESET = process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
       if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
         throw new Error("Cloudinary credentials are not configured.");
@@ -260,16 +258,13 @@ export default function MemoryCanvas() {
       formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
       formData.append("folder", "canvas-images");
 
-      const response = await fetch(
-        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
-        {
-          method: "POST",
-          body: formData,
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+        method: "POST",
+        body: formData,
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
 
       const data = await response.json();
 
@@ -284,23 +279,28 @@ export default function MemoryCanvas() {
     }
   };
 
-  // --- INITIALIZATION ---
-  useEffect(() => {
-    const initializeCanvas = async () => {
-      setIsLoading(true);
-      try {
-        const currentPostId = Array.isArray(postId) ? postId[0] : postId;
-        if (!currentPostId || !getToken) return;
-        const token = await getToken();
-        if (!token) return;
+useEffect(() => {
+  const initializeCanvas = async () => {
+    setIsLoading(true);
+    try {
+      const currentPostId = Array.isArray(postId) ? postId[0] : postId;
+      if (!currentPostId || !getToken) return;
+      const token = await getToken();
+      if (!token) return;
 
-        const savedItems = await apiService.getMemoryWall(currentPostId, token);
+      const savedItems = await apiService.getMemoryWall(currentPostId, token);
 
-        let initialItems: CanvasItem[] = [];
+      let initialItems: CanvasItem[] = [];
 
-        if (savedItems && savedItems.length > 0) {
-          initialItems = savedItems;
-        } else if (foundPost) {
+      if (savedItems && savedItems.length > 0) {
+        initialItems = savedItems;
+      } else {
+        // CHECK: Use foundPost OR the params passed directly
+        const imageToUse = foundPost?.image_url || (initialImage as string);
+        const authorToUse = foundPost?.username || (initialAuthor as string);
+        const ownerToUse = foundPost?.user_id || (initialOwnerId as string);
+
+        if (imageToUse) {
           const TARGET_WIDTH = Math.min(SCREEN_WIDTH * 0.75, 400);
           const TARGET_HEIGHT = TARGET_WIDTH * (4 / 3);
 
@@ -308,9 +308,9 @@ export default function MemoryCanvas() {
             {
               id: "main-anchor",
               daily_drinking_id: currentPostId,
-              added_by_user_id: foundPost.userId,
+              added_by_user_id: ownerToUse,
               item_type: "image",
-              content: foundPost.imageUrl || "https://picsum.photos/600/800",
+              content: imageToUse || "https://picsum.photos/600/800",
               pos_x: -TARGET_WIDTH / 2,
               pos_y: -TARGET_HEIGHT / 2,
               width: TARGET_WIDTH,
@@ -319,52 +319,47 @@ export default function MemoryCanvas() {
               scale: 1,
               z_index: 1,
               created_at: new Date().toISOString(),
-              author_name: foundPost.username || "You",
+              author_name: authorToUse || "You",
               extra_data: { locked: true },
             },
           ];
         }
-
-        setItems(initialItems);
-        setHistory([initialItems]);
-        setHistoryStep(0);
-      } catch (error) {
-        console.error("Failed to load memory wall:", error);
-      } finally {
-        setIsLoading(false);
       }
-    };
 
-    initializeCanvas();
-  }, [postId, SCREEN_WIDTH, foundPost]);
+      setItems(initialItems);
+      setHistory([initialItems]);
+      setHistoryStep(0);
+    } catch (error) {
+      console.error("Failed to load memory wall:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  initializeCanvas();
+  // Add initialImage to dependencies so it reacts if params change
+}, [postId, SCREEN_WIDTH, foundPost, initialImage]);
 
   // --- ACTIONS ---
-  const handleUpdateItem = useCallback(
-    (id: string, updates: Partial<CanvasItem>) => {
-      // Try updating standard items
-      setItems((prev) => {
-        const exists = prev.some((i) => i.id === id);
-        if (exists) {
-          return prev.map((item) =>
-            item.id === id ? { ...item, ...updates } : item
-          );
-        }
-        return prev;
-      });
+  const handleUpdateItem = useCallback((id: string, updates: Partial<CanvasItem>) => {
+    // Try updating standard items
+    setItems((prev) => {
+      const exists = prev.some((i) => i.id === id);
+      if (exists) {
+        return prev.map((item) => (item.id === id ? { ...item, ...updates } : item));
+      }
+      return prev;
+    });
 
-      // Try updating reactions
-      setReactions((prev) => {
-        const exists = prev.some((r) => r.id === id);
-        if (exists) {
-          return prev.map((item) =>
-            item.id === id ? { ...item, ...updates } : item
-          );
-        }
-        return prev;
-      });
-    },
-    []
-  );
+    // Try updating reactions
+    setReactions((prev) => {
+      const exists = prev.some((r) => r.id === id);
+      if (exists) {
+        return prev.map((item) => (item.id === id ? { ...item, ...updates } : item));
+      }
+      return prev;
+    });
+  }, []);
 
   const onGestureEndAction = useCallback(() => {
     setItems((currentItems) => {
@@ -381,10 +376,7 @@ export default function MemoryCanvas() {
 
     const { x, y } = getCenterPosition();
     const allItems = [...items, ...reactions];
-    const maxZ =
-      allItems.length > 0
-        ? Math.max(...allItems.map((i) => i.z_index || 0))
-        : 0;
+    const maxZ = allItems.length > 0 ? Math.max(...allItems.map((i) => i.z_index || 0)) : 0;
 
     const newReaction: CanvasItem = {
       id: Math.random().toString(),
@@ -442,16 +434,13 @@ export default function MemoryCanvas() {
     return { x: x + randomOffset(), y: y + randomOffset() };
   };
 
-  const handleStartEdit = useCallback(
-    (id: string, content: string, color?: string) => {
-      triggerHaptic();
-      setEditingItemId(id);
-      setInputText(content);
-      setSelectedTextColor(color || "#000000");
-      setTextModalVisible(true);
-    },
-    []
-  );
+  const handleStartEdit = useCallback((id: string, content: string, color?: string) => {
+    triggerHaptic();
+    setEditingItemId(id);
+    setInputText(content);
+    setSelectedTextColor(color || "#000000");
+    setTextModalVisible(true);
+  }, []);
 
   const handleOpenItemOptions = useCallback((id: string) => {
     triggerHaptic(Haptics.ImpactFeedbackStyle.Medium);
@@ -489,8 +478,7 @@ export default function MemoryCanvas() {
     setItems((prev) => {
       const idx = prev.findIndex((i) => i.id === id);
       if (idx === -1) return prev;
-      const maxZ =
-        prev.length > 0 ? Math.max(...prev.map((i) => i.z_index || 0)) : 0;
+      const maxZ = prev.length > 0 ? Math.max(...prev.map((i) => i.z_index || 0)) : 0;
       const newItems = [...prev];
       const [item] = newItems.splice(idx, 1);
       item.z_index = maxZ + 1;
@@ -517,8 +505,7 @@ export default function MemoryCanvas() {
         }
 
         const { x, y } = getCenterPosition();
-        const maxZ =
-          items.length > 0 ? Math.max(...items.map((i) => i.z_index || 0)) : 0;
+        const maxZ = items.length > 0 ? Math.max(...items.map((i) => i.z_index || 0)) : 0;
 
         const newItem: CanvasItem = {
           id: Math.random().toString(),
@@ -547,8 +534,7 @@ export default function MemoryCanvas() {
 
   const handleSaveText = () => {
     if (!inputText.trim()) {
-      if (editingItemId)
-        updateItems(items.filter((i) => i.id !== editingItemId));
+      if (editingItemId) updateItems(items.filter((i) => i.id !== editingItemId));
       setTextModalVisible(false);
       setEditingItemId(null);
       return;
@@ -566,8 +552,7 @@ export default function MemoryCanvas() {
       );
     } else {
       const { x, y } = getCenterPosition();
-      const maxZ =
-        items.length > 0 ? Math.max(...items.map((i) => i.z_index || 0)) : 0;
+      const maxZ = items.length > 0 ? Math.max(...items.map((i) => i.z_index || 0)) : 0;
 
       newItems.push({
         id: Math.random().toString(),
@@ -597,8 +582,7 @@ export default function MemoryCanvas() {
     }));
 
     const { x, y } = getCenterPosition();
-    const maxZ =
-      items.length > 0 ? Math.max(...items.map((i) => i.z_index || 0)) : 0;
+    const maxZ = items.length > 0 ? Math.max(...items.map((i) => i.z_index || 0)) : 0;
 
     const newItem: CanvasItem = {
       id: Math.random().toString(),
@@ -631,10 +615,7 @@ export default function MemoryCanvas() {
   const endDrawState = useCallback(
     (finalPath: string) => {
       if (!finalPath) return;
-      setCompletedStrokes((prev) => [
-        ...prev,
-        { d: finalPath, color: drawingColor, width: 4 },
-      ]);
+      setCompletedStrokes((prev) => [...prev, { d: finalPath, color: drawingColor, width: 4 }]);
       setCurrentStroke("");
     },
     [drawingColor]
@@ -649,15 +630,10 @@ export default function MemoryCanvas() {
     const padding = 20;
     const width = maxX - minX + padding * 2;
     const height = maxY - minY + padding * 2;
-    const worldX =
-      (minX + (maxX - minX) / 2 - SCREEN_WIDTH / 2 - translateX.value) /
-      scale.value;
-    const worldY =
-      (minY + (maxY - minY) / 2 - SCREEN_HEIGHT / 2 - translateY.value) /
-      scale.value;
+    const worldX = (minX + (maxX - minX) / 2 - SCREEN_WIDTH / 2 - translateX.value) / scale.value;
+    const worldY = (minY + (maxY - minY) / 2 - SCREEN_HEIGHT / 2 - translateY.value) / scale.value;
     const viewBox = `${minX - padding} ${minY - padding} ${width} ${height}`;
-    const maxZ =
-      items.length > 0 ? Math.max(...items.map((i) => i.z_index || 0)) : 0;
+    const maxZ = items.length > 0 ? Math.max(...items.map((i) => i.z_index || 0)) : 0;
 
     updateItems([
       ...items,
@@ -742,42 +718,27 @@ export default function MemoryCanvas() {
   const composedCameraGesture = Gesture.Simultaneous(panGesture, pinchGesture);
 
   const animatedCanvasStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: translateX.value },
-      { translateY: translateY.value },
-      { scale: scale.value },
-    ],
+    transform: [{ translateX: translateX.value }, { translateY: translateY.value }, { scale: scale.value }],
   }));
   const trashStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: withSpring(isDraggingItem.value ? 0 : 150) }],
     opacity: withTiming(isDraggingItem.value ? 1 : 0),
   }));
   const bottomControlsStyle = useAnimatedStyle(() => ({
-    opacity: withTiming(
-      isDraggingItem.value || isDrawingMode || isUiHidden ? 0 : 1
-    ),
+    opacity: withTiming(isDraggingItem.value || isDrawingMode || isUiHidden ? 0 : 1),
   }));
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <StatusBar hidden />
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: "#f5f5f5" }]} />
+      <StatusBar barStyle="light-content" />
 
-      {/* Grid */}
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: "#000000ff" }]} />
+
       {showGrid && !isUiHidden && (
-        <View
-          style={StyleSheet.absoluteFill}
-          pointerEvents="none"
-          className="opacity-10"
-        >
+        <View style={StyleSheet.absoluteFill} pointerEvents="none" className="opacity-10">
           <Svg height="100%" width="100%">
             <Defs>
-              <Pattern
-                id="grid"
-                width="40"
-                height="40"
-                patternUnits="userSpaceOnUse"
-              >
+              <Pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
                 <Circle cx="2" cy="2" r="1.5" fill="gray" />
               </Pattern>
             </Defs>
@@ -790,12 +751,7 @@ export default function MemoryCanvas() {
       <View style={{ flex: 1, overflow: "hidden" }}>
         <GestureDetector gesture={composedCameraGesture}>
           <Animated.View className="flex-1 bg-transparent">
-            <Animated.View
-              style={[
-                { flex: 1, justifyContent: "center", alignItems: "center" },
-                animatedCanvasStyle,
-              ]}
-            >
+            <Animated.View style={[{ flex: 1, justifyContent: "center", alignItems: "center" }, animatedCanvasStyle]}>
               <View style={{ width: 0, height: 0, overflow: "visible" }}>
                 {[...items, ...reactions].map((item) => (
                   <DraggableItem
@@ -803,7 +759,7 @@ export default function MemoryCanvas() {
                     item={item}
                     screenHeight={SCREEN_HEIGHT}
                     currentUserId={userData?.id}
-                    canEdit={canEdit}
+                    canEdit={Boolean(canEdit)}
                     onUpdate={handleUpdateItem}
                     onGestureEnd={onGestureEndAction}
                     onBringToFront={() => runOnJS(handleBringToFront)(item.id)}
@@ -890,7 +846,9 @@ export default function MemoryCanvas() {
                 <TouchableOpacity
                   key={c}
                   onPress={() => setDrawingColor(c)}
-                  className={`w-8 h-8 rounded-full border-2 ${drawingColor === c ? "border-white" : "border-transparent"}`}
+                  className={`w-8 h-8 rounded-full border-2 ${
+                    drawingColor === c ? "border-white" : "border-transparent"
+                  }`}
                   style={{ backgroundColor: c }}
                 />
               ))}
@@ -936,11 +894,7 @@ export default function MemoryCanvas() {
             }}
             className="w-10 h-10 bg-white rounded-full items-center justify-center shadow-lg border border-black/10"
           >
-            <MaterialCommunityIcons
-              name="crosshairs-gps"
-              size={20}
-              color="#333"
-            />
+            <MaterialCommunityIcons name="crosshairs-gps" size={20} color="#333" />
           </TouchableOpacity>
           {canEdit && (
             <TouchableOpacity
@@ -950,11 +904,7 @@ export default function MemoryCanvas() {
               }}
               className="w-10 h-10 bg-white/90 rounded-full items-center justify-center shadow-sm border border-black/5"
             >
-              <Ionicons
-                name={isUiHidden ? "eye-off" : "eye"}
-                size={20}
-                color={isUiHidden ? "#ff8c00" : "black"}
-              />
+              <Ionicons name={isUiHidden ? "eye-off" : "eye"} size={20} color={isUiHidden ? "#ff8c00" : "black"} />
             </TouchableOpacity>
           )}
           {canEdit && !isUiHidden && (
@@ -1048,12 +998,7 @@ export default function MemoryCanvas() {
               style={[{ bottom: insets.bottom + 20 }, bottomControlsStyle]}
             >
               <View className="flex-row gap-4 items-center">
-                <ToolIcon
-                  name="image"
-                  onPress={handleAddPhoto}
-                  color="white"
-                  loading={isUploading}
-                />
+                <ToolIcon name="image" onPress={handleAddPhoto} color="white" loading={isUploading} />
                 <ToolIcon
                   name="text"
                   onPress={() => {
@@ -1064,20 +1009,13 @@ export default function MemoryCanvas() {
                   color="white"
                 />
                 <ToolIcon name="pencil" onPress={startDrawing} color="white" />
-                <ToolIcon
-                  name="cube-outline"
-                  onPress={() => setStickerModalVisible(true)}
-                  color="white"
-                />
+                <ToolIcon name="cube-outline" onPress={() => setStickerModalVisible(true)} color="white" />
               </View>
             </Animated.View>
           ) : (
             <Animated.View
               className="absolute left-0 right-0 bg-black/80 rounded-t-3xl shadow-2xl border-t border-white/10 z-50"
-              style={[
-                { bottom: 0, paddingBottom: insets.bottom + 10, height: 160 },
-                bottomControlsStyle,
-              ]}
+              style={[{ bottom: 0, paddingBottom: insets.bottom + 10, height: 160 }, bottomControlsStyle]}
             >
               <Text className="text-white/50 text-[11px] font-bold tracking-widest text-center uppercase my-3">
                 Inventory
@@ -1096,41 +1034,26 @@ export default function MemoryCanvas() {
                   {availableStickers.map((sticker, idx) => (
                     <View key={idx} className="relative m-2 overflow-visible">
                       <TouchableOpacity
-                        onPress={() =>
-                          handleAddReaction(sticker.id, sticker.image_url)
-                        }
+                        onPress={() => handleAddReaction(sticker.id, sticker.image_url)}
                         className="w-20 h-20 bg-white/10 rounded-xl items-center justify-center border border-white/10"
                       >
-                        <Image
-                          source={{ uri: sticker.image_url }}
-                          className="w-[80%] h-[80%]"
-                          resizeMode="contain"
-                        />
+                        <Image source={{ uri: sticker.image_url }} className="w-[80%] h-[80%]" resizeMode="contain" />
                       </TouchableOpacity>
 
                       <View
                         className="absolute top-1 right-1 bg-orange-600 rounded-full w-6 h-6 items-center justify-center border border-black"
                         style={{ zIndex: 10, elevation: 6 }}
                       >
-                        <Text className="text-white text-[10px] font-bold">
-                          {sticker.quantity}
-                        </Text>
+                        <Text className="text-white text-[10px] font-bold">{sticker.quantity}</Text>
                       </View>
                     </View>
                   ))}
                 </ScrollView>
               ) : (
                 <View className="flex-1 items-center justify-center gap-3">
-                  <Text className="text-white/70 font-bold">
-                    No stickers in inventory
-                  </Text>
-                  <TouchableOpacity
-                    onPress={handleGoToStore}
-                    className="bg-orange-600 px-6 py-2 rounded-full"
-                  >
-                    <Text className="text-white font-bold text-sm">
-                      Get Items from Store
-                    </Text>
+                  <Text className="text-white/70 font-bold">No stickers in inventory</Text>
+                  <TouchableOpacity onPress={handleGoToStore} className="bg-orange-600 px-6 py-2 rounded-full">
+                    <Text className="text-white font-bold text-sm">Get Items from Store</Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -1155,16 +1078,10 @@ export default function MemoryCanvas() {
               padding: 24,
             }}
           >
-            <Text className="text-xl font-black text-center mb-6">
-              SETTINGS
-            </Text>
+            <Text className="text-xl font-black text-center mb-6">SETTINGS</Text>
             <View className="flex-row justify-between items-center mb-6">
               <Text className="font-bold text-base">Show Grid</Text>
-              <Switch
-                value={showGrid}
-                onValueChange={setShowGrid}
-                trackColor={{ false: "#eee", true: "#ff8c00" }}
-              />
+              <Switch value={showGrid} onValueChange={setShowGrid} trackColor={{ false: "#eee", true: "#ff8c00" }} />
             </View>
             <View className="flex-row justify-between items-center mb-6">
               <Text className="font-bold text-base">Snap to Grid</Text>
@@ -1174,10 +1091,7 @@ export default function MemoryCanvas() {
                 trackColor={{ false: "#eee", true: "#ff8c00" }}
               />
             </View>
-            <TouchableOpacity
-              onPress={() => setSettingsModalVisible(false)}
-              className="bg-black py-4 rounded-xl"
-            >
+            <TouchableOpacity onPress={() => setSettingsModalVisible(false)} className="bg-black py-4 rounded-xl">
               <Text className="text-white text-center font-bold">Close</Text>
             </TouchableOpacity>
           </TouchableOpacity>
@@ -1202,19 +1116,13 @@ export default function MemoryCanvas() {
               >
                 <Ionicons
                   name={
-                    items.find((i) => i.id === selectedItemForOptions)
-                      ?.extra_data?.locked
-                      ? "lock-open"
-                      : "lock-closed"
+                    items.find((i) => i.id === selectedItemForOptions)?.extra_data?.locked ? "lock-open" : "lock-closed"
                   }
                   size={20}
                   color="black"
                 />
                 <Text className="font-bold text-base">
-                  {items.find((i) => i.id === selectedItemForOptions)
-                    ?.extra_data?.locked
-                    ? "Unlock Item"
-                    : "Lock Item"}
+                  {items.find((i) => i.id === selectedItemForOptions)?.extra_data?.locked ? "Unlock Item" : "Lock Item"}
                 </Text>
               </TouchableOpacity>
             )}
@@ -1251,9 +1159,7 @@ export default function MemoryCanvas() {
                   key={color}
                   onPress={() => setSelectedTextColor(color)}
                   className={`w-8 h-8 rounded-full border-2 ${
-                    selectedTextColor === color
-                      ? "border-white scale-125"
-                      : "border-transparent"
+                    selectedTextColor === color ? "border-white scale-125" : "border-transparent"
                   }`}
                   style={{ backgroundColor: color }}
                 />
@@ -1266,10 +1172,7 @@ export default function MemoryCanvas() {
               >
                 <Text className="text-white font-bold">Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleSaveText}
-                className="px-6 py-2 rounded-full bg-orange-600"
-              >
+              <TouchableOpacity onPress={handleSaveText} className="px-6 py-2 rounded-full bg-orange-600">
                 <Text className="text-white font-bold">Save</Text>
               </TouchableOpacity>
             </View>
@@ -1279,10 +1182,7 @@ export default function MemoryCanvas() {
 
       <Modal visible={stickerModalVisible} transparent animationType="slide">
         <View className="flex-1 justify-end">
-          <TouchableOpacity
-            className="flex-1"
-            onPress={() => setStickerModalVisible(false)}
-          />
+          <TouchableOpacity className="flex-1" onPress={() => setStickerModalVisible(false)} />
           <View className="bg-[#1a1a1a] rounded-t-3xl p-6 h-[60%] border-t border-white/10">
             <Text className="text-white/50 text-sm font-bold tracking-widest mb-6 text-center uppercase">
               Inventory
@@ -1295,24 +1195,16 @@ export default function MemoryCanvas() {
                 {availableStickers.map((sticker, idx) => (
                   <TouchableOpacity
                     key={idx}
-                    onPress={() =>
-                      handleAddSticker(sticker.id, sticker.image_url)
-                    }
+                    onPress={() => handleAddSticker(sticker.id, sticker.image_url)}
                     style={{ overflow: "visible" }}
                     className="w-[30%] aspect-square bg-white/5 rounded-2xl items-center justify-center border border-white/10 mb-4 relative shadow-sm"
                   >
-                    <Image
-                      source={{ uri: sticker.image_url }}
-                      className="w-[70%] h-[70%]"
-                      resizeMode="contain"
-                    />
+                    <Image source={{ uri: sticker.image_url }} className="w-[70%] h-[70%]" resizeMode="contain" />
                     <View
                       style={{ zIndex: 10 }}
                       className="absolute -top-2 -right-2 bg-orange-600 rounded-full min-w-[22px] h-[22px] items-center justify-center border border-[#1a1a1a] shadow"
                     >
-                      <Text className="text-white text-[10px] font-bold">
-                        {sticker.quantity}
-                      </Text>
+                      <Text className="text-white text-[10px] font-bold">{sticker.quantity}</Text>
                     </View>
                   </TouchableOpacity>
                 ))}
@@ -1330,10 +1222,7 @@ export default function MemoryCanvas() {
         animationType="slide"
         onRequestClose={() => setSavedModalVisible(false)}
       >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          className="flex-1"
-        >
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
           <TouchableOpacity
             activeOpacity={1}
             onPress={() => setSavedModalVisible(false)}
@@ -1351,13 +1240,9 @@ export default function MemoryCanvas() {
                 <View className="w-20 h-20 rounded-full bg-orange-600/20 items-center justify-center mb-5">
                   <Ionicons name="checkmark-circle" size={48} color="#EA580C" />
                 </View>
-                <Text className="text-white text-3xl font-black mb-3 text-center">
-                  Saved
-                </Text>
+                <Text className="text-white text-3xl font-black mb-3 text-center">Saved</Text>
                 <Text className="text-white/60 text-center text-base mb-8 px-4">
-                  {canEdit
-                    ? "Your memory has been successfully updated"
-                    : "Your reaction has been sent"}
+                  {canEdit ? "Your memory has been successfully updated" : "Your reaction has been sent"}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -1551,8 +1436,8 @@ const DraggableItem = ({
     borderColor: isOverTrash.value
       ? "red"
       : isActive.value
-        ? "#ff8c00"
-        : "transparent",
+      ? "#ff8c00"
+      : "transparent",
     borderWidth: isActive.value || isOverTrash.value ? 2 : 0,
   }));
 

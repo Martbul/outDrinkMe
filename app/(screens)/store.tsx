@@ -1,23 +1,20 @@
 import { apiService } from "@/api";
-import NestedScreenHeader from "@/components/nestedScreenHeader";
-import PurchaseConfirmationModal, {
-  GemPurchaseItem,
-  StoreItem,
-} from "@/components/purchaseModal";
+import DigitalPassport from "@/components/digital_passport";
+import { NestedScreenHeader } from "@/components/nestedScreenHeader";
+import { PassportCard } from "@/components/passport_card";
+import { PaywallModal } from "@/components/paywall_modal";
+import PurchaseBottomSheet from "@/components/purchase_bottmo_sheet";
+import PurchaseConfirmationModal, { GemPurchaseItem, StoreItem } from "@/components/purchaseModal";
 import { useAds } from "@/providers/AdProvider";
 import { useApp } from "@/providers/AppProvider";
-import {
-  EnergyDrink,
-  Flag,
-  GemPack,
-  Smoking,
-} from "@/types/api.types";
+import { Bottle, EnergyDrink, Flag, GemPack, Smoking, Special } from "@/types/api.types";
 import { handleEarnGems } from "@/utils/adsReward";
 import { useAuth } from "@clerk/clerk-expo";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { usePostHog } from "posthog-react-native";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  FlatList,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -39,26 +36,17 @@ export default function StoreScreen() {
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
   const { isAdLoaded, showRewardedAd } = useAds();
-  const {
-    userData,
-    storeItems,
-    updateUserProfile,
-    refreshStore,
-    refreshUserInventory,
-    refreshUserData,
-  } = useApp();
+  const { userData, storeItems, premium, updateUserProfile, refreshStore, refreshUserInventory, refreshUserData } =
+    useApp();
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [purchaseType, setPurchaseType] = useState<"gem" | "store">("store");
-  const [selectedStoreItem, setSelectedStoreItem] = useState<StoreItem | null>(
-    null
-  );
+  const [selectedStoreItem, setSelectedStoreItem] = useState<StoreItem | null>(null);
   const [showReferralModal, setShowReferralModal] = useState(false);
-  const [successfulPurchaseModalVisible, setSuccessfulPurchaseModalVisible] =
-    useState(false);
+  const [successfulPurchaseModalVisible, setSuccessfulPurchaseModalVisible] = useState(false);
 
   const [pendingTransaction, setPendingTransaction] = useState(false);
-  const [selectedGemItem, setSelectedGemItem] =
-    useState<GemPurchaseItem | null>(null);
+  const [selectedGemItem, setSelectedGemItem] = useState<GemPurchaseItem | null>(null);
+  const [showPaywall, setShowPaywall] = useState(false);
 
   const scrollViewRef = useRef<ScrollView>(null);
   const getMoreGemsSectionRef = useRef<View>(null);
@@ -70,19 +58,21 @@ export default function StoreScreen() {
   }, [userData?.gems, posthog]);
 
   const handleGetMorePress = () => {
-    // Track intent to buy gems
     posthog?.capture("store_scroll_to_gems");
 
-    getMoreGemsSectionRef.current?.measureLayout(
-      scrollViewRef.current as any,
-      (x, y, width, height) => {
-        scrollViewRef.current?.scrollTo({ y, animated: true });
-      }
-    );
+    getMoreGemsSectionRef.current?.measureLayout(scrollViewRef.current as any, (x, y, width, height) => {
+      scrollViewRef.current?.scrollTo({ y, animated: true });
+    });
   };
 
   const closeSuccessfulPurchaseModal = () => {
     setShowReferralModal(false);
+  };
+
+  const handlePremiumPurchase = async () => {
+    setTimeout(() => {
+      setShowPaywall(false);
+    });
   };
 
   const handleStoreItemPress = (item: StoreItem) => {
@@ -130,10 +120,7 @@ export default function StoreScreen() {
 
     posthog?.capture("purchase_initiated", {
       type: purchaseType,
-      item_id:
-        (purchaseType === "store"
-          ? selectedStoreItem?.id
-          : selectedGemItem?.id) ?? null,
+      item_id: (purchaseType === "store" ? selectedStoreItem?.id : selectedGemItem?.id) ?? null,
     });
 
     try {
@@ -145,7 +132,6 @@ export default function StoreScreen() {
       }
 
       if (purchaseType === "gem" && selectedGemItem) {
-        // Handle gem purchase logic here
         console.log("Purchasing gems:", selectedGemItem);
         // TODO: Implement actual gem purchase API call
       } else if (purchaseType === "store" && selectedStoreItem) {
@@ -153,14 +139,12 @@ export default function StoreScreen() {
 
         await apiService.purchaseStoreItem(selectedStoreItem.id, token);
 
-        // 7. Track Successful Purchase (The most important revenue metric)
         posthog?.capture("purchase_completed", {
           type: "store_item",
           item_id: selectedStoreItem.id,
           item_name: selectedStoreItem.name,
           cost_gems: selectedStoreItem.base_price,
-          user_balance_after:
-            (userData?.gems || 0) - selectedStoreItem.base_price,
+          user_balance_after: (userData?.gems || 0) - selectedStoreItem.base_price,
         });
 
         await Promise.all([refreshUserData(), refreshUserInventory()]);
@@ -182,10 +166,7 @@ export default function StoreScreen() {
       posthog?.capture("purchase_failed", {
         type: purchaseType,
         error_message: error.message,
-        item_id:
-          (purchaseType === "store"
-            ? selectedStoreItem?.id
-            : selectedGemItem?.id) ?? null,
+        item_id: (purchaseType === "store" ? selectedStoreItem?.id : selectedGemItem?.id) ?? null,
       });
 
       alert("Purchase failed. Please try again.");
@@ -200,36 +181,55 @@ export default function StoreScreen() {
     setRefreshing(false);
   };
 
-  const flags: Flag[] = (storeItems?.flag || []).map(
-    (item: any, index: number) => ({
+  const flags = useMemo(() => {
+    return (storeItems?.flag || []).map((item: any, index: number) => ({
       id: index + 1,
       title: item.name,
       price: item.base_price,
       image: { uri: item.image_url },
       storeItem: item,
-    })
-  );
+    }));
+  }, [storeItems?.flag]); // Dependency array: only re-calculate if storeItems.flag changes
 
-  const smokingDevices: Smoking[] = (storeItems?.smoking || []).map(
-    (device: any, index: number) => ({
+  const smokingDevices = useMemo(() => {
+    return (storeItems?.smoking || []).map((device: any, index: number) => ({
       id: index + 1,
       title: device.name,
       price: device.base_price,
       image: { uri: device.image_url },
       storeItem: device,
-    })
-  );
+    }));
+  }, [storeItems?.smoking]);
 
-  const energyDrinks: EnergyDrink[] = (storeItems?.energy || []).map(
-    (drink: any, index: number) => ({
+  const energyDrinks = useMemo(() => {
+    return (storeItems?.energy || []).map((drink: any, index: number) => ({
       id: index + 1,
       title: drink.name,
       price: drink.base_price,
       image: { uri: drink.image_url },
       storeItem: drink,
-    })
-  );
+    }));
+  }, [storeItems?.energy]);
 
+  const bottles = useMemo(() => {
+    return (storeItems?.bottle || []).map((bottle: any, index: number) => ({
+      id: index + 1,
+      title: bottle.name,
+      price: bottle.base_price,
+      image: { uri: bottle.image_url },
+      storeItem: bottle,
+    }));
+  }, [storeItems?.bottle]);
+
+  const specials = useMemo(() => {
+    return (storeItems?.special || []).map((bottle: any, index: number) => ({
+      id: index + 1,
+      title: bottle.name,
+      price: bottle.base_price,
+      image: { uri: bottle.image_url },
+      storeItem: bottle,
+    }));
+  }, [storeItems?.special]);
   const gemPacks: GemPack[] = [
     {
       id: 1,
@@ -272,22 +272,16 @@ export default function StoreScreen() {
     setIsWatchingAd(true);
 
     try {
-      await handleEarnGems(
-        1,
-        showRewardedAd,
-        userData?.gems || 0,
-        updateUserProfile
-      );
+      await handleEarnGems(1, showRewardedAd, userData?.gems || 0, updateUserProfile);
     } catch (e) {
       console.error(e);
     } finally {
       setIsWatchingAd(false);
     }
   };
-
-  const SmokingCard = ({ device }: { device: any }) => (
+  const SmokingCard = React.memo(({ device }: { device: any }) => (
     <TouchableOpacity
-      className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08] items-center mr-3"
+      className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08] mr-3"
       style={{ width: 140 }}
       activeOpacity={0.7}
       onPress={() => device.storeItem && handleStoreItemPress(device.storeItem)}
@@ -295,27 +289,21 @@ export default function StoreScreen() {
       <Text className="text-white text-sm font-bold mb-1" numberOfLines={1}>
         {device.title}
       </Text>
-      <View className="bg-black/20 rounded-xl p-3 w-full items-center mb-3">
-        <Image
-          source={device.image}
-          style={{ width: 70, height: 60 }}
-          resizeMode="contain"
-        />
+      <View className="bg-black/20 rounded-xl w-full items-center mb-3">
+        <Image source={device.image} style={{ width: 140, height: 120 }} resizeMode="contain" />
       </View>
 
       <View className="bg-orange-600/20 rounded-xl py-2 px-3 flex-row items-center justify-center border border-orange-600/40 w-full">
         <Ionicons name="diamond" size={18} color="#EA580C" />
 
-        <Text className="text-orange-600 text-lg font-black ml-1">
-          {device.price}
-        </Text>
+        <Text className="text-orange-600 text-lg font-black ml-1">{device.price}</Text>
       </View>
     </TouchableOpacity>
-  );
+  ));
 
-  const EnergyDrinkCard = ({ drink }: { drink: any }) => (
+  const EnergyDrinkCard = React.memo(({ drink }: { drink: any }) => (
     <TouchableOpacity
-      className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08] items-center mr-3"
+      className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08] mr-3"
       style={{ width: 140 }}
       activeOpacity={0.7}
       onPress={() => drink.storeItem && handleStoreItemPress(drink.storeItem)}
@@ -323,24 +311,19 @@ export default function StoreScreen() {
       <Text className="text-white text-sm font-bold mb-1" numberOfLines={1}>
         {drink.title}
       </Text>
-      <View className="bg-black/20 rounded-xl p-3 w-full items-center mb-3">
-        <Image
-          source={drink.image}
-          style={{ width: 100, height: 100 }}
-          resizeMode="contain"
-        />
+      <View className="bg-black/20 rounded-xl  w-full items-center">
+        <Image source={drink.image} style={{ width: 100, height: 130 }} resizeMode="contain" />
       </View>
 
       <View className="bg-orange-600/20 rounded-xl py-2 px-3 flex-row items-center justify-center border border-orange-600/40 w-full">
         <Ionicons name="diamond" size={18} color="#EA580C" />
 
-        <Text className="text-orange-600 text-lg font-black ml-1">
-          {drink.price}
-        </Text>
+        <Text className="text-orange-600 text-lg font-black ml-1">{drink.price}</Text>
       </View>
     </TouchableOpacity>
-  );
-  const FlagCard = ({ item }: { item: any }) => (
+  ));
+
+  const FlagCard = React.memo(({ item }: { item: any }) => (
     <TouchableOpacity
       className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08] mr-3"
       style={{ width: 160 }}
@@ -351,21 +334,56 @@ export default function StoreScreen() {
         {item.title}
       </Text>
       <View className="items-center py-4 bg-black/20 rounded-xl">
-        <Image
-          source={item.image}
-          style={{ width: 170, height: 70 }}
-          resizeMode="contain"
-        />
+        <Image source={item.image} style={{ width: 170, height: 70 }} resizeMode="contain" />
       </View>
       <View className="bg-orange-600/20 rounded-xl py-2 px-3 flex-row items-center justify-center border border-orange-600/40 mt-3">
         <Ionicons name="diamond" size={18} color="#EA580C" />
 
-        <Text className="text-orange-600 text-lg font-black ml-1">
-          {item.price}
-        </Text>
+        <Text className="text-orange-600 text-lg font-black ml-1">{item.price}</Text>
       </View>
     </TouchableOpacity>
-  );
+  ));
+
+  const BottleCard = React.memo(({ item }: { item: any }) => (
+    <TouchableOpacity
+      className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08] mr-3"
+      style={{ width: 160 }}
+      activeOpacity={0.7}
+      onPress={() => item.storeItem && handleStoreItemPress(item.storeItem)}
+    >
+      <Text className="text-white text-sm font-bold mb-1" numberOfLines={1}>
+        {item.title}
+      </Text>
+      <View className="items-center py-1 bg-black/20 rounded-xl">
+        <Image source={item.image} style={{ width: 200, height: 160 }} resizeMode="contain" />
+      </View>
+      <View className="bg-orange-600/20 rounded-xl py-2 px-3 flex-row items-center justify-center border border-orange-600/40 mt-3">
+        <Ionicons name="diamond" size={18} color="#EA580C" />
+        <Text className="text-orange-600 text-lg font-black ml-1">{item.price}</Text>
+      </View>
+    </TouchableOpacity>
+  ));
+
+  const SpecialsCard = React.memo(({ item }: { item: any }) => (
+    <TouchableOpacity
+      className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08] mr-3"
+      style={{ width: 160 }}
+      activeOpacity={0.7}
+      onPress={() => item.storeItem && handleStoreItemPress(item.storeItem)}
+    >
+      <Text className="text-white text-sm font-bold mb-1" numberOfLines={1}>
+        {item.title}
+      </Text>
+      <View className="items-center bg-black/20 rounded-xl">
+        <Image source={item.image} style={{ width: 200, height: 190 }} resizeMode="contain" />
+      </View>
+      <View className="bg-orange-600/20 rounded-xl py-2 px-3 flex-row items-center justify-center border border-orange-600/40 mt-3">
+        <Ionicons name="diamond" size={18} color="#EA580C" />
+
+        <Text className="text-orange-600 text-lg font-black ml-1">{item.price}</Text>
+      </View>
+    </TouchableOpacity>
+  ));
 
   const GemPackCard = ({ pack }: { pack: GemPack }) => (
     <TouchableOpacity
@@ -376,23 +394,15 @@ export default function StoreScreen() {
     >
       {pack.bonus && (
         <View className="absolute -top-2 -right-2 bg-[#ff8c00] px-2 py-1 rounded-lg border-2 border-black z-10">
-          <Text className="text-black text-[9px] font-black">
-            +{pack.bonus}
-          </Text>
+          <Text className="text-black text-[9px] font-black">+{pack.bonus}</Text>
         </View>
       )}
       <View className="bg-orange-600/20 rounded-2xl w-20 h-20 items-center justify-center mb-3 border border-orange-600/40">
         <Ionicons name="diamond" size={48} color="#EA580C" />
       </View>
       <View className="bg-orange-600/20 rounded-xl py-2 px-3 flex-row items-center justify-center border border-orange-600/40 w-full mb-2">
-        <Text className="text-orange-600 text-xl font-black">
-          {pack.amount}
-        </Text>
-        {pack.bonus && (
-          <Text className="text-[#ff8c00] text-sm font-black ml-1">
-            +{pack.bonus}
-          </Text>
-        )}
+        <Text className="text-orange-600 text-xl font-black">{pack.amount}</Text>
+        {pack.bonus && <Text className="text-[#ff8c00] text-sm font-black ml-1">+{pack.bonus}</Text>}
       </View>
       <Text className="text-white/50 text-sm font-bold">{pack.price}</Text>
     </TouchableOpacity>
@@ -402,7 +412,7 @@ export default function StoreScreen() {
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
 
-      <NestedScreenHeader heading="Store" secondaryHeading="DRUNK" />
+      <NestedScreenHeader title="Store" eyebrow="DRUNK" />
 
       <ScrollView
         ref={scrollViewRef}
@@ -414,7 +424,7 @@ export default function StoreScreen() {
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor="#EA580C"
-            colors={["#EA580C "]}
+            colors={["#EA580C"]}
             progressBackgroundColor="#000000"
           />
         }
@@ -423,24 +433,15 @@ export default function StoreScreen() {
           <View className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
             <View className="flex-row items-center justify-between">
               <View>
-                <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">
-                  YOUR BALANCE
-                </Text>
+                <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">YOUR BALANCE</Text>
                 <View className="flex-row items-center">
                   <Ionicons name="diamond" size={32} color="#EA580C" />
-                  <Text className="text-white text-3xl font-black ml-2">
-                    {userData?.gems || 0}
-                  </Text>
+                  <Text className="text-white text-3xl font-black ml-2">{userData?.gems || 0}</Text>
                 </View>
               </View>
               {isAdLoaded && (
-                <TouchableOpacity
-                  className="bg-orange-600 px-5 py-3 rounded-xl"
-                  onPress={handleGetMorePress}
-                >
-                  <Text className="text-black text-sm font-black">
-                    GET MORE
-                  </Text>
+                <TouchableOpacity className="bg-orange-600 px-5 py-3 rounded-xl" onPress={handleGetMorePress}>
+                  <Text className="text-black text-sm font-black">GET MORE</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -492,62 +493,145 @@ export default function StoreScreen() {
             </View>
           </TouchableOpacity>
         </View> */}
+
+        {/* //!DO NOT REMOVE */}
+        {/* <View className="mx-4 mt-4 justify-center">
+          {premium ? (
+            <PassportCard />
+          ) : (
+            <TouchableOpacity
+              className="bg-orange-600/10 rounded-2xl p-5 border-2 border-orange-600/50"
+              activeOpacity={0.8}
+              onPress={() => setShowPaywall(true)}
+            >
+              <View className="flex-row items-center justify-between">
+                <View className="flex-1">
+                  <View className="flex-row items-center mb-2">
+                    <View className="bg-[#ff8c00] px-2 py-1 rounded-lg mr-2">
+                      <Text className="text-black text-[10px] font-black">PURCHASE</Text>
+                    </View>
+                    <Text className="text-[#ff8c00] text-[11px] font-bold tracking-widest">UNLIMITED DISCOUNTS</Text>
+                  </View>
+                  <Text className="text-white text-xl font-black mb-1">Premium</Text>
+                  <Text className="text-white/70 text-sm font-semibold mb-3">
+                    Use unlimited discounts at every partner&apos;s location
+                  </Text>
+                </View>
+                <View className="items-center ml-3">
+                  <View className="bg-[#ff8c00] w-16 h-16 rounded-2xl items-center justify-center mb-2">
+                    <MaterialCommunityIcons name="card-account-details-star" size={42} color="black" />
+                  </View>
+                  <View className="bg-[#ff8c00] px-4 py-2 rounded-xl">
+                    <Text className="text-black text-xs font-black">BUY NOW</Text>
+                  </View>
+                </View>
+              </View>
+            </TouchableOpacity>
+          )}
+        </View> */}
         <View className="mt-6">
           <View className="mx-4 mb-4 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
-            <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">
-              BOOST YOUR HEALTH
-            </Text>
-            <Text className="text-white text-2xl font-black">Smoking</Text>
+            <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">Alcoholism</Text>
+            <Text className="text-white text-2xl font-black">Bottles</Text>
           </View>
 
-          <ScrollView
+          <FlatList
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 16 }}
-          >
-            {smokingDevices.map((device) => (
-              <SmokingCard key={device.id} device={device} />
-            ))}
-          </ScrollView>
+            data={bottles} 
+            keyExtractor={(item) => item.id.toString()} 
+            renderItem={({ item }) => <BottleCard item={item} />}
+            // Optional: Add performance props for FlatList
+            initialNumToRender={3} // Render this many items initially
+            maxToRenderPerBatch={5} // Render this many items in each batch
+            windowSize={5} // How many screens worth of data to render in the surrounding area
+            removeClippedSubviews={true} // Helps with memory usage but can cause visual glitches
+          />
         </View>
+
         <View className="mt-6">
           <View className="mx-4 mb-4 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
-            <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">
-              IMPROVE YOUR SLEEP
-            </Text>
+            <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">SLEEP IMPROVEMENT</Text>
             <Text className="text-white text-2xl font-black">Energy</Text>
           </View>
 
-          <ScrollView
+          <FlatList
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 16 }}
-          >
-            {energyDrinks.map((drink) => (
-              <EnergyDrinkCard key={drink.id} drink={drink} />
-            ))}
-          </ScrollView>
+            data={energyDrinks} 
+            keyExtractor={(item) => item.id.toString()} 
+            renderItem={({ item }) => <EnergyDrinkCard drink={item} />}
+            // Optional: Add performance props for FlatList
+            initialNumToRender={3} // Render this many items initially
+            maxToRenderPerBatch={5} // Render this many items in each batch
+            windowSize={5} // How many screens worth of data to render in the surrounding area
+            removeClippedSubviews={true} // Helps with memory usage but can cause visual glitches
+          />
         </View>
 
         <View className="mt-6">
           <View className="mx-4 mb-4 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
-            <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">
-              SEXUALITY
-            </Text>
-            <Text className="text-white text-2xl font-black">Flags</Text>
+            <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">Wild</Text>
+            <Text className="text-white text-2xl font-black">Specials</Text>
           </View>
 
-          <ScrollView
+          <FlatList
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 16 }}
-          >
-            {flags.map((item) => (
-              <FlagCard key={item.id} item={item} />
-            ))}
-          </ScrollView>
+            data={specials} 
+            keyExtractor={(item) => item.id.toString()} 
+            renderItem={({ item }) => <SpecialsCard item={item} />}
+            // Optional: Add performance props for FlatList
+            initialNumToRender={3} // Render this many items initially
+            maxToRenderPerBatch={5} // Render this many items in each batch
+            windowSize={5} // How many screens worth of data to render in the surrounding area
+            removeClippedSubviews={true} // Helps with memory usage but can cause visual glitches
+          />
         </View>
 
+        <View className="mt-6">
+          <View className="mx-4 mb-4 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
+            <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">SEXUALITY</Text>
+            <Text className="text-white text-2xl font-black">Flags</Text>
+          </View>
+
+          <FlatList
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 16 }}
+            data={flags} 
+            keyExtractor={(item) => item.id.toString()} 
+            renderItem={({ item }) => <FlagCard item={item} />}
+            initialNumToRender={3} // Render this many items initially
+            maxToRenderPerBatch={5} // Render this many items in each batch
+            windowSize={5} // How many screens worth of data to render in the surrounding area
+            removeClippedSubviews={true} // Helps with memory usage but can cause visual glitches
+          />
+        </View>
+        <View className="mt-6">
+          <View className="mx-4 mb-4 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
+            <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">HEALTH BOOST</Text>
+            <Text className="text-white text-2xl font-black">Smoking</Text>
+          </View>
+
+          
+
+          <FlatList
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 16 }}
+            data={smokingDevices} 
+            keyExtractor={(item) => item.id.toString()} 
+            renderItem={({ item }) => <SmokingCard device={item} />}
+            initialNumToRender={3} // Render this many items initially
+            maxToRenderPerBatch={5} // Render this many items in each batch
+            windowSize={5} // How many screens worth of data to render in the surrounding area
+            removeClippedSubviews={true} // Helps with memory usage but can cause visual glitches
+          />
+        </View>
 
         {isAdLoaded && (
           <View className="mx-4 mt-4">
@@ -555,38 +639,25 @@ export default function StoreScreen() {
               disabled={isWatchingAd}
               className="bg-orange-600/10 rounded-2xl p-5 border-2 border-orange-600/50"
               activeOpacity={0.8}
-              onPress={handleWatchAdPress} 
+              onPress={handleWatchAdPress}
             >
-              <View
-                className="flex-row items-center justify-between"
-                ref={getMoreGemsSectionRef}
-              >
+              <View className="flex-row items-center justify-between" ref={getMoreGemsSectionRef}>
                 <View className="flex-1">
                   <View className="flex-row items-center mb-2">
                     <View className="bg-[#ff8c00] px-2 py-1 rounded-lg mr-2">
-                      <Text className="text-black text-[10px] font-black">
-                        FREE GEMS
-                      </Text>
+                      <Text className="text-black text-[10px] font-black">FREE GEMS</Text>
                     </View>
-                    <Text className="text-[#ff8c00] text-[11px] font-bold tracking-widest">
-                      NO PURCHASE
-                    </Text>
+                    <Text className="text-[#ff8c00] text-[11px] font-bold tracking-widest">NO PURCHASE</Text>
                   </View>
-                  <Text className="text-white text-xl font-black mb-1">
-                    Watch & Earn
-                  </Text>
+                  <Text className="text-white text-xl font-black mb-1">Watch & Earn</Text>
                   <Text className="text-white/70 text-sm font-semibold mb-3">
                     Watch a short ad to get 1 gem instantly!
                   </Text>
                   <View className="flex-row items-center">
                     <Ionicons name="diamond" size={22} color="#EA580C" />
 
-                    <Text className="text-[#ff8c00] text-2xl font-black ml-1">
-                      +1
-                    </Text>
-                    <Text className="text-white/50 text-sm font-semibold ml-2">
-                      per ad
-                    </Text>
+                    <Text className="text-[#ff8c00] text-2xl font-black ml-1">+1</Text>
+                    <Text className="text-white/50 text-sm font-semibold ml-2">per ad</Text>
                   </View>
                 </View>
                 <View className="items-center ml-3">
@@ -594,9 +665,7 @@ export default function StoreScreen() {
                     <Ionicons name="play-circle" size={32} color="white" />
                   </View>
                   <View className="bg-[#ff8c00] px-4 py-2 rounded-xl">
-                    <Text className="text-white text-xs font-black">
-                      WATCH AD
-                    </Text>
+                    <Text className="text-white text-xs font-black">WATCH AD</Text>
                   </View>
                 </View>
               </View>
@@ -628,7 +697,24 @@ export default function StoreScreen() {
           </ScrollView>
         </View> */}
       </ScrollView>
-      <PurchaseConfirmationModal
+
+      {/* <PurchaseConfirmationModal
+        visible={showPurchaseModal}
+        isPending={pendingTransaction}
+        itemType={purchaseType}
+        gemItem={selectedGemItem}
+        storeItem={selectedStoreItem}
+        currentGems={userData?.gems || 0}
+        onConfirm={handleConfirmPurchase}
+        onCancel={() => {
+          setPendingTransaction(false);
+          setShowPurchaseModal(false);
+          setSelectedStoreItem(null);
+          setSelectedGemItem(null);
+        }}
+      /> */}
+
+      <PurchaseBottomSheet
         visible={showPurchaseModal}
         isPending={pendingTransaction}
         itemType={purchaseType}
@@ -643,6 +729,7 @@ export default function StoreScreen() {
           setSelectedGemItem(null);
         }}
       />
+
       {/* <ReferralModal
         visible={showReferralModal}
         onClose={() => setShowReferralModal(false)}
@@ -654,10 +741,7 @@ export default function StoreScreen() {
         animationType="slide"
         onRequestClose={closeSuccessfulPurchaseModal}
       >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          className="flex-1"
-        >
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
           <TouchableOpacity
             activeOpacity={1}
             onPress={closeSuccessfulPurchaseModal}
@@ -674,17 +758,14 @@ export default function StoreScreen() {
                 <View className="w-20 h-20 rounded-full bg-orange-600/20 items-center justify-center mb-4">
                   <Ionicons name="checkmark-circle" size={48} color="#EA580C" />
                 </View>
-                <Text className="text-white text-2xl font-black mb-2">
-                  Successful Purchase!
-                </Text>
-                <Text className="text-white/60 text-center text-sm">
-                  Check your profile inventory to see the item
-                </Text>
+                <Text className="text-white text-2xl font-black mb-2">Successful Purchase!</Text>
+                <Text className="text-white/60 text-center text-sm">Check your profile inventory to see the item</Text>
               </View>
             </TouchableOpacity>
           </TouchableOpacity>
         </KeyboardAvoidingView>
       </Modal>
+      <PaywallModal visible={showPaywall} onClose={() => setShowPaywall(false)} onPurchase={handlePremiumPurchase} />
     </View>
   );
 }

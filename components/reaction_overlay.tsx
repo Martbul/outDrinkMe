@@ -83,21 +83,14 @@ const FloatingReaction = React.memo(({ uri }: { uri: string }) => {
 export const ReactionsOverlay = React.memo(
   ({ items }: { items?: CanvasItem[] }) => {
     const reactionImages = useMemo(() => {
-      // 1. Log BEFORE checking if empty to see if data is arriving at all
-      console.log("--- ReactionsOverlay Debug ---");
-      console.log("Items received:", items);
-
       if (!items || items.length === 0) return [];
 
-      // 2. Filter for reactions
       const allReactions = items.filter(
         (i) => i.item_type === "reaction" || i.item_type === "sticker"
       );
 
-      // 3. Get unique stickers (deduplicate by URL)
       const uniqueUris = [...new Set(allReactions.map((r) => r.content))];
 
-      // 4. Limit to max 6
       return uniqueUris.slice(0, 6);
     }, [items]);
 
@@ -107,10 +100,11 @@ export const ReactionsOverlay = React.memo(
       <View
         style={{
           position: "absolute",
-          top: 0,
           left: 0,
           right: 0,
           bottom: 0,
+          height: 200,
+          zIndex: 100,
           overflow: "hidden",
         }}
         pointerEvents="none"

@@ -1,7 +1,7 @@
 import ErrorBoundary from "@/components/errorBoundary";
 import SplashScreen from "@/components/spashScreen";
 import { AdsProvider } from "@/providers/AdProvider";
-import { AppProvider } from "@/providers/AppProvider";
+import { AppProvider, useApp } from "@/providers/AppProvider";
 import { ClerkLoaded, ClerkProvider, useUser } from "@clerk/clerk-expo";
 import { tokenCache } from "@clerk/clerk-expo/token-cache";
 import { useFonts } from "expo-font";
@@ -17,6 +17,7 @@ import DeepLinkHandler from "@/components/deepLinkHandler";
 import MandatoryUpdateModal from "@/components/mandatoryUpdateModal";
 import "../global.css";
 import { FunctionProvider } from "@/providers/FunctionProvider";
+import { RateAppModal } from "@/components/rate_app";
 
 let posthog: PostHog;
 
@@ -48,6 +49,7 @@ function PostHogScreenTracker() {
 function AuthenticatedAppContent() {
   const posthog = usePostHog();
   const { user } = useUser();
+    const { showRateModal, closeRateModal } = useApp();
 
   useEffect(() => {
     if (user && posthog) {
@@ -71,6 +73,7 @@ function AuthenticatedAppContent() {
       <DeepLinkHandler />
 
       <Slot />
+      <RateAppModal visible={showRateModal} onClose={closeRateModal} />
     </>
   );
 }
@@ -110,10 +113,7 @@ export default function RootLayout() {
   return (
     <ErrorBoundary>
       <SafeAreaProvider>
-        <ClerkProvider
-          tokenCache={tokenCache}
-          publishableKey={clerkPublishableKey}
-        >
+        <ClerkProvider tokenCache={tokenCache} publishableKey={clerkPublishableKey}>
           <ClerkLoaded>
             <PostHogProvider client={posthog}>
               <PostHogScreenTracker />

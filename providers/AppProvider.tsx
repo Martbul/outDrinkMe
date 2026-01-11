@@ -1,12 +1,4 @@
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useCallback,
-  useRef,
-  ReactNode,
-} from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from "react";
 import { useAuth } from "@clerk/clerk-expo";
 import type {
   UserStats,
@@ -17,17 +9,19 @@ import type {
   UserData,
   UpdateUserProfileReq,
   FriendDiscoveryDisplayProfileResponse,
-  YourMixPostData,
   DrunkThought,
   AlcoholCollectionByType,
   StoreItems,
   InventoryItems,
   NotificationItem,
-  SideQuestBoard,
   MinVersionResponse,
   UserStories,
   StoryUploadJob,
   StorySegment,
+  DailyDrinkingPostResponse,
+  Venue,
+  PaddlePrice,
+  Premium,
 } from "../types/api.types";
 import { apiService } from "@/api";
 import { usePostHog } from "posthog-react-native";
@@ -37,6 +31,7 @@ import { registerForPushNotificationsAsync } from "@/utils/registerPushNotificat
 import { Alert, Platform } from "react-native";
 import * as Application from "expo-application";
 import * as FileSystem from "expo-file-system/legacy";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface AppContextType {
   // Data
@@ -49,27 +44,27 @@ interface AppContextType {
   achievements: Achievement[] | null;
   calendar: CalendarResponse | null;
   weeklyStats: DaysStat | null;
-  friends: UserData[] | [];
-  discovery: UserData[] | [];
+  friends: UserData[];
+  discovery: UserData[];
   stories: UserStories[];
+  venues: Venue[];
+  premiumPrices: PaddlePrice[];
+  premium: Premium | null;
 
-  // --- Pagination Data ---
-  yourMixData: YourMixPostData[] | [];
+  yourMixData: DailyDrinkingPostResponse[];
   yourMixHasMore: boolean;
-  globalMixData: YourMixPostData[] | [];
+  globalMixData: DailyDrinkingPostResponse[];
   globalMixHasMore: boolean;
 
-  mixTimelineData: YourMixPostData[] | [];
+  mixTimelineData: DailyDrinkingPostResponse[];
   friendDiscoveryProfile: FriendDiscoveryDisplayProfileResponse | null;
   drunkThought: string | null;
   friendsDrunkThoughts: DrunkThought[] | [];
   alcoholCollection: AlcoholCollectionByType | null;
   notifications: NotificationItem[];
   unreadNotificationCount: number;
-  sideQuestBoards: SideQuestBoard | null;
-  mapFriendPosts: YourMixPostData[] | [];
+  mapFriendPosts: DailyDrinkingPostResponse[];
   storyUploadQueue: StoryUploadJob[];
-  // Refresh Functions (Page 1)
   refreshUserData: () => Promise<void>;
   refreshUserStats: () => Promise<void>;
   refreshLeaderboard: () => Promise<void>;
@@ -88,11 +83,10 @@ interface AppContextType {
   refreshUserInventory: () => Promise<void>;
   refreshStore: () => Promise<void>;
   refreshNotifications: (page?: number) => Promise<void>;
-  refreshSideQuestBoard: () => Promise<void>;
   refreshUserStories: () => Promise<void>;
+  refreshPremiumDetails: () => Promise<void>;
   refreshAll: () => Promise<void>;
 
-  // --- Pagination Actions (Load Next Page) ---
   loadMoreYourMixData: () => Promise<void>;
   loadMoreGlobalMixData: () => Promise<void>;
 
@@ -131,6 +125,8 @@ interface AppContextType {
   markNotificationRead: (id: string) => Promise<void>;
   markAllNotificationsRead: () => Promise<void>;
   registerPushDevice: (token: string) => Promise<void>;
+  showRateModal: boolean;
+  closeRateModal: () => void;
 
   // Versioning
   showMandatoryUpdateModal: boolean;
@@ -155,15 +151,11 @@ export function AppProvider({ children }: AppProviderProps) {
 
   const [userData, setUserData] = useState<UserData | null>(null);
   const [userStats, setUserStats] = useState<UserStats | null>(null);
-  const [userInventory, setUserInventory] = useState<InventoryItems | null>(
-    null
-  );
+  const [userInventory, setUserInventory] = useState<InventoryItems | null>(null);
   const [userStories, setUserStories] = useState<StorySegment[]>([]);
 
   const [storeItems, setStoreItems] = useState<StoreItems | null>(null);
-  const [leaderboard, setLeaderboard] = useState<LeaderboardsResponse | null>(
-    null
-  );
+  const [leaderboard, setLeaderboard] = useState<LeaderboardsResponse | null>(null);
   const [achievements, setAchievements] = useState<Achievement[] | null>(null);
   const [calendar, setCalendar] = useState<CalendarResponse | null>(null);
   const [weeklyStats, setWeeklyStats] = useState<DaysStat | null>(null);
@@ -171,69 +163,52 @@ export function AppProvider({ children }: AppProviderProps) {
   const [discovery, setDiscovery] = useState<UserData[] | []>([]);
   const [stories, setStories] = useState<UserStories[]>([]);
 
-  const [yourMixData, setYourMixData] = useState<YourMixPostData[] | []>([]);
+  const [yourMixData, setYourMixData] = useState<DailyDrinkingPostResponse[] | []>([]);
   const [yourMixPage, setYourMixPage] = useState(1);
   const [yourMixHasMore, setYourMixHasMore] = useState(true);
 
-  // --- GLOBAL MIX PAGINATION STATE ---
-  const [globalMixData, setGlobalMixData] = useState<YourMixPostData[] | []>(
-    []
-  );
+  const [globalMixData, setGlobalMixData] = useState<DailyDrinkingPostResponse[] | []>([]);
   const [globalMixPage, setGlobalMixPage] = useState(1);
   const [globalMixHasMore, setGlobalMixHasMore] = useState(true);
 
-  const [mapFriendPosts, setMapFriendPosts] = useState<YourMixPostData[] | []>(
-    []
-  );
-  const [mixTimelineData, setMixTimelineData] = useState<
-    YourMixPostData[] | []
-  >([]);
+  const [mapFriendPosts, setMapFriendPosts] = useState<DailyDrinkingPostResponse[] | []>([]);
+  const [mixTimelineData, setMixTimelineData] = useState<DailyDrinkingPostResponse[] | []>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [drunkThought, setDrunkThought] = useState<string | null>(null);
-  const [friendsDrunkThoughts, setFriendsDrunkThoughts] = useState<
-    DrunkThought[] | []
-  >([]);
-  const [alcoholCollection, setAlcoholCollection] =
-    useState<AlcoholCollectionByType | null>(null);
-  const [friendDiscoveryProfile, setFriendDiscoveryProfile] =
-    useState<FriendDiscoveryDisplayProfileResponse | null>(null);
-  const [sideQuestBoards, setSideQuestBoards] = useState<SideQuestBoard | null>(
+  const [friendsDrunkThoughts, setFriendsDrunkThoughts] = useState<DrunkThought[] | []>([]);
+  const [alcoholCollection, setAlcoholCollection] = useState<AlcoholCollectionByType | null>(null);
+  const [friendDiscoveryProfile, setFriendDiscoveryProfile] = useState<FriendDiscoveryDisplayProfileResponse | null>(
     null
   );
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [showMandatoryUpdateModal, setShowMandatoryUpdateModal] =
-    useState(false);
+  const [showMandatoryUpdateModal, setShowMandatoryUpdateModal] = useState(false);
   const [updateMessage, setUpdateMessage] = useState(
     "A new version of the app is available. Please update to continue."
   );
-  const [storyUploadQueue, setStoryUploadQueue] = useState<StoryUploadJob[]>(
-    []
-  );
+  const [storyUploadQueue, setStoryUploadQueue] = useState<StoryUploadJob[]>([]);
+  const [premium, setPremium] = useState<Premium | null>(null);
+  const [venues, setVenues] = useState<Venue[]>([]);
+  const [premiumPrices, setPremiumPrices] = useState<PaddlePrice[]>([]);
+  const [showRateModal, setShowRateModal] = useState(false);
 
   const hasInitialized = useRef(false);
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
   const hasStoryUploadNotified = useRef(false);
   const isStoryProcessing = useRef(false);
 
-  const updateStoryJobStatus = (
-    id: string,
-    status: StoryUploadJob["status"],
-    progress: number
-  ) => {
-    setStoryUploadQueue((prev) =>
-      prev.map((job) => (job.id === id ? { ...job, status, progress } : job))
-    );
+  const updateStoryJobStatus = (id: string, status: StoryUploadJob["status"], progress: number) => {
+    setStoryUploadQueue((prev) => prev.map((job) => (job.id === id ? { ...job, status, progress } : job)));
   };
 
   const processStoryUpload = useCallback(
     async (job: StoryUploadJob) => {
       const token = await getToken();
-      const CLOUDINARY_CLOUD_NAME =
-        process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
+      const CLOUDINARY_CLOUD_NAME = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
       const PRESET = process.env.EXPO_PUBLIC_CLOUDINARY_STORY_UPLOAD_PRESET;
 
 
@@ -247,8 +222,6 @@ export function AppProvider({ children }: AppProviderProps) {
       try {
         updateStoryJobStatus(job.id, "uploading", 0);
 
-        // 2. Cloudinary Upload (VIDEO endpoint)
-        // Note: We use 'video/upload' instead of 'image/upload'
         const uploadTask = FileSystem.createUploadTask(
           `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`,
           job.uri,
@@ -258,14 +231,13 @@ export function AppProvider({ children }: AppProviderProps) {
             fieldName: "file",
             parameters: {
               upload_preset: PRESET!,
-              folder: "outdrinkme_story", // Optional: keep stories organized
-              resource_type: "video", // Explicitly tell Cloudinary this is a video
+              folder: "outdrinkme_story",
+              resource_type: "video",
             },
           },
           (p) => {
             if (p.totalBytesExpectedToSend > 0) {
               const progress = p.totalBytesSent / p.totalBytesExpectedToSend;
-              // Only update state every ~5% to prevent UI lag
               updateStoryJobStatus(job.id, "uploading", progress);
             }
           }
@@ -274,9 +246,7 @@ export function AppProvider({ children }: AppProviderProps) {
         const response = await uploadTask.uploadAsync();
 
         if (!response || response.status !== 200) {
-          throw new Error(
-            `Cloudinary Error: ${response?.status} - ${response?.body}`
-          );
+          throw new Error(`Cloudinary Error: ${response?.status} - ${response?.body}`);
         }
 
         const cloudinaryData = JSON.parse(response.body);
@@ -309,9 +279,7 @@ export function AppProvider({ children }: AppProviderProps) {
   useEffect(() => {
     const processQueue = async () => {
       const pendingJob = storyUploadQueue.find((j) => j.status === "pending");
-      const activeJobs = storyUploadQueue.filter(
-        (j) => j.status === "pending" || j.status === "uploading"
-      );
+      const activeJobs = storyUploadQueue.filter((j) => j.status === "pending" || j.status === "uploading");
 
       // If we have work to do...
       if (activeJobs.length > 0) {
@@ -329,18 +297,14 @@ export function AppProvider({ children }: AppProviderProps) {
         if (!hasStoryUploadNotified.current) {
           hasStoryUploadNotified.current = true;
 
-          const completedCount = storyUploadQueue.filter(
-            (j) => j.status === "completed"
-          ).length;
+          const completedCount = storyUploadQueue.filter((j) => j.status === "completed").length;
 
           // Notify User
           if (completedCount > 0) {
             Notifications.scheduleNotificationAsync({
               content: {
                 title: "Stories Uploaded",
-                body: `Successfully posted ${completedCount} video stor${
-                  completedCount > 1 ? "ies" : "y"
-                }.`,
+                body: `Successfully posted ${completedCount} video stor${completedCount > 1 ? "ies" : "y"}.`,
               },
               trigger: null,
             });
@@ -356,7 +320,25 @@ export function AppProvider({ children }: AppProviderProps) {
     };
 
     processQueue();
-  }, [storyUploadQueue, processStoryUpload]); // Dependencies
+  }, [storyUploadQueue, processStoryUpload]);
+
+  const triggerRateAppCheck = useCallback(async () => {
+    try {
+      const STORAGE_KEY = "RATE_APP_LAST_SHOWN_DATE";
+      const lastShownStr = await AsyncStorage.getItem(STORAGE_KEY);
+      const now = Date.now();
+      const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+      if (!lastShownStr || now - parseInt(lastShownStr) > ONE_WEEK_MS) {
+        setShowRateModal(true);
+        await AsyncStorage.setItem(STORAGE_KEY, now.toString());
+      }
+    } catch (error) {
+      console.error("Failed to check rate app eligibility", error);
+    }
+  }, []);
+
+  const closeRateModal = () => setShowRateModal(false);
 
   const withLoadingAndError = useCallback(
     async <T,>(
@@ -377,8 +359,7 @@ export function AppProvider({ children }: AppProviderProps) {
 
         return result;
       } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Unknown error";
+        const errorMessage = err instanceof Error ? err.message : "Unknown error";
         setError(errorMessage);
         console.error("API Error:", actionName, err);
 
@@ -395,7 +376,6 @@ export function AppProvider({ children }: AppProviderProps) {
     [posthog]
   );
 
-  // ... (Keep registerPushDevice, refreshNotifications, and useEffect/notifications logic as is) ...
   const registerPushDevice = useCallback(
     async (deviceToken: string) => {
       if (!isSignedIn) return;
@@ -441,34 +421,33 @@ export function AppProvider({ children }: AppProviderProps) {
         if (token) registerPushDevice(token);
       });
 
-      responseListener.current =
-        Notifications.addNotificationResponseReceivedListener((response) => {
-          const data = response.notification.request.content.data;
-          const recipientId = data?.recipient_user_id;
-          const postId = data?.post_id;
+      responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
+        const data = response.notification.request.content.data;
+        const recipientId = data?.recipient_user_id;
+        const postId = data?.post_id;
 
-          if (userData && recipientId && recipientId !== userData.id) {
-            Alert.alert(
-              "Switch Account",
-              `This notification is for another account. Please switch accounts to view it.`,
-              [{ text: "OK" }]
-            );
-            return;
+        if (userData && recipientId && recipientId !== userData.id) {
+          Alert.alert(
+            "Switch Account",
+            `This notification is for another account. Please switch accounts to view it.`,
+            [{ text: "OK" }]
+          );
+          return;
+        }
+
+        if (data) {
+          if (postId) {
+            router.push({
+              pathname: "/(tabs)/mix",
+              params: { openPostId: postId as any },
+            });
+          } else {
+            router.push("/(tabs)/mix");
           }
+        }
 
-          if (data) {
-            if (postId) {
-              router.push({
-                pathname: "/(tabs)/mix",
-                params: { openPostId: postId as any },
-              });
-            } else {
-              router.push("/(tabs)/mix");
-            }
-          }
-
-          refreshNotifications();
-        });
+        refreshNotifications();
+      });
     }
 
     return () => {
@@ -481,23 +460,20 @@ export function AppProvider({ children }: AppProviderProps) {
   const checkForMandatoryUpdate = useCallback(async (): Promise<boolean> => {
     if (!isSignedIn) return false;
     try {
-      const minVersionResponse: MinVersionResponse | null =
-        await withLoadingAndError(
-          async () => {
-            const token = await getToken();
-            if (!token) throw new Error("No auth token");
-            return await apiService.getMinRequiredAppVersion(token);
-          },
-          undefined,
-          "get_min_required_version",
-          true
-        );
+      const minVersionResponse: MinVersionResponse | null = await withLoadingAndError(
+        async () => {
+          const token = await getToken();
+          if (!token) throw new Error("No auth token");
+          return await apiService.getMinRequiredAppVersion(token);
+        },
+        undefined,
+        "get_min_required_version",
+        true
+      );
 
       if (!minVersionResponse) return false;
 
-      const currentAppVersionCode = Application.nativeBuildVersion
-        ? parseInt(Application.nativeBuildVersion, 10)
-        : 0;
+      const currentAppVersionCode = Application.nativeBuildVersion ? parseInt(Application.nativeBuildVersion, 10) : 0;
 
       if (currentAppVersionCode === 0) return false;
 
@@ -510,8 +486,7 @@ export function AppProvider({ children }: AppProviderProps) {
 
       if (currentAppVersionCode < minRequiredVersion) {
         setUpdateMessage(
-          minVersionResponse.update_message ||
-            "A new version of the app is available. Please update to continue."
+          minVersionResponse.update_message || "A new version of the app is available. Please update to continue."
         );
         setShowMandatoryUpdateModal(true);
         return true;
@@ -522,15 +497,8 @@ export function AppProvider({ children }: AppProviderProps) {
     } catch (err) {
       return false;
     }
-  }, [
-    isSignedIn,
-    getToken,
-    setUpdateMessage,
-    setShowMandatoryUpdateModal,
-    withLoadingAndError,
-  ]);
+  }, [isSignedIn, getToken, setUpdateMessage, setShowMandatoryUpdateModal, withLoadingAndError]);
 
-  // ... (Keep standard refreshes: userData, userStats, leaderboard, achievements, calendar, weeklyStats, friends, discovery) ...
   const refreshUserData = useCallback(async () => {
     if (!isSignedIn) return;
     await withLoadingAndError(
@@ -651,9 +619,6 @@ export function AppProvider({ children }: AppProviderProps) {
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
 
-  // ============================================
-  // PAGINATION LOGIC: YOUR MIX
-  // ============================================
   const refreshYourMixData = useCallback(async () => {
     if (!isSignedIn) return;
 
@@ -661,7 +626,6 @@ export function AppProvider({ children }: AppProviderProps) {
       async () => {
         const token = await getToken();
         if (!token) throw new Error("No auth token");
-        // Reset to page 1
         return await apiService.getYourMixData(token, 1);
       },
       (data) => {
@@ -692,13 +656,10 @@ export function AppProvider({ children }: AppProviderProps) {
         }
       },
       "load_more_your_mix",
-      true // Skip global loading
+      true 
     );
   }, [isSignedIn, getToken, withLoadingAndError, yourMixPage, yourMixHasMore]);
 
-  // ============================================
-  // PAGINATION LOGIC: GLOBAL MIX
-  // ============================================
   const refreshGlobalMixData = useCallback(async () => {
     if (!isSignedIn) return;
 
@@ -706,7 +667,6 @@ export function AppProvider({ children }: AppProviderProps) {
       async () => {
         const token = await getToken();
         if (!token) throw new Error("No auth token");
-        // Assuming your apiService has getGlobalMixData (or standard 'all posts' endpoint)
         return await apiService.getGlobalMixData(token, 1);
       },
       (data) => {
@@ -737,17 +697,10 @@ export function AppProvider({ children }: AppProviderProps) {
         }
       },
       "load_more_global_mix",
-      true // Skip global loading
+      true 
     );
-  }, [
-    isSignedIn,
-    getToken,
-    withLoadingAndError,
-    globalMixPage,
-    globalMixHasMore,
-  ]);
+  }, [isSignedIn, getToken, withLoadingAndError, globalMixPage, globalMixHasMore]);
 
-  // ... (Keep other simple refreshes) ...
   const refreshMixTimelineData = useCallback(async () => {
     if (!isSignedIn) return;
     await withLoadingAndError(
@@ -839,32 +792,6 @@ export function AppProvider({ children }: AppProviderProps) {
     );
   }, [isSignedIn, getToken, withLoadingAndError]);
 
-  const refreshSideQuestBoard = useCallback(async () => {
-    if (!isSignedIn) return;
-    await withLoadingAndError(
-      async () => {
-        const token = await getToken();
-        if (!token) throw new Error("No auth token");
-        return await apiService.getBoardQuests(token);
-      },
-      (data) => setSideQuestBoards(data),
-      "refresh_sidequest_board"
-    );
-  }, [isSignedIn, getToken, withLoadingAndError]);
-
-  const refreshMapFriendPosts = useCallback(async () => {
-    if (!isSignedIn) return;
-    await withLoadingAndError(
-      async () => {
-        const token = await getToken();
-        if (!token) throw new Error("No auth token");
-        return await apiService.getMapFriendsPosts(token);
-      },
-      (data) => setMapFriendPosts(data),
-      "refresh_map_friends_posts"
-    );
-  }, [isSignedIn, getToken, withLoadingAndError]);
-
   const refreshStories = useCallback(async () => {
     if (!isSignedIn) return;
     try {
@@ -872,6 +799,19 @@ export function AppProvider({ children }: AppProviderProps) {
       if (token) {
         const data = await apiService.getStories(token);
         setStories(data || []);
+      }
+    } catch (e) {
+      console.error("Failed to load stories", e);
+    }
+  }, [isSignedIn, getToken]);
+
+  const refreshPremiumDetails = useCallback(async () => {
+    if (!isSignedIn) return;
+    try {
+      const token = await getToken();
+      if (token) {
+        const data = await apiService.getPremiumDetails(token);
+        setPremium(data || null);
       }
     } catch (e) {
       console.error("Failed to load stories", e);
@@ -888,11 +828,8 @@ export function AppProvider({ children }: AppProviderProps) {
       const token = await getToken();
       if (!token) throw new Error("No auth token");
 
-      // Before fetching any user data, check for mandatory updates
       const updateRequired = await checkForMandatoryUpdate();
       if (updateRequired) {
-        // If an update is required, we stop all other data fetching
-        // The modal will be shown, prompting the user to update.
         setIsInitialLoading(false);
         setIsLoading(false);
         return;
@@ -906,8 +843,8 @@ export function AppProvider({ children }: AppProviderProps) {
         apiService.getCurrentMonthCalendar(token),
         apiService.getFriends(token),
         apiService.getDiscovery(token),
-        apiService.getYourMixData(token, 1), // Page 1
-        apiService.getGlobalMixData(token, 1), // Page 1 (New)
+        apiService.getYourMixData(token, 1), 
+        apiService.getGlobalMixData(token, 1), 
         apiService.getMixTimeline(token),
         apiService.getWeeklyStats(token),
         apiService.getDrunkThought(token),
@@ -917,10 +854,12 @@ export function AppProvider({ children }: AppProviderProps) {
         apiService.getStore(token),
         apiService.getAllNotifications(token, 1, 50),
         apiService.getUnreadNotificationsCount(token),
-        apiService.getBoardQuests(token),
         apiService.getMapFriendsPosts(token),
         apiService.getStories(token),
         apiService.getUserStories(token),
+        apiService.getAllVenues(token),
+        apiService.getPremiumPrices(token),
+        apiService.getPremiumDetails(token),
       ]);
 
       const [
@@ -942,10 +881,12 @@ export function AppProvider({ children }: AppProviderProps) {
         storeResult,
         notifListResult,
         notifCountResult,
-        SideQuestBoardResult,
         mapFriendsPostsResult,
         storiesRes,
         userStoriesRes,
+        allVenuesResult,
+        premiumPricesResult,
+        premiumResult,
       ] = results;
 
       if (userResult.status === "fulfilled") {
@@ -1005,20 +946,14 @@ export function AppProvider({ children }: AppProviderProps) {
       if (mixTimelineDataResult.status === "fulfilled") {
         setMixTimelineData(mixTimelineDataResult.value);
       } else {
-        console.error(
-          "Failed to mix timeline data:",
-          mixTimelineDataResult.reason
-        );
+        console.error("Failed to mix timeline data:", mixTimelineDataResult.reason);
         setMixTimelineData([]);
       }
 
       if (globalMixDataResult.status === "fulfilled") {
         setGlobalMixData(globalMixDataResult.value);
       } else {
-        console.error(
-          "Failed to mix timeline data:",
-          globalMixDataResult.reason
-        );
+        console.error("Failed to mix timeline data:", globalMixDataResult.reason);
         setGlobalMixData([]);
       }
 
@@ -1032,40 +967,28 @@ export function AppProvider({ children }: AppProviderProps) {
         setDrunkThought(drunkThoughtResult.value);
       } else {
         setDrunkThought(null);
-        console.error(
-          "Failed to fetch drunk thought:",
-          drunkThoughtResult.reason
-        );
+        console.error("Failed to fetch drunk thought:", drunkThoughtResult.reason);
       }
 
       if (friendsDrunkThoughtsResult.status === "fulfilled") {
         setFriendsDrunkThoughts(friendsDrunkThoughtsResult.value);
       } else {
         setFriendsDrunkThoughts([]);
-        console.error(
-          "Failed to fetch friends drunk thoughts:",
-          friendsDrunkThoughtsResult.reason
-        );
+        console.error("Failed to fetch friends drunk thoughts:", friendsDrunkThoughtsResult.reason);
       }
 
       if (userAlcoholCollectionResult.status === "fulfilled") {
         setAlcoholCollection(userAlcoholCollectionResult.value);
       } else {
         setAlcoholCollection(null);
-        console.error(
-          "Failed to fetchuser alcohol collection:",
-          userAlcoholCollectionResult.reason
-        );
+        console.error("Failed to fetchuser alcohol collection:", userAlcoholCollectionResult.reason);
       }
 
       if (inventoryResult.status === "fulfilled") {
         setUserInventory(inventoryResult.value);
       } else {
         setUserInventory(null);
-        console.error(
-          "Failed to fetch user inventory:",
-          inventoryResult.reason
-        );
+        console.error("Failed to fetch user inventory:", inventoryResult.reason);
       }
 
       if (storeResult.status === "fulfilled") {
@@ -1081,24 +1004,11 @@ export function AppProvider({ children }: AppProviderProps) {
         setUnreadNotificationCount(notifCountResult.value.unread_count);
       }
 
-      if (SideQuestBoardResult.status === "fulfilled") {
-        setSideQuestBoards(SideQuestBoardResult.value);
-      } else {
-        setSideQuestBoards(null);
-        console.error(
-          "Failed to fetch sidequest board:",
-          SideQuestBoardResult.reason
-        );
-      }
-
       if (mapFriendsPostsResult.status === "fulfilled") {
         setMapFriendPosts(mapFriendsPostsResult.value);
       } else {
         setMapFriendPosts([]);
-        console.error(
-          "Failed to fetch friends posts:",
-          mapFriendsPostsResult.reason
-        );
+        console.error("Failed to fetch friends posts:", mapFriendsPostsResult.reason);
       }
       if (storiesRes.status === "fulfilled") {
         setStories(storiesRes.value || []);
@@ -1113,14 +1023,35 @@ export function AppProvider({ children }: AppProviderProps) {
         console.error("Failed to fetch user stories:", userStoriesRes.reason);
         setUserStories([]);
       }
+
+      if (allVenuesResult.status === "fulfilled") {
+        setVenues(allVenuesResult.value || []);
+      } else {
+        console.error("Failed to fetch venues:", allVenuesResult.reason);
+        setVenues([]);
+      }
+
+      if (premiumPricesResult.status === "fulfilled") {
+        console.log("Premium Prices Fetched:", JSON.stringify(premiumPricesResult.value, null, 2));
+        setPremiumPrices(premiumPricesResult.value || []);
+      } else {
+        console.error("Failed to fetch venues:", premiumPricesResult.reason);
+        setPremiumPrices([]);
+      }
+
+      if (premiumResult.status === "fulfilled") {
+        setPremium(premiumResult.value || null);
+      } else {
+        console.error("Failed to fetch premium details:", premiumResult.reason);
+        setPremium(null);
+      }
+
       const failedCalls = results.filter((r) => r.status === "rejected");
       if (failedCalls.length > 0) {
         posthog?.capture("bulk_refresh_partial_failure", {
           fail_count: failedCalls.length,
         });
-        setError(
-          `${failedCalls.length} API call(s) failed. Some data may be incomplete.`
-        );
+        setError(`${failedCalls.length} API call(s) failed. Some data may be incomplete.`);
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Unknown error";
@@ -1183,23 +1114,25 @@ export function AppProvider({ children }: AppProviderProps) {
         setLeaderboard(result.board);
         setCalendar(result.cal);
         setWeeklyStats(result.weekly);
+        setTimeout(() => {
+          triggerRateAppCheck();
+        }, 2000); 
       }
     },
-    [isSignedIn, getToken, withLoadingAndError]
+    [isSignedIn, getToken, withLoadingAndError,triggerRateAppCheck]
   );
 
   const createStory = useCallback(
     async (data: {
-      videoUrl: string; // This is the local file URI here
+      videoUrl: string; 
       width: number;
       height: number;
       duration: number;
       taggedBuddies: string[];
     }) => {
-      // Create a new Job
       const newJob: StoryUploadJob = {
         id: Math.random().toString(36).substring(7),
-        uri: data.videoUrl, // Local URI
+        uri: data.videoUrl, 
         progress: 0,
         status: "pending",
         meta: {
@@ -1210,10 +1143,7 @@ export function AppProvider({ children }: AppProviderProps) {
         },
       };
 
-      // Add to state (this triggers the useEffect)
       setStoryUploadQueue((prev) => [...prev, newJob]);
-
-      // Optional: Navigate user away or show a toast saying "Uploading in background"
       posthog?.capture("story_upload_queued");
     },
     [posthog]
@@ -1222,7 +1152,6 @@ export function AppProvider({ children }: AppProviderProps) {
   const deleteStory = useCallback(
     async (storyId: string) => {
       if (!isSignedIn) return;
-      // Optimistic Update
       setStories((prev) => prev.filter((s) => s.id !== storyId));
 
       const token = await getToken();
@@ -1235,54 +1164,21 @@ export function AppProvider({ children }: AppProviderProps) {
     [isSignedIn, getToken, refreshStories]
   );
 
-  // const markStoryAsSeen = useCallback(
-  //   async (storyId: string) => {
-  //     if (!isSignedIn) return;
-
-  //     // Prevent redundant calls if already seen locally
-  //     const story = stories.find((s) => s.id === storyId);
-  //     if (story?.isSeen) return;
-
-  //     // Optimistic Update
-  //     setStories((prev) =>
-  //       prev.map((s) => (s.id === storyId ? { ...s, isSeen: true } : s))
-  //     );
-
-  //     const token = await getToken();
-  //     if (token) {
-  //       // Fire and forget
-  //       apiService.markStoryAsSeen(token, storyId, "view");
-  //     }
-  //   },
-  //   [isSignedIn, getToken, stories]
-  // );
-
   const markStoryAsSeen = useCallback(
     async (storyId: string) => {
       if (!isSignedIn) return;
 
-      // 1. Find the story in the nested structure to check if already seen
-      // We use flatMap to look through all items of all users
-      const story = stories
-        .flatMap((u) => u.items)
-        .find((s) => s.id === storyId);
+      const story = stories.flatMap((u) => u.items).find((s) => s.id === storyId);
 
-      // Use is_seen (to match your interface)
       if (!story || story.is_seen) return;
 
-      // 2. Optimistic Update (Nested)
       setStories((prev) =>
         prev.map((user) => {
-          // Check if this user actually contains the story we are updating
           const containsStory = user.items.some((s) => s.id === storyId);
           if (!containsStory) return user;
 
-          // Update the items within this user
-          const updatedItems = user.items.map((s) =>
-            s.id === storyId ? { ...s, is_seen: true } : s
-          );
+          const updatedItems = user.items.map((s) => (s.id === storyId ? { ...s, is_seen: true } : s));
 
-          // 3. Optional: Automatically update 'all_seen' for the user
           const allSeen = updatedItems.every((s) => s.is_seen);
 
           return {
@@ -1416,10 +1312,7 @@ export function AppProvider({ children }: AppProviderProps) {
         async () => {
           const token = await getToken();
           if (!token) throw new Error("No auth token");
-          return await apiService.getFriendDiscoveryDisplayProfile(
-            friendDiscoveryId,
-            token
-          );
+          return await apiService.getFriendDiscoveryDisplayProfile(friendDiscoveryId, token);
         },
         undefined,
         "chech_discovry"
@@ -1456,28 +1349,20 @@ export function AppProvider({ children }: AppProviderProps) {
   const markNotificationRead = useCallback(
     async (id: string) => {
       if (!isSignedIn) return;
-      setNotifications((prev) =>
-        prev.map((n) =>
-          n.id === id ? { ...n, read_at: new Date().toISOString() } : n
-        )
-      );
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read_at: new Date().toISOString() } : n)));
       setUnreadNotificationCount((prev) => Math.max(0, prev - 1));
       const token = await getToken();
-      if (token)
-        apiService.markNotificationAsRead(token, id).catch(console.error);
+      if (token) apiService.markNotificationAsRead(token, id).catch(console.error);
     },
     [isSignedIn, getToken]
   );
 
   const markAllNotificationsRead = useCallback(async () => {
     if (!isSignedIn) return;
-    setNotifications((prev) =>
-      prev.map((n) => ({ ...n, read_at: new Date().toISOString() }))
-    );
+    setNotifications((prev) => prev.map((n) => ({ ...n, read_at: new Date().toISOString() })));
     setUnreadNotificationCount(0);
     const token = await getToken();
-    if (token)
-      apiService.markAllNotificationsAsRead(token).catch(console.error);
+    if (token) apiService.markAllNotificationsAsRead(token).catch(console.error);
   }, [isSignedIn, getToken]);
 
   useEffect(() => {
@@ -1515,8 +1400,10 @@ export function AppProvider({ children }: AppProviderProps) {
     friends,
     discovery,
     stories,
+    venues,
+    premiumPrices,
+    premium,
 
-    // Pagination Data
     yourMixData,
     yourMixHasMore,
     globalMixData,
@@ -1529,7 +1416,6 @@ export function AppProvider({ children }: AppProviderProps) {
     alcoholCollection,
     notifications,
     unreadNotificationCount,
-    sideQuestBoards,
     mapFriendPosts,
     storyUploadQueue,
 
@@ -1554,8 +1440,8 @@ export function AppProvider({ children }: AppProviderProps) {
     refreshUserInventory,
     refreshStore,
     refreshNotifications,
-    refreshSideQuestBoard,
     refreshUserStories,
+    refreshPremiumDetails,
     refreshAll,
 
     // Pagination Actions
@@ -1579,6 +1465,8 @@ export function AppProvider({ children }: AppProviderProps) {
     registerPushDevice,
     showMandatoryUpdateModal,
     updateMessage,
+    showRateModal,
+    closeRateModal,
 
     // Global State
     isLoading,

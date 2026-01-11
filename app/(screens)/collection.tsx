@@ -13,7 +13,6 @@ import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FontAwesome5, MaterialCommunityIcons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import Header from "@/components/header";
 import { apiService } from "@/api";
 import { useAuth } from "@clerk/clerk-expo";
 import InfoTooltip from "@/components/infoTooltip";
@@ -22,6 +21,7 @@ import { useApp } from "@/providers/AppProvider";
 import { categories, totalSlots } from "@/utils/collection";
 import { getRarityColor } from "@/utils/rarity";
 import { usePostHog } from "posthog-react-native";
+import { NestedScreenHeader } from "@/components/nestedScreenHeader";
 
 interface ModalState {
   visible: boolean;
@@ -518,26 +518,6 @@ export default function Collection() {
     }
   };
 
-  // const handleScanForManual = async () => {
-  //   const permissionResult = await requestPermission();
-  //   if (!permissionResult?.granted) {
-  //     showModal(
-  //       "Permission Needed",
-  //       "Camera permission is required to scan barcodes",
-  //       [
-  //         {
-  //           text: "OK",
-  //           onPress: closeModal,
-  //           style: "primary",
-  //         },
-  //       ]
-  //     );
-  //     return;
-  //   }
-
-  //   setScanning(true);
-  //   setScanned(false);
-  // };
   const handleScanForManual = async () => {
     if (permission?.granted) {
       setScanning(true);
@@ -589,37 +569,7 @@ export default function Collection() {
     ]);
   };
 
-  // const handleScanPress = async () => {
-  //   const permissionResult = await requestPermission();
-  //   posthog?.capture("scan_button_clicked");
-
-  //   if (!permissionResult?.granted) {
-  //     showModal(
-  //       "Permission Needed",
-  //       "Camera permission is required to scan barcodes",
-  //       [
-  //         {
-  //           text: "Grant Permission",
-  //           onPress: () => {
-  //             requestPermission();
-  //             closeModal();
-  //           },
-  //           style: "primary",
-  //         },
-  //         {
-  //           text: "Cancel",
-  //           onPress: closeModal,
-  //           style: "secondary",
-  //         },
-  //       ]
-  //     );
-  //     return;
-  //   }
-  //   setScanning(true);
-  //   setScanned(false);
-  // };
   const handleScanPress = async () => {
-    // 1. Check if we already have permission
     if (permission?.granted) {
       setScanning(true);
       setScanned(false);
@@ -627,21 +577,18 @@ export default function Collection() {
       return;
     }
 
-    // 2. Request permission (this works if status is 'undetermined')
-    // If status is 'denied', this resolves immediately to false without UI
     const permissionResult = await requestPermission();
     posthog?.capture("scan_button_clicked");
 
-    // 3. If still not granted, show the modal with a link to Settings
     if (!permissionResult?.granted) {
       showModal(
         "Permission Needed",
         "Camera permission is required to scan barcodes. Please enable it in your device settings.",
         [
           {
-            text: "Open Settings", // Changed text to be more accurate
+            text: "Open Settings",
             onPress: () => {
-              Linking.openSettings(); // <--- THE FIX: Opens OS Settings
+              Linking.openSettings();
               closeModal();
             },
             style: "primary",
@@ -714,7 +661,6 @@ export default function Collection() {
   if (currentScreen === "manual" && !scanning) {
     return (
       <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
-        <Header />
         <ScrollView
           contentContainerStyle={{ paddingBottom: insets.bottom + 700 }}
         >
@@ -800,10 +746,14 @@ export default function Collection() {
                   <TouchableOpacity
                     key={index}
                     onPress={button.onPress}
-                    className={`${getButtonStyle(button.style)} py-4 rounded-xl items-center`}
+                    className={`${getButtonStyle(
+                      button.style
+                    )} py-4 rounded-xl items-center`}
                   >
                     <Text
-                      className={`${getButtonTextStyle(button.style)} text-base font-black tracking-widest`}
+                      className={`${getButtonTextStyle(
+                        button.style
+                      )} text-base font-black tracking-widest`}
                     >
                       {button.text}
                     </Text>
@@ -844,8 +794,8 @@ export default function Collection() {
             scanned
               ? undefined
               : currentScreen === "manual"
-                ? handleManualBarcodeScan
-                : handleBarCodeScanned
+              ? handleManualBarcodeScan
+              : handleBarCodeScanned
           }
         >
           {loading && (
@@ -896,10 +846,14 @@ export default function Collection() {
                   <TouchableOpacity
                     key={index}
                     onPress={button.onPress}
-                    className={`${getButtonStyle(button.style)} py-4 rounded-xl items-center`}
+                    className={`${getButtonStyle(
+                      button.style
+                    )} py-4 rounded-xl items-center`}
                   >
                     <Text
-                      className={`${getButtonTextStyle(button.style)} text-base font-black tracking-widest`}
+                      className={`${getButtonTextStyle(
+                        button.style
+                      )} text-base font-black tracking-widest`}
                     >
                       {button.text}
                     </Text>
@@ -915,7 +869,8 @@ export default function Collection() {
 
   return (
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
-      <Header />
+      <NestedScreenHeader title="Alcohol" eyebrow="COLLECTION" />
+
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
         showsVerticalScrollIndicator={false}
@@ -925,8 +880,7 @@ export default function Collection() {
             onRefresh={onRefresh}
             tintColor="#EA580C"
             colors={["#EA580C"]}
-                        progressBackgroundColor="#000000"
-
+            progressBackgroundColor="#000000"
           />
         }
       >
@@ -1175,10 +1129,14 @@ export default function Collection() {
                   <TouchableOpacity
                     key={index}
                     onPress={button.onPress}
-                    className={`${getButtonStyle(button.style)} py-4 rounded-xl items-center`}
+                    className={`${getButtonStyle(
+                      button.style
+                    )} py-4 rounded-xl items-center`}
                   >
                     <Text
-                      className={`${getButtonTextStyle(button.style)} text-base font-black tracking-widest`}
+                      className={`${getButtonTextStyle(
+                        button.style
+                      )} text-base font-black tracking-widest`}
                     >
                       {button.text}
                     </Text>

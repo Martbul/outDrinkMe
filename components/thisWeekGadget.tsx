@@ -74,7 +74,7 @@ export default function ThisWeekGadget() {
   return (
     <View className="bg-white/[0.03] rounded-2xl p-5 mb-4 border border-white/[0.08]">
       <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-2">
-        THIS WEEK
+        CURRENT WEEK
       </Text>
 
       <View className="mt-2">

@@ -134,7 +134,7 @@ function QrSessionManager({ onClose }: QrSessionManagerProps) {
   };
 
   return (
-    <View className="flex-1 p-6 bg-[#121212]">
+    <View className="flex-1 p-6 bg-white/[0.03]">
       <AlertModal
         visible={joinModalVisible}
         title="Join Function?"
@@ -148,7 +148,7 @@ function QrSessionManager({ onClose }: QrSessionManagerProps) {
 
       <View className="w-12 h-1.5 bg-white/10 rounded-full self-center mb-8" />
 
-      <View className="flex-row bg-[#1A1A1A] p-1.5 rounded-2xl mb-10 border border-white/5">
+      <View className="flex-row bg-white/[0.03] p-1.5 rounded-2xl mb-10 border border-white/5">
         <TouchableOpacity
           onPress={() => {
             setActiveTab("scan");

@@ -65,7 +65,6 @@ export default function PurchaseConfirmationModal({
   onConfirm,
   onCancel,
 }: PurchaseConfirmationModalProps) {
-  // Sparkle animation for gem icon
   const sparkleRotation = useSharedValue(0);
   const sparkleScale = useSharedValue(1);
 
@@ -116,7 +115,6 @@ export default function PurchaseConfirmationModal({
               shadowRadius: 20,
             }}
           >
-            {/* Close Button */}
             <Animated.View
               entering={FadeIn.delay(200).duration(200)}
               className="absolute top-3 right-3 z-20"
@@ -130,9 +128,7 @@ export default function PurchaseConfirmationModal({
               </TouchableOpacity>
             </Animated.View>
 
-            {/* Content */}
             <View className="p-6">
-              {/* Title */}
               <Animated.View entering={FadeInDown.delay(100).duration(200)}>
                 <Text className="text-orange-600 text-[10px] font-bold tracking-widest mb-1">
                   PURCHASE GEMS
@@ -142,7 +138,6 @@ export default function PurchaseConfirmationModal({
                 </Text>
               </Animated.View>
 
-              {/* Gem Display */}
               <Animated.View
                 entering={ZoomIn.delay(100).duration(300).springify()}
                 className="bg-gradient-to-br from-orange-600/10 to-yellow-600/10 rounded-2xl p-5 items-center mb-4 border border-orange-600/20"
@@ -168,7 +163,6 @@ export default function PurchaseConfirmationModal({
                 </View>
               </Animated.View>
 
-              {/* Price Display */}
               <Animated.View
                 entering={FadeInDown.delay(300).duration(400)}
                 className="bg-white/5 rounded-xl p-3 mb-5 border border-white/10"
@@ -183,7 +177,6 @@ export default function PurchaseConfirmationModal({
                 </View>
               </Animated.View>
 
-              {/* Action Buttons */}
               <View className="flex-row gap-3">
                 <AnimatedTouchable
                   entering={FadeInDown.delay(350).duration(400)}

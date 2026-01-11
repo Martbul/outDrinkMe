@@ -12,6 +12,7 @@ export interface UserData {
   xp: number;
   allDaysDrinkingCount: number;
   alcoholism_coefficient: number;
+  drinkup_subscription?: DrinkUpSubscription;
 }
 
 export interface LeaderboardEntry {
@@ -38,12 +39,7 @@ export interface Achievement {
   name: string;
   description: string;
   icon: string;
-  criteria_type:
-    | "streak"
-    | "total_days"
-    | "weeks_won"
-    | "friends"
-    | "perfect_week";
+  criteria_type: "streak" | "total_days" | "weeks_won" | "friends" | "perfect_week";
   criteria_value: number;
   created_at: string;
   unlocked: boolean;
@@ -356,6 +352,20 @@ export interface EnergyDrink {
   image: any;
 }
 
+
+export interface Bottle {
+  id: number;
+  title: string;
+  price: number;
+  image: any;
+}
+
+export interface Special {
+  id: number;
+  title: string;
+  price: number;
+  image: any;
+}
 export interface ColorTheme {
   id: number;
   name: string;
@@ -458,97 +468,6 @@ export interface NotificationItem {
   created_at: string;
   action_url?: string;
 }
-
-export interface SubmitQuestCompletionRequest {
-  sideQuestId: string;
-  proofImageUrl: string; // Should be uploaded to Cloudinary first
-  proofText?: string;
-}
-
-export interface SubmitQuestCompletionResponse {
-  completion: SideQuestCompletion;
-  message: string;
-}
-
-export interface ReviewSubmissionResponse {
-  completion: SideQuestCompletion;
-  payoutStatus?: PayoutStatus;
-  message: string;
-}
-
-export interface GetQuestsResponse {
-  quests: SideQuest[];
-  total: number;
-}
-
-export interface GetSubmissionsResponse {
-  submissions: SideQuestCompletion[];
-  total: number;
-}
-
-export type QuestStatus = "OPEN" | "COMPLETED" | "EXPIRED" | "CANCELLED";
-export type SubmissionStatus = "PENDING" | "APPROVED" | "REJECTED";
-export type PayoutStatus = "PENDING" | "SUCCESS" | "FAILED";
-
-export interface SideQuest {
-  id: string;
-  issuerId: string;
-  issuerName?: string;
-  issuerImage?: string;
-  title: string;
-  description: string;
-  rewardAmount: number;
-  isLocked: boolean;
-  isPublic: boolean;
-  isAnonymous: boolean;
-  status: QuestStatus;
-  expiresAt: string;
-  createdAt: string;
-  submissionCount?: number;
-}
-
-export interface SideQuestCompletion {
-  id: string;
-  sideQuestId: string;
-  questTitle?: string;
-  completerId: string;
-  completerName?: string;
-  completerImage?: string;
-  proofImageUrl: string;
-  proofText?: string;
-  status: SubmissionStatus;
-  rejectionReason?: string;
-  payoutStatus: PayoutStatus;
-  paidAt?: string;
-  createdAt: string;
-  rewardAmount?: number;
-}
-
-export interface CreateSideQuestReq {
-  title: string;
-  description: string;
-  rewardAmount: number;
-  durationHours: number;
-  isPublic: boolean;
-  isAnonymous: boolean;
-}
-
-export interface SubmitQuestProofReq {
-  proofImageUrl: string;
-  proofText?: string;
-}
-
-export interface ReviewSubmissionRequest {
-  completionId: string;
-  approved: boolean;
-  rejectionReason?: string;
-}
-
-export type SideQuestBoard = {
-  [boardType: string]: SideQuest[];
-};
-
-// types/api.types.ts
 
 export interface CreateGameResponse {
   sessionId: string;
@@ -671,22 +590,137 @@ export interface StoryUploadJob {
   };
 }
 
-  export interface StorySegment {
-    id: string;
-    video_url: string;
-    video_width: number;
-    video_height: number;
-    video_duration: number;
-    relate_count: number;
-    has_related: boolean;
-    is_seen: boolean;
-    created_at: string; 
-  }
+export interface StorySegment {
+  id: string;
+  video_url: string;
+  video_width: number;
+  video_height: number;
+  video_duration: number;
+  relate_count: number;
+  has_related: boolean;
+  is_seen: boolean;
+  created_at: string;
+}
 
-  export interface UserStories {
-    user_id: string;
-    username: string;
-    user_image_url: string;
-    all_seen: boolean;
-    items: StorySegment[]; 
-  }
+export interface UserStories {
+  user_id: string;
+  username: string;
+  user_image_url: string;
+  all_seen: boolean;
+  items: StorySegment[];
+}
+
+export type DrinkUpSubscriptionStatus =
+  | "active"
+  | "past_due"
+  | "unpaid"
+  | "canceled"
+  | "incomplete"
+  | "incomplete_expired"
+  | "trialing"
+  | "paused";
+
+export interface DrinkUpSubscription {
+  id: string;
+  userId: string;
+  stripeCustomerId: string;
+  stripeSubscriptionId: string;
+  stripePriceId: string;
+  status: DrinkUpSubscriptionStatus;
+  currentPeriodEnd: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SubscribeRequest {
+  priceId: string;
+}
+
+export interface SubscribeResponse {
+  checkoutUrl: string;
+}
+ export type VenueCategory = 
+  | "Club" 
+  | "Bar" 
+  | "Chalga Club" 
+  | "Piano Bar" 
+  | "Beach Bar" 
+  | "Rooftop" 
+  | "Pub" 
+  | "Lounge";
+
+export interface VenueSpecial {
+  id: string;
+  venue_id: string;      
+  name: string;
+  price: string;
+  description: string;
+  image_url: string;     
+}
+
+export interface Venue {
+  id: string;
+  name: string;
+  venue_type: VenueCategory;
+
+  image_url: string;
+  image_width: number;
+  image_height: number;
+
+  location: string;
+  distance_km: number;
+  distance_str: string;
+
+  rating: number;
+  review_count: number;
+  difficulty: "Cheap" | "Moderate" | "Expensive";
+
+  event_time: string;
+  description: string;
+
+  latitude: number;
+  longitude: number;
+
+  tags: string[];
+  discount_percentage: number;
+  created_at?: string;
+
+  gallery: string[]; // e.g. ["https://...", "https://..."]
+  features: string[]; // e.g. ["Live DJ", "Rooftop"]
+  phone?: string;
+  website?: string;
+  directions?: string; // URL
+
+  specials: VenueSpecial[];
+  employees: string[];
+}
+
+export interface PaddlePrice {
+  id: string; 
+  productId: string; 
+  description: string; 
+  amount: string; 
+  currency: string; 
+  interval: string; 
+}
+
+export interface PaddleTransactionResponse {
+  transactionId: string; 
+  checkoutUrl: string; 
+}
+
+export interface Premium {
+  id: number;
+  userId: string;
+  username: string;
+  userImageUrl: string;
+  venuesVisited: number;
+  validUntil: string;
+  isActive: boolean;
+  transactionId: string;
+  customerId: string;
+  amount: string;
+  currency: string; 
+  createdAt: string;
+  updatedAt: string;
+}

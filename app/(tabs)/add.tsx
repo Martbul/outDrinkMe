@@ -21,7 +21,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/providers/AppProvider";
 import Entypo from "@expo/vector-icons/Entypo";
-import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather, FontAwesome5, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import type { UserData } from "@/types/api.types";
@@ -29,6 +29,7 @@ import { ImagePickerModal } from "@/components/imagePickerModal";
 import { usePostHog } from "posthog-react-native";
 import * as ImageManipulator from "expo-image-manipulator";
 import { QuickFeedback } from "@/components/quickFeedback";
+import { PRIMARY_ORANGE } from "@/utils/constants";
 
 const DRINK_TYPES = [
   "Vodka",
@@ -44,30 +45,19 @@ const DRINK_TYPES = [
   "Other",
 ];
 
+
 export default function AddDrinks() {
   const posthog = usePostHog();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const {
-    userStats,
-    friends,
-    isLoading,
-    addDrinking,
-    drunkThought,
-    addDrunkThought,
-    refreshAll,
-  } = useApp();
+  const { userStats, friends, isLoading, addDrinking, drunkThought, addDrunkThought, refreshAll } = useApp();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0);
   const [isHolding, setIsHolding] = useState(false);
-  const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
-    null
-  );
+  const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const [viewState, setViewState] = useState<"logging" | "details" | "done">(
-    "logging"
-  );
+  const [viewState, setViewState] = useState<"logging" | "details" | "done">("logging");
 
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [mentionedBuddies, setMentionedBuddies] = useState<UserData[]>([]);
@@ -83,22 +73,17 @@ export default function AddDrinks() {
   const [isDrinkMenuExpanded, setIsDrinkMenuExpanded] = useState(false);
 
   const [imagePickerVisible, setImagePickerVisible] = useState(false);
-  const [isAfterDrinkLoggedModalVisible, setAfterDrinkLoggedModal] =
-    useState(false);
+  const [isAfterDrinkLoggedModalVisible, setAfterDrinkLoggedModal] = useState(false);
 
   const [thoughtInput, setThoughtInput] = useState("");
-  const [isSubmittingDrunkThought, setIsSubmittingDrunkThought] =
-    useState(false);
+  const [isSubmittingDrunkThought, setIsSubmittingDrunkThought] = useState(false);
   const [feedback, setFeedback] = useState<{
     visible: boolean;
     message: string;
     type: "success" | "xp" | "level" | "info";
   }>({ visible: false, message: "", type: "success" });
 
-  const showFeedback = (
-    message: string,
-    type: "success" | "xp" | "level" | "info" = "success"
-  ) => {
+  const showFeedback = (message: string, type: "success" | "xp" | "level" | "info" = "success") => {
     setFeedback({ visible: true, message, type });
   };
 
@@ -146,10 +131,7 @@ export default function AddDrinks() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert(
-          "Permission denied",
-          "Allow location access to tag your drinking spot."
-        );
+        Alert.alert("Permission denied", "Allow location access to tag your drinking spot.");
         return;
       }
 
@@ -198,17 +180,14 @@ export default function AddDrinks() {
   ): Promise<{ url: string; width: number; height: number } | null> => {
     try {
       posthog?.capture("image_upload_started");
-      const manipulatedResult = await ImageManipulator.manipulateAsync(
-        localUri,
-        [{ resize: { width: 1080 } }],
-        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
-      );
+      const manipulatedResult = await ImageManipulator.manipulateAsync(localUri, [{ resize: { width: 1080 } }], {
+        compress: 0.8,
+        format: ImageManipulator.SaveFormat.JPEG,
+      });
       const { uri: uriToUpload, width, height } = manipulatedResult;
 
-      const CLOUDINARY_CLOUD_NAME =
-        process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
-      const CLOUDINARY_UPLOAD_PRESET =
-        process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+      const CLOUDINARY_CLOUD_NAME = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
+      const CLOUDINARY_UPLOAD_PRESET = process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
       if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
         throw new Error("Cloudinary credentials are not configured.");
@@ -224,16 +203,13 @@ export default function AddDrinks() {
       formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
       formData.append("folder", "drank-images");
 
-      const response = await fetch(
-        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
-        {
-          method: "POST",
-          body: formData,
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+        method: "POST",
+        body: formData,
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
 
       const data = await response.json();
 
@@ -270,8 +246,7 @@ export default function AddDrinks() {
         }
         result = await ImagePicker.launchCameraAsync(pickerOptions);
       } else {
-        const { status } =
-          await ImagePicker.requestMediaLibraryPermissionsAsync();
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== "granted") {
           Alert.alert("Permission needed", "Gallery access is required");
           return;
@@ -389,10 +364,7 @@ export default function AddDrinks() {
   };
 
   const renderHeader = () => (
-    <View
-      className="flex-row items-center justify-between mb-6"
-      style={{ paddingTop: insets.top + 10 }}
-    >
+    <View className="flex-row items-center justify-between mb-6" style={{ paddingTop: insets.top + 10 }}>
       <TouchableOpacity
         onPress={() => router.back()}
         className="w-10 h-10 rounded-full bg-white/[0.05] items-center justify-center border border-white/[0.1]"
@@ -419,7 +391,6 @@ export default function AddDrinks() {
 
         showFeedback("Wisdom Shared! +50XP", "info");
 
-
         posthog?.capture("drunk_thought_shared", {
           char_length: thoughtInput.length,
           is_update: !!drunkThought,
@@ -434,14 +405,13 @@ export default function AddDrinks() {
 
     return (
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 0}
-      >
+        keyboardVerticalOffset={Platform.OS === "ios" ? insets.top : 0}>
         <ScrollView
           contentContainerStyle={{
             flexGrow: 1,
-            paddingBottom: insets.bottom + 100,
+            paddingBottom: insets.bottom + 120,
             paddingTop: 20,
           }}
           showsVerticalScrollIndicator={false}
@@ -465,18 +435,12 @@ export default function AddDrinks() {
                       IS_SMALL_DEVICE ? "w-24 h-24" : "w-36 h-36"
                     }`}
                   >
-                    <Ionicons
-                      name="checkmark-sharp"
-                      size={IS_SMALL_DEVICE ? 40 : 60}
-                      color="#EA580C"
-                    />
+                    <Ionicons name="checkmark-sharp" size={IS_SMALL_DEVICE ? 40 : 60} color="#EA580C" />
                   </View>
                 </View>
 
                 <View className="absolute -bottom-3 bg-[#EA580C] px-4 py-1 rounded-full border-4 border-black">
-                  <Text className="text-black text-[10px] font-black tracking-[0.2em] uppercase">
-                    SUCCESSFULLY
-                  </Text>
+                  <Text className="text-black text-[10px] font-black tracking-[0.2em] uppercase">SUCCESSFULLY</Text>
                 </View>
               </View>
 
@@ -490,7 +454,7 @@ export default function AddDrinks() {
               </View>
             </View>
 
-            <View className="flex-row items-center bg-white/[0.04] rounded-2xl p-5 mb-8 border border-white/[0.08] mx-2">
+            <View className="flex-row items-center bg-white/[0.03] rounded-2xl p-5 mb-8 border border-white/[0.08] mx-2">
               <View className="w-16 h-16 rounded-full bg-orange-500/10 items-center justify-center mr-4">
                 <MaterialCommunityIcons name="fire" size={44} color="#EA580C" />
               </View>
@@ -499,10 +463,7 @@ export default function AddDrinks() {
                   Current Streak
                 </Text>
                 <Text className="text-white text-3xl font-black">
-                  {userStats?.current_streak || 0}{" "}
-                  <Text className="text-base text-white/30 font-bold">
-                    days
-                  </Text>
+                  {userStats?.current_streak || 0} <Text className="text-base text-white/30 font-bold">days</Text>
                 </Text>
               </View>
             </View>
@@ -528,12 +489,11 @@ export default function AddDrinks() {
                 </Text>
               </View>
             ) : (
-              <View className="bg-[#1A1A1A] rounded-3xl p-5 mb-6 mx-2 border border-white/[0.1]">
+              
+              <View className="bg-white/[0.03] rounded-3xl p-5 mb-6 mx-2 border border-white/[0.1]">
                 <View className="flex-row items-center mb-4 ml-1">
-                  <Feather name="edit-3" size={14} color="#ff8c00" />
-                  <Text className="text-white/60 text-xs font-bold ml-2">
-                    Share a drunk thought
-                  </Text>
+                  <Feather name="edit-3" size={14} color={PRIMARY_ORANGE} />
+                  <Text className="text-white/60 text-xs font-bold ml-2">Share a drunk thought</Text>
                 </View>
 
                 <TextInput
@@ -552,27 +512,19 @@ export default function AddDrinks() {
                   onPress={handleSubmitThought}
                   disabled={!thoughtInput.trim() || isSubmittingDrunkThought}
                   className={`flex-row items-center justify-center py-4 rounded-xl ${
-                    !thoughtInput.trim() || isSubmittingDrunkThought
-                      ? "bg-white/5"
-                      : "bg-orange-600"
+                    !thoughtInput.trim() || isSubmittingDrunkThought ? "bg-white/5" : "bg-orange-600"
                   }`}
                 >
                   {isSubmittingDrunkThought ? (
-                    <ActivityIndicator
-                      color={!thoughtInput.trim() ? "gray" : "black"}
-                    />
+                    <ActivityIndicator color={!thoughtInput.trim() ? "gray" : "black"} />
                   ) : (
                     <>
                       <Text
-                        className={`font-bold text-sm mr-2 ${
-                          !thoughtInput.trim() ? "text-white/20" : "text-black"
-                        }`}
+                        className={`font-bold text-sm mr-2 ${!thoughtInput.trim() ? "text-white/20" : "text-black"}`}
                       >
                         POST TO BUDDIES
                       </Text>
-                      {!!thoughtInput.trim() && (
-                        <Ionicons name="send" size={16} color="black" />
-                      )}
+                      {!!thoughtInput.trim() && <Ionicons name="send" size={16} color="black" />}
                     </>
                   )}
                 </TouchableOpacity>
@@ -599,32 +551,20 @@ export default function AddDrinks() {
         <View className="mb-12">
           <View className="flex-row items-center justify-center mb-6">
             <View className="w-2 h-2 bg-orange-600 rounded-full mr-3" />
-            <Text className="text-orange-600 text-xs font-black tracking-widest uppercase">
-              Quick Log
-            </Text>
+            <Text className="text-orange-600 text-xs font-black tracking-widest uppercase">Quick Log</Text>
           </View>
-          <Text className="text-white text-5xl font-black text-center leading-tight">
-            Did you{"\n"}drink today?
-          </Text>
+          <Text className="text-white text-5xl font-black text-center leading-tight">Did you{"\n"}drink today?</Text>
         </View>
 
         <View className="bg-white/[0.03] rounded-2xl p-6 mb-12 border border-white/[0.08] mx-4">
           <View className="flex-row items-center justify-between">
             <View>
-              <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-1">
-                CURRENT STREAK
-              </Text>
-              <Text className="text-white text-4xl font-black">
-                {userStats?.current_streak || 0}
-              </Text>
+              <Text className="text-white/50 text-[11px] font-bold tracking-widest mb-1">CURRENT STREAK</Text>
+              <Text className="text-white text-4xl font-black">{userStats?.current_streak || 0}</Text>
             </View>
             <View className="items-end">
-              <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">
-                NEXT
-              </Text>
-              <Text className="text-orange-600 text-3xl font-black">
-                {potentialStreak}
-              </Text>
+              <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">NEXT</Text>
+              <Text className="text-orange-600 text-3xl font-black">{potentialStreak}</Text>
             </View>
           </View>
         </View>
@@ -635,15 +575,17 @@ export default function AddDrinks() {
             onPressOut={cancelHold}
             disabled={isSubmitting}
             activeOpacity={0.9}
-            className="w-full max-w-md bg-white/[0.05] rounded-3xl border-2 border-white/[0.08] overflow-hidden relative"
+            className="w-full max-w-md bg-white/[0.03] rounded-3xl border border-white/[0.08] overflow-hidden relative"
             style={{ minHeight: 170 }}
           >
             <View className="flex-1 items-center justify-center py-8 z-20">
-              <Ionicons
-                color={isHolding ? "#000" : "#EA580C"}
-                name={isHolding ? "beer" : "beer-outline"}
+             
+              <FontAwesome5
+                name={isHolding ? "cocktail" : "cocktail"}
                 size={48}
+                color={isHolding ? "#000" : "#EA580C"}
                 style={{ marginBottom: 16 }}
+
               />
               <Text
                 className={`text-2xl font-black tracking-widest text-center mb-2 ${
@@ -653,9 +595,7 @@ export default function AddDrinks() {
                 {isHolding ? "HOLDING..." : "HOLD TO LOG"}
               </Text>
               <Text
-                className={`text-xs text-center font-semibold ${
-                  holdProgress > 50 ? "text-black/50" : "text-white/30"
-                }`}
+                className={`text-xs text-center font-semibold ${holdProgress > 50 ? "text-black/50" : "text-white/30"}`}
               >
                 Keep pressing to confirm
               </Text>
@@ -669,9 +609,7 @@ export default function AddDrinks() {
         </View>
 
         <TouchableOpacity onPress={() => router.back()} className="py-4 mb-8">
-          <Text className="text-white/40 text-sm font-bold text-center">
-            Not now
-          </Text>
+          <Text className="text-white/40 text-sm font-bold text-center">Not now</Text>
         </TouchableOpacity>
       </ScrollView>
     );
@@ -681,9 +619,7 @@ export default function AddDrinks() {
     // Logic for displaying drinks:
     // If expanded: Show ALL
     // If collapsed: Show first 5 items
-    const drinksToShow = isDrinkMenuExpanded
-      ? DRINK_TYPES
-      : DRINK_TYPES.slice(0, 5);
+    const drinksToShow = isDrinkMenuExpanded ? DRINK_TYPES : DRINK_TYPES.slice(0, 5);
 
     return (
       <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
@@ -691,9 +627,7 @@ export default function AddDrinks() {
           <Text className="text-orange-500 text-sm font-black tracking-widest mb-2 text-center uppercase">
             STREAK SECURED
           </Text>
-          <Text className="text-white text-3xl font-black text-center leading-tight">
-            Make it memorable
-          </Text>
+          <Text className="text-white text-3xl font-black text-center leading-tight">Make it memorable</Text>
         </View>
 
         {/* --- Image Picker Card --- */}
@@ -702,11 +636,7 @@ export default function AddDrinks() {
           className="w-full aspect-video bg-white/[0.03] rounded-3xl border-2 border-dashed border-white/[0.1] mb-6 overflow-hidden"
         >
           {imageUri ? (
-            <Image
-              source={{ uri: imageUri }}
-              className="w-full h-full"
-              resizeMode="cover"
-            />
+            <Image source={{ uri: imageUri }} className="w-full h-full" resizeMode="cover" />
           ) : (
             <View className="flex-1 items-center justify-center">
               <View className="w-16 h-16 rounded-full bg-white/[0.05] items-center justify-center mb-3">
@@ -717,52 +647,29 @@ export default function AddDrinks() {
           )}
           {imageUri && (
             <View className="absolute top-4 right-4 bg-black/50 px-3 py-1 rounded-full">
-              <Text className="text-white text-xs font-bold">
-                Tap to change
-              </Text>
+              <Text className="text-white text-xs font-bold">Tap to change</Text>
             </View>
           )}
         </TouchableOpacity>
 
         <View className="mb-8">
           <View className="flex-row items-center mb-3 ml-1">
-            <Ionicons
-              name="people"
-              size={16}
-              color="#ffffff60"
-              style={{ marginRight: 6 }}
-            />
-            <Text className="text-white/40 text-xs font-black tracking-widest">
-              WITH WHO?
-            </Text>
+            <Ionicons name="people" size={16} color="#ffffff60" style={{ marginRight: 6 }} />
+            <Text className="text-white/40 text-xs font-black tracking-widest">WITH WHO?</Text>
           </View>
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingRight: 20 }}
-          >
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 20 }}>
             {friends.map((friend) => {
-              const isSelected = mentionedBuddies.some(
-                (b) => b.id === friend.id
-              );
+              const isSelected = mentionedBuddies.some((b) => b.id === friend.id);
               return (
                 <TouchableOpacity
                   key={friend.id}
                   onPress={() => toggleBuddy(friend)}
                   className={`mr-3 items-center justify-center px-4 py-3 rounded-2xl border ${
-                    isSelected
-                      ? "bg-orange-600 border-orange-600"
-                      : "bg-white/[0.03] border-white/[0.08]"
+                    isSelected ? "bg-orange-600 border-orange-600" : "bg-white/[0.03] border-white/[0.08]"
                   }`}
                 >
-                  <Text
-                    className={`font-bold ${
-                      isSelected ? "text-black" : "text-white"
-                    }`}
-                  >
-                    {friend.username}
-                  </Text>
+                  <Text className={`font-bold ${isSelected ? "text-black" : "text-white"}`}>{friend.username}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -771,15 +678,8 @@ export default function AddDrinks() {
 
         <View className="mb-8">
           <View className="flex-row items-center mb-3 ml-1">
-            <Ionicons
-              name="wine"
-              size={16}
-              color="#ffffff60"
-              style={{ marginRight: 6 }}
-            />
-            <Text className="text-white/40 text-xs font-black tracking-widest">
-              THE DRINK
-            </Text>
+            <Ionicons name="wine" size={16} color="#ffffff60" style={{ marginRight: 6 }} />
+            <Text className="text-white/40 text-xs font-black tracking-widest">THE DRINK</Text>
           </View>
 
           <View className="flex-row flex-wrap gap-2">
@@ -790,9 +690,7 @@ export default function AddDrinks() {
                   key={type}
                   onPress={() => toggleDrinkType(type)}
                   className={`px-5 py-3 rounded-xl border ${
-                    isSelected
-                      ? "bg-orange-600 border-orange-600"
-                      : "bg-white/[0.03] border-white/[0.08]"
+                    isSelected ? "bg-orange-600 border-orange-600" : "bg-white/[0.03] border-white/[0.08]"
                   }`}
                 >
                   <Text
@@ -810,26 +708,15 @@ export default function AddDrinks() {
               onPress={toggleDrinkMenu}
               className="w-12 h-10 items-center justify-center rounded-xl bg-white/[0.08] border border-white/[0.1]"
             >
-              <Ionicons
-                name={isDrinkMenuExpanded ? "chevron-up" : "chevron-down"}
-                size={20}
-                color="white"
-              />
+              <Ionicons name={isDrinkMenuExpanded ? "chevron-up" : "chevron-down"} size={20} color="white" />
             </TouchableOpacity>
           </View>
         </View>
 
         <View className="mb-8">
           <View className="flex-row items-center mb-3 ml-1">
-            <Ionicons
-              name="location"
-              size={16}
-              color="#ffffff60"
-              style={{ marginRight: 6 }}
-            />
-            <Text className="text-white/40 text-xs font-black tracking-widest">
-              LOCATION
-            </Text>
+            <Ionicons name="location" size={16} color="#ffffff60" style={{ marginRight: 6 }} />
+            <Text className="text-white/40 text-xs font-black tracking-widest">LOCATION</Text>
           </View>
 
           {locationText ? (
@@ -837,10 +724,7 @@ export default function AddDrinks() {
               <View className="w-8 h-8 rounded-full bg-orange-600/20 items-center justify-center mr-3">
                 <Ionicons name="location" size={18} color="#EA580C" />
               </View>
-              <Text
-                className="flex-1 text-white font-bold text-sm"
-                numberOfLines={1}
-              >
+              <Text className="flex-1 text-white font-bold text-sm" numberOfLines={1}>
                 {locationText}
               </Text>
               <TouchableOpacity
@@ -863,15 +747,8 @@ export default function AddDrinks() {
                 <ActivityIndicator color="#EA580C" size="small" />
               ) : (
                 <>
-                  <Ionicons
-                    name="navigate-circle-outline"
-                    size={20}
-                    color="#EA580C"
-                    style={{ marginRight: 8 }}
-                  />
-                  <Text className="text-white/70 font-bold text-sm">
-                    Add Current Location
-                  </Text>
+                  <Ionicons name="navigate-circle-outline" size={20} color="#EA580C" style={{ marginRight: 8 }} />
+                  <Text className="text-white/70 font-bold text-sm">Add Current Location</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -888,9 +765,7 @@ export default function AddDrinks() {
               <ActivityIndicator color="black" />
             ) : (
               <>
-                <Text className="text-black text-base font-black tracking-wider mr-2">
-                  SAVE MEMORY
-                </Text>
+                <Text className="text-black text-base font-black tracking-wider mr-2">SAVE MEMORY</Text>
                 <Ionicons name="arrow-forward" size={20} color="black" />
               </>
             )}
@@ -901,9 +776,7 @@ export default function AddDrinks() {
             disabled={isSubmitting}
             className="w-full py-4 items-center"
           >
-            <Text className="text-white/40 font-bold text-sm">
-              Skip details
-            </Text>
+            <Text className="text-white/40 font-bold text-sm">Skip details</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -911,10 +784,7 @@ export default function AddDrinks() {
   };
 
   return (
-    <View
-      className="flex-1 bg-black px-3"
-      style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}
-    >
+    <View className="flex-1 bg-black px-3" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
       {alreadyLogged && viewState === "logging" ? (
         <>{renderAlreadyLogged()}</>
       ) : viewState === "details" ? (
@@ -968,13 +838,7 @@ interface InfoTooltipProps {
   onClose: () => void;
 }
 
-function AdditionalInfoModal({
-  friends,
-  visible,
-  isLoading,
-  handleUpload,
-  onClose,
-}: InfoTooltipProps) {
+function AdditionalInfoModal({ friends, visible, isLoading, handleUpload, onClose }: InfoTooltipProps) {
   const posthog = usePostHog();
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const [imageUri, setImageUri] = useState<string | null>(null);
@@ -1016,17 +880,13 @@ function AdditionalInfoModal({
     return mentionedBuddies.some((f) => f.id === friendId);
   };
 
-  const uploadToCloudinary = async (
-    localUri: string
-  ): Promise<string | null> => {
+  const uploadToCloudinary = async (localUri: string): Promise<string | null> => {
     try {
       setIsUploadingImage(true);
       posthog?.capture("image_upload_started");
 
-      const CLOUDINARY_CLOUD_NAME =
-        process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
-      const CLOUDINARY_UPLOAD_PRESET =
-        process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+      const CLOUDINARY_CLOUD_NAME = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
+      const CLOUDINARY_UPLOAD_PRESET = process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
       if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
         throw new Error("Cloudinary credentials are not configured.");
@@ -1042,16 +902,13 @@ function AdditionalInfoModal({
       formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
       formData.append("folder", "drank-images");
 
-      const response = await fetch(
-        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
-        {
-          method: "POST",
-          body: formData,
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+        method: "POST",
+        body: formData,
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
 
       const data = await response.json();
 
@@ -1089,8 +946,7 @@ function AdditionalInfoModal({
         }
         result = await ImagePicker.launchCameraAsync(pickerOptions);
       } else {
-        const { status } =
-          await ImagePicker.requestMediaLibraryPermissionsAsync();
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== "granted") {
           Alert.alert("Permission needed", "Gallery access is required");
           return;
@@ -1141,9 +997,7 @@ function AdditionalInfoModal({
       return (
         <View className="flex-1 items-center justify-center py-16">
           <ActivityIndicator size="large" color="#ff8c00" />
-          <Text className="text-white/50 mt-4 text-sm font-semibold">
-            Loading friends...
-          </Text>
+          <Text className="text-white/50 mt-4 text-sm font-semibold">Loading friends...</Text>
         </View>
       );
     }
@@ -1153,9 +1007,7 @@ function AdditionalInfoModal({
           <View className="w-24 h-24 rounded-2xl bg-orange-600/20 items-center justify-center mb-4">
             <Ionicons name="people-outline" size={48} color="#ff8c00" />
           </View>
-          <Text className="text-white text-xl font-black mb-2">
-            No Friends Yet
-          </Text>
+          <Text className="text-white text-xl font-black mb-2">No Friends Yet</Text>
         </View>
       );
     }
@@ -1169,9 +1021,7 @@ function AdditionalInfoModal({
       <TouchableOpacity
         onPress={() => toggleFriendSelection(item)}
         className={`flex-1 rounded-2xl p-2 flex-row items-center mb-3 ${
-          isSelected
-            ? "bg-orange-600/30 border-2 border-orange-600"
-            : "bg-white/[0.03] border border-white/[0.08]"
+          isSelected ? "bg-orange-600/30 border-2 border-orange-600" : "bg-white/[0.03] border border-white/[0.08]"
         }`}
       >
         <View
@@ -1180,22 +1030,13 @@ function AdditionalInfoModal({
           }`}
         >
           {item.imageUrl ? (
-            <Image
-              source={{ uri: item.imageUrl }}
-              className="w-full h-full rounded-full"
-            />
+            <Image source={{ uri: item.imageUrl }} className="w-full h-full rounded-full" />
           ) : (
-            <Text className="text-black text-2xl font-black">
-              {item.username?.[0]?.toUpperCase() || "?"}
-            </Text>
+            <Text className="text-black text-2xl font-black">{item.username?.[0]?.toUpperCase() || "?"}</Text>
           )}
         </View>
         <View className="flex-1">
-          <Text
-            className={`text-lg font-bold mb-1 ${
-              isSelected ? "text-orange-400" : "text-white"
-            }`}
-          >
+          <Text className={`text-lg font-bold mb-1 ${isSelected ? "text-orange-400" : "text-white"}`}>
             {item.username || "Unknown User"}
           </Text>
         </View>
@@ -1210,16 +1051,8 @@ function AdditionalInfoModal({
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="none"
-      onRequestClose={onClose}
-    >
-      <Pressable
-        className="flex-1 items-center justify-center bg-black/80"
-        onPress={onClose}
-      >
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+      <Pressable className="flex-1 items-center justify-center bg-black/80" onPress={onClose}>
         <Animated.View
           style={{
             transform: [{ scale: scaleAnim }],
@@ -1235,22 +1068,14 @@ function AdditionalInfoModal({
                 {isUploadingImage ? (
                   <View className="items-center">
                     <ActivityIndicator size="large" color="#ff8c00" />
-                    <Text className="text-white/70 text-sm mt-2 font-semibold">
-                      Uploading image...
-                    </Text>
+                    <Text className="text-white/70 text-sm mt-2 font-semibold">Uploading image...</Text>
                   </View>
                 ) : imageUri ? (
-                  <Image
-                    source={{ uri: imageUri }}
-                    className="w-full h-full"
-                    resizeMode="cover"
-                  />
+                  <Image source={{ uri: imageUri }} className="w-full h-full" resizeMode="cover" />
                 ) : (
                   <View className="items-center">
                     <Feather name="upload" size={32} color="#ff8c00" />
-                    <Text className="text-white/70 text-sm mt-2">
-                      Tap to upload image
-                    </Text>
+                    <Text className="text-white/70 text-sm mt-2">Tap to upload image</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -1263,18 +1088,14 @@ function AdditionalInfoModal({
                   className="flex-1 bg-orange-600/20 border-2 border-orange-600/40 rounded-xl py-3 px-2 flex-row items-center justify-center"
                 >
                   <Ionicons name="people-outline" size={20} color="#ff8c00" />
-                  <Text className="text-orange-500 font-semibold ml-2">
-                    Buddies
-                  </Text>
+                  <Text className="text-orange-500 font-semibold ml-2">Buddies</Text>
                 </TouchableOpacity>
               </View>
 
               {isFriendsListVisible && friends && (
                 <FlatList
                   data={friends}
-                  keyExtractor={(item) =>
-                    item.id || item.username || Math.random().toString()
-                  }
+                  keyExtractor={(item) => item.id || item.username || Math.random().toString()}
                   renderItem={renderFriendItem}
                   ListEmptyComponent={renderEmptyFriendComponent}
                   showsVerticalScrollIndicator={false}
@@ -1294,26 +1115,15 @@ function AdditionalInfoModal({
                     <ActivityIndicator size="small" color="#ff8c00" />
                   ) : (
                     <>
-                      <Ionicons
-                        name="checkmark-circle"
-                        size={20}
-                        color="#ff8c00"
-                      />
-                      <Text className="text-orange-500 font-semibold ml-2">
-                        Done
-                      </Text>
+                      <Ionicons name="checkmark-circle" size={20} color="#ff8c00" />
+                      <Text className="text-orange-500 font-semibold ml-2">Done</Text>
                     </>
                   )}
                 </TouchableOpacity>
               )}
 
-              <TouchableOpacity
-                onPress={handleSkip}
-                className="items-center py-2"
-              >
-                <Text className="text-orange-500 text-sm font-semibold">
-                  Skip
-                </Text>
+              <TouchableOpacity onPress={handleSkip} className="items-center py-2">
+                <Text className="text-orange-500 text-sm font-semibold">Skip</Text>
               </TouchableOpacity>
               <ImagePickerModal
                 visible={imagePickerModalVisible}
