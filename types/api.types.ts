@@ -724,3 +724,9 @@ export interface Premium {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface WishItem {
+  id: string;
+  text: string;
+  completed: boolean;
+}

@@ -17,6 +17,7 @@ import {
   Image,
   Linking,
   Platform,
+  FlatList,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons, Feather, MaterialIcons } from "@expo/vector-icons";
@@ -777,17 +778,26 @@ export default function BarHuntScreen() {
                 </TouchableOpacity>
               </View>
 
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="gap-3">
-                {selectedBar.gallery.slice(0, 4).map((img, index) => (
-                  <TouchableOpacity key={index} onPress={() => setSelectedImage(img)}>
+              <FlatList
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 12 }} // Replaces the className="gap-3" for spacing
+                data={selectedBar.gallery.slice(0, 4)}
+                keyExtractor={(img, index) => index.toString()} // Using index as key, consider a unique ID if available
+                renderItem={({ item: img }) => (
+                  <TouchableOpacity onPress={() => setSelectedImage(img)}>
                     <Image
                       source={{ uri: img || "https://via.placeholder.com/300" }}
-                      className="w-40 h-28 rounded-2xl bg-white/5 border border-white/10 mx-1"
+                      className="w-40 h-28 rounded-2xl bg-white/5 border border-white/10 mx-1" // Keep these styles for now
                       style={{ opacity: 0.9 }}
                     />
                   </TouchableOpacity>
-                ))}
-              </ScrollView>
+                )}
+                initialNumToRender={3}
+                maxToRenderPerBatch={5}
+                windowSize={5}
+                removeClippedSubviews={true}
+              />
             </View>
 
             <View className="mb-8">
@@ -801,7 +811,6 @@ export default function BarHuntScreen() {
               </View>
             </View>
 
-           
             {/* <TabSwitcher
             items={detailTabs}
             selected={detailTab}

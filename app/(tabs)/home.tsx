@@ -8,11 +8,12 @@ import {
   Text,
   TouchableOpacity,
   View,
+  FlatList,
+  StyleSheet,
 } from "react-native";
 import AlcoholismChart from "@/components/charts/lineChart";
 import DrunkThought from "@/components/drunkThought";
 import Header from "@/components/header";
-import InfoTooltip from "@/components/infoTooltip";
 import DrinkingMap from "@/components/map";
 import QrSessionManager from "@/components/qrCodeManager";
 import StoryDrawer from "@/components/story_drawer";
@@ -20,11 +21,15 @@ import ThisWeekGadget from "@/components/thisWeekGadget";
 import { useApp } from "@/providers/AppProvider";
 import { useFunc } from "@/providers/FunctionProvider";
 import { getCoefInfo } from "@/utils/levels";
-import { AntDesign, Feather, FontAwesome6, Ionicons, MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
+import { AntDesign, FontAwesome6, Ionicons, MaterialCommunityIcons} from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useMemo, useRef, useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { HighPerfCounter } from "@/components/animated_counter";
+import HomeHeadliner from "@/components/home_headliner";
+
+const { width } = Dimensions.get("window"); 
+
+const HORIZONTAL_PADDING = 16;
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -99,6 +104,96 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
+
+
+
+
+  const flatListRef = useRef<FlatList>(null);
+  const scrollX = useRef(new Animated.Value(0)).current;
+  const headlinerCardsData = [
+    {
+      id: "main_stats",
+      coefInfo: coefInfo,
+      handleFunctionPress: () => router.push("/(screens)/coeffInfo"),
+      isCoefTooltipVisible: isCoefTooltipVisible,
+      setIsCoefTooltipVisible: setIsCoefTooltipVisible,
+      showTooltip: true,
+
+      leftButton: {
+        iconName: "dice-outline",
+        iconFamily: "Ionicons",
+        iconSize: 32,
+        onPress: () => router.push("/(screens)/drinkingGames"),
+      },
+      rightButton: {
+        iconName: "images-outline",
+        iconFamily: "Ionicons",
+        iconSize: 28,
+        onPress: handleFunctionPress,
+      },
+      units: "PTS",
+    },
+    {
+      id: "drunk_days",
+      coefInfo: { coef: userStats?.total_days_drank || 0, title: "DRUNK" },
+      handleFunctionPress: () => router.push("/(screens)/stats"),
+      isCoefTooltipVisible: false,
+      setIsCoefTooltipVisible: () => {},
+      showTooltip: false,
+
+      leftButton: {
+        iconName: "target",
+        iconFamily: "MaterialCommunityIcons",
+        iconSize: 32,
+        onPress: () => router.push("/(screens)/wish_list"),
+      },
+      // rightButton: {
+      //   iconName: "trophy",
+      //   iconFamily: "AntDesign",
+      //   iconSize: 30,
+      //   onPress: () => router.push("/(screens)/collection"),
+      // },
+      units: "DAYS",
+    },
+    {
+      id: "longest_streak",
+      coefInfo: { coef: userStats?.longest_streak || 0, title: "LONGEST STREAK" },
+      handleFunctionPress: () => router.push("/(tabs)/calendar"),
+      isCoefTooltipVisible: false,
+      setIsCoefTooltipVisible: () => {},
+      showTooltip: false,
+
+      // leftButton: {
+      //   iconName: "calendar",
+      //   iconFamily: "Feather",
+      //   iconSize: 28,
+      //   onPress: () => router.push("/(tabs)/calendar"),
+      // },
+      // rightButton: {
+      //   iconName: "map-search-outline",
+      //   iconFamily: "MaterialCommunityIcons",
+      //   iconSize: 30, // Adjust specific Material icon
+      //   onPress: () => router.push("/(screens)/map_screen"),
+      // },
+      units: "DAYS",
+    },
+  ];
+
+const renderHeadlinerCard = ({ item }: { item: (typeof headlinerCardsData)[0] }) => (
+    <View style={{ width: width }} className="justify-center items-center">
+      <HomeHeadliner
+        coefInfo={item.coefInfo}
+        isCoefTooltipVisible={item.isCoefTooltipVisible}
+        setIsCoefTooltipVisible={item.setIsCoefTooltipVisible}
+        handleFunctionPress={item.handleFunctionPress}
+        showTooltip={item.showTooltip}
+        leftButton={item.leftButton}
+        rightButton={item.rightButton}
+        units={item.units}
+      />
+    </View>
+  ); 
+
   if (isLoading && !userStats) {
     return (
       <View className="flex-1 bg-black justify-center items-center">
@@ -120,7 +215,7 @@ export default function HomeScreen() {
       <ScrollView
         className="flex-1 bg-black"
         contentContainerStyle={{
-          paddingHorizontal: 16,
+          paddingHorizontal: HORIZONTAL_PADDING, 
           paddingTop: 24,
           paddingBottom: 100 + insets.bottom,
           backgroundColor: "black",
@@ -136,59 +231,49 @@ export default function HomeScreen() {
           />
         }
       >
-        <View className="items-center mb-6">
-          <View className="flex flex-row items-center gap-8">
-            <View className="rounded-full bg-orange-600/15 border-orange-600 ">
-              <TouchableOpacity
-                onPress={() => router.push("/(screens)/drinkingGames")}
-                className=" w-16 h-16 rounded-full  items-center justify-center"
-              >
-                <Ionicons name="dice-outline" size={32} color="#EA580C" />
-              </TouchableOpacity>
-            </View>
+        <FlatList
+          ref={flatListRef}
+          data={headlinerCardsData}
+          renderItem={renderHeadlinerCard}
+          keyExtractor={(item) => item.id}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onScroll={Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], { useNativeDriver: false })}
+          scrollEventThrottle={16}
+          className="mb-2"
+          style={{
+            marginHorizontal: -HORIZONTAL_PADDING,
+            width: width, 
+          }}
+        />
 
-            <TouchableOpacity
-              onPress={() => router.push("/(screens)/coeffInfo")}
-              className="relative w-[120px] h-[120px] rounded-full bg-orange-600/15 border-4 border-orange-600 justify-center items-center mb-3"
-            >
-              <HighPerfCounter
-                toValue={Number(coefInfo.coef)} 
-                duration={2000}
-                className="text-orange-600 text-5xl font-black text-center"
-                style={{ color: "#EA580C" }} 
+        <View className="flex-row justify-center mt-2 mb-4">
+          {headlinerCardsData.map((_, i) => {
+            const inputRange = [(i - 1) * width, i * width, (i + 1) * width];
+
+            const dotWidth = scrollX.interpolate({
+              inputRange,
+              outputRange: [10, 20, 10],
+              extrapolate: "clamp",
+            });
+
+            const opacity = scrollX.interpolate({
+              inputRange,
+              outputRange: [0.3, 1, 0.3],
+              extrapolate: "clamp",
+            });
+
+            return (
+              <Animated.View
+                key={i.toString()}
+                style={[styles.dot, { width: dotWidth, opacity, backgroundColor: "#EA580C" }]}
+                className="bg-gray-400 mx-1 rounded-full"
               />
-
-              <TouchableOpacity
-                onPress={() => setIsCoefTooltipVisible(!isCoefTooltipVisible)}
-                className="absolute w-8 h-8 rounded-full  items-center justify-center"
-                style={{ zIndex: 10, right: -14, bottom: -10 }}
-              >
-                <Feather name="help-circle" size={24} color="#666666" />
-              </TouchableOpacity>
-
-              {isCoefTooltipVisible && (
-                <InfoTooltip
-                  visible={isCoefTooltipVisible}
-                  title="Points"
-                  description="Your drinking point calculated on your streak, mix posts and overall drunk days"
-                  onClose={() => setIsCoefTooltipVisible(false)}
-                ></InfoTooltip>
-              )}
-            </TouchableOpacity>
-
-            <View className="rounded-full bg-orange-600/15 border-orange-600">
-              <TouchableOpacity
-                onPress={handleFunctionPress}
-                className=" w-16 h-16 rounded-full  items-center justify-center"
-              >
-                <Ionicons name="images-outline" size={24} color="#EA580C" />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <Text className="text-white text-[22px] font-black tracking-wide">{coefInfo.title}</Text>
+            );
+          })}
         </View>
-
+     
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -252,29 +337,6 @@ export default function HomeScreen() {
         <ThisWeekGadget />
         <AlcoholismChart />
 
-        <View className="flex-row gap-3 mb-4">
-          <TouchableOpacity
-            onPress={() => router.push("/(screens)/stats")}
-            className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]"
-          >
-            <View className="w-10 h-10 rounded-xl bg-orange-600/20 items-center justify-center mb-2">
-              <MaterialIcons name="query-stats" size={24} color="#EA580C" />
-            </View>
-            <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">TOTAL DAYS DRUNK</Text>
-            <Text className="text-white text-2xl font-black">{userStats?.total_days_drank || 0}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => router.push("/(tabs)/calendar")}
-            className="flex-1 bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08]"
-          >
-            <View className="w-10 h-10 rounded-xl bg-orange-600/20 items-center justify-center mb-2">
-              <MaterialCommunityIcons name="fire" size={26} color="#EA580C" />
-            </View>
-            <Text className="text-white/40 text-[10px] font-bold tracking-widest mb-0.5">LONGEST STREAK</Text>
-            <Text className="text-white text-2xl font-black">{userStats?.longest_streak || 0}</Text>
-          </TouchableOpacity>
-        </View>
 
         <TouchableOpacity
           className={`rounded-2xl py-6 items-center mb-4 shadow-lg ${
@@ -329,3 +391,12 @@ export default function HomeScreen() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  dot: {
+    height: 10,
+    width: 10,
+    borderRadius: 5,
+    marginHorizontal: 4,
+  },
+});
