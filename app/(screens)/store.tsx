@@ -12,8 +12,9 @@ import { handleEarnGems } from "@/utils/adsReward";
 import { useAuth } from "@clerk/clerk-expo";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { usePostHog } from "posthog-react-native";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  FlatList,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -131,7 +132,6 @@ export default function StoreScreen() {
       }
 
       if (purchaseType === "gem" && selectedGemItem) {
-        // Handle gem purchase logic here
         console.log("Purchasing gems:", selectedGemItem);
         // TODO: Implement actual gem purchase API call
       } else if (purchaseType === "store" && selectedStoreItem) {
@@ -139,7 +139,6 @@ export default function StoreScreen() {
 
         await apiService.purchaseStoreItem(selectedStoreItem.id, token);
 
-        // 7. Track Successful Purchase (The most important revenue metric)
         posthog?.capture("purchase_completed", {
           type: "store_item",
           item_id: selectedStoreItem.id,
@@ -182,46 +181,55 @@ export default function StoreScreen() {
     setRefreshing(false);
   };
 
-  const flags: Flag[] = (storeItems?.flag || []).map((item: any, index: number) => ({
-    id: index + 1,
-    title: item.name,
-    price: item.base_price,
-    image: { uri: item.image_url },
-    storeItem: item,
-  }));
+  const flags = useMemo(() => {
+    return (storeItems?.flag || []).map((item: any, index: number) => ({
+      id: index + 1,
+      title: item.name,
+      price: item.base_price,
+      image: { uri: item.image_url },
+      storeItem: item,
+    }));
+  }, [storeItems?.flag]); // Dependency array: only re-calculate if storeItems.flag changes
 
-  const smokingDevices: Smoking[] = (storeItems?.smoking || []).map((device: any, index: number) => ({
-    id: index + 1,
-    title: device.name,
-    price: device.base_price,
-    image: { uri: device.image_url },
-    storeItem: device,
-  }));
+  const smokingDevices = useMemo(() => {
+    return (storeItems?.smoking || []).map((device: any, index: number) => ({
+      id: index + 1,
+      title: device.name,
+      price: device.base_price,
+      image: { uri: device.image_url },
+      storeItem: device,
+    }));
+  }, [storeItems?.smoking]);
 
-  const energyDrinks: EnergyDrink[] = (storeItems?.energy || []).map((drink: any, index: number) => ({
-    id: index + 1,
-    title: drink.name,
-    price: drink.base_price,
-    image: { uri: drink.image_url },
-    storeItem: drink,
-  }));
+  const energyDrinks = useMemo(() => {
+    return (storeItems?.energy || []).map((drink: any, index: number) => ({
+      id: index + 1,
+      title: drink.name,
+      price: drink.base_price,
+      image: { uri: drink.image_url },
+      storeItem: drink,
+    }));
+  }, [storeItems?.energy]);
 
-  const bottles: Bottle[] = (storeItems?.bottle || []).map((bottle: any, index: number) => ({
-    id: index + 1,
-    title: bottle.name,
-    price: bottle.base_price,
-    image: { uri: bottle.image_url },
-    storeItem: bottle,
-  }));
+  const bottles = useMemo(() => {
+    return (storeItems?.bottle || []).map((bottle: any, index: number) => ({
+      id: index + 1,
+      title: bottle.name,
+      price: bottle.base_price,
+      image: { uri: bottle.image_url },
+      storeItem: bottle,
+    }));
+  }, [storeItems?.bottle]);
 
-  const specials: Special[] = (storeItems?.special || []).map((bottle: any, index: number) => ({
-    id: index + 1,
-    title: bottle.name,
-    price: bottle.base_price,
-    image: { uri: bottle.image_url },
-    storeItem: bottle,
-  }));
-
+  const specials = useMemo(() => {
+    return (storeItems?.special || []).map((bottle: any, index: number) => ({
+      id: index + 1,
+      title: bottle.name,
+      price: bottle.base_price,
+      image: { uri: bottle.image_url },
+      storeItem: bottle,
+    }));
+  }, [storeItems?.special]);
   const gemPacks: GemPack[] = [
     {
       id: 1,
@@ -271,8 +279,7 @@ export default function StoreScreen() {
       setIsWatchingAd(false);
     }
   };
-
-  const SmokingCard = ({ device }: { device: any }) => (
+  const SmokingCard = React.memo(({ device }: { device: any }) => (
     <TouchableOpacity
       className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08] mr-3"
       style={{ width: 140 }}
@@ -292,9 +299,9 @@ export default function StoreScreen() {
         <Text className="text-orange-600 text-lg font-black ml-1">{device.price}</Text>
       </View>
     </TouchableOpacity>
-  );
+  ));
 
-  const EnergyDrinkCard = ({ drink }: { drink: any }) => (
+  const EnergyDrinkCard = React.memo(({ drink }: { drink: any }) => (
     <TouchableOpacity
       className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08] mr-3"
       style={{ width: 140 }}
@@ -314,8 +321,9 @@ export default function StoreScreen() {
         <Text className="text-orange-600 text-lg font-black ml-1">{drink.price}</Text>
       </View>
     </TouchableOpacity>
-  );
-  const FlagCard = ({ item }: { item: any }) => (
+  ));
+
+  const FlagCard = React.memo(({ item }: { item: any }) => (
     <TouchableOpacity
       className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08] mr-3"
       style={{ width: 160 }}
@@ -334,9 +342,9 @@ export default function StoreScreen() {
         <Text className="text-orange-600 text-lg font-black ml-1">{item.price}</Text>
       </View>
     </TouchableOpacity>
-  );
+  ));
 
-  const BottleCard = ({ item }: { item: any }) => (
+  const BottleCard = React.memo(({ item }: { item: any }) => (
     <TouchableOpacity
       className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08] mr-3"
       style={{ width: 160 }}
@@ -354,9 +362,9 @@ export default function StoreScreen() {
         <Text className="text-orange-600 text-lg font-black ml-1">{item.price}</Text>
       </View>
     </TouchableOpacity>
-  );
+  ));
 
-  const SpecialsCard = ({ item }: { item: any }) => (
+  const SpecialsCard = React.memo(({ item }: { item: any }) => (
     <TouchableOpacity
       className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08] mr-3"
       style={{ width: 160 }}
@@ -375,7 +383,7 @@ export default function StoreScreen() {
         <Text className="text-orange-600 text-lg font-black ml-1">{item.price}</Text>
       </View>
     </TouchableOpacity>
-  );
+  ));
 
   const GemPackCard = ({ pack }: { pack: GemPack }) => (
     <TouchableOpacity
@@ -527,15 +535,19 @@ export default function StoreScreen() {
             <Text className="text-white text-2xl font-black">Bottles</Text>
           </View>
 
-          <ScrollView
+          <FlatList
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 16 }}
-          >
-            {bottles.map((item) => (
-              <BottleCard key={item.id} item={item} />
-            ))}
-          </ScrollView>
+            data={bottles} 
+            keyExtractor={(item) => item.id.toString()} 
+            renderItem={({ item }) => <BottleCard item={item} />}
+            // Optional: Add performance props for FlatList
+            initialNumToRender={3} // Render this many items initially
+            maxToRenderPerBatch={5} // Render this many items in each batch
+            windowSize={5} // How many screens worth of data to render in the surrounding area
+            removeClippedSubviews={true} // Helps with memory usage but can cause visual glitches
+          />
         </View>
 
         <View className="mt-6">
@@ -544,15 +556,19 @@ export default function StoreScreen() {
             <Text className="text-white text-2xl font-black">Energy</Text>
           </View>
 
-          <ScrollView
+          <FlatList
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 16 }}
-          >
-            {energyDrinks.map((drink) => (
-              <EnergyDrinkCard key={drink.id} drink={drink} />
-            ))}
-          </ScrollView>
+            data={energyDrinks} 
+            keyExtractor={(item) => item.id.toString()} 
+            renderItem={({ item }) => <EnergyDrinkCard drink={item} />}
+            // Optional: Add performance props for FlatList
+            initialNumToRender={3} // Render this many items initially
+            maxToRenderPerBatch={5} // Render this many items in each batch
+            windowSize={5} // How many screens worth of data to render in the surrounding area
+            removeClippedSubviews={true} // Helps with memory usage but can cause visual glitches
+          />
         </View>
 
         <View className="mt-6">
@@ -561,15 +577,19 @@ export default function StoreScreen() {
             <Text className="text-white text-2xl font-black">Specials</Text>
           </View>
 
-          <ScrollView
+          <FlatList
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 16 }}
-          >
-            {specials.map((special) => (
-              <SpecialsCard key={special.id} item={special} />
-            ))}
-          </ScrollView>
+            data={specials} 
+            keyExtractor={(item) => item.id.toString()} 
+            renderItem={({ item }) => <SpecialsCard item={item} />}
+            // Optional: Add performance props for FlatList
+            initialNumToRender={3} // Render this many items initially
+            maxToRenderPerBatch={5} // Render this many items in each batch
+            windowSize={5} // How many screens worth of data to render in the surrounding area
+            removeClippedSubviews={true} // Helps with memory usage but can cause visual glitches
+          />
         </View>
 
         <View className="mt-6">
@@ -578,15 +598,18 @@ export default function StoreScreen() {
             <Text className="text-white text-2xl font-black">Flags</Text>
           </View>
 
-          <ScrollView
+          <FlatList
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 16 }}
-          >
-            {flags.map((item) => (
-              <FlagCard key={item.id} item={item} />
-            ))}
-          </ScrollView>
+            data={flags} 
+            keyExtractor={(item) => item.id.toString()} 
+            renderItem={({ item }) => <FlagCard item={item} />}
+            initialNumToRender={3} // Render this many items initially
+            maxToRenderPerBatch={5} // Render this many items in each batch
+            windowSize={5} // How many screens worth of data to render in the surrounding area
+            removeClippedSubviews={true} // Helps with memory usage but can cause visual glitches
+          />
         </View>
         <View className="mt-6">
           <View className="mx-4 mb-4 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
@@ -594,15 +617,20 @@ export default function StoreScreen() {
             <Text className="text-white text-2xl font-black">Smoking</Text>
           </View>
 
-          <ScrollView
+          
+
+          <FlatList
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 16 }}
-          >
-            {smokingDevices.map((device) => (
-              <SmokingCard key={device.id} device={device} />
-            ))}
-          </ScrollView>
+            data={smokingDevices} 
+            keyExtractor={(item) => item.id.toString()} 
+            renderItem={({ item }) => <SmokingCard device={item} />}
+            initialNumToRender={3} // Render this many items initially
+            maxToRenderPerBatch={5} // Render this many items in each batch
+            windowSize={5} // How many screens worth of data to render in the surrounding area
+            removeClippedSubviews={true} // Helps with memory usage but can cause visual glitches
+          />
         </View>
 
         {isAdLoaded && (
@@ -670,7 +698,6 @@ export default function StoreScreen() {
         </View> */}
       </ScrollView>
 
-
       {/* <PurchaseConfirmationModal
         visible={showPurchaseModal}
         isPending={pendingTransaction}
@@ -687,7 +714,7 @@ export default function StoreScreen() {
         }}
       /> */}
 
-         <PurchaseBottomSheet
+      <PurchaseBottomSheet
         visible={showPurchaseModal}
         isPending={pendingTransaction}
         itemType={purchaseType}
