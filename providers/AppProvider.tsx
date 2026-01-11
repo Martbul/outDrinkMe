@@ -22,6 +22,7 @@ import type {
   Venue,
   PaddlePrice,
   Premium,
+  WishItem,
 } from "../types/api.types";
 import { apiService } from "@/api";
 import { usePostHog } from "posthog-react-native";
@@ -50,6 +51,7 @@ interface AppContextType {
   venues: Venue[];
   premiumPrices: PaddlePrice[];
   premium: Premium | null;
+  wishList: WishItem[];
 
   yourMixData: DailyDrinkingPostResponse[];
   yourMixHasMore: boolean;
@@ -85,6 +87,7 @@ interface AppContextType {
   refreshNotifications: (page?: number) => Promise<void>;
   refreshUserStories: () => Promise<void>;
   refreshPremiumDetails: () => Promise<void>;
+  refreshWishList: () => Promise<void>;
   refreshAll: () => Promise<void>;
 
   loadMoreYourMixData: () => Promise<void>;
@@ -125,6 +128,7 @@ interface AppContextType {
   markNotificationRead: (id: string) => Promise<void>;
   markAllNotificationsRead: () => Promise<void>;
   registerPushDevice: (token: string) => Promise<void>;
+  setWishList: React.Dispatch<React.SetStateAction<WishItem[]>>;
   showRateModal: boolean;
   closeRateModal: () => void;
 
@@ -159,29 +163,30 @@ export function AppProvider({ children }: AppProviderProps) {
   const [achievements, setAchievements] = useState<Achievement[] | null>(null);
   const [calendar, setCalendar] = useState<CalendarResponse | null>(null);
   const [weeklyStats, setWeeklyStats] = useState<DaysStat | null>(null);
-  const [friends, setFriends] = useState<UserData[] | []>([]);
-  const [discovery, setDiscovery] = useState<UserData[] | []>([]);
+  const [friends, setFriends] = useState<UserData[]>([]);
+  const [discovery, setDiscovery] = useState<UserData[]>([]);
   const [stories, setStories] = useState<UserStories[]>([]);
 
-  const [yourMixData, setYourMixData] = useState<DailyDrinkingPostResponse[] | []>([]);
+  const [yourMixData, setYourMixData] = useState<DailyDrinkingPostResponse[]>([]);
   const [yourMixPage, setYourMixPage] = useState(1);
   const [yourMixHasMore, setYourMixHasMore] = useState(true);
 
-  const [globalMixData, setGlobalMixData] = useState<DailyDrinkingPostResponse[] | []>([]);
+  const [globalMixData, setGlobalMixData] = useState<DailyDrinkingPostResponse[]>([]);
   const [globalMixPage, setGlobalMixPage] = useState(1);
   const [globalMixHasMore, setGlobalMixHasMore] = useState(true);
 
-  const [mapFriendPosts, setMapFriendPosts] = useState<DailyDrinkingPostResponse[] | []>([]);
-  const [mixTimelineData, setMixTimelineData] = useState<DailyDrinkingPostResponse[] | []>([]);
+  const [mapFriendPosts, setMapFriendPosts] = useState<DailyDrinkingPostResponse[]>([]);
+  const [mixTimelineData, setMixTimelineData] = useState<DailyDrinkingPostResponse[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [drunkThought, setDrunkThought] = useState<string | null>(null);
-  const [friendsDrunkThoughts, setFriendsDrunkThoughts] = useState<DrunkThought[] | []>([]);
+  const [friendsDrunkThoughts, setFriendsDrunkThoughts] = useState<DrunkThought[]>([]);
   const [alcoholCollection, setAlcoholCollection] = useState<AlcoholCollectionByType | null>(null);
   const [friendDiscoveryProfile, setFriendDiscoveryProfile] = useState<FriendDiscoveryDisplayProfileResponse | null>(
     null
   );
+  const [wishList, setWishList] = useState<WishItem[]>([]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -657,7 +662,7 @@ export function AppProvider({ children }: AppProviderProps) {
         }
       },
       "load_more_your_mix",
-      true 
+      true
     );
   }, [isSignedIn, getToken, withLoadingAndError, yourMixPage, yourMixHasMore]);
 
@@ -698,7 +703,7 @@ export function AppProvider({ children }: AppProviderProps) {
         }
       },
       "load_more_global_mix",
-      true 
+      true
     );
   }, [isSignedIn, getToken, withLoadingAndError, globalMixPage, globalMixHasMore]);
 
@@ -819,6 +824,19 @@ export function AppProvider({ children }: AppProviderProps) {
     }
   }, [isSignedIn, getToken]);
 
+  const refreshWishList = useCallback(async () => {
+    if (!isSignedIn) return;
+    try {
+      const token = await getToken();
+      if (token) {
+        const data = await apiService.getWishes(token);
+        setWishList(data || []);
+      }
+    } catch (e) {
+      console.error("Failed to load stories", e);
+    }
+  }, [isSignedIn, getToken]);
+
   const refreshAll = useCallback(async () => {
     if (!isSignedIn) return;
 
@@ -844,8 +862,8 @@ export function AppProvider({ children }: AppProviderProps) {
         apiService.getCurrentMonthCalendar(token),
         apiService.getFriends(token),
         apiService.getDiscovery(token),
-        apiService.getYourMixData(token, 1), 
-        apiService.getGlobalMixData(token, 1), 
+        apiService.getYourMixData(token, 1),
+        apiService.getGlobalMixData(token, 1),
         apiService.getMixTimeline(token),
         apiService.getWeeklyStats(token),
         apiService.getDrunkThought(token),
@@ -861,6 +879,7 @@ export function AppProvider({ children }: AppProviderProps) {
         apiService.getAllVenues(token),
         apiService.getPremiumPrices(token),
         apiService.getPremiumDetails(token),
+        apiService.getWishes(token),
       ]);
 
       const [
@@ -888,6 +907,7 @@ export function AppProvider({ children }: AppProviderProps) {
         allVenuesResult,
         premiumPricesResult,
         premiumResult,
+        wishResult,
       ] = results;
 
       if (userResult.status === "fulfilled") {
@@ -1047,6 +1067,13 @@ export function AppProvider({ children }: AppProviderProps) {
         setPremium(null);
       }
 
+      if (wishResult.status === "fulfilled") {
+        setWishList(wishResult.value || null);
+      } else {
+        console.error("Failed to fetch wish list:", wishResult.reason);
+        setWishList([]);
+      }
+
       const failedCalls = results.filter((r) => r.status === "rejected");
       if (failedCalls.length > 0) {
         posthog?.capture("bulk_refresh_partial_failure", {
@@ -1117,23 +1144,17 @@ export function AppProvider({ children }: AppProviderProps) {
         setWeeklyStats(result.weekly);
         setTimeout(() => {
           triggerRateAppCheck();
-        }, 2000); 
+        }, 2000);
       }
     },
-    [isSignedIn, getToken, withLoadingAndError,triggerRateAppCheck]
+    [isSignedIn, getToken, withLoadingAndError, triggerRateAppCheck]
   );
 
   const createStory = useCallback(
-    async (data: {
-      videoUrl: string; 
-      width: number;
-      height: number;
-      duration: number;
-      taggedBuddies: string[];
-    }) => {
+    async (data: { videoUrl: string; width: number; height: number; duration: number; taggedBuddies: string[] }) => {
       const newJob: StoryUploadJob = {
         id: Math.random().toString(36).substring(7),
-        uri: data.videoUrl, 
+        uri: data.videoUrl,
         progress: 0,
         status: "pending",
         meta: {
@@ -1404,6 +1425,7 @@ export function AppProvider({ children }: AppProviderProps) {
     venues,
     premiumPrices,
     premium,
+    wishList,
 
     yourMixData,
     yourMixHasMore,
@@ -1443,6 +1465,7 @@ export function AppProvider({ children }: AppProviderProps) {
     refreshNotifications,
     refreshUserStories,
     refreshPremiumDetails,
+    refreshWishList,
     refreshAll,
 
     // Pagination Actions
@@ -1468,6 +1491,7 @@ export function AppProvider({ children }: AppProviderProps) {
     updateMessage,
     showRateModal,
     closeRateModal,
+    setWishList,
 
     // Global State
     isLoading,

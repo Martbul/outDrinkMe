@@ -27,6 +27,7 @@ import {
   UserStories,
   Venue,
   VideoPost,
+  WishItem,
 } from "./types/api.types";
 
 class ApiService {
@@ -874,6 +875,27 @@ class ApiService {
     });
   }
 
+  async getWishes(token: string): Promise<WishItem[]> {
+    return this.makeRequest<WishItem[]>("/api/v1/user/wish-list", {
+      method: "GET",
+      token,
+    });
+  }
+
+  async addWish(text: string, token: string): Promise<WishItem> {
+    return this.makeRequest<WishItem>("/api/v1/user/wish-list", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ text: text }),
+    });
+  }
+
+  async toggleWishCheck(wishId: string, token: string): Promise<{ success: boolean }> {
+    return this.makeRequest<{ success: boolean }>(`/api/v1/user/wish-list/${wishId}/toggle`, {
+      method: "PATCH",
+      token,
+    });
+  }
   getWebSocketUrl(sessionId: string): string {
     const rawHost = this.baseUrl.replace(/^https?:\/\//, "");
     const protocol = this.baseUrl.startsWith("https") ? "wss" : "ws";
