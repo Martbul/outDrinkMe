@@ -29,7 +29,7 @@ export const TabSwitcher = <T extends string | number>({
 }: TabSwitcherProps<T>) => {
   return (
     <View
-      className={`${containerStyle} h-10 bg-[#1A1A1A] rounded-full border border-white/[0.1] p-1 flex-row relative`}
+      className={`${containerStyle} h-10 bg-white/[0.03] rounded-full border border-white/[0.08] p-1 flex-row relative`}
     >
       {items.map((item) => {
         const isActive = selected === item.value;

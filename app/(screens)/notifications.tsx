@@ -29,7 +29,7 @@ const CompactSegmentedControl = ({
   badges?: { unread?: number };
 }) => {
   return (
-    <View className="mx-16 mb-4 mt-2 h-10 bg-[#1A1A1A] rounded-full border border-white/[0.1] p-1 flex-row relative">
+    <View className="mx-16 mb-4 mt-2 h-10 bg-white/[0.03] rounded-full border border-white/[0.08] p-1 flex-row relative">
       <TouchableOpacity
         onPress={() => onSelect("unread")}
         className={`flex-1 items-center justify-center rounded-full flex-row ${

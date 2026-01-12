@@ -502,9 +502,11 @@ const UserInfoScreen = () => {
 
     return (
       <View className="px-4 pb-20">
-        {renderSection("Smoking Kit", inventory.smoking, storeItems?.smoking || [])}
+        {renderSection("Bottles", inventory.bottle, storeItems?.bottle || [])}
         {renderSection("Energy Drinks", inventory.energy, storeItems?.energy || [])}
+        {renderSection("Specials", inventory.special, storeItems?.special || [])}
         {renderSection("Flags", inventory.flag, storeItems?.flag || [])}
+        {renderSection("Smoking Kit", inventory.smoking, storeItems?.smoking || [])}
       </View>
     );
   };
@@ -533,7 +535,7 @@ const UserInfoScreen = () => {
               <Text className="text-white text-xl font-black">
                 {friendDiscoveryProfile.stats.alcoholism_coefficient?.toFixed(2)}
               </Text>
-              <Text className="text-white/40 text-[9px] font-bold mt-1">SCORE</Text>
+              <Text className="text-white/40 text-[9px] font-bold mt-1">POINTS</Text>
             </View>
             <View className="flex-1 bg-white/0.03 p-4 rounded-xl border border-white/5">
               <Text className="text-white text-xl font-black">{friendDiscoveryProfile.stats.total_days_drank}</Text>
@@ -701,7 +703,6 @@ const UserInfoScreen = () => {
           </View>
         </View>
 
-        {/* 3. Tabs */}
         <CompactSegmentedControl
           selected={activeTab}
           onSelect={setActiveTab}
