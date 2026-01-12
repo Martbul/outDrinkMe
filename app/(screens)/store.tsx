@@ -531,7 +531,7 @@ export default function StoreScreen() {
         </View> */}
         <View className="mt-6">
           <View className="mx-4 mb-4 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
-            <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">Alcoholism</Text>
+            <Text className="text-orange-600 text-[11px] font-bold tracking-widest uppercase mb-1">Alcoholism</Text>
             <Text className="text-white text-2xl font-black">Bottles</Text>
           </View>
 
@@ -539,10 +539,9 @@ export default function StoreScreen() {
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 16 }}
-            data={bottles} 
-            keyExtractor={(item) => item.id.toString()} 
+            data={bottles}
+            keyExtractor={(item) => item.id.toString()}
             renderItem={({ item }) => <BottleCard item={item} />}
-            // Optional: Add performance props for FlatList
             initialNumToRender={3} // Render this many items initially
             maxToRenderPerBatch={5} // Render this many items in each batch
             windowSize={5} // How many screens worth of data to render in the surrounding area
@@ -552,7 +551,9 @@ export default function StoreScreen() {
 
         <View className="mt-6">
           <View className="mx-4 mb-4 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
-            <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">SLEEP IMPROVEMENT</Text>
+            <Text className="text-orange-600 text-[11px] font-bold tracking-widest uppercase mb-1">
+              SLEEP IMPROVEMENT
+            </Text>
             <Text className="text-white text-2xl font-black">Energy</Text>
           </View>
 
@@ -560,10 +561,9 @@ export default function StoreScreen() {
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 16 }}
-            data={energyDrinks} 
-            keyExtractor={(item) => item.id.toString()} 
+            data={energyDrinks}
+            keyExtractor={(item) => item.id.toString()}
             renderItem={({ item }) => <EnergyDrinkCard drink={item} />}
-            // Optional: Add performance props for FlatList
             initialNumToRender={3} // Render this many items initially
             maxToRenderPerBatch={5} // Render this many items in each batch
             windowSize={5} // How many screens worth of data to render in the surrounding area
@@ -573,7 +573,7 @@ export default function StoreScreen() {
 
         <View className="mt-6">
           <View className="mx-4 mb-4 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
-            <Text className="text-orange-600 text-[11px] font-bold tracking-widest mb-1">Wild</Text>
+            <Text className="text-orange-600 text-[11px] font-bold tracking-widest uppercase mb-1">Wild</Text>
             <Text className="text-white text-2xl font-black">Specials</Text>
           </View>
 
@@ -581,10 +581,9 @@ export default function StoreScreen() {
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 16 }}
-            data={specials} 
-            keyExtractor={(item) => item.id.toString()} 
+            data={specials}
+            keyExtractor={(item) => item.id.toString()}
             renderItem={({ item }) => <SpecialsCard item={item} />}
-            // Optional: Add performance props for FlatList
             initialNumToRender={3} // Render this many items initially
             maxToRenderPerBatch={5} // Render this many items in each batch
             windowSize={5} // How many screens worth of data to render in the surrounding area
@@ -602,8 +601,8 @@ export default function StoreScreen() {
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 16 }}
-            data={flags} 
-            keyExtractor={(item) => item.id.toString()} 
+            data={flags}
+            keyExtractor={(item) => item.id.toString()}
             renderItem={({ item }) => <FlagCard item={item} />}
             initialNumToRender={3} // Render this many items initially
             maxToRenderPerBatch={5} // Render this many items in each batch
@@ -617,14 +616,12 @@ export default function StoreScreen() {
             <Text className="text-white text-2xl font-black">Smoking</Text>
           </View>
 
-          
-
           <FlatList
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 16 }}
-            data={smokingDevices} 
-            keyExtractor={(item) => item.id.toString()} 
+            data={smokingDevices}
+            keyExtractor={(item) => item.id.toString()}
             renderItem={({ item }) => <SmokingCard device={item} />}
             initialNumToRender={3} // Render this many items initially
             maxToRenderPerBatch={5} // Render this many items in each batch

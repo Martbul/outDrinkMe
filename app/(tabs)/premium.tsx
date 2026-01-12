@@ -300,12 +300,17 @@ const PremiumLock = ({ isLocked, onUnlock, isProcessing, children }: any) => (
 );
 
 const FilterPills = ({ items, selected, onSelect }: any) => (
-  <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-2 overflow-visible pb-2">
-    {items.map((item: any) => (
+  <FlatList
+    horizontal
+    showsHorizontalScrollIndicator={false}
+    data={items}
+    keyExtractor={(item) => item.id.toString()}
+    contentContainerStyle={{ gap: 12, paddingBottom: 8 }}
+    className="mb-2 overflow-visible"
+    renderItem={({ item }) => (
       <TouchableOpacity
-        key={item.id}
         onPress={() => onSelect(item.id)}
-        className={`flex-row items-center border rounded-full px-4 py-2 mr-2 ${
+        className={`flex-row items-center border rounded-full px-4 py-2 ${
           selected === item.id ? "bg-orange-600 border-orange-600" : "bg-white/[0.03] border-white/[0.08]"
         }`}
       >
@@ -314,8 +319,12 @@ const FilterPills = ({ items, selected, onSelect }: any) => (
           {item.label}
         </Text>
       </TouchableOpacity>
-    ))}
-  </ScrollView>
+    )}
+    initialNumToRender={10} 
+    maxToRenderPerBatch={5}
+    windowSize={5}
+    removeClippedSubviews={true}
+  />
 );
 
 const BarHuntMap = ({ bars, onSelectBar }: { bars: Venue[]; onSelectBar: (bar: Venue) => void }) => {
@@ -663,7 +672,7 @@ export default function BarHuntScreen() {
             scrollEventThrottle={16}
             contentContainerStyle={{
               paddingHorizontal: SCREEN_PADDING,
-              paddingTop: totalTopPadding + 10, // Content starts below the fixed headers
+              paddingTop: totalTopPadding + 10, 
               paddingBottom: 100,
             }}
             showsVerticalScrollIndicator={false}

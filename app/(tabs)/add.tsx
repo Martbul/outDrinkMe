@@ -21,7 +21,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/providers/AppProvider";
 import Entypo from "@expo/vector-icons/Entypo";
-import { Feather, FontAwesome5, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather, FontAwesome5, FontAwesome6, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import type { UserData } from "@/types/api.types";
@@ -579,13 +579,23 @@ export default function AddDrinks() {
             style={{ minHeight: 170 }}
           >
             <View className="flex-1 items-center justify-center py-8 z-20">
-             
-              <FontAwesome5
+              {/* <FontAwesome5
                 name={isHolding ? "cocktail" : "cocktail"}
                 size={48}
                 color={isHolding ? "#000" : "#EA580C"}
                 style={{ marginBottom: 16 }}
-
+              /> */}
+              {/* <FontAwesome6
+                name="martini-glass"
+                size={42}
+                color={isHolding ? "#000" : "#EA580C"}
+                style={{ marginBottom: 16 }}
+              /> */}
+              <FontAwesome5
+                name="glass-cheers"
+                size={54}
+                color={isHolding ? "#000" : "#EA580C"}
+                style={{ marginBottom: 16 }}
               />
               <Text
                 className={`text-2xl font-black tracking-widest text-center mb-2 ${

@@ -27,7 +27,7 @@ const CompactSegmentedControl = ({
   onSelect: (val: "friends" | "discovery") => void;
 }) => {
   return (
-    <View className="mx-12 mb-4 mt-4 h-10 bg-[#1A1A1A] rounded-full border border-white/[0.1] p-1 flex-row relative">
+    <View className="mx-12 mb-4 mt-4 h-10 bg-white/[0.03] rounded-full border border-white/[0.08] p-1 flex-row relative">
       <TouchableOpacity
         onPress={() => onSelect("friends")}
         className={`flex-1 items-center justify-center rounded-full flex-row ${
@@ -41,9 +41,7 @@ const CompactSegmentedControl = ({
           style={{ marginRight: 4 }}
         />
         <Text
-          className={`text-[11px] font-black tracking-wide ${
-            selected === "friends" ? "text-black" : "text-white/40"
-          }`}
+          className={`text-[11px] font-black tracking-wide ${selected === "friends" ? "text-black" : "text-white/40"}`}
         >
           BUDDIES
         </Text>
@@ -74,7 +72,7 @@ const CompactSegmentedControl = ({
 };
 
 const SearchBar = ({ value, onChangeText, placeholder, onClear }: any) => (
-  <View className="flex-row items-center bg-[#1A1A1A] border border-white/10 rounded-full px-4 h-12 mb-4">
+  <View className="flex-row items-center bg-white/[0,03] border border-white/[0.08] rounded-full px-4 h-12 mb-4">
     <Ionicons name="search" size={20} color="#666" />
     <TextInput
       value={value}
@@ -111,7 +109,7 @@ const UserRowCard = ({
     <TouchableOpacity
       activeOpacity={0.7}
       onPress={onPress}
-      className="bg-[#121212] rounded-3xl p-4 border border-white/[0.08] flex-row items-center mb-3"
+      className="bg-white/[0.03] rounded-3xl p-4 border border-white/[0.08] flex-row items-center mb-3"
     >
       {/* Avatar */}
       <View className="w-12 h-12 rounded-full bg-[#1A1A1A] border border-white/10 items-center justify-center mr-4 overflow-hidden">

@@ -137,7 +137,7 @@ const handleNavigation = () => {
         <View className="absolute bottom-3 left-3 right-3 flex-row items-end justify-between pointer-events-box-none">
           <TouchableOpacity
             onPress={() => router.push(`/(screens)/userInfo?userId=${item.user_id}`)}
-            className="rounded-full border border-white/20 overflow-hidden w-10 h-10 bg-zinc-800"
+            className="rounded-full border border-white/20 overflow-hidden w-11 h-11 bg-zinc-800"
           >
             {item.user_image_url && (
               <ExpoImage source={{ uri: item.user_image_url }} style={{ width: "100%", height: "100%" }} />

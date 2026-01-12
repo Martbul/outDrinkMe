@@ -208,7 +208,7 @@ export default function MemoryCanvas() {
   const availableStickers = useMemo(() => {
     if (!userInventory || !storeItems) return [];
     const stickers: any[] = [];
-    ["smoking", "energy", "flag"].forEach((cat) => {
+    ["smoking", "energy", "flag", "special", "bottle"].forEach((cat) => {
       const inventoryItems = userInventory[cat] || [];
       const storeCategory = storeItems[cat] || [];
       inventoryItems.forEach((invItem: any) => {
@@ -879,9 +879,9 @@ useEffect(() => {
       >
         <TouchableOpacity
           onPress={handleClose}
-          className="w-10 h-10 bg-white/90 rounded-full items-center justify-center shadow-sm border border-black/5"
+          className="w-10 h-10 bg-white/[0.03] rounded-full items-center justify-center shadow-sm border border-white/[0.08]"
         >
-          <Ionicons name="close" size={24} color="black" />
+          <Ionicons name="close" size={24} color="#EA580C" />
         </TouchableOpacity>
 
         <View className="flex-row gap-2">
@@ -892,9 +892,9 @@ useEffect(() => {
               scale.value = withSpring(0.9);
               triggerHaptic();
             }}
-            className="w-10 h-10 bg-white rounded-full items-center justify-center shadow-lg border border-black/10"
+            className="w-10 h-10 bg-white/[0.03] rounded-full items-center justify-center shadow-lg border border-white/[0.08]"
           >
-            <MaterialCommunityIcons name="crosshairs-gps" size={20} color="#333" />
+            <MaterialCommunityIcons name="crosshairs-gps" size={20} color="#EA580C" />
           </TouchableOpacity>
           {canEdit && (
             <TouchableOpacity
@@ -902,17 +902,17 @@ useEffect(() => {
                 setIsUiHidden(!isUiHidden);
                 triggerHaptic();
               }}
-              className="w-10 h-10 bg-white/90 rounded-full items-center justify-center shadow-sm border border-black/5"
+              className="w-10 h-10 bg-white/[0.03] rounded-full items-center justify-center shadow-sm border border-white/[0.08]"
             >
-              <Ionicons name={isUiHidden ? "eye-off" : "eye"} size={20} color={isUiHidden ? "#ff8c00" : "black"} />
+              <Ionicons name={isUiHidden ? "eye-off" : "eye"} size={20} color={isUiHidden ? "#EA580C" : "#EA580C"} />
             </TouchableOpacity>
           )}
           {canEdit && !isUiHidden && (
             <TouchableOpacity
               onPress={() => setSettingsModalVisible(true)}
-              className="w-10 h-10 bg-white/90 rounded-full items-center justify-center shadow-sm border border-black/5"
+              className="w-10 h-10 bg-white/[0.03] rounded-full items-center justify-center shadow-sm border border-white/[0.08]"
             >
-              <Ionicons name="settings-outline" size={20} color="black" />
+              <Ionicons name="settings-outline" size={20} color="#EA580C" />
             </TouchableOpacity>
           )}
 
@@ -920,12 +920,12 @@ useEffect(() => {
             <TouchableOpacity
               onPress={handleSaveCanvas}
               disabled={isSaving}
-              className="w-10 h-10 bg-white/90 rounded-full items-center justify-center shadow-sm border border-black/5"
+              className="w-10 h-10 bg-white/[0.03] rounded-full items-center justify-center shadow-sm border border-white/[0.08]"
             >
               {isSaving ? (
-                <ActivityIndicator size="small" color="black" />
+                <ActivityIndicator size="small" color="#EA580C" />
               ) : (
-                <Feather name="check" size={24} color="black" />
+                <Feather name="check" size={24} color="#EA580C" />
               )}
             </TouchableOpacity>
           )}
@@ -998,7 +998,7 @@ useEffect(() => {
               style={[{ bottom: insets.bottom + 20 }, bottomControlsStyle]}
             >
               <View className="flex-row gap-4 items-center">
-                <ToolIcon name="image" onPress={handleAddPhoto} color="white" loading={isUploading} />
+                <ToolIcon name="image" onPress={handleAddPhoto} color="#EA580C" loading={isUploading} />
                 <ToolIcon
                   name="text"
                   onPress={() => {
@@ -1006,10 +1006,10 @@ useEffect(() => {
                     setInputText("");
                     setTextModalVisible(true);
                   }}
-                  color="white"
+                  color="#EA580C"
                 />
-                <ToolIcon name="pencil" onPress={startDrawing} color="white" />
-                <ToolIcon name="cube-outline" onPress={() => setStickerModalVisible(true)} color="white" />
+                <ToolIcon name="pencil" onPress={startDrawing} color="#EA580C" />
+                <ToolIcon name="cube-outline" onPress={() => setStickerModalVisible(true)} color="#EA580C" />
               </View>
             </Animated.View>
           ) : (
@@ -1035,7 +1035,7 @@ useEffect(() => {
                     <View key={idx} className="relative m-2 overflow-visible">
                       <TouchableOpacity
                         onPress={() => handleAddReaction(sticker.id, sticker.image_url)}
-                        className="w-20 h-20 bg-white/10 rounded-xl items-center justify-center border border-white/10"
+                        className="w-20 h-20 bg-white/[0.03] rounded-xl items-center justify-center border border-white/10"
                       >
                         <Image source={{ uri: sticker.image_url }} className="w-[80%] h-[80%]" resizeMode="contain" />
                       </TouchableOpacity>
@@ -1044,7 +1044,7 @@ useEffect(() => {
                         className="absolute top-1 right-1 bg-orange-600 rounded-full w-6 h-6 items-center justify-center border border-black"
                         style={{ zIndex: 10, elevation: 6 }}
                       >
-                        <Text className="text-white text-[10px] font-bold">{sticker.quantity}</Text>
+                        <Text className="text-black text-[10px] font-bold">{sticker.quantity}</Text>
                       </View>
                     </View>
                   ))}
