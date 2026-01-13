@@ -727,7 +727,7 @@ class ApiService {
       method: "POST",
       token,
       body: JSON.stringify({
-        qr_token: qrToken,
+        qrToken: qrToken, 
       }),
     });
   }

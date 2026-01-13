@@ -555,6 +555,7 @@ export interface FuncMember {
 
 export interface FuncMetadata {
   inviteCode: string;
+  shareLink: string; 
   qrToken: string;
   qrCodeBase64: string;
   expiresAt: string;

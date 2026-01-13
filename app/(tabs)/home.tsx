@@ -105,9 +105,6 @@ export default function HomeScreen() {
   };
 
 
-
-
-
   const flatListRef = useRef<FlatList>(null);
   const scrollX = useRef(new Animated.Value(0)).current;
   const headlinerCardsData = [
@@ -382,7 +379,7 @@ const renderHeadlinerCard = ({ item }: { item: (typeof headlinerCardsData)[0] })
 
           <Animated.View
             style={{ transform: [{ translateY: slideAnim }] }}
-            className="bg-[#121212] rounded-t-[40px] border-t border-white/10 min-h-[70%] max-h-[90%]"
+            className="bg-black rounded-t-[40px] border-t border-white/[0.08] min-h-[70%] max-h-[90%]"
           >
             <QrSessionManager onClose={closeModal} />
           </Animated.View>

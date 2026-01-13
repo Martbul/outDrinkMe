@@ -231,7 +231,7 @@ const DynamicGlanceCard = ({ item, onPress }: { item: Venue; onPress: () => void
       onPress={onPress}
       className="bg-white/[0.03] rounded-3xl overflow-hidden border border-white/[0.08]"
     >
-      <View style={{ width: "100%", height: cardHeight }} className="relative bg-gray-900">
+      <View style={{ width: "100%", height: cardHeight }} className="relative bg-white/[0.03]">
         <Image source={getImageSource(item.image_url)} style={{ width: "100%", height: "100%" }} />
         <LinearGradient
           colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.6)"]}
@@ -320,7 +320,7 @@ const FilterPills = ({ items, selected, onSelect }: any) => (
         </Text>
       </TouchableOpacity>
     )}
-    initialNumToRender={10} 
+    initialNumToRender={10}
     maxToRenderPerBatch={5}
     windowSize={5}
     removeClippedSubviews={true}
@@ -664,7 +664,7 @@ export default function BarHuntScreen() {
             data={filteredBars}
             numColumns={1}
             renderItem={({ item }: any) => (
-              <View style={{ marginBottom: GAP }}>
+              <View style={{ marginBottom: GAP, backgroundColor: "#000000" }}>
                 <DynamicGlanceCard item={item} onPress={() => setSelectedBar(item)} />
               </View>
             )}
@@ -672,7 +672,7 @@ export default function BarHuntScreen() {
             scrollEventThrottle={16}
             contentContainerStyle={{
               paddingHorizontal: SCREEN_PADDING,
-              paddingTop: totalTopPadding + 10, 
+              paddingTop: totalTopPadding + 10,
               paddingBottom: 100,
             }}
             showsVerticalScrollIndicator={false}
