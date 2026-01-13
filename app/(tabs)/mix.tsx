@@ -212,13 +212,11 @@ const MixScreen = () => {
   const [expandedItem, setExpandedItem] = useState<DailyDrinkingPostResponse | undefined>(undefined);
   const [currentAspectRatio, setCurrentAspectRatio] = useState(4 / 3);
 
-  // -- STICKY HEADER STATE --
   const [headerHeight, setHeaderHeight] = useState(120);
   const scrollY = useSharedValue(0);
   const translateY = useSharedValue(0);
   const lastContentOffset = useSharedValue(0);
 
-  // 1. Handle Scroll Updates
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
       scrollY.value = event.contentOffset.y;
@@ -228,7 +226,6 @@ const MixScreen = () => {
     },
   });
 
-  // 2. DiffClamp Logic for Show/Hide
   useDerivedValue(() => {
     const nextY = scrollY.value;
     const diff = nextY - lastContentOffset.value;

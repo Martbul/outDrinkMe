@@ -8,18 +8,16 @@ jobs:
     runs-on: ubuntu-latest
     environment: Development
     steps:
-      # --- NEW STEP: Free up ~10GB of space to prevent build crash ---
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
         with:
           tool-cache: false
-          android: false # IMPORTANT: Keep this false so Android SDKs are not deleted
+          android: false 
           dotnet: true
           haskell: true
           large-packages: true
           docker-images: true
           swap-storage: true
-      # ---------------------------------------------------------------
 
       - name: Setup Repo
         uses: actions/checkout@v4

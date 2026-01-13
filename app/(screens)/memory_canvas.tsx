@@ -1,14 +1,7 @@
-import React, {
-  useState,
-  useEffect,
-  useCallback,
-  useMemo,
-  useRef,
-} from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   StatusBar,
   useWindowDimensions,
@@ -22,6 +15,7 @@ import {
   Switch,
   StyleSheet,
 } from "react-native";
+import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import Animated, {
@@ -33,26 +27,25 @@ import Animated, {
   withTiming,
   SharedValue,
 } from "react-native-reanimated";
-import {
-  Gesture,
-  GestureDetector,
-  GestureHandlerRootView,
-} from "react-native-gesture-handler";
+import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/providers/AppProvider";
 import { useAuth } from "@clerk/clerk-expo";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as Haptics from "expo-haptics";
-import Svg, {
-  Path as SvgPath,
-  Defs,
-  Pattern,
-  Circle,
-  Rect as SvgRect,
-} from "react-native-svg";
+import Svg, { Path as SvgPath, Defs, Pattern, Circle, Rect as SvgRect } from "react-native-svg";
 import { CanvasItem } from "@/types/api.types";
 import { apiService } from "@/api";
+
+const getOptimizedImageUrl = (url: string, width = 800) => {
+  if (!url || typeof url !== "string") return "";
+  if (url.includes("cloudinary.com") && url.includes("/upload/")) {
+    if (url.includes("/upload/w_")) return url;
+    return url.replace("/upload/", `/upload/w_${width},q_auto,f_auto/`);
+  }
+  return url;
+};
 
 const triggerHaptic = (style = Haptics.ImpactFeedbackStyle.Light) => {
   Haptics.impactAsync(style);
@@ -79,16 +72,12 @@ export default function MemoryCanvas() {
     const currentPostId = Array.isArray(postId) ? postId[0] : postId;
     const post = yourMixData.find((p) => p.id === currentPostId);
 
-    // If we have the post in store, use it.
     if (post && userData) {
       const isOwner = post.user_id === userData.id;
       const isTagged = post.mentioned_buddies?.some((buddy) => buddy.id === userData.id);
       return { canEdit: isOwner || isTagged, foundPost: post };
     }
 
-    // FALLBACK: If not in store, check params against user data
-    // Note: We might miss "isTagged" check here if data isn't full,
-    // but at least the owner can edit.
     if (userData && initialOwnerId) {
       const isOwner = initialOwnerId === userData.id;
       return {
@@ -103,36 +92,30 @@ export default function MemoryCanvas() {
     }
 
     return { canEdit: false, foundPost: null };
-  }, [yourMixData, postId, userData, initialOwnerId]); // Add initialOwnerId to dependency
+  }, [yourMixData, postId, userData, initialOwnerId]);
 
   const [optimisticUsage, setOptimisticUsage] = useState<Record<string, number>>({});
-
   const [items, setItems] = useState<CanvasItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isUiHidden, setIsUiHidden] = useState(false);
-
   const [savedModalVisible, setSavedModalVisible] = useState(false);
-
   const [history, setHistory] = useState<CanvasItem[][]>([]);
   const [historyStep, setHistoryStep] = useState(-1);
   const [reactions, setReactions] = useState<CanvasItem[]>([]);
-
   const [showGrid, setShowGrid] = useState(false);
   const [snapToGrid, setSnapToGrid] = useState(false);
   const [settingsModalVisible, setSettingsModalVisible] = useState(false);
-
   const [textModalVisible, setTextModalVisible] = useState(false);
   const [inputText, setInputText] = useState("");
   const [selectedTextColor, setSelectedTextColor] = useState("#000000");
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [stickerModalVisible, setStickerModalVisible] = useState(false);
-
   const [itemOptionsVisible, setItemOptionsVisible] = useState(false);
   const [selectedItemForOptions, setSelectedItemForOptions] = useState<string | null>(null);
 
-  // Drawing
+  // Drawing state
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [currentStroke, setCurrentStroke] = useState<string>("");
   const [completedStrokes, setCompletedStrokes] = useState<DrawingStroke[]>([]);
@@ -145,7 +128,7 @@ export default function MemoryCanvas() {
   });
   const currentPath = useSharedValue("");
 
-  // Camera
+  // Camera state
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const scale = useSharedValue(0.9);
@@ -154,7 +137,6 @@ export default function MemoryCanvas() {
   const contextScale = useSharedValue(0);
   const isDraggingItem = useSharedValue(false);
 
-  // --- HISTORY MANAGEMENT ---
   const addToHistory = useCallback(
     (newItems: CanvasItem[]) => {
       setHistory((prev) => {
@@ -181,30 +163,6 @@ export default function MemoryCanvas() {
     router.push("/(screens)/store");
   };
 
-  // const availableStickers = useMemo(() => {
-  //   if (!userInventory || !storeItems) return [];
-  //   const stickers: any[] = [];
-  //   ["smoking", "energy", "flag"].forEach((cat) => {
-  //     const inventoryItems = userInventory[cat] || [];
-  //     const storeCategory = storeItems[cat] || [];
-  //     inventoryItems.forEach((invItem: any) => {
-  //       if (invItem.quantity > 0) {
-  //         const storeDef = storeCategory.find(
-  //           (s: any) => s.id === invItem.item_id
-  //         );
-  //         if (storeDef?.image_url) {
-  //           stickers.push({
-  //             ...storeDef,
-  //             quantity: invItem.quantity,
-  //             id: storeDef.id,
-  //           });
-  //         }
-  //       }
-  //     });
-  //   });
-  //   return stickers;
-  // }, [userInventory, storeItems]);
-
   const availableStickers = useMemo(() => {
     if (!userInventory || !storeItems) return [];
     const stickers: any[] = [];
@@ -212,17 +170,15 @@ export default function MemoryCanvas() {
       const inventoryItems = userInventory[cat] || [];
       const storeCategory = storeItems[cat] || [];
       inventoryItems.forEach((invItem: any) => {
-        // Calculate the real quantity by subtracting local usage
         const usedAmount = optimisticUsage[invItem.item_id] || 0;
         const currentQuantity = invItem.quantity - usedAmount;
 
-        // Check if there are any left optimistically
         if (currentQuantity > 0) {
           const storeDef = storeCategory.find((s: any) => s.id === invItem.item_id);
           if (storeDef?.image_url) {
             stickers.push({
               ...storeDef,
-              quantity: currentQuantity, // Use the calculated quantity
+              quantity: currentQuantity,
               id: storeDef.id,
             });
           }
@@ -230,9 +186,8 @@ export default function MemoryCanvas() {
       });
     });
     return stickers;
-  }, [userInventory, storeItems, optimisticUsage]); // Add optimisticUsage to dependency array
+  }, [userInventory, storeItems, optimisticUsage]);
 
-  // --- CLOUDINARY UPLOAD HELPER ---
   const uploadToCloudinary = async (localUri: string): Promise<string | null> => {
     try {
       const manipulatedResult = await ImageManipulator.manipulateAsync(localUri, [{ resize: { width: 1080 } }], {
@@ -279,70 +234,80 @@ export default function MemoryCanvas() {
     }
   };
 
-useEffect(() => {
-  const initializeCanvas = async () => {
-    setIsLoading(true);
-    try {
-      const currentPostId = Array.isArray(postId) ? postId[0] : postId;
-      if (!currentPostId || !getToken) return;
-      const token = await getToken();
-      if (!token) return;
+  useEffect(() => {
+    const initializeCanvas = async () => {
+      setIsLoading(true);
+      try {
+        const currentPostId = Array.isArray(postId) ? postId[0] : postId;
+        if (!currentPostId || !getToken) return;
+        const token = await getToken();
+        if (!token) return;
 
-      const savedItems = await apiService.getMemoryWall(currentPostId, token);
+        const savedItems = await apiService.getMemoryWall(currentPostId, token);
 
-      let initialItems: CanvasItem[] = [];
-
-      if (savedItems && savedItems.length > 0) {
-        initialItems = savedItems;
-      } else {
-        // CHECK: Use foundPost OR the params passed directly
         const imageToUse = foundPost?.image_url || (initialImage as string);
         const authorToUse = foundPost?.username || (initialAuthor as string);
         const ownerToUse = foundPost?.user_id || (initialOwnerId as string);
 
-        if (imageToUse) {
+        let initialItems: CanvasItem[] = [];
+
+        const createMainAnchorItem = () => {
+          if (!imageToUse) return null;
+
           const TARGET_WIDTH = Math.min(SCREEN_WIDTH * 0.75, 400);
           const TARGET_HEIGHT = TARGET_WIDTH * (4 / 3);
 
-          initialItems = [
-            {
-              id: "main-anchor",
-              daily_drinking_id: currentPostId,
-              added_by_user_id: ownerToUse,
-              item_type: "image",
-              content: imageToUse || "https://picsum.photos/600/800",
-              pos_x: -TARGET_WIDTH / 2,
-              pos_y: -TARGET_HEIGHT / 2,
-              width: TARGET_WIDTH,
-              height: TARGET_HEIGHT,
-              rotation: 0,
-              scale: 1,
-              z_index: 1,
-              created_at: new Date().toISOString(),
-              author_name: authorToUse || "You",
-              extra_data: { locked: true },
-            },
-          ];
+          return {
+            id: "main-anchor",
+            daily_drinking_id: currentPostId,
+            added_by_user_id: ownerToUse,
+            item_type: "image",
+            content: imageToUse,
+            pos_x: -TARGET_WIDTH / 2,
+            pos_y: -TARGET_HEIGHT / 2,
+            width: TARGET_WIDTH,
+            height: TARGET_HEIGHT,
+            rotation: 0,
+            scale: 1,
+            z_index: 1,
+            created_at: new Date().toISOString(),
+            author_name: authorToUse || "You",
+            extra_data: { locked: true },
+          };
+        };
+
+        if (savedItems && savedItems.length > 0) {
+          initialItems = savedItems;
+          const hasMainImage = initialItems.some(
+            (item) =>
+              item.id === "main-anchor" ||
+              (item.extra_data && item.extra_data.locked === true && item.item_type === "image")
+          );
+
+          if (!hasMainImage) {
+            const anchor = createMainAnchorItem();
+            if (anchor) initialItems.unshift(anchor as CanvasItem);
+          }
+        } else {
+          const anchor = createMainAnchorItem();
+          if (anchor) initialItems = [anchor as CanvasItem];
         }
+
+        setItems(initialItems);
+        setHistory([initialItems]);
+        setHistoryStep(0);
+      } catch (error) {
+        console.error("Failed to load memory wall:", error);
+      } finally {
+        setIsLoading(false);
       }
+    };
 
-      setItems(initialItems);
-      setHistory([initialItems]);
-      setHistoryStep(0);
-    } catch (error) {
-      console.error("Failed to load memory wall:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    initializeCanvas();
+  }, [postId, SCREEN_WIDTH, foundPost, initialImage, initialAuthor, initialOwnerId]);
 
-  initializeCanvas();
-  // Add initialImage to dependencies so it reacts if params change
-}, [postId, SCREEN_WIDTH, foundPost, initialImage]);
-
-  // --- ACTIONS ---
+  // ... (Keep existing handlers: handleUpdateItem, onGestureEndAction, etc.)
   const handleUpdateItem = useCallback((id: string, updates: Partial<CanvasItem>) => {
-    // Try updating standard items
     setItems((prev) => {
       const exists = prev.some((i) => i.id === id);
       if (exists) {
@@ -351,7 +316,6 @@ useEffect(() => {
       return prev;
     });
 
-    // Try updating reactions
     setReactions((prev) => {
       const exists = prev.some((r) => r.id === id);
       if (exists) {
@@ -407,17 +371,9 @@ useEffect(() => {
     try {
       const token = await getToken();
       const currentPostId = Array.isArray(postId) ? postId[0] : postId;
-
-      console.log("items");
-      console.log(items);
-      console.log("reactions");
-      console.log(reactions);
       await apiService.saveMemoryWall(currentPostId!, items, reactions, token!);
-
       await refreshUserInventory();
-
       setOptimisticUsage({});
-
       setSavedModalVisible(true);
       setTimeout(() => setSavedModalVisible(false), 1500);
     } catch (error: any) {
@@ -683,7 +639,6 @@ useEffect(() => {
       runOnJS(endDrawState)(currentPath.value);
     });
 
-  // --- CAMERA GESTURES ---
   const panGesture = Gesture.Pan()
     .enabled(!isDrawingMode)
     .onStart(() => {
@@ -747,7 +702,6 @@ useEffect(() => {
         </View>
       )}
 
-      {/* Main Canvas */}
       <View style={{ flex: 1, overflow: "hidden" }}>
         <GestureDetector gesture={composedCameraGesture}>
           <Animated.View className="flex-1 bg-transparent">
@@ -793,7 +747,6 @@ useEffect(() => {
         </GestureDetector>
       </View>
 
-      {/* Loading Overlay */}
       {(isLoading || isUploading) && (
         <View
           style={[
@@ -810,7 +763,6 @@ useEffect(() => {
         </View>
       )}
 
-      {/* DRAWING OVERLAY */}
       {isDrawingMode && canEdit && (
         <View className="absolute inset-0 z-50 bg-black/5">
           <GestureDetector gesture={drawingPan}>
@@ -932,50 +884,6 @@ useEffect(() => {
         </View>
       </View>
 
-      {/* {!canEdit && (
-        <Animated.View
-          className="absolute left-0 right-0 bg-black/80 rounded-t-3xl shadow-2xl z-50"
-          style={[
-            { bottom: 0, paddingBottom: insets.bottom + 10, height: 160 },
-            bottomControlsStyle,
-          ]}
-        >
-          <Text className="text-white/50 text-[11px] font-bold tracking-widest text-center uppercase my-3">
-            Inventory
-          </Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 20 }}
-          >
-            {availableStickers.map((sticker, idx) => (
-              <View key={idx} className="relative m-2 overflow-visible">
-                <TouchableOpacity
-                  onPress={() =>
-                    handleAddReaction(sticker.id, sticker.image_url)
-                  } 
-                  className="w-20 h-20 bg-white/10 rounded-xl items-center justify-center border border-white/10 overflow-visible"
-                >
-                  <Image
-                    source={{ uri: sticker.image_url }}
-                    className="w-[80%] h-[80%]"
-                    resizeMode="contain"
-                  />
-                </TouchableOpacity>
-                <View
-                  className="absolute -top-2 -right-2 bg-orange-600 rounded-full w-6 h-6 items-center justify-center border-2 border-black shadow-lg"
-                  style={{ zIndex: 50, elevation: 8 }}
-                >
-                  <Text className="text-white text-[10px] font-bold">
-                    {sticker.quantity}
-                  </Text>
-                </View>
-              </View>
-            ))}
-          </ScrollView>
-        </Animated.View>
-      )} */}
-
       {!isUiHidden && (
         <Animated.View
           className="absolute bottom-10 left-0 right-0 items-center justify-center z-50 pointer-events-none"
@@ -1037,7 +945,11 @@ useEffect(() => {
                         onPress={() => handleAddReaction(sticker.id, sticker.image_url)}
                         className="w-20 h-20 bg-white/[0.03] rounded-xl items-center justify-center border border-white/10"
                       >
-                        <Image source={{ uri: sticker.image_url }} className="w-[80%] h-[80%]" resizeMode="contain" />
+                        <Image
+                          source={getOptimizedImageUrl(sticker.image_url)}
+                          style={{ width: "80%", height: "80%" }}
+                          contentFit="contain"
+                        />
                       </TouchableOpacity>
 
                       <View
@@ -1062,7 +974,7 @@ useEffect(() => {
         </>
       )}
 
-      {/* SETTINGS MODAL */}
+
       <Modal visible={settingsModalVisible} transparent animationType="fade">
         <TouchableOpacity
           activeOpacity={1}
@@ -1098,7 +1010,6 @@ useEffect(() => {
         </TouchableOpacity>
       </Modal>
 
-      {/* ITEM OPTIONS MODAL */}
       <Modal visible={itemOptionsVisible} transparent animationType="fade">
         <TouchableOpacity
           activeOpacity={1}
@@ -1137,7 +1048,6 @@ useEffect(() => {
         </TouchableOpacity>
       </Modal>
 
-      {/* TEXT MODAL */}
       <Modal visible={textModalVisible} transparent animationType="fade">
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -1199,7 +1109,11 @@ useEffect(() => {
                     style={{ overflow: "visible" }}
                     className="w-[30%] aspect-square bg-white/5 rounded-2xl items-center justify-center border border-white/10 mb-4 relative shadow-sm"
                   >
-                    <Image source={{ uri: sticker.image_url }} className="w-[70%] h-[70%]" resizeMode="contain" />
+                    <Image
+                      source={getOptimizedImageUrl(sticker.image_url)}
+                      style={{ width: "70%", height: "70%" }}
+                      contentFit="contain"
+                    />
                     <View
                       style={{ zIndex: 10 }}
                       className="absolute -top-2 -right-2 bg-orange-600 rounded-full min-w-[22px] h-[22px] items-center justify-center border border-[#1a1a1a] shadow"
@@ -1269,11 +1183,7 @@ const ToolIcon = ({
     disabled={loading}
     className="items-center justify-center w-10 h-10 active:scale-90 transition-transform"
   >
-    {loading ? (
-      <ActivityIndicator size="small" color={color} />
-    ) : (
-      <Ionicons name={name} size={24} color={color} />
-    )}
+    {loading ? <ActivityIndicator size="small" color={color} /> : <Ionicons name={name} size={24} color={color} />}
   </TouchableOpacity>
 );
 
@@ -1319,16 +1229,13 @@ const DraggableItem = ({
   const isLocked = !!item.extra_data?.locked;
 
   const isMine = !!currentUserId && item.added_by_user_id === currentUserId;
-  const canInteract = Boolean(
-    !isDrawingMode && !isLocked && (canEdit || isMine)
-  );
+  const canInteract = Boolean(!isDrawingMode && !isLocked && (canEdit || isMine));
 
   const tap = Gesture.Tap()
     .numberOfTaps(2)
     .enabled(canInteract)
     .onStart(() => {
-      if (item.item_type === "text")
-        runOnJS(onEdit)(item.id, item.content, item.extra_data?.color);
+      if (item.item_type === "text") runOnJS(onEdit)(item.id, item.content, item.extra_data?.color);
     });
 
   const longPress = Gesture.LongPress()
@@ -1415,11 +1322,7 @@ const DraggableItem = ({
       runOnJS(onGestureEnd)();
     });
 
-  const gesture = Gesture.Race(
-    longPress,
-    tap,
-    Gesture.Simultaneous(pan, pinch, rotate)
-  );
+  const gesture = Gesture.Race(longPress, tap, Gesture.Simultaneous(pan, pinch, rotate));
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
@@ -1433,11 +1336,7 @@ const DraggableItem = ({
   }));
 
   const borderStyle = useAnimatedStyle(() => ({
-    borderColor: isOverTrash.value
-      ? "red"
-      : isActive.value
-      ? "#ff8c00"
-      : "transparent",
+    borderColor: isOverTrash.value ? "red" : isActive.value ? "#ff8c00" : "transparent",
     borderWidth: isActive.value || isOverTrash.value ? 2 : 0,
   }));
 
@@ -1452,12 +1351,7 @@ const DraggableItem = ({
 
   return (
     <GestureDetector gesture={gesture}>
-      <Animated.View
-        style={[
-          { position: "absolute", width: item.width, height: item.height },
-          animatedStyle,
-        ]}
-      >
+      <Animated.View style={[{ position: "absolute", width: item.width, height: item.height }, animatedStyle]}>
         <Animated.View style={[{ flex: 1 }, borderStyle]}>
           {canEdit && isLocked && (
             <View
@@ -1487,18 +1381,23 @@ const DraggableItem = ({
                 padding: item.width * 0.02,
               }}
             >
+              {/* UPDATED: using expo-image and optimization helper */}
               <Image
-                source={{ uri: item.content }}
-                className="w-full h-full bg-zinc-100"
-                resizeMode="cover"
+                source={getOptimizedImageUrl(item.content)}
+                style={{ width: "100%", height: "100%", backgroundColor: "#f4f4f5" }}
+                contentFit="cover"
+                transition={200}
+                cachePolicy="memory-disk"
               />
             </View>
           )}
           {(item.item_type === "sticker" || item.item_type === "reaction") && (
             <Image
-              source={{ uri: item.content }}
+              source={getOptimizedImageUrl(item.content)}
               style={{ width: "100%", height: "100%" }}
-              resizeMode="contain"
+              contentFit="contain"
+              transition={200}
+              cachePolicy="memory-disk"
             />
           )}
           {item.item_type === "text" && (

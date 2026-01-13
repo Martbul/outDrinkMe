@@ -13,20 +13,15 @@ import {
   BackHandler,
 } from "react-native";
 import { Image } from "expo-image";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import {
-  Ionicons,
-  FontAwesome5,
-  MaterialIcons,
-  Feather,
-} from "@expo/vector-icons";
+import { Ionicons, FontAwesome5, MaterialIcons, Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as MediaLibrary from "expo-media-library";
 import * as FileSystem from "expo-file-system/legacy";
 
 import { useFunc } from "@/providers/FunctionProvider";
-import { DeleteModal } from "@/components/delete_modal"; 
+import { DeleteModal } from "@/components/delete_modal";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const GRID_SPACING = 12;
@@ -36,24 +31,22 @@ export default function FuncScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  // --- MODAL STATE ---
+  // 1. Capture the inviteCode if opened via Deep Link
+  const { inviteCode } = useLocalSearchParams();
+
   const [showQrModal, setShowQrModal] = useState(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
 
-  // NEW: Delete Modal State
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemsToDelete, setItemsToDelete] = useState<string[]>([]);
   const [isDeletingPhoto, setIsDeletingPhoto] = useState(false);
 
-  // --- SUCCESS TOAST STATE ---
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("Saved to Gallery");
 
-  // --- SELECTION & DOWNLOAD STATE ---
-  const [selectedImage, setSelectedImage] = useState<string | null>(null); // For Lightbox
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
-  // --- MULTI-SELECT STATE ---
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState<string[]>([]);
 
@@ -68,22 +61,20 @@ export default function FuncScreen() {
     leaveFunc,
     deleteImages,
     uploadQueue,
+    joinFunc, // Import joinFunc from provider
   } = useFunc();
 
-  // --- STATS & TIMERS ---
+  // Calculate upload progress
   const uploadStats = useMemo(() => {
     if (!uploadQueue || uploadQueue.length === 0) return null;
     const total = uploadQueue.length;
-    const completed = uploadQueue.filter(
-      (j) => j.status === "completed"
-    ).length;
-    const active = uploadQueue.some(
-      (j) => j.status === "uploading" || j.status === "pending"
-    );
+    const completed = uploadQueue.filter((j) => j.status === "completed").length;
+    const active = uploadQueue.some((j) => j.status === "uploading" || j.status === "pending");
     const progress = completed / total;
     return { total, completed, active, progress };
   }, [uploadQueue]);
 
+  // Calculate time remaining string
   const timeRemaining = useMemo(() => {
     if (!funcMetaData?.expiresAt) return "72h";
     const expiry = new Date(funcMetaData.expiresAt).getTime();
@@ -95,11 +86,22 @@ export default function FuncScreen() {
     return `${hours}h ${mins}m`;
   }, [funcMetaData?.expiresAt]);
 
+  // 2. Initialize Data or Join via Link
   useEffect(() => {
-    refreshFuncData();
-  }, []);
+    const init = async () => {
+      // If inviteCode exists in params (Deep Link), try to join
+      if (inviteCode && typeof inviteCode === "string") {
+        console.log("Deep link detected, joining:", inviteCode);
+        await joinFunc(inviteCode);
+      } else {
+        // Otherwise, standard refresh
+        refreshFuncData();
+      }
+    };
+    init();
+  }, [inviteCode]);
 
-  // Handle Hardware Back Button
+  // Handle hardware back button in Select Mode
   useEffect(() => {
     const backAction = () => {
       if (isSelectMode) {
@@ -109,21 +111,21 @@ export default function FuncScreen() {
       }
       return false;
     };
-    const backHandler = BackHandler.addEventListener(
-      "hardwareBackPress",
-      backAction
-    );
+    const backHandler = BackHandler.addEventListener("hardwareBackPress", backAction);
     return () => backHandler.remove();
   }, [isSelectMode]);
 
   const handleShareOrCopy = async () => {
     if (!funcMetaData?.inviteCode) return;
 
-    const joinLink = `outdrinkme://join/${funcMetaData.inviteCode}`;
+    // Use backend provided link OR construct deep link manually
+    // Cast to 'any' if TypeScript complains about shareLink not being in type definition yet
+    const joinLink =
+      (funcMetaData as any).shareLink || `outdrinkme://func_screen?inviteCode=${funcMetaData.inviteCode}`;
 
     try {
       await Share.share({
-        message: `Join the function on OutDrinkMe!\n\nInvite Code: ${funcMetaData.inviteCode}\n\nLink: ${joinLink}`,
+        message: `Join the function on OutDrinkMe!\n\nLink: ${joinLink}`,
       });
     } catch (error) {
       console.error("Error sharing:", error);
@@ -151,7 +153,6 @@ export default function FuncScreen() {
     router.replace("/(tabs)/home");
   };
 
-  // --- SELECTION LOGIC ---
   const handleLongPress = (url: string) => {
     if (!isSelectMode) {
       setIsSelectMode(true);
@@ -173,21 +174,18 @@ export default function FuncScreen() {
     }
   };
 
-  // --- DELETE LOGIC ---
   const handleDeleteImages = (urlsToDelete: string[]) => {
     setItemsToDelete(urlsToDelete);
     setShowDeleteModal(true);
   };
 
   const confirmDelete = async () => {
-    // Start Loading Spinner in Modal
     setIsDeletingPhoto(true);
-    
+
     try {
       if (deleteImages) {
         await deleteImages(itemsToDelete);
-        
-        // Success Actions
+
         setToastMessage("Photos Deleted");
         setShowSuccessToast(true);
         setSelectedImage(null);
@@ -201,18 +199,13 @@ export default function FuncScreen() {
       }
     } catch (error) {
       console.error("Delete failed:", error);
-      Alert.alert(
-        "Error",
-        "Could not delete photos. You might not be the owner."
-      );
+      Alert.alert("Error", "Could not delete photos. You might not be the owner.");
     } finally {
-      // Stop Loading and Close Modal
       setIsDeletingPhoto(false);
       setShowDeleteModal(false);
     }
   };
 
-  // --- BATCH DOWNLOAD LOGIC ---
   const downloadAndSave = async (urls: string[]) => {
     try {
       setIsDownloading(true);
@@ -228,9 +221,7 @@ export default function FuncScreen() {
 
       const assets: MediaLibrary.Asset[] = [];
       for (const url of urls) {
-        const filename = `func_${Date.now()}_${Math.random()
-          .toString(36)
-          .substring(7)}.jpg`;
+        const filename = `func_${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
         const fileUri = FileSystem.cacheDirectory + filename;
         const { uri } = await FileSystem.downloadAsync(url, fileUri);
         const asset = await MediaLibrary.createAssetAsync(uri);
@@ -244,11 +235,7 @@ export default function FuncScreen() {
         if (album == null) {
           await MediaLibrary.createAlbumAsync(albumName, assets[0], false);
           if (assets.length > 1) {
-            await MediaLibrary.addAssetsToAlbumAsync(
-              assets.slice(1),
-              album,
-              false
-            );
+            await MediaLibrary.addAssetsToAlbumAsync(assets.slice(1), album, false);
           }
         } else {
           await MediaLibrary.addAssetsToAlbumAsync(assets, album, false);
@@ -256,9 +243,7 @@ export default function FuncScreen() {
       }
 
       setIsDownloading(false);
-      setToastMessage(
-        urls.length > 1 ? `Saved ${urls.length} photos` : "Saved to Gallery"
-      );
+      setToastMessage(urls.length > 1 ? `Saved ${urls.length} photos` : "Saved to Gallery");
       setShowSuccessToast(true);
 
       if (isSelectMode) {
@@ -275,7 +260,7 @@ export default function FuncScreen() {
 
   return (
     <View className="flex-1 bg-black">
-      {/* --- UPLOAD BAR --- */}
+      {/* Sticky Upload Progress Bar */}
       {uploadStats?.active && (
         <View
           style={{ paddingBottom: insets.bottom }}
@@ -287,10 +272,7 @@ export default function FuncScreen() {
                 Uploading {uploadStats.completed + 1} of {uploadStats.total}
               </Text>
               <View className="h-1 bg-black/20 w-full mt-1 rounded-full overflow-hidden">
-                <View
-                  style={{ width: `${uploadStats.progress * 100}%` }}
-                  className="h-full bg-black"
-                />
+                <View style={{ width: `${uploadStats.progress * 100}%` }} className="h-full bg-black" />
               </View>
             </View>
             <ActivityIndicator color="black" size="small" className="ml-4" />
@@ -298,6 +280,7 @@ export default function FuncScreen() {
         </View>
       )}
 
+      {/* Header Bar */}
       <View
         style={{ paddingTop: insets.top + 10 }}
         className="px-4 pb-4 flex-row items-center justify-between border-b border-white/5 bg-black"
@@ -313,9 +296,7 @@ export default function FuncScreen() {
             >
               <Ionicons name="close" size={24} color="white" />
             </TouchableOpacity>
-            <Text className="text-white font-black text-lg">
-              {selectedBatch.length} Selected
-            </Text>
+            <Text className="text-white font-black text-lg">{selectedBatch.length} Selected</Text>
             <TouchableOpacity
               disabled={selectedBatch.length === 0}
               onPress={() => handleDeleteImages(selectedBatch)}
@@ -334,9 +315,7 @@ export default function FuncScreen() {
             </TouchableOpacity>
 
             <Text className="text-white font-black text-lg">
-              {funcMetaData?.hostUsername
-                ? `${funcMetaData.hostUsername}'s Function`
-                : "Function"}
+              {funcMetaData?.hostUsername ? `${funcMetaData.hostUsername}'s Function` : "Function"}
             </Text>
 
             <TouchableOpacity
@@ -368,13 +347,8 @@ export default function FuncScreen() {
           <View className="mt-4 bg-[#111] rounded-[32px] p-6 border border-white/5 shadow-sm">
             <View className="flex-row justify-between items-start mb-4">
               <View className="flex-1">
-                <Text className="text-orange-600 font-bold tracking-[2px] text-[10px] uppercase mb-1">
-                  Active
-                </Text>
-                <Text
-                  className="text-white text-2xl font-black"
-                  numberOfLines={1}
-                >
+                <Text className="text-orange-600 font-bold tracking-[2px] text-[10px] uppercase mb-1">Active</Text>
+                <Text className="text-white text-2xl font-black" numberOfLines={1}>
                   The Photos
                 </Text>
               </View>
@@ -383,13 +357,10 @@ export default function FuncScreen() {
                 className="bg-orange-600 px-4 py-2 rounded-full flex-row items-center"
               >
                 <Ionicons name="qr-code" size={16} color="black" />
-                <Text className="text-black font-black ml-2 text-xs">
-                  INVITE
-                </Text>
+                <Text className="text-black font-black ml-2 text-xs">INVITE</Text>
               </TouchableOpacity>
             </View>
 
-            {/* --- NEW: HOST INFO --- */}
             <View className="flex-row items-center mb-6 bg-white/5 self-start pr-4 pl-1 py-1 rounded-full border border-white/5">
               {funcMetaData?.hostImageUrl ? (
                 <Image
@@ -413,25 +384,16 @@ export default function FuncScreen() {
               </View>
             </View>
 
-            {/* STATS ROW */}
             <View className="flex-row gap-3">
               <View className="flex-1 bg-white/5 rounded-2xl p-4 border border-white/5">
                 <Ionicons name="time-outline" size={16} color="#EA580C" />
-                <Text className="text-white font-black text-lg mt-1">
-                  {timeRemaining}
-                </Text>
-                <Text className="text-white/40 text-[10px] font-bold uppercase">
-                  Time Left
-                </Text>
+                <Text className="text-white font-black text-lg mt-1">{timeRemaining}</Text>
+                <Text className="text-white/40 text-[10px] font-bold uppercase">Time Left</Text>
               </View>
               <View className="flex-1 bg-white/5 rounded-2xl p-4 border border-white/5">
                 <Ionicons name="images-outline" size={16} color="#EA580C" />
-                <Text className="text-white font-black text-lg mt-1">
-                  {funcImagesIds.length}
-                </Text>
-                <Text className="text-white/40 text-[10px] font-bold uppercase">
-                  Photos
-                </Text>
+                <Text className="text-white font-black text-lg mt-1">{funcImagesIds.length}</Text>
+                <Text className="text-white/40 text-[10px] font-bold uppercase">Photos</Text>
               </View>
             </View>
           </View>
@@ -443,13 +405,10 @@ export default function FuncScreen() {
             className="mt-4 bg-white py-5 rounded-2xl flex-row justify-center items-center shadow-lg active:opacity-90"
           >
             <FontAwesome5 name="camera" size={18} color="black" />
-            <Text className="text-black font-black ml-3 tracking-widest">
-              ADD IMAGES
-            </Text>
+            <Text className="text-black font-black ml-3 tracking-widest">ADD IMAGES</Text>
           </TouchableOpacity>
         )}
 
-        {/* --- GRID --- */}
         <View className="flex-row flex-wrap justify-between mt-6">
           {funcImagesIds.map((url, index) => {
             const isSelected = selectedBatch.includes(url);
@@ -479,14 +438,10 @@ export default function FuncScreen() {
                   <View className="absolute top-2 right-2">
                     <View
                       className={`w-6 h-6 rounded-full border-2 items-center justify-center ${
-                        isSelected
-                          ? "bg-orange-500 border-orange-500"
-                          : "border-white bg-black/30"
+                        isSelected ? "bg-orange-500 border-orange-500" : "border-white bg-black/30"
                       }`}
                     >
-                      {isSelected && (
-                        <Ionicons name="checkmark" size={16} color="black" />
-                      )}
+                      {isSelected && <Ionicons name="checkmark" size={16} color="black" />}
                     </View>
                   </View>
                 ) : (
@@ -500,15 +455,13 @@ export default function FuncScreen() {
         </View>
       </ScrollView>
 
-      {/* --- SELECT MODE BOTTOM BAR --- */}
+      {/* Select Mode Footer */}
       {isSelectMode && (
         <View
           style={{ paddingBottom: insets.bottom + 20 }}
           className="absolute bottom-0 left-0 right-0 bg-[#121212] border-t border-white/10 px-6 pt-4 flex-row justify-between items-center"
         >
-          <Text className="text-white/50 text-xs font-bold uppercase">
-            {selectedBatch.length} items
-          </Text>
+          <Text className="text-white/50 text-xs font-bold uppercase">{selectedBatch.length} items</Text>
 
           <View className="flex-row gap-3">
             <TouchableOpacity
@@ -523,9 +476,7 @@ export default function FuncScreen() {
               ) : (
                 <>
                   <Feather name="download" size={18} color="black" />
-                  <Text className="text-black font-black ml-2 uppercase">
-                    Save
-                  </Text>
+                  <Text className="text-black font-black ml-2 uppercase">Save</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -533,29 +484,22 @@ export default function FuncScreen() {
         </View>
       )}
 
-      {/* --- SUCCESS TOAST OVERLAY --- */}
+      {/* Success Toast */}
       {showSuccessToast && (
         <View className="absolute top-1/2 left-0 right-0 items-center z-50">
           <View className="bg-white/95 px-6 py-4 rounded-3xl flex-row items-center shadow-2xl backdrop-blur-xl">
             <Ionicons name="checkmark-circle" size={24} color="#16a34a" />
-            <Text className="text-black font-bold ml-2 text-base">
-              {toastMessage}
-            </Text>
+            <Text className="text-black font-bold ml-2 text-base">{toastMessage}</Text>
           </View>
         </View>
       )}
 
-      {/* --- LIGHTBOX MODAL --- */}
+      {/* Full Screen Image Modal */}
       <Modal visible={!!selectedImage} transparent animationType="fade">
         <View className="flex-1 bg-black/95 justify-center items-center relative">
-          <View
-            style={{ top: insets.top + 20 }}
-            className="absolute w-full px-5 flex-row justify-between z-50"
-          >
+          <View style={{ top: insets.top + 20 }} className="absolute w-full px-5 flex-row justify-between z-50">
             <TouchableOpacity
-              onPress={() =>
-                selectedImage && handleDeleteImages([selectedImage])
-              }
+              onPress={() => selectedImage && handleDeleteImages([selectedImage])}
               className="w-12 h-12 bg-red-500/20 rounded-full items-center justify-center border border-red-500/30"
             >
               <Ionicons name="trash-outline" size={24} color="#ef4444" />
@@ -578,10 +522,7 @@ export default function FuncScreen() {
             />
           )}
 
-          <View
-            style={{ bottom: insets.bottom + 30 }}
-            className="absolute w-full px-8 items-center"
-          >
+          <View style={{ bottom: insets.bottom + 30 }} className="absolute w-full px-8 items-center">
             <TouchableOpacity
               disabled={isDownloading}
               onPress={() => selectedImage && downloadAndSave([selectedImage])}
@@ -592,9 +533,7 @@ export default function FuncScreen() {
               ) : (
                 <>
                   <Feather name="download" size={20} color="black" />
-                  <Text className="text-black font-black ml-3 tracking-wider">
-                    SAVE
-                  </Text>
+                  <Text className="text-black font-black ml-3 tracking-wider">SAVE</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -602,7 +541,6 @@ export default function FuncScreen() {
         </View>
       </Modal>
 
-      {/* --- STANDARDIZED DELETE MODAL --- */}
       <DeleteModal
         visible={showDeleteModal}
         onClose={() => {
@@ -614,16 +552,14 @@ export default function FuncScreen() {
         isDeleting={isDeletingPhoto}
       />
 
-      {/* --- LEAVE MODAL --- */}
+      {/* Leave Modal */}
       <Modal visible={showLeaveModal} transparent animationType="fade">
         <View className="flex-1 bg-black/80 justify-center items-center px-6">
           <View className="bg-[#1A1A1A] w-full rounded-[40px] p-8 border border-white/10 items-center">
             <View className="w-16 h-16 bg-red-500/10 rounded-full items-center justify-center mb-6 border border-red-500/20">
               <MaterialIcons name="warning" size={32} color="#ef4444" />
             </View>
-            <Text className="text-white text-2xl font-black mb-2 text-center">
-              Leaving so soon?
-            </Text>
+            <Text className="text-white text-2xl font-black mb-2 text-center">Leaving so soon?</Text>
             <Text className="text-white/50 text-center mb-8 px-4 leading-5">
               You will lose access to this photo dump immediately.
             </Text>
@@ -645,21 +581,16 @@ export default function FuncScreen() {
         </View>
       </Modal>
 
-      {/* --- QR MODAL --- */}
+      {/* QR Code Modal */}
       <Modal visible={showQrModal} transparent animationType="slide">
         <View className="flex-1 bg-black/95 justify-end">
-          <TouchableOpacity
-            className="flex-1"
-            onPress={() => setShowQrModal(false)}
-          />
+          <TouchableOpacity className="flex-1" onPress={() => setShowQrModal(false)} />
           <View
             style={{ paddingBottom: insets.bottom + 20 }}
             className="bg-[#121212] rounded-t-[40px] border-t border-white/10 px-6 pt-8 items-center"
           >
             <View className="w-12 h-1.5 bg-white/10 rounded-full mb-8" />
-            <Text className="text-white text-2xl font-black mb-2">
-              Share the Vibe
-            </Text>
+            <Text className="text-white text-2xl font-black mb-2">Share the Vibe</Text>
             <View className="bg-white p-5 rounded-[32px] mb-8">
               {funcMetaData?.qrCodeBase64 ? (
                 <Image
@@ -681,17 +612,13 @@ export default function FuncScreen() {
                 className="flex-1 bg-white/10 py-5 rounded-2xl flex-row items-center justify-center border border-white/5"
               >
                 <Ionicons name="share-outline" size={20} color="white" />
-                <Text className="text-white font-black ml-2 uppercase tracking-tight">
-                  Share
-                </Text>
+                <Text className="text-white font-black ml-2 uppercase tracking-tight">Share</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setShowQrModal(false)}
                 className="flex-1 bg-orange-600 py-5 rounded-2xl items-center justify-center"
               >
-                <Text className="text-black font-black uppercase tracking-tight">
-                  Done
-                </Text>
+                <Text className="text-black font-black uppercase tracking-tight">Done</Text>
               </TouchableOpacity>
             </View>
           </View>

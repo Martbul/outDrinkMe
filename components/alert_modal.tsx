@@ -32,7 +32,7 @@ export const AlertModal = ({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View className="flex-1 bg-black/80 justify-center items-center px-6">
+      <View className="flex-1 bg-white/[0.03] justify-center items-center px-6">
         <View className="bg-[#1A1A1A] w-full rounded-[40px] p-8 border border-white/10 items-center">
           
           {/* Icon Container - Orange theme */}
