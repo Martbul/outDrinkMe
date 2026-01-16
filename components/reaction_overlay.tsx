@@ -33,8 +33,8 @@ const FloatingReaction = React.memo(({ uri }: { uri: string }) => {
           duration,
           easing: Easing.out(Easing.ease),
         }),
-        -1, // Infinite loop
-        false // Do not reverse (restart from bottom)
+        -1, 
+        false 
       )
     );
   }, [delay, duration, progress]);

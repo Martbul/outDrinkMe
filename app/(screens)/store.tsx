@@ -189,7 +189,7 @@ export default function StoreScreen() {
       image: { uri: item.image_url },
       storeItem: item,
     }));
-  }, [storeItems?.flag]); // Dependency array: only re-calculate if storeItems.flag changes
+  }, [storeItems?.flag]);
 
   const smokingDevices = useMemo(() => {
     return (storeItems?.smoking || []).map((device: any, index: number) => ({
@@ -494,8 +494,7 @@ export default function StoreScreen() {
           </TouchableOpacity>
         </View> */}
 
-        {/* //!DO NOT REMOVE */}
-        {/* <View className="mx-4 mt-4 justify-center">
+        <View className="mx-4 mt-4 justify-center">
           {premium ? (
             <PassportCard />
           ) : (
@@ -528,7 +527,7 @@ export default function StoreScreen() {
               </View>
             </TouchableOpacity>
           )}
-        </View> */}
+        </View>
         <View className="mt-6">
           <View className="mx-4 mb-4 bg-white/[0.03] rounded-2xl p-5 border border-white/[0.08]">
             <Text className="text-orange-600 text-[11px] font-bold tracking-widest uppercase mb-1">Alcoholism</Text>
@@ -542,10 +541,10 @@ export default function StoreScreen() {
             data={bottles}
             keyExtractor={(item) => item.id.toString()}
             renderItem={({ item }) => <BottleCard item={item} />}
-            initialNumToRender={3} // Render this many items initially
-            maxToRenderPerBatch={5} // Render this many items in each batch
-            windowSize={5} // How many screens worth of data to render in the surrounding area
-            removeClippedSubviews={true} // Helps with memory usage but can cause visual glitches
+            initialNumToRender={3}
+            maxToRenderPerBatch={5} 
+            windowSize={5} 
+            removeClippedSubviews={true} 
           />
         </View>
 
@@ -564,10 +563,10 @@ export default function StoreScreen() {
             data={energyDrinks}
             keyExtractor={(item) => item.id.toString()}
             renderItem={({ item }) => <EnergyDrinkCard drink={item} />}
-            initialNumToRender={3} // Render this many items initially
-            maxToRenderPerBatch={5} // Render this many items in each batch
-            windowSize={5} // How many screens worth of data to render in the surrounding area
-            removeClippedSubviews={true} // Helps with memory usage but can cause visual glitches
+            initialNumToRender={3} 
+            maxToRenderPerBatch={5} 
+            windowSize={5} 
+            removeClippedSubviews={true} 
           />
         </View>
 

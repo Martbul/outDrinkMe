@@ -14,6 +14,7 @@ import {
   FuncSessionResponse,
   LeaderboardsResponse,
   MinVersionResponse,
+  NotBarsPlace,
   NotificationListResponse,
   PaddlePrice,
   PaddleTransactionResponse,
@@ -27,6 +28,7 @@ import {
   UserStories,
   Venue,
   VideoPost,
+  WallOfShameItem,
   WishItem,
 } from "./types/api.types";
 
@@ -727,7 +729,7 @@ class ApiService {
       method: "POST",
       token,
       body: JSON.stringify({
-        qrToken: qrToken, 
+        qrToken: qrToken,
       }),
     });
   }
@@ -896,6 +898,67 @@ class ApiService {
       token,
     });
   }
+
+  async getWallOfShame(token: string): Promise<WallOfShameItem[]> {
+    return this.makeRequest<WallOfShameItem[]>("/api/v1/user/shame-list", {
+      method: "GET",
+      token,
+    });
+  }
+
+  async addShameItem(text: string, tier: string, token: string): Promise<WallOfShameItem> {
+    return this.makeRequest<WallOfShameItem>("/api/v1/user/shame-list", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ text: text, tier: tier }),
+    });
+  }
+
+  async deleteShameItem(item_id: string, token: string): Promise<{ success: boolean }> {
+    return this.makeRequest<{ success: boolean }>(`/api/v1/user/shame-list/${item_id}`, {
+      method: "DELETE",
+      token,
+    });
+  }
+
+  async getNotBarPlaces(token: string): Promise<NotBarsPlace[]> {
+    return this.makeRequest<NotBarsPlace[]>("/api/v1/user/not-bars", {
+      method: "GET",
+      token,
+    });
+  }
+
+  async addNotBarPlace(name: string, token: string): Promise<NotBarsPlace> {
+    return this.makeRequest<NotBarsPlace>("/api/v1/user/not-bars", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ name: name }),
+    });
+  }
+
+  async updateNotBarPlacesOrder(orderedIDs: string[], token: string): Promise<{ success: boolean }> {
+    return this.makeRequest<{ success: boolean }>("/api/v1/user/not-bars", {
+      method: "PATCH",
+      token,
+      body: JSON.stringify({ orderedIDs: orderedIDs }),
+    });
+  }
+
+  async toggleNotBarPlaceVisit(placeId: string, token: string): Promise<{ success: boolean }> {
+    return this.makeRequest<{ success: boolean }>(`/api/v1/user/not-bars/${placeId}/toggle`, {
+      method: "PATCH",
+      token,
+    });
+  }
+
+  async rateNotBarPlace(placeId: string, rating: number, token: string): Promise<{ success: boolean }> {
+    return this.makeRequest<{ success: boolean }>(`/api/v1/user/not-bars/${placeId}/rate`, {
+      method: "POST",
+      token,
+      body: JSON.stringify({ rating: rating }),
+    });
+  }
+
   getWebSocketUrl(sessionId: string): string {
     const rawHost = this.baseUrl.replace(/^https?:\/\//, "");
     const protocol = this.baseUrl.startsWith("https") ? "wss" : "ws";

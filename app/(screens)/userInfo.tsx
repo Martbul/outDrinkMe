@@ -14,7 +14,15 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@clerk/clerk-expo";
-import { Entypo, Feather, FontAwesome5, FontAwesome6, Ionicons, MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
+import {
+  Entypo,
+  Feather,
+  FontAwesome5,
+  FontAwesome6,
+  Ionicons,
+  MaterialCommunityIcons,
+  MaterialIcons,
+} from "@expo/vector-icons";
 import { ResizeMode, Video } from "expo-av";
 
 import { useApp } from "@/providers/AppProvider";
@@ -52,11 +60,7 @@ const MONTH_NAMES = [
   "December",
 ];
 
-// ============================================================================
-// SUB-COMPONENTS
-// ============================================================================
 
-// 1. Compact Segmented Control (Reused)
 const CompactSegmentedControl = ({
   items,
   selected,
@@ -271,7 +275,6 @@ const UserInfoScreen = () => {
     }
   }, [expandedItem]);
 
-  // --- Render Helpers ---
   const { leftColumn, rightColumn } = useMemo(() => {
     if (isDataStale) return { leftColumn: [], rightColumn: [] };
     const left: DailyDrinkingPostResponse[] = [];
@@ -338,7 +341,7 @@ const UserInfoScreen = () => {
   const renderOverview = () => {
     if (leftColumn.length === 0 && rightColumn.length === 0) {
       return (
-        <View className="items-center py-20 px-10 opacity-50">
+        <View className="items-center py-20 px-1 opacity-50">
           <View className="w-20 h-20 bg-white/[0.03] rounded-full items-center justify-center mb-4 border border-white/10">
             <MaterialCommunityIcons name="image-off-outline" size={32} color="white" />
           </View>
@@ -372,11 +375,11 @@ const UserInfoScreen = () => {
   const renderStories = () => {
     if (!isCurrentUser) return null;
     const stories = ((userStories || []) as StorySegment[]).filter((s) => !deletedStoryIds.includes(s.id));
-    const ITEM_WIDTH = (SCREEN_WIDTH - 48) / 2; // 2 cols with gap
+    const ITEM_WIDTH = (SCREEN_WIDTH - 48) / 3; // 3 cols with gap
     const ITEM_HEIGHT = ITEM_WIDTH * 1.77;
 
     return (
-      <View className="px-4 pb-20">
+      <View className="px-1 pb-20">
         <View className="flex-row flex-wrap justify-between">
           {stories.map((story) => {
             const isPlaying = playingStoryId === story.id;
@@ -605,7 +608,7 @@ const UserInfoScreen = () => {
     <View className="flex-1 bg-black">
       <StatusBar barStyle="light-content" />
 
-      <View style={{ paddingTop: insets.top }} className="bg-black z-10">
+      <View style={{ paddingTop: insets.top }} className="bg-white/[0.03] z-10">
         <NestedScreenHeader
           title="Profile"
           eyebrow="USER"
@@ -618,7 +621,7 @@ const UserInfoScreen = () => {
                   Vibration.vibrate(10);
                   setSettingsSheetVisible(true);
                 }}
-                className="w-10 h-10 bg-white/0.03 rounded-full items-center justify-center border border-white/10"
+                className="w-10 h-10 bg-white/[0.03] rounded-full items-center justify-center border border-white/[0.08]"
               >
                 <Entypo name="dots-three-vertical" size={18} color="white" />
               </TouchableOpacity>
@@ -638,68 +641,70 @@ const UserInfoScreen = () => {
             progressBackgroundColor="#000000"
           />
         }
-        contentContainerStyle={{ paddingTop: 20 }}
+        contentContainerStyle={{ paddingTop: 10 }}
       >
-        <View className="px-4 pb-4">
-          <View className="bg-white/[0.03] rounded-3xl p-6 border border-white/[0.08]">
-            <View className="flex-row justify-between items-start mb-6">
-              <View>
-                <Text className="text-orange-600 text-[10px] font-black tracking-[3px] uppercase mb-1">
-                  {getCoefInfo(friendDiscoveryProfile.user.alcoholism_coefficient).title}
-                </Text>
-                <Text className="text-white text-3xl font-black leading-8">
+        <View className="px-1 pb-4">
+          <View className="bg-white/[0.03] rounded-3xl p-3 border border-white/[0.08]">
+            <View className="flex-row min-h-[110px]">
+              {/* --- LEFT COLUMN: Identity --- */}
+              <View className="w-[30%] items-center justify-center border-r border-white/[0.05] pr-3 mr-3">
+                {/* Image */}
+                <View className="w-16 h-16 rounded-xl border border-orange-600/50 p-0.5 mb-2 shadow-sm shadow-orange-600/20">
+                  <Image
+                    source={{ uri: friendDiscoveryProfile.user.imageUrl }}
+                    className="w-full h-full rounded-lg bg-zinc-800"
+                    resizeMode="cover"
+                  />
+                </View>
+
+                {/* Name & Username */}
+                <Text
+                  className="text-white text-sm font-black text-center leading-4 mb-0.5"
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                >
                   {friendDiscoveryProfile.user.firstName}
                 </Text>
-                <Text className="text-white/40 text-xl font-black uppercase">
+                <Text className="text-white/50 text-[10px] font-black uppercase text-center mb-1" numberOfLines={1}>
                   {friendDiscoveryProfile.user.lastName}
                 </Text>
+                <Text className="text-orange-600/80 text-[9px] font-bold tracking-tighter">
+                  @{friendDiscoveryProfile.user.username}
+                </Text>
               </View>
-              <View className="w-20 h-20 rounded-2xl border-2 border-orange-600 p-0.5 shadow-lg shadow-orange-600/20">
-                <Image
-                  source={{ uri: friendDiscoveryProfile.user.imageUrl }}
-                  className="w-full h-full rounded-xl bg-zinc-800"
-                />
+
+              {/* --- MIDDLE COLUMN: Friend Action (Centered) --- */}
+              <View className="flex-1 justify-center pr-2">
+                {!isCurrentUser && (
+                  <FriendButton initialIsFriend={friendDiscoveryProfile.is_friend} onToggle={handleFriendToggle} />
+                )}
+              </View>
+
+              {/* --- RIGHT COLUMN: Navigation --- */}
+              <View className="w-[70px] flex-col justify-between gap-2">
+                {/* Wall Of Shame */}
+                <TouchableOpacity
+                  onPress={() => router.push("/(screens)/wall_of_shame")}
+                  className="flex-1 bg-white/[0.05] border border-white/[0.1] rounded-xl items-center justify-center active:bg-red-500/20 active:border-red-500/50 min-h-[50px]"
+                >
+                  <MaterialCommunityIcons
+                    name="skull-outline"
+                    size={20}
+                    color={friendDiscoveryProfile.user.alcoholism_coefficient > 50 ? "#EF4444" : "#ffffff80"}
+                  />
+                  <Text className="text-[8px] text-white/50 text-center font-bold mt-1">WALL</Text>
+                </TouchableOpacity>
+
+                {/* Spots */}
+                <TouchableOpacity
+                  onPress={() => router.push("/(screens)/not_bars")}
+                  className="flex-1 bg-white/[0.05] border border-white/[0.1] rounded-xl items-center justify-center active:bg-blue-500/20 active:border-blue-500/50 min-h-[50px]"
+                >
+                  <Ionicons name="map-outline" size={20} color="#3B82F6" />
+                  <Text className="text-[8px] text-white/50 text-center font-bold mt-1">SPOTS</Text>
+                </TouchableOpacity>
               </View>
             </View>
-
-            {/* Level & Username */}
-            <View className="flex-row items-center gap-3 mb-6">
-              <View className="bg-orange-600/20 px-3 py-1.5 rounded-lg border border-orange-600/30">
-                <Text className="text-orange-500 text-[10px] font-black tracking-widest">LVL {levelInfo.level}</Text>
-              </View>
-              <Text className="text-white/40 text-xs font-bold tracking-widest">
-                @{friendDiscoveryProfile.user.username.toUpperCase()}
-              </Text>
-            </View>
-
-            <View className="flex-row bg-white/0.03 rounded-2xl p-4 border border-white/[0.08] justify-between">
-              <View className="items-center flex-1">
-                <Text className="text-white text-xl font-black">
-                  {friendDiscoveryProfile.stats?.current_streak || 0}
-                </Text>
-                <Text className="text-white/30 text-[9px] font-black uppercase mt-1">Streak</Text>
-              </View>
-              <View className="w-[1px] bg-white/[0.03] h-full mx-2" />
-              <View className="items-center flex-1">
-                <Text className="text-orange-500 text-xl font-black">
-                  {friendDiscoveryProfile.stats?.friends_count || 0}
-                </Text>
-                <Text className="text-white/30 text-[9px] font-black uppercase mt-1">Buddies</Text>
-              </View>
-              <View className="w-[1px] bg-white/[0.03] h-full mx-2" />
-              <View className="items-center flex-1">
-                <Text className="text-white text-xl font-black">
-                  {friendDiscoveryProfile.stats?.longest_streak || 0}
-                </Text>
-                <Text className="text-white/30 text-[9px] font-black uppercase mt-1">Record</Text>
-              </View>
-            </View>
-
-            {!isCurrentUser && (
-              <View className="mt-4">
-                <FriendButton initialIsFriend={friendDiscoveryProfile.is_friend} onToggle={handleFriendToggle} />
-              </View>
-            )}
           </View>
         </View>
 
@@ -721,7 +726,6 @@ const UserInfoScreen = () => {
           }
         />
 
-        {/* 4. Tab Content */}
         {activeTab === "overview" && renderOverview()}
         {activeTab === "inventory" && renderInventory()}
         {activeTab === "stories" && renderStories()}

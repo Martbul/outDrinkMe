@@ -243,10 +243,9 @@ const DynamicGlanceCard = ({ item, onPress }: { item: Venue; onPress: () => void
             height: "60%",
           }}
         />
-        {/* //! DO NOT REMOVE */}
-        {/* <View className="absolute bottom-3 right-3 bg-orange-600 rounded-xl px-3 py-1.5 shadow-lg shadow-orange-600/40 items-center justify-center border border-orange-400/50">
+        <View className="absolute bottom-3 right-3 bg-orange-600 rounded-xl px-3 py-1.5 shadow-lg shadow-orange-600/40 items-center justify-center border border-orange-400/50">
           <Text className="text-black font-black text-sm">-{item.discount_percentage}%</Text>
-        </View> */}
+        </View>
       </View>
 
       <View className="p-4">
@@ -580,13 +579,12 @@ export default function BarHuntScreen() {
               />
             </View>
 
-            {/* //! DO NOT REMOVE later */}
-            {/* <TouchableOpacity
+            <TouchableOpacity
               onPress={() => setShowPassport(true)}
               className="w-12 h-12 rounded-full bg-orange-600 items-center justify-center shadow-lg shadow-orange-600/30 border border-white/10"
             >
               <MaterialCommunityIcons name="card-account-details-star" size={24} color="black" />
-            </TouchableOpacity> */}
+            </TouchableOpacity>
           </View>
 
           <FilterPills
@@ -790,14 +788,14 @@ export default function BarHuntScreen() {
               <FlatList
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: 12 }} // Replaces the className="gap-3" for spacing
+                contentContainerStyle={{ gap: 12 }}
                 data={selectedBar.gallery.slice(0, 4)}
-                keyExtractor={(img, index) => index.toString()} // Using index as key, consider a unique ID if available
+                keyExtractor={(img, index) => index.toString()}
                 renderItem={({ item: img }) => (
                   <TouchableOpacity onPress={() => setSelectedImage(img)}>
                     <Image
                       source={{ uri: img || "https://via.placeholder.com/300" }}
-                      className="w-40 h-28 rounded-2xl bg-white/5 border border-white/10 mx-1" // Keep these styles for now
+                      className="w-40 h-28 rounded-2xl bg-white/5 border border-white/10 mx-1"
                       style={{ opacity: 0.9 }}
                     />
                   </TouchableOpacity>

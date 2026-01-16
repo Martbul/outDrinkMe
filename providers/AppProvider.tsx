@@ -23,6 +23,8 @@ import type {
   PaddlePrice,
   Premium,
   WishItem,
+  WallOfShameItem,
+  NotBarsPlace,
 } from "../types/api.types";
 import { apiService } from "@/api";
 import { usePostHog } from "posthog-react-native";
@@ -52,6 +54,8 @@ interface AppContextType {
   premiumPrices: PaddlePrice[];
   premium: Premium | null;
   wishList: WishItem[];
+  shameList: WallOfShameItem[];
+  notBarPlaces: NotBarsPlace[];
 
   yourMixData: DailyDrinkingPostResponse[];
   yourMixHasMore: boolean;
@@ -103,6 +107,7 @@ interface AppContextType {
       longitude: number;
     } | null,
     alcohols?: string[] | [],
+    drinkQuantity?: string | null,
     mentionedBuddies?: UserData[] | [],
     imageWidth?: number,
     imageHeight?: number
@@ -129,6 +134,9 @@ interface AppContextType {
   markAllNotificationsRead: () => Promise<void>;
   registerPushDevice: (token: string) => Promise<void>;
   setWishList: React.Dispatch<React.SetStateAction<WishItem[]>>;
+  setShameList: React.Dispatch<React.SetStateAction<WallOfShameItem[]>>;
+  setNotBarPlaces: React.Dispatch<React.SetStateAction<NotBarsPlace[]>>;
+
   showRateModal: boolean;
   closeRateModal: () => void;
 
@@ -187,6 +195,8 @@ export function AppProvider({ children }: AppProviderProps) {
     null
   );
   const [wishList, setWishList] = useState<WishItem[]>([]);
+  const [shameList, setShameList] = useState<WallOfShameItem[]>([]);
+  const [notBarPlaces, setNotBarPlaces] = useState<NotBarsPlace[]>([]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -880,6 +890,8 @@ export function AppProvider({ children }: AppProviderProps) {
         apiService.getPremiumPrices(token),
         apiService.getPremiumDetails(token),
         apiService.getWishes(token),
+        apiService.getWallOfShame(token),
+        apiService.getNotBarPlaces(token),
       ]);
 
       const [
@@ -908,6 +920,8 @@ export function AppProvider({ children }: AppProviderProps) {
         premiumPricesResult,
         premiumResult,
         wishResult,
+        wallOfShameResult,
+        notBarPlacesResult,
       ] = results;
 
       if (userResult.status === "fulfilled") {
@@ -1074,6 +1088,20 @@ export function AppProvider({ children }: AppProviderProps) {
         setWishList([]);
       }
 
+      if (wallOfShameResult.status === "fulfilled") {
+        setShameList(wallOfShameResult.value || null);
+      } else {
+        console.error("Failed to fetch shame list:", wallOfShameResult.reason);
+        setShameList([]);
+      }
+
+      if (notBarPlacesResult.status === "fulfilled") {
+        setNotBarPlaces(notBarPlacesResult.value || null);
+      } else {
+        console.error("Failed to fetch not_bar_places list:", notBarPlacesResult.reason);
+        setNotBarPlaces([]);
+      }
+
       const failedCalls = results.filter((r) => r.status === "rejected");
       if (failedCalls.length > 0) {
         posthog?.capture("bulk_refresh_partial_failure", {
@@ -1101,7 +1129,8 @@ export function AppProvider({ children }: AppProviderProps) {
       imageUri?: string | null,
       locationText?: string,
       locationCoords?: { latitude: number; longitude: number } | null,
-      alcohols?: string[] | [],
+      alcohols?: string[] | [], 
+      drinkQuantity?: string | null,
       mentionedBuddies?: UserData[] | [],
       imageWidth?: number,
       imageHeight?: number
@@ -1120,6 +1149,7 @@ export function AppProvider({ children }: AppProviderProps) {
               location_text: locationText,
               location_coords: locationCoords,
               alcohols: alcohols,
+              drink_quantity: drinkQuantity,
               mentioned_buddies: mentionedBuddies,
             },
             token
@@ -1426,6 +1456,8 @@ export function AppProvider({ children }: AppProviderProps) {
     premiumPrices,
     premium,
     wishList,
+    shameList,
+    notBarPlaces,
 
     yourMixData,
     yourMixHasMore,
@@ -1492,6 +1524,8 @@ export function AppProvider({ children }: AppProviderProps) {
     showRateModal,
     closeRateModal,
     setWishList,
+    setShameList,
+    setNotBarPlaces,
 
     // Global State
     isLoading,

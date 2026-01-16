@@ -21,7 +21,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/providers/AppProvider";
 import Entypo from "@expo/vector-icons/Entypo";
-import { Feather, FontAwesome5, FontAwesome6, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather, FontAwesome5, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import type { UserData } from "@/types/api.types";
@@ -45,6 +45,7 @@ const DRINK_TYPES = [
   "Other",
 ];
 
+const QUANTITY_OPTIONS = ["1-2 drinks", "3-4 drinks", "5+ drinks", "Blackout"];
 
 export default function AddDrinks() {
   const posthog = usePostHog();
@@ -74,6 +75,9 @@ export default function AddDrinks() {
 
   const [imagePickerVisible, setImagePickerVisible] = useState(false);
   const [isAfterDrinkLoggedModalVisible, setAfterDrinkLoggedModal] = useState(false);
+
+  const [friendQuery, setFriendQuery] = useState("");
+  const [drinkQuantity, setDrinkQuantity] = useState<string | null>(null);
 
   const [thoughtInput, setThoughtInput] = useState("");
   const [isSubmittingDrunkThought, setIsSubmittingDrunkThought] = useState(false);
@@ -125,6 +129,8 @@ export default function AddDrinks() {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setIsDrinkMenuExpanded(!isDrinkMenuExpanded);
   };
+
+  const filteredFriends = friends.filter((friend) => friend.username.toLowerCase().includes(friendQuery.toLowerCase()));
 
   const handleGetCurrentLocation = async () => {
     setIsFetchingLocation(true);
@@ -332,6 +338,7 @@ export default function AddDrinks() {
         locationText,
         locationCoords,
         alcohols,
+        drinkQuantity,
         mentionedBuddies,
         imageWidth,
         imageHeight
@@ -367,7 +374,7 @@ export default function AddDrinks() {
     <View className="flex-row items-center justify-between mb-6" style={{ paddingTop: insets.top + 10 }}>
       <TouchableOpacity
         onPress={() => router.back()}
-        className="w-10 h-10 rounded-full bg-white/[0.05] items-center justify-center border border-white/[0.1]"
+        className="w-10 h-10 rounded-full bg-white/[0.03] items-center justify-center border border-white/[0.1]"
       >
         <Ionicons name="close" size={20} color="white" />
       </TouchableOpacity>
@@ -407,7 +414,8 @@ export default function AddDrinks() {
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === "ios" ? insets.top : 0}>
+        keyboardVerticalOffset={Platform.OS === "ios" ? insets.top : 0}
+      >
         <ScrollView
           contentContainerStyle={{
             flexGrow: 1,
@@ -489,7 +497,6 @@ export default function AddDrinks() {
                 </Text>
               </View>
             ) : (
-              
               <View className="bg-white/[0.03] rounded-3xl p-5 mb-6 mx-2 border border-white/[0.1]">
                 <View className="flex-row items-center mb-4 ml-1">
                   <Feather name="edit-3" size={14} color={PRIMARY_ORANGE} />
@@ -624,175 +631,229 @@ export default function AddDrinks() {
       </ScrollView>
     );
   };
-
   const renderDetailsView = () => {
-    // Logic for displaying drinks:
-    // If expanded: Show ALL
-    // If collapsed: Show first 5 items
     const drinksToShow = isDrinkMenuExpanded ? DRINK_TYPES : DRINK_TYPES.slice(0, 5);
 
     return (
-      <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
-        <View className="w-full px-6 items-center mb-8 mt-4">
-          <Text className="text-orange-500 text-sm font-black tracking-widest mb-2 text-center uppercase">
-            STREAK SECURED
-          </Text>
-          <Text className="text-white text-3xl font-black text-center leading-tight">Make it memorable</Text>
-        </View>
-
-        {/* --- Image Picker Card --- */}
-        <TouchableOpacity
-          onPress={() => setImagePickerVisible(true)}
-          className="w-full aspect-video bg-white/[0.03] rounded-3xl border-2 border-dashed border-white/[0.1] mb-6 overflow-hidden"
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        className="flex-1"
+        keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}
+      >
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          className="flex-1"
+          contentContainerStyle={{ paddingBottom: 120 }}
+          keyboardShouldPersistTaps="handled"
         >
-          {imageUri ? (
-            <Image source={{ uri: imageUri }} className="w-full h-full" resizeMode="cover" />
-          ) : (
-            <View className="flex-1 items-center justify-center">
-              <View className="w-16 h-16 rounded-full bg-white/[0.05] items-center justify-center mb-3">
-                <Feather name="camera" size={24} color="#EA580C" />
-              </View>
-              <Text className="text-white/60 font-bold">Snap a picture</Text>
-            </View>
-          )}
-          {imageUri && (
-            <View className="absolute top-4 right-4 bg-black/50 px-3 py-1 rounded-full">
-              <Text className="text-white text-xs font-bold">Tap to change</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-
-        <View className="mb-8">
-          <View className="flex-row items-center mb-3 ml-1">
-            <Ionicons name="people" size={16} color="#ffffff60" style={{ marginRight: 6 }} />
-            <Text className="text-white/40 text-xs font-black tracking-widest">WITH WHO?</Text>
+          <View className="w-full px-6 items-center mb-8 mt-4">
+            <Text className="text-orange-500 text-sm font-black tracking-widest mb-2 text-center uppercase">
+              STREAK SECURED
+            </Text>
+            <Text className="text-white text-3xl font-black text-center leading-tight">Make it memorable</Text>
           </View>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 20 }}>
-            {friends.map((friend) => {
-              const isSelected = mentionedBuddies.some((b) => b.id === friend.id);
-              return (
-                <TouchableOpacity
-                  key={friend.id}
-                  onPress={() => toggleBuddy(friend)}
-                  className={`mr-3 items-center justify-center px-4 py-3 rounded-2xl border ${
-                    isSelected ? "bg-orange-600 border-orange-600" : "bg-white/[0.03] border-white/[0.08]"
-                  }`}
-                >
-                  <Text className={`font-bold ${isSelected ? "text-black" : "text-white"}`}>{friend.username}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
-
-        <View className="mb-8">
-          <View className="flex-row items-center mb-3 ml-1">
-            <Ionicons name="wine" size={16} color="#ffffff60" style={{ marginRight: 6 }} />
-            <Text className="text-white/40 text-xs font-black tracking-widest">THE DRINK</Text>
-          </View>
-
-          <View className="flex-row flex-wrap gap-2">
-            {drinksToShow.map((type) => {
-              const isSelected = alcohols.includes(type);
-              return (
-                <TouchableOpacity
-                  key={type}
-                  onPress={() => toggleDrinkType(type)}
-                  className={`px-5 py-3 rounded-xl border ${
-                    isSelected ? "bg-orange-600 border-orange-600" : "bg-white/[0.03] border-white/[0.08]"
-                  }`}
-                >
-                  <Text
-                    className={`text-xs font-bold uppercase tracking-wide ${
-                      isSelected ? "text-black" : "text-white/70"
-                    }`}
-                  >
-                    {type}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-
-            <TouchableOpacity
-              onPress={toggleDrinkMenu}
-              className="w-12 h-10 items-center justify-center rounded-xl bg-white/[0.08] border border-white/[0.1]"
-            >
-              <Ionicons name={isDrinkMenuExpanded ? "chevron-up" : "chevron-down"} size={20} color="white" />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View className="mb-8">
-          <View className="flex-row items-center mb-3 ml-1">
-            <Ionicons name="location" size={16} color="#ffffff60" style={{ marginRight: 6 }} />
-            <Text className="text-white/40 text-xs font-black tracking-widest">LOCATION</Text>
-          </View>
-
-          {locationText ? (
-            <View className="flex-row items-center bg-white/[0.03] border border-orange-500/50 rounded-2xl px-4 py-3">
-              <View className="w-8 h-8 rounded-full bg-orange-600/20 items-center justify-center mr-3">
-                <Ionicons name="location" size={18} color="#EA580C" />
-              </View>
-              <Text className="flex-1 text-white font-bold text-sm" numberOfLines={1}>
-                {locationText}
-              </Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setLocationText("");
-                  setLocationCoords(null);
-                }}
-                className="p-2"
-              >
-                <Ionicons name="close-circle" size={20} color="#ffffff50" />
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <TouchableOpacity
-              onPress={handleGetCurrentLocation}
-              disabled={isFetchingLocation}
-              className="flex-row items-center justify-center bg-white/[0.03] border border-dashed border-white/[0.2] rounded-2xl h-14 active:bg-white/[0.08]"
-            >
-              {isFetchingLocation ? (
-                <ActivityIndicator color="#EA580C" size="small" />
-              ) : (
-                <>
-                  <Ionicons name="navigate-circle-outline" size={20} color="#EA580C" style={{ marginRight: 8 }} />
-                  <Text className="text-white/70 font-bold text-sm">Add Current Location</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          )}
-        </View>
-
-        <View className="gap-3 mb-10">
           <TouchableOpacity
-            onPress={() => handleFinalSubmit(false)}
-            disabled={isSubmitting}
-            className="w-full py-5 bg-[#EA580C] rounded-2xl items-center flex-row justify-center"
+            onPress={() => setImagePickerVisible(true)}
+            className="w-full aspect-video bg-white/[0.03] rounded-3xl border-2 border-dashed border-white/[0.08] mb-6 overflow-hidden"
           >
-            {isSubmitting ? (
-              <ActivityIndicator color="black" />
+            {imageUri ? (
+              <Image source={{ uri: imageUri }} className="w-full h-full" resizeMode="cover" />
             ) : (
-              <>
-                <Text className="text-black text-base font-black tracking-wider mr-2">SAVE MEMORY</Text>
-                <Ionicons name="arrow-forward" size={20} color="black" />
-              </>
+              <View className="flex-1 items-center justify-center">
+                <View className="w-16 h-16 rounded-full bg-white/[0.05] items-center justify-center mb-3">
+                  <Feather name="camera" size={24} color="#EA580C" />
+                </View>
+                <Text className="text-white/60 font-bold">Snap a picture</Text>
+              </View>
+            )}
+            {imageUri && (
+              <View className="absolute top-4 right-4 bg-black/50 px-3 py-1 rounded-full">
+                <Text className="text-white text-xs font-bold">Tap to change</Text>
+              </View>
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={() => handleFinalSubmit(true)}
-            disabled={isSubmitting}
-            className="w-full py-4 items-center"
-          >
-            <Text className="text-white/40 font-bold text-sm">Skip details</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+          <View className="mb-8">
+            <View className="flex-row items-center mb-3 ml-1 justify-between">
+              <View className="flex-row items-center">
+                <Ionicons name="people" size={16} color="#ffffff60" style={{ marginRight: 6 }} />
+                <Text className="text-white/40 text-xs font-black tracking-widest">WITH WHO?</Text>
+              </View>
+            </View>
+
+            <View className="flex-row items-center bg-white/[0.03] rounded-xl px-3 py-1 mb-3 border border-white/[0.08]">
+              <Ionicons name="search" size={18} color="#ffffff60" />
+              <TextInput
+                placeholder="Search friends..."
+                placeholderTextColor="#ffffff40"
+                value={friendQuery}
+                onChangeText={setFriendQuery}
+                className="flex-1 ml-2 text-white font-medium h-full"
+              />
+              {friendQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setFriendQuery("")}>
+                  <Ionicons name="close-circle" size={16} color="#ffffff40" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 20 }}>
+              {filteredFriends.length > 0 &&
+                filteredFriends.map((friend) => {
+                  const isSelected = mentionedBuddies.some((b) => b.id === friend.id);
+                  return (
+                    <TouchableOpacity
+                      key={friend.id}
+                      onPress={() => toggleBuddy(friend)}
+                      className={`mr-3 items-center justify-center px-4 py-3 rounded-2xl border ${
+                        isSelected ? "bg-orange-600 border-orange-600" : "bg-white/[0.03] border-white/[0.08]"
+                      }`}
+                    >
+                      <Text className={`font-bold ${isSelected ? "text-black" : "text-white"}`}>{friend.username}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+            </ScrollView>
+          </View>
+
+          <View className="mb-8">
+            <View className="flex-row items-center mb-3 ml-1">
+              <Ionicons name="wine" size={16} color="#ffffff60" style={{ marginRight: 6 }} />
+              <Text className="text-white/40 text-xs font-black tracking-widest">THE DRINK</Text>
+            </View>
+
+            <View className="flex-row flex-wrap gap-2">
+              {drinksToShow.map((type) => {
+                const isSelected = alcohols.includes(type);
+                return (
+                  <TouchableOpacity
+                    key={type}
+                    onPress={() => toggleDrinkType(type)}
+                    className={`px-5 py-3 rounded-xl border ${
+                      isSelected ? "bg-orange-600 border-orange-600" : "bg-white/[0.03] border-white/[0.08]"
+                    }`}
+                  >
+                    <Text
+                      className={`text-xs font-bold uppercase tracking-wide ${
+                        isSelected ? "text-black" : "text-white/70"
+                      }`}
+                    >
+                      {type}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+
+              <TouchableOpacity
+                onPress={toggleDrinkMenu}
+                className="w-12 h-10 items-center justify-center rounded-xl bg-white/[0.03] border border-white/[0.1]"
+              >
+                <Ionicons name={isDrinkMenuExpanded ? "chevron-up" : "chevron-down"} size={20} color="white" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View className="mb-8">
+            <View className="flex-row items-center mb-3 ml-1">
+              <Ionicons name="stats-chart" size={16} color="#ffffff60" style={{ marginRight: 6 }} />
+              <Text className="text-white/40 text-xs font-black tracking-widest">QUANTITY</Text>
+            </View>
+
+            <View className="flex-row flex-wrap gap-2">
+              {QUANTITY_OPTIONS.map((option) => {
+                const isSelected = drinkQuantity === option;
+
+                return (
+                  <TouchableOpacity
+                    key={option}
+                    onPress={() => setDrinkQuantity(option)}
+                    className={`px-5 py-3 rounded-xl border ${
+                      isSelected ? "bg-orange-600 border-orange-600" : "bg-white/[0.03] border-white/[0.08]"
+                    }`}
+                  >
+                    <Text
+                      className={`text-xs font-bold uppercase tracking-wide ${
+                        isSelected ? "text-black" : "text-white/70"
+                      }`}
+                    >
+                      {option}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+          <View className="mb-8">
+            <View className="flex-row items-center mb-3 ml-1">
+              <Ionicons name="location" size={16} color="#ffffff60" style={{ marginRight: 6 }} />
+              <Text className="text-white/40 text-xs font-black tracking-widest">LOCATION</Text>
+            </View>
+
+            {locationText ? (
+              <View className="flex-row items-center bg-white/[0.03] border border-orange-500/50 rounded-2xl px-4 py-3">
+                <View className="w-8 h-8 rounded-full bg-orange-600/20 items-center justify-center mr-3">
+                  <Ionicons name="location" size={18} color="#EA580C" />
+                </View>
+                <Text className="flex-1 text-white font-bold text-sm" numberOfLines={1}>
+                  {locationText}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    setLocationText("");
+                    setLocationCoords(null);
+                  }}
+                  className="p-2"
+                >
+                  <Ionicons name="close-circle" size={20} color="#ffffff50" />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                onPress={handleGetCurrentLocation}
+                disabled={isFetchingLocation}
+                className="flex-row items-center justify-center bg-white/[0.03] border border-dashed border-white/[0.2] rounded-2xl h-14 active:bg-white/[0.08]"
+              >
+                {isFetchingLocation ? (
+                  <ActivityIndicator color="#EA580C" size="small" />
+                ) : (
+                  <>
+                    <Ionicons name="navigate-circle-outline" size={20} color="#EA580C" style={{ marginRight: 8 }} />
+                    <Text className="text-white/70 font-bold text-sm">Add Current Location</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <View className="gap-3 mb-10">
+            <TouchableOpacity
+              onPress={() => handleFinalSubmit(false)}
+              disabled={isSubmitting}
+              className="w-full py-5 bg-[#EA580C] rounded-2xl items-center flex-row justify-center"
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color="black" />
+              ) : (
+                <>
+                  <Text className="text-black text-base font-black tracking-wider mr-2">SAVE MEMORY</Text>
+                  <Ionicons name="arrow-forward" size={20} color="black" />
+                </>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => handleFinalSubmit(true)}
+              disabled={isSubmitting}
+              className="w-full py-4 items-center"
+            >
+              <Text className="text-white/40 font-bold text-sm">Skip details</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     );
   };
-
   return (
     <View className="flex-1 bg-black px-3" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
       {alreadyLogged && viewState === "logging" ? (

@@ -72,29 +72,27 @@ export default function RenderKingsCupBoard() {
     }
   }, [
     gameStarted,
-    isMyTurn, // Dependency ensures re-eval if turn logic updates
+    isMyTurn, 
     currentCard?.value,
     currentCardSignature,
     handledCardSignature,
-    // Do not add modals to dependency array to avoid loops
   ]);
 
   const chooseBuddy = (buddyId: string) => {
-    if (!isMyTurn) return; // Extra safety
+    if (!isMyTurn) return;
     setHandledCardSignature(currentCardSignature);
     sendGameAction("choose_buddy", { chosen_buddie_id: buddyId });
     setBuddyModalVisible(false);
   };
 
   const setRule = () => {
-    if (!isMyTurn) return; // Extra safety
+    if (!isMyTurn) return;
     setHandledCardSignature(currentCardSignature);
     sendGameAction("set_rule", { new_rule: newRuleInput });
     setRuleModalVisible(false);
     setNewRuleInput("");
   };
 
-  // ... (Game Over / Not Started logic remains the same) ...
   if (!gameStarted && !gameOver) {
     return (
       <View className="flex-1 items-center justify-center p-6">
@@ -138,7 +136,7 @@ export default function RenderKingsCupBoard() {
     <Modal
       animationType="slide"
       transparent={true}
-      visible={buddyModalVisible && isMyTurn} // Double check visible prop
+      visible={buddyModalVisible && isMyTurn} 
       onRequestClose={() => {}}
     >
       <View className="flex-1 bg-black/80 justify-end">
@@ -185,7 +183,7 @@ export default function RenderKingsCupBoard() {
       <Modal
         animationType="slide"
         transparent={true}
-        visible={ruleModalVisible && isMyTurn} // Double check visible prop
+        visible={ruleModalVisible && isMyTurn} 
         onRequestClose={() => {}}
       >
         <KeyboardAvoidingView
@@ -241,7 +239,6 @@ export default function RenderKingsCupBoard() {
       {renderBuddySelectionModal()}
       {renderRuleSettingModal()}
 
-      {/* Turn Indicator */}
       {currentPlayerInGame && (
         <View className="bg-white/10 px-6 py-2 rounded-full border border-white/20 mb-2">
           <Text className="text-white font-bold text-base">
@@ -253,7 +250,6 @@ export default function RenderKingsCupBoard() {
         </View>
       )}
 
-      {/* Card Display */}
       <View className="flex-1 w-full items-center justify-center max-h-[55%]">
         {!currentCard ? (
           <TouchableOpacity
@@ -297,7 +293,6 @@ export default function RenderKingsCupBoard() {
         )}
       </View>
 
-      {/* Controls & Active Rules */}
       <View className="w-full px-4 flex-col justify-end min-h-[30%]">
         {currentCard ? (
           <View className="items-center mb-4 min-h-[60px] justify-center">
@@ -391,7 +386,6 @@ export default function RenderKingsCupBoard() {
           </View>
         )}
 
-        {/* Draw Button Logic */}
         {currentCard && !buddyModalVisible && !ruleModalVisible && isMyTurn ? (
           <TouchableOpacity
             onPress={() => sendGameAction("draw_card")}

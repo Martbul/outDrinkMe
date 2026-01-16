@@ -109,6 +109,7 @@ export interface AddDrinkingRequest {
     longitude: number;
   } | null;
   alcohols?: string[];
+  drink_quantity?: string | null;
   mentioned_buddies?: UserData[] | [];
 }
 
@@ -352,7 +353,6 @@ export interface EnergyDrink {
   image: any;
 }
 
-
 export interface Bottle {
   id: number;
   title: string;
@@ -555,7 +555,7 @@ export interface FuncMember {
 
 export interface FuncMetadata {
   inviteCode: string;
-  shareLink: string; 
+  shareLink: string;
   qrToken: string;
   qrCodeBase64: string;
   expiresAt: string;
@@ -640,23 +640,15 @@ export interface SubscribeRequest {
 export interface SubscribeResponse {
   checkoutUrl: string;
 }
- export type VenueCategory = 
-  | "Club" 
-  | "Bar" 
-  | "Chalga Club" 
-  | "Piano Bar" 
-  | "Beach Bar" 
-  | "Rooftop" 
-  | "Pub" 
-  | "Lounge";
+export type VenueCategory = "Club" | "Bar" | "Chalga Club" | "Piano Bar" | "Beach Bar" | "Rooftop" | "Pub" | "Lounge";
 
 export interface VenueSpecial {
   id: string;
-  venue_id: string;      
+  venue_id: string;
   name: string;
   price: string;
   description: string;
-  image_url: string;     
+  image_url: string;
 }
 
 export interface Venue {
@@ -697,17 +689,17 @@ export interface Venue {
 }
 
 export interface PaddlePrice {
-  id: string; 
-  productId: string; 
-  description: string; 
-  amount: string; 
-  currency: string; 
-  interval: string; 
+  id: string;
+  productId: string;
+  description: string;
+  amount: string;
+  currency: string;
+  interval: string;
 }
 
 export interface PaddleTransactionResponse {
-  transactionId: string; 
-  checkoutUrl: string; 
+  transactionId: string;
+  checkoutUrl: string;
 }
 
 export interface Premium {
@@ -721,7 +713,7 @@ export interface Premium {
   transactionId: string;
   customerId: string;
   amount: string;
-  currency: string; 
+  currency: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -730,4 +722,30 @@ export interface WishItem {
   id: string;
   text: string;
   completed: boolean;
+}
+
+export type ShameTier = "S" | "A" | "B" | "C" | "D" | "F";
+
+export interface NotBarsPlace {
+  id: string;
+  userId: string;
+  name: string;
+  visited: boolean;
+  rating: number;
+  isCustom: boolean;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface WallOfShameItem {
+  id: string;
+  userId: string;
+  text: string;
+  tier: ShameTier;
+  createdAt: string;
+}
+
+export interface NotBarsResponse {
+  data: NotBarsPlace[];
+  count: number;
 }
